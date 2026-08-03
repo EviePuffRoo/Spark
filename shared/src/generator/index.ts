@@ -11,9 +11,11 @@ import {
 import type { GenerateRequest, GeneratedCharacter, CharacterKind, Backstory } from "../types.js";
 import { pick } from "./random.js";
 
+const CHARACTER_KINDS: CharacterKind[] = ["npc", "monster"];
+
 function resolveKind(request: GenerateRequest): CharacterKind {
   if (request.fullyRandom || !request.kind || request.kind === "random") {
-    return pick<CharacterKind>(["npc", "monster"]);
+    return pick(CHARACTER_KINDS);
   }
   return request.kind;
 }

@@ -10,7 +10,7 @@ export function GeneratorPage() {
   const [reference, setReference] = useState<ReferenceData | null>(null);
   const [worlds, setWorlds] = useState<WorldSummary[]>([]);
   const [form, setForm] = useState<GenerateRequest>({ kind: "npc" });
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState<number | "">(1);
   const [results, setResults] = useState<GeneratedCharacter[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,13 +27,15 @@ export function GeneratorPage() {
   }, []);
 
   async function handleGenerate() {
+    const qty = Math.min(10, Math.max(1, Number(quantity) || 1));
     setLoading(true);
     setError(null);
     setSaveOpen(false);
     setSaveStatus("idle");
     try {
-      const generated = await Promise.all(Array.from({ length: quantity }, () => api.generate(form)));
+      const generated = await Promise.all(Array.from({ length: qty }, () => api.generate(form)));
       setResults(generated);
+      setQuantity(qty);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -159,12 +161,16 @@ export function GeneratorPage() {
             <span>Quantity</span>
             <input
               type="number" min={1} max={10} value={quantity}
-              onChange={(e) => setQuantity(Math.min(10, Math.max(1, Number(e.target.value) || 1)))}
+              onChange={(e) => {
+                const raw = e.target.value;
+                setQuantity(raw === "" ? "" : Number(raw));
+              }}
+              onBlur={() => setQuantity((q) => Math.min(10, Math.max(1, Number(q) || 1)))}
             />
           </label>
 
           <button className="btn-primary" onClick={handleGenerate} disabled={loading}>
-            {loading ? "Conjuring…" : quantity > 1 ? `Generate ${quantity}` : "Generate"}
+            {loading ? "Conjuring…" : Number(quantity) > 1 ? `Generate ${quantity}` : "Generate"}
           </button>
           {error && <p className="error">{error}</p>}
         </div>

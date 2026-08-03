@@ -11,7 +11,7 @@ export function FactionForgePage() {
   const [worlds, setWorlds] = useState<WorldSummary[]>([]);
   const [creationMode, setCreationMode] = useState<"generate" | "manual">("generate");
   const [form, setForm] = useState<GenerateFactionRequest>({});
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState<number | "">(1);
   const [results, setResults] = useState<GeneratedFaction[]>([]);
   const [manualResult, setManualResult] = useState<GeneratedFaction | null>(null);
   const [loading, setLoading] = useState(false);
@@ -37,13 +37,15 @@ export function FactionForgePage() {
   }
 
   async function handleGenerate() {
+    const qty = Math.min(10, Math.max(1, Number(quantity) || 1));
     setLoading(true);
     setError(null);
     setSaveOpen(false);
     setSaveStatus("idle");
     try {
-      const generated = await Promise.all(Array.from({ length: quantity }, () => api.generateFaction(form)));
+      const generated = await Promise.all(Array.from({ length: qty }, () => api.generateFaction(form)));
       setResults(generated);
+      setQuantity(qty);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -190,12 +192,16 @@ export function FactionForgePage() {
               <span>Quantity</span>
               <input
                 type="number" min={1} max={10} value={quantity}
-                onChange={(e) => setQuantity(Math.min(10, Math.max(1, Number(e.target.value) || 1)))}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  setQuantity(raw === "" ? "" : Number(raw));
+                }}
+                onBlur={() => setQuantity((q) => Math.min(10, Math.max(1, Number(q) || 1)))}
               />
             </label>
 
             <button className="btn-primary" onClick={handleGenerate} disabled={loading}>
-              {loading ? "Founding…" : quantity > 1 ? `Found ${quantity}` : "Found Faction"}
+              {loading ? "Founding…" : Number(quantity) > 1 ? `Found ${quantity}` : "Found Faction"}
             </button>
             {error && <p className="error">{error}</p>}
           </div>

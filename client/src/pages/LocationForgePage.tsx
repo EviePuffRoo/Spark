@@ -11,7 +11,7 @@ export function LocationForgePage() {
   const [worlds, setWorlds] = useState<WorldSummary[]>([]);
   const [creationMode, setCreationMode] = useState<"generate" | "manual">("generate");
   const [form, setForm] = useState<GenerateLocationRequest>({});
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState<number | "">(1);
   const [results, setResults] = useState<GeneratedLocation[]>([]);
   const [manualResult, setManualResult] = useState<GeneratedLocation | null>(null);
   const [loading, setLoading] = useState(false);
@@ -37,13 +37,15 @@ export function LocationForgePage() {
   }
 
   async function handleGenerate() {
+    const qty = Math.min(10, Math.max(1, Number(quantity) || 1));
     setLoading(true);
     setError(null);
     setSaveOpen(false);
     setSaveStatus("idle");
     try {
-      const generated = await Promise.all(Array.from({ length: quantity }, () => api.generateLocation(form)));
+      const generated = await Promise.all(Array.from({ length: qty }, () => api.generateLocation(form)));
       setResults(generated);
+      setQuantity(qty);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -190,12 +192,16 @@ export function LocationForgePage() {
               <span>Quantity</span>
               <input
                 type="number" min={1} max={10} value={quantity}
-                onChange={(e) => setQuantity(Math.min(10, Math.max(1, Number(e.target.value) || 1)))}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  setQuantity(raw === "" ? "" : Number(raw));
+                }}
+                onBlur={() => setQuantity((q) => Math.min(10, Math.max(1, Number(q) || 1)))}
               />
             </label>
 
             <button className="btn-primary" onClick={handleGenerate} disabled={loading}>
-              {loading ? "Sketching…" : quantity > 1 ? `Sketch ${quantity}` : "Sketch Location"}
+              {loading ? "Sketching…" : Number(quantity) > 1 ? `Sketch ${quantity}` : "Sketch Location"}
             </button>
             {error && <p className="error">{error}</p>}
           </div>

@@ -9,6 +9,8 @@ import { QuestHookCardView } from "../components/QuestHookCardView";
 import { FactionCardView } from "../components/FactionCardView";
 import { EncounterTableCardView } from "../components/EncounterTableCardView";
 import { LinkedEntities } from "../components/LinkedEntities";
+import { SessionNoteCardView } from "../components/SessionNoteCardView";
+import type { PrintItem } from "../components/PrintPane";
 import { CharacterEditor } from "../components/CharacterEditor";
 import { ItemEditor } from "../components/ItemEditor";
 import { LocationEditor } from "../components/LocationEditor";
@@ -53,13 +55,27 @@ export interface RosterSelection {
   id: string;
 }
 
+async function fetchPrintItem(type: EntityType, id: string): Promise<PrintItem | null> {
+  switch (type) {
+    case "character": return { type, data: await api.getCharacter(id) };
+    case "item": return { type, data: await api.getItem(id) };
+    case "location": return { type, data: await api.getLocation(id) };
+    case "quest": return { type, data: await api.getQuest(id) };
+    case "faction": return { type, data: await api.getFaction(id) };
+    case "encounterTable": return { type, data: await api.getEncounterTable(id) };
+    case "sessionNote": return { type, data: await api.getSessionNote(id) };
+    default: return null;
+  }
+}
+
 export function RosterPage({
-  worldFilter, onWorldFilterChange, pendingSelection, onConsumeSelection,
+  worldFilter, onWorldFilterChange, pendingSelection, onConsumeSelection, onPrint,
 }: {
   worldFilter: string;
   onWorldFilterChange: (v: string) => void;
   pendingSelection?: RosterSelection | null;
   onConsumeSelection?: () => void;
+  onPrint?: (items: PrintItem[]) => void;
 }) {
   const [mode, setMode] = useState<Mode>("characters");
   const [characters, setCharacters] = useState<Character[]>([]);
@@ -139,6 +155,83 @@ export function RosterPage({
     else await api.updateSessionNote(selected.id, patch);
     setStatus("idle");
     refresh();
+  }
+
+  async function handleDuplicate() {
+    if (!selected) return;
+    setStatus("saving");
+    const worldId = selected.worldId ?? null;
+    const tagsCopy = [...selected.tags];
+    const notesCopy = selected.notes;
+    let created: { id: string } | null = null;
+    if (selectedCharacter) {
+      created = await api.saveCharacter({
+        kind: selectedCharacter.kind, name: `${selectedCharacter.name} (Copy)`, race: selectedCharacter.race,
+        background: selectedCharacter.background, alignment: selectedCharacter.alignment,
+        templateId: selectedCharacter.templateId, templateName: selectedCharacter.templateName,
+        statBlock: selectedCharacter.statBlock, backstory: selectedCharacter.backstory,
+        worldId, tags: tagsCopy, notes: notesCopy,
+      });
+    } else if (selectedItem) {
+      created = await api.saveItem({
+        name: `${selectedItem.name} (Copy)`, itemType: selectedItem.itemType, category: selectedItem.category,
+        rarity: selectedItem.rarity, description: selectedItem.description, property: selectedItem.property,
+        history: selectedItem.history, worldId, tags: tagsCopy, notes: notesCopy,
+      });
+    } else if (selectedLocation) {
+      created = await api.saveLocation({
+        name: `${selectedLocation.name} (Copy)`, locationType: selectedLocation.locationType, category: selectedLocation.category,
+        description: selectedLocation.description, notableFeature: selectedLocation.notableFeature,
+        keeper: selectedLocation.keeper, rumor: selectedLocation.rumor, worldId, tags: tagsCopy, notes: notesCopy,
+      });
+    } else if (selectedQuest) {
+      created = await api.saveQuest({
+        title: `${selectedQuest.title} (Copy)`, questType: selectedQuest.questType, tier: selectedQuest.tier,
+        hook: selectedQuest.hook, objective: selectedQuest.objective, complication: selectedQuest.complication,
+        reward: selectedQuest.reward, worldId, tags: tagsCopy, notes: notesCopy,
+      });
+    } else if (selectedFaction) {
+      created = await api.saveFaction({
+        name: `${selectedFaction.name} (Copy)`, factionType: selectedFaction.factionType, agenda: selectedFaction.agenda,
+        methods: selectedFaction.methods, publicFace: selectedFaction.publicFace, hook: selectedFaction.hook,
+        worldId, tags: tagsCopy, notes: notesCopy,
+      });
+    } else if (selectedEncounter) {
+      created = await api.saveEncounterTable({
+        name: `${selectedEncounter.name} (Copy)`, terrain: selectedEncounter.terrain, entries: selectedEncounter.entries,
+        worldId, tags: tagsCopy, notes: notesCopy,
+      });
+    } else if (selectedNote) {
+      created = await api.saveSessionNote({
+        title: `${selectedNote.title} (Copy)`, sessionLabel: selectedNote.sessionLabel, summary: selectedNote.summary,
+        looseThreads: selectedNote.looseThreads, nextSteps: selectedNote.nextSteps, worldId, tags: tagsCopy, notes: notesCopy,
+      });
+    }
+    setStatus("idle");
+    refresh();
+    if (created) setSelectedId(created.id);
+  }
+
+  function handlePrint() {
+    if (!onPrint) return;
+    if (selectedCharacter) onPrint([{ type: "character", data: selectedCharacter }]);
+    else if (selectedItem) onPrint([{ type: "item", data: selectedItem }]);
+    else if (selectedLocation) onPrint([{ type: "location", data: selectedLocation }]);
+    else if (selectedQuest) onPrint([{ type: "quest", data: selectedQuest }]);
+    else if (selectedFaction) onPrint([{ type: "faction", data: selectedFaction }]);
+    else if (selectedEncounter) onPrint([{ type: "encounterTable", data: selectedEncounter }]);
+    else if (selectedNote) onPrint([{ type: "sessionNote", data: selectedNote }]);
+  }
+
+  async function handlePrintSessionPack() {
+    if (!selectedNote || !onPrint) return;
+    const links = await api.getLinks("sessionNote", selectedNote.id);
+    const linkedItems = await Promise.all(links.map((l) => fetchPrintItem(l.other.type, l.other.id)));
+    const items: PrintItem[] = [
+      { type: "sessionNote", data: selectedNote },
+      ...linkedItems.filter((i): i is PrintItem => i !== null),
+    ];
+    onPrint(items);
   }
 
   async function handleDelete() {
@@ -265,20 +358,21 @@ export function RosterPage({
         )}
 
         {selectedNote && (
-          <div className="statblock item-card">
-            <h2 className="statblock-name">{selectedNote.title}</h2>
-            {selectedNote.sessionLabel && <p className="statblock-subtitle">{selectedNote.sessionLabel}</p>}
-            <hr className="rule gold" />
-            <h3 className="section-heading">Summary</h3>
-            <p>{selectedNote.summary}</p>
-            {selectedNote.looseThreads && <><h3 className="section-heading">Loose Threads</h3><p>{selectedNote.looseThreads}</p></>}
-            {selectedNote.nextSteps && <><h3 className="section-heading">Next Steps</h3><p>{selectedNote.nextSteps}</p></>}
+          <>
+            <SessionNoteCardView note={selectedNote} />
             <p className="hint">Edit this note from the Notes tab.</p>
-          </div>
+          </>
         )}
 
         {selected && !editingContent && mode !== "notes" && (
           <button className="btn-secondary" onClick={() => setEditingContent(true)}>Edit Content</button>
+        )}
+
+        {selected && !editingContent && onPrint && (
+          <button className="btn-secondary" onClick={handlePrint}>Print</button>
+        )}
+        {selected && !editingContent && onPrint && mode === "notes" && (
+          <button className="btn-secondary" onClick={handlePrintSessionPack}>Print Session Pack</button>
         )}
 
         {selected && !editingContent && (
@@ -306,6 +400,7 @@ export function RosterPage({
                 <button className="btn-primary" onClick={handleUpdate} disabled={status === "saving"}>
                   {status === "saving" ? "Saving…" : "Save Changes"}
                 </button>
+                <button className="btn-secondary" onClick={handleDuplicate} disabled={status === "saving"}>Duplicate</button>
                 <button className="btn-danger" onClick={handleDelete}>Delete</button>
               </div>
             </div>

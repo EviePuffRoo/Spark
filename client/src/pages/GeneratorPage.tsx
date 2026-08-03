@@ -10,7 +10,8 @@ export function GeneratorPage() {
   const [reference, setReference] = useState<ReferenceData | null>(null);
   const [worlds, setWorlds] = useState<WorldSummary[]>([]);
   const [form, setForm] = useState<GenerateRequest>({ kind: "npc" });
-  const [result, setResult] = useState<GeneratedCharacter | null>(null);
+  const [quantity, setQuantity] = useState(1);
+  const [results, setResults] = useState<GeneratedCharacter[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,8 +32,8 @@ export function GeneratorPage() {
     setSaveOpen(false);
     setSaveStatus("idle");
     try {
-      const generated = await api.generate(form);
-      setResult(generated);
+      const generated = await Promise.all(Array.from({ length: quantity }, () => api.generate(form)));
+      setResults(generated);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -40,16 +41,20 @@ export function GeneratorPage() {
     }
   }
 
-  async function handleSave() {
-    if (!result) return;
+  function removeResult(index: number) {
+    setResults(results.filter((_, i) => i !== index));
+  }
+
+  async function handleSaveAll() {
+    if (results.length === 0) return;
     setSaveStatus("saving");
     try {
-      await api.saveCharacter({
-        ...result,
+      await Promise.all(results.map((r) => api.saveCharacter({
+        ...r,
         worldId: saveWorldId || null,
         tags: saveTags.split(",").map((t) => t.trim()).filter(Boolean),
         notes: saveNotes || undefined,
-      });
+      })));
       setSaveStatus("saved");
     } catch (e) {
       setError((e as Error).message);
@@ -150,27 +155,46 @@ export function GeneratorPage() {
             </label>
           </fieldset>
 
+          <label className="field">
+            <span>Quantity</span>
+            <input
+              type="number" min={1} max={10} value={quantity}
+              onChange={(e) => setQuantity(Math.min(10, Math.max(1, Number(e.target.value) || 1)))}
+            />
+          </label>
+
           <button className="btn-primary" onClick={handleGenerate} disabled={loading}>
-            {loading ? "Conjuring…" : "Generate"}
+            {loading ? "Conjuring…" : quantity > 1 ? `Generate ${quantity}` : "Generate"}
           </button>
           {error && <p className="error">{error}</p>}
         </div>
 
         <div className="panel result-panel">
-          {!result && <p className="hint">Generate an NPC or monster to see their stat block and backstory here.</p>}
-          {result && (
+          {results.length === 0 && <p className="hint">Generate an NPC or monster to see their stat block and backstory here.</p>}
+          {results.length > 0 && (
             <>
-              <StatBlockView
-                name={result.name}
-                subtitle={`${result.statBlock.size} ${result.statBlock.creatureType}, ${result.statBlock.alignment}${result.race ? ` — ${result.race}` : ""}${result.background ? `, ${result.background}` : ""}`}
-                statBlock={result.statBlock}
-              />
-              <BackstoryView backstory={result.backstory} />
+              {results.map((result, index) => (
+                <div className="batch-result-card" key={index}>
+                  <StatBlockView
+                    name={result.name}
+                    subtitle={`${result.statBlock.size} ${result.statBlock.creatureType}, ${result.statBlock.alignment}${result.race ? ` — ${result.race}` : ""}${result.background ? `, ${result.background}` : ""}`}
+                    statBlock={result.statBlock}
+                  />
+                  <BackstoryView backstory={result.backstory} />
+                  {results.length > 1 && saveStatus !== "saved" && (
+                    <button className="btn-danger" onClick={() => removeResult(index)}>Remove from batch</button>
+                  )}
+                </div>
+              ))}
 
               {!saveOpen && saveStatus !== "saved" && (
-                <button className="btn-secondary" onClick={() => setSaveOpen(true)}>Save to Roster</button>
+                <button className="btn-secondary" onClick={() => setSaveOpen(true)}>
+                  {results.length > 1 ? `Save All ${results.length} to Roster` : "Save to Roster"}
+                </button>
               )}
-              {saveStatus === "saved" && <p className="success">Saved to roster.</p>}
+              {saveStatus === "saved" && (
+                <p className="success">Saved {results.length > 1 ? `all ${results.length}` : "it"} to roster.</p>
+              )}
 
               {saveOpen && saveStatus !== "saved" && (
                 <div className="save-panel">
@@ -189,8 +213,8 @@ export function GeneratorPage() {
                     <span>Notes</span>
                     <textarea value={saveNotes} onChange={(e) => setSaveNotes(e.target.value)} rows={3} placeholder="Where and how you plan to use them…" />
                   </label>
-                  <button className="btn-primary" onClick={handleSave} disabled={saveStatus === "saving"}>
-                    {saveStatus === "saving" ? "Saving…" : "Confirm Save"}
+                  <button className="btn-primary" onClick={handleSaveAll} disabled={saveStatus === "saving"}>
+                    {saveStatus === "saving" ? "Saving…" : results.length > 1 ? `Confirm Save (${results.length})` : "Confirm Save"}
                   </button>
                 </div>
               )}

@@ -37,6 +37,12 @@ export interface ReferenceData {
   encounterTerrains: { id: string; name: string }[];
 }
 
+export interface ImportResult {
+  worldsImported: number;
+  entitiesImported: number;
+  linksImported: number;
+}
+
 export interface WorldSummary extends World {
   characterCount: number;
   itemCount: number;
@@ -143,4 +149,9 @@ export const api = {
   createLink: (fromType: EntityType, fromId: string, toType: EntityType, toId: string, label?: string) =>
     request<unknown>("/links", { method: "POST", body: JSON.stringify({ fromType, fromId, toType, toId, label }) }),
   deleteLink: (id: string) => request<void>(`/links/${id}`, { method: "DELETE" }),
+
+  exportWorld: (worldId: string) => request<unknown>(`/backup/export?worldId=${worldId}`),
+  exportAll: () => request<unknown>("/backup/export"),
+  importBackup: (bundle: unknown) =>
+    request<ImportResult>("/backup/import", { method: "POST", body: JSON.stringify(bundle) }),
 };

@@ -6,6 +6,7 @@ import { SessionNotesPage } from "./pages/SessionNotesPage";
 import { RosterPage, type RosterSelection } from "./pages/RosterPage";
 import { WorldsPage } from "./pages/WorldsPage";
 import { GlobalSearch } from "./components/GlobalSearch";
+import { PrintPane, type PrintItem } from "./components/PrintPane";
 
 type Tab = "create" | "notes" | "roster" | "worlds";
 
@@ -13,6 +14,7 @@ function App() {
   const [tab, setTab] = useState<Tab>("create");
   const [rosterWorldFilter, setRosterWorldFilter] = useState("");
   const [rosterSelection, setRosterSelection] = useState<RosterSelection | null>(null);
+  const [printItems, setPrintItems] = useState<PrintItem[] | null>(null);
 
   function viewRosterForWorld(worldId: string) {
     setRosterWorldFilter(worldId);
@@ -47,10 +49,13 @@ function App() {
             onWorldFilterChange={setRosterWorldFilter}
             pendingSelection={rosterSelection}
             onConsumeSelection={() => setRosterSelection(null)}
+            onPrint={setPrintItems}
           />
         )}
         {tab === "worlds" && <WorldsPage onViewRoster={viewRosterForWorld} />}
       </main>
+
+      <PrintPane items={printItems} />
     </div>
   );
 }

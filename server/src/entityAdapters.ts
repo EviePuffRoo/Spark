@@ -2,7 +2,7 @@ import { prisma } from "./db.js";
 import type { EntityType } from "@spark/shared";
 
 interface EntityAdapter {
-  findMany: (args: Record<string, unknown>) => Promise<any[]>;
+  findMany: (args: any) => Promise<any[]>;
   findUnique: (id: string) => Promise<any>;
   getName: (row: any) => string;
   getMeta: (row: any) => string;

@@ -11,7 +11,9 @@ export function ItemForgePage() {
   const [worlds, setWorlds] = useState<WorldSummary[]>([]);
   const [creationMode, setCreationMode] = useState<"generate" | "manual">("generate");
   const [form, setForm] = useState<GenerateItemRequest>({});
-  const [result, setResult] = useState<GeneratedItem | null>(null);
+  const [quantity, setQuantity] = useState(1);
+  const [results, setResults] = useState<GeneratedItem[]>([]);
+  const [manualResult, setManualResult] = useState<GeneratedItem | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,7 +30,8 @@ export function ItemForgePage() {
 
   function switchMode(next: "generate" | "manual") {
     setCreationMode(next);
-    setResult(null);
+    setResults([]);
+    setManualResult(null);
     setSaveOpen(false);
     setSaveStatus("idle");
   }
@@ -39,8 +42,8 @@ export function ItemForgePage() {
     setSaveOpen(false);
     setSaveStatus("idle");
     try {
-      const generated = await api.generateItem(form);
-      setResult(generated);
+      const generated = await Promise.all(Array.from({ length: quantity }, () => api.generateItem(form)));
+      setResults(generated);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -48,12 +51,33 @@ export function ItemForgePage() {
     }
   }
 
-  async function handleSave() {
-    if (!result) return;
+  function removeResult(index: number) {
+    setResults(results.filter((_, i) => i !== index));
+  }
+
+  async function handleSaveAll() {
+    if (results.length === 0) return;
+    setSaveStatus("saving");
+    try {
+      await Promise.all(results.map((r) => api.saveItem({
+        ...r,
+        worldId: saveWorldId || null,
+        tags: saveTags.split(",").map((t) => t.trim()).filter(Boolean),
+        notes: saveNotes || undefined,
+      })));
+      setSaveStatus("saved");
+    } catch (e) {
+      setError((e as Error).message);
+      setSaveStatus("idle");
+    }
+  }
+
+  async function handleSaveManual() {
+    if (!manualResult) return;
     setSaveStatus("saving");
     try {
       await api.saveItem({
-        ...result,
+        ...manualResult,
         worldId: saveWorldId || null,
         tags: saveTags.split(",").map((t) => t.trim()).filter(Boolean),
         notes: saveNotes || undefined,
@@ -67,37 +91,52 @@ export function ItemForgePage() {
 
   const fullyRandom = !!form.fullyRandom;
 
-  const resultPanel = (
+  const savePanelFields = (
+    <>
+      <label className="field">
+        <span>World (optional)</span>
+        <select value={saveWorldId} onChange={(e) => setSaveWorldId(e.target.value)}>
+          <option value="">Unassigned</option>
+          {worlds.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
+        </select>
+      </label>
+      <label className="field">
+        <span>Tags (comma separated)</span>
+        <input type="text" value={saveTags} onChange={(e) => setSaveTags(e.target.value)} placeholder="quest reward, cursed, market find" />
+      </label>
+      <label className="field">
+        <span>Notes</span>
+        <textarea value={saveNotes} onChange={(e) => setSaveNotes(e.target.value)} rows={3} placeholder="Where and how you plan to use it…" />
+      </label>
+    </>
+  );
+
+  const batchResultPanel = (
     <div className="panel result-panel">
-      {!result && <p className="hint">Forge an item to see it here.</p>}
-      {result && (
+      {results.length === 0 && <p className="hint">Forge an item to see it here.</p>}
+      {results.length > 0 && (
         <>
-          <ItemCardView item={result} />
+          {results.map((item, index) => (
+            <div className="batch-result-card" key={index}>
+              <ItemCardView item={item} />
+              {results.length > 1 && saveStatus !== "saved" && (
+                <button className="btn-danger" onClick={() => removeResult(index)}>Remove from batch</button>
+              )}
+            </div>
+          ))}
 
           {!saveOpen && saveStatus !== "saved" && (
-            <button className="btn-secondary" onClick={() => setSaveOpen(true)}>Save to Roster</button>
+            <button className="btn-secondary" onClick={() => setSaveOpen(true)}>
+              {results.length > 1 ? `Save All ${results.length} to Roster` : "Save to Roster"}
+            </button>
           )}
-          {saveStatus === "saved" && <p className="success">Saved to roster.</p>}
+          {saveStatus === "saved" && <p className="success">Saved {results.length > 1 ? `all ${results.length}` : "it"} to roster.</p>}
 
           {saveOpen && saveStatus !== "saved" && (
             <div className="save-panel">
-              <label className="field">
-                <span>World (optional)</span>
-                <select value={saveWorldId} onChange={(e) => setSaveWorldId(e.target.value)}>
-                  <option value="">Unassigned</option>
-                  {worlds.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
-                </select>
-              </label>
-              <label className="field">
-                <span>Tags (comma separated)</span>
-                <input type="text" value={saveTags} onChange={(e) => setSaveTags(e.target.value)} placeholder="quest reward, cursed, market find" />
-              </label>
-              <label className="field">
-                <span>Notes</span>
-                <textarea value={saveNotes} onChange={(e) => setSaveNotes(e.target.value)} rows={3} placeholder="Where and how you plan to use it…" />
-              </label>
-              <button className="btn-primary" onClick={handleSave} disabled={saveStatus === "saving"}>
-                {saveStatus === "saving" ? "Saving…" : "Confirm Save"}
+              {savePanelFields}
+              <button className="btn-primary" onClick={handleSaveAll} disabled={saveStatus === "saving"}>
+                {saveStatus === "saving" ? "Saving…" : results.length > 1 ? `Confirm Save (${results.length})` : "Confirm Save"}
               </button>
             </div>
           )}
@@ -154,32 +193,56 @@ export function ItemForgePage() {
               </label>
             </fieldset>
 
+            <label className="field">
+              <span>Quantity</span>
+              <input
+                type="number" min={1} max={10} value={quantity}
+                onChange={(e) => setQuantity(Math.min(10, Math.max(1, Number(e.target.value) || 1)))}
+              />
+            </label>
+
             <button className="btn-primary" onClick={handleGenerate} disabled={loading}>
-              {loading ? "Forging…" : "Forge Item"}
+              {loading ? "Forging…" : quantity > 1 ? `Forge ${quantity}` : "Forge Item"}
             </button>
             {error && <p className="error">{error}</p>}
           </div>
 
-          {resultPanel}
+          {batchResultPanel}
         </div>
       )}
 
-      {creationMode === "manual" && !result && (
+      {creationMode === "manual" && !manualResult && (
         <div className="panel">
           <h2>Create Your Own Item</h2>
           <p className="hint">Write it exactly how you want it — nothing generated, all yours.</p>
-          <ItemEditor value={BLANK_ITEM} onSave={async (draft) => setResult(draft)} onCancel={() => switchMode("generate")} saveLabel="Continue" />
+          <ItemEditor value={BLANK_ITEM} onSave={async (draft) => setManualResult(draft)} onCancel={() => switchMode("generate")} saveLabel="Continue" />
         </div>
       )}
 
-      {creationMode === "manual" && result && (
+      {creationMode === "manual" && manualResult && (
         <div className="generator-layout">
           <div className="panel">
             <h2>Create Your Own Item</h2>
             <p className="hint">Review it, then save it to your roster.</p>
-            <button className="btn-secondary" onClick={() => setResult(null)}>← Edit Again</button>
+            <button className="btn-secondary" onClick={() => setManualResult(null)}>← Edit Again</button>
           </div>
-          {resultPanel}
+          <div className="panel result-panel">
+            <ItemCardView item={manualResult} />
+
+            {!saveOpen && saveStatus !== "saved" && (
+              <button className="btn-secondary" onClick={() => setSaveOpen(true)}>Save to Roster</button>
+            )}
+            {saveStatus === "saved" && <p className="success">Saved to roster.</p>}
+
+            {saveOpen && saveStatus !== "saved" && (
+              <div className="save-panel">
+                {savePanelFields}
+                <button className="btn-primary" onClick={handleSaveManual} disabled={saveStatus === "saving"}>
+                  {saveStatus === "saving" ? "Saving…" : "Confirm Save"}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

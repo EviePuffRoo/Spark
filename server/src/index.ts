@@ -4,7 +4,9 @@ import { fileURLToPath } from "node:url";
 import express from "express";
 import cors from "cors";
 import { generateRouter } from "./routes/generate.js";
+import { generateItemRouter } from "./routes/generateItem.js";
 import { charactersRouter } from "./routes/characters.js";
+import { itemsRouter } from "./routes/items.js";
 import { worldsRouter } from "./routes/worlds.js";
 import { referenceRouter } from "./routes/reference.js";
 
@@ -17,7 +19,9 @@ app.use(express.json());
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 app.use("/api/generate", generateRouter);
+app.use("/api/generate-item", generateItemRouter);
 app.use("/api/characters", charactersRouter);
+app.use("/api/items", itemsRouter);
 app.use("/api/worlds", worldsRouter);
 app.use("/api/reference", referenceRouter);
 

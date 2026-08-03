@@ -1,8 +1,8 @@
 # Spark
 
-A lean, robust NPC & monster generator for tabletop RPGs (starting with D&D 5e). Built for
-Dungeons Masters who need a memorable stat block and backstory *right now*, at the table —
-and a place to keep the ones worth reusing as a campaign world grows.
+A lean, robust prep-and-run companion for tabletop RPGs (starting with D&D 5e). Built for
+Dungeon Masters who need a memorable NPC, monster, or item *right now*, at the table — and
+a growing repository of everything worth reusing as a campaign world takes shape.
 
 ## What it does
 
@@ -14,8 +14,11 @@ and a place to keep the ones worth reusing as a campaign world grows.
 - **Every generated creature gets a backstory**: personality trait, ideal, bond, flaw,
   appearance, mannerism, motivation, and secret (monsters get a leaner, in-character set:
   role, distinguishing feature, and motivation).
-- **Save characters to your roster**, tag and annotate them, and organize them into
-  **Worlds** (campaign containers) as your setting grows into a larger project.
+- **Forge unique items** — flavorful weapons, wearables, trinkets, and curios with a
+  physical description, a minor quirk or property, and a lore hook. Deliberately
+  non-mechanical/non-game-breaking: these are about flavor and story hooks, not stat bonuses.
+- **Save characters and items to your roster**, tag and annotate them, and organize them
+  into **Worlds** (campaign containers) as your setting grows into a larger project.
 
 ## Stack
 
@@ -77,9 +80,9 @@ configuration.
 ## Project layout
 
 ```
-shared/       SRD dataset, types, and the character/monster generation engine
-server/       Express API + Prisma/SQLite persistence (worlds, characters)
-client/       React SPA (Generator, Roster, Worlds)
+shared/       SRD dataset, types, and the character/monster/item generation engines
+server/       Express API + Prisma/SQLite persistence (worlds, characters, items)
+client/       React SPA (Generator, Items, Roster, Worlds)
 render.yaml   Render Blueprint for a one-click paid deploy with a persistent disk
 ```
 
@@ -87,4 +90,4 @@ render.yaml   Render Blueprint for a one-click paid deploy with a persistent dis
 
 Stat blocks are derived from the D&D 5e System Reference Document (SRD), which is
 available for reuse. Flavor text (names, personality/backstory tables, monster
-epithets) is original content written for this project.
+epithets, item flavor/properties/history) is original content written for this project.

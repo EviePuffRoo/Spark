@@ -35,7 +35,7 @@ export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) =
     <div className="page">
       <div className="panel">
         <h2>Worlds &amp; Campaigns</h2>
-        <p className="hint">Group your NPCs and monsters into worlds or campaigns as you build them out.</p>
+        <p className="hint">Group your NPCs, monsters, and items into worlds or campaigns as you build them out.</p>
 
         <div className="save-panel">
           <label className="field">
@@ -56,7 +56,9 @@ export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) =
               <div>
                 <div className="entity-name">{w.name}</div>
                 {w.description && <div className="entity-meta">{w.description}</div>}
-                <div className="entity-meta">{w.characterCount} character{w.characterCount === 1 ? "" : "s"}</div>
+                <div className="entity-meta">
+                  {w.characterCount} character{w.characterCount === 1 ? "" : "s"} &middot; {w.itemCount} item{w.itemCount === 1 ? "" : "s"}
+                </div>
               </div>
               <div className="button-row">
                 <button className="btn-secondary" onClick={() => onViewRoster(w.id)}>View Roster</button>

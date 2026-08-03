@@ -9,10 +9,7 @@ import {
   MOTIVATIONS, SECRETS, MONSTER_MOTIVATIONS, MONSTER_DISTINGUISHING_FEATURES,
 } from "../data/flavor.js";
 import type { GenerateRequest, GeneratedCharacter, CharacterKind, Backstory } from "../types.js";
-
-function pick<T>(arr: T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
+import { pick } from "./random.js";
 
 function resolveKind(request: GenerateRequest): CharacterKind {
   if (request.fullyRandom || !request.kind || request.kind === "random") {

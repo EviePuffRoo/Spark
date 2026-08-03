@@ -1,10 +1,11 @@
 import { useState } from "react";
 import "./App.css";
 import { GeneratorPage } from "./pages/GeneratorPage";
+import { ItemForgePage } from "./pages/ItemForgePage";
 import { RosterPage } from "./pages/RosterPage";
 import { WorldsPage } from "./pages/WorldsPage";
 
-type Tab = "generator" | "roster" | "worlds";
+type Tab = "generator" | "items" | "roster" | "worlds";
 
 function App() {
   const [tab, setTab] = useState<Tab>("generator");
@@ -19,9 +20,10 @@ function App() {
     <div className="app">
       <header className="app-header">
         <h1>Spark</h1>
-        <p className="tagline">Memorable NPCs &amp; monsters, ready for the table</p>
+        <p className="tagline">Memorable NPCs, monsters &amp; items, ready for the table</p>
         <nav className="tabs">
           <button className={tab === "generator" ? "active" : ""} onClick={() => setTab("generator")}>Generator</button>
+          <button className={tab === "items" ? "active" : ""} onClick={() => setTab("items")}>Items</button>
           <button className={tab === "roster" ? "active" : ""} onClick={() => setTab("roster")}>Roster</button>
           <button className={tab === "worlds" ? "active" : ""} onClick={() => setTab("worlds")}>Worlds</button>
         </nav>
@@ -29,6 +31,7 @@ function App() {
 
       <main>
         {tab === "generator" && <GeneratorPage />}
+        {tab === "items" && <ItemForgePage />}
         {tab === "roster" && (
           <RosterPage worldFilter={rosterWorldFilter} onWorldFilterChange={setRosterWorldFilter} />
         )}

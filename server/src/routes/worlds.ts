@@ -6,7 +6,7 @@ export const worldsRouter = Router();
 worldsRouter.get("/", async (_req, res) => {
   const rows = await prisma.world.findMany({
     orderBy: { updatedAt: "desc" },
-    include: { _count: { select: { characters: true } } },
+    include: { _count: { select: { characters: true, items: true } } },
   });
   res.json(
     rows.map((row) => ({
@@ -14,6 +14,7 @@ worldsRouter.get("/", async (_req, res) => {
       name: row.name,
       description: row.description ?? undefined,
       characterCount: row._count.characters,
+      itemCount: row._count.items,
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
     }))

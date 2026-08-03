@@ -308,6 +308,16 @@ textarea {
   margin-top: 20px;
 }
 
+.roster-mode-tabs {
+  justify-content: flex-start;
+  margin-bottom: 16px;
+}
+
+.roster-mode-tabs button {
+  padding: 6px 14px;
+  font-size: 0.85rem;
+}
+
 .world-row {
   display: flex;
   justify-content: space-between;

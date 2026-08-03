@@ -14,6 +14,7 @@ model World {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   characters  Character[]
+  items       Item[]
 }
 
 model Character {
@@ -33,6 +34,25 @@ model Character {
   world        World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  @@index([worldId])
+}
+
+model Item {
+  id          String   @id @default(cuid())
+  name        String
+  itemType    String
+  category    String
+  rarity      String
+  description String
+  property    String
+  history     String
+  tags        String   @default("[]")
+  notes       String?
+  worldId     String?
+  world       World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@index([worldId])
 }

@@ -6,4 +6,6 @@ export * from "./data/names.js";
 export * from "./data/flavor.js";
 export * from "./data/npcTemplates.js";
 export * from "./data/monsterTemplates.js";
+export * from "./data/items.js";
 export * from "./generator/index.js";
+export * from "./generator/items.js";

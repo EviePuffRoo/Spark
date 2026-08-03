@@ -94,3 +94,29 @@ export interface GeneratedCharacter {
   statBlock: StatBlock;
   backstory: Backstory;
 }
+
+export interface GeneratedItem {
+  name: string;
+  itemType: string;
+  category: string;
+  rarity: string;
+  description: string;
+  property: string;
+  history: string;
+}
+
+export interface Item extends GeneratedItem {
+  id: string;
+  worldId?: string | null;
+  tags: string[];
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GenerateItemRequest {
+  category?: string;
+  rarity?: string;
+  name?: string;
+  fullyRandom?: boolean;
+}

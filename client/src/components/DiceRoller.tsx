@@ -7,9 +7,13 @@ interface RollRecord {
   results: number[];
   modifier: number;
   total: number;
+  timestamp?: number;
+  label?: string;
+  mode?: "adv" | "dis";
 }
 
 const PRESETS = [4, 6, 8, 10, 12, 20, 100];
+const HISTORY_LIMIT = 50;
 
 function parseNotation(input: string): { count: number; sides: number; modifier: number } | null {
   const match = input.trim().match(/^(\d*)d(\d+)([+-]\d+)?$/i);
@@ -25,12 +29,29 @@ function rollDice(count: number, sides: number): number[] {
   return Array.from({ length: count }, () => Math.floor(Math.random() * sides) + 1);
 }
 
+function timeAgo(ms?: number): string | null {
+  if (!ms) return null;
+  const seconds = Math.floor((Date.now() - ms) / 1000);
+  if (seconds < 10) return "just now";
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return new Date(ms).toLocaleDateString();
+}
+
 export function DiceRoller() {
   const [history, setHistory] = useLocalStorage<RollRecord[]>("spark-dice-history", []);
   const [notation, setNotation] = useState("1d20");
+  const [label, setLabel] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  function performRoll(input: string) {
+  function pushRecord(record: RollRecord) {
+    setHistory((h) => [record, ...h].slice(0, HISTORY_LIMIT));
+  }
+
+  function performRoll(input: string, rollLabel?: string) {
     const parsed = parseNotation(input);
     if (!parsed) {
       setError(`Can't parse "${input}" — try something like 1d20 or 2d6+3.`);
@@ -39,8 +60,34 @@ export function DiceRoller() {
     setError(null);
     const results = rollDice(parsed.count, parsed.sides);
     const total = results.reduce((sum, r) => sum + r, 0) + parsed.modifier;
-    const record: RollRecord = { id: crypto.randomUUID(), notation: input.trim(), results, modifier: parsed.modifier, total };
-    setHistory((h) => [record, ...h].slice(0, 10));
+    pushRecord({
+      id: crypto.randomUUID(),
+      notation: input.trim(),
+      results,
+      modifier: parsed.modifier,
+      total,
+      timestamp: Date.now(),
+      label: rollLabel?.trim() || undefined,
+    });
+    if (rollLabel) setLabel("");
+  }
+
+  function rollAdvantage(mode: "adv" | "dis") {
+    const results = rollDice(2, 20);
+    const kept = mode === "adv" ? Math.max(...results) : Math.min(...results);
+    pushRecord({
+      id: crypto.randomUUID(),
+      notation: "1d20",
+      results,
+      modifier: 0,
+      total: kept,
+      timestamp: Date.now(),
+      mode,
+    });
+  }
+
+  function deleteRecord(id: string) {
+    setHistory((h) => h.filter((r) => r.id !== id));
   }
 
   return (
@@ -51,6 +98,8 @@ export function DiceRoller() {
         {PRESETS.map((sides) => (
           <button key={sides} className="btn-secondary" onClick={() => performRoll(`1d${sides}`)}>d{sides}</button>
         ))}
+        <button className="btn-secondary" onClick={() => rollAdvantage("adv")}>d20 Adv</button>
+        <button className="btn-secondary" onClick={() => rollAdvantage("dis")}>d20 Dis</button>
       </div>
 
       <label className="field">
@@ -60,11 +109,21 @@ export function DiceRoller() {
             type="text"
             value={notation}
             onChange={(e) => setNotation(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") performRoll(notation); }}
+            onKeyDown={(e) => { if (e.key === "Enter") performRoll(notation, label); }}
             placeholder="e.g. 2d6+3"
           />
-          <button className="btn-primary" onClick={() => performRoll(notation)}>Roll</button>
+          <button className="btn-primary" onClick={() => performRoll(notation, label)}>Roll</button>
         </div>
+      </label>
+      <label className="field">
+        <span>Label (optional)</span>
+        <input
+          type="text"
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") performRoll(notation, label); }}
+          placeholder="e.g. Attack vs Goblin"
+        />
       </label>
       {error && <p className="error">{error}</p>}
 
@@ -74,9 +133,17 @@ export function DiceRoller() {
           <ul className="dice-history">
             {history.map((r) => (
               <li key={r.id} className="dice-history-row">
-                <span className="entity-name">{r.notation}</span>
+                <div className="dice-history-main">
+                  <span className="entity-name">
+                    {r.notation}
+                    {r.mode && <span className="entity-meta"> ({r.mode === "adv" ? "adv" : "dis"})</span>}
+                    {r.label && <span className="entity-meta"> — {r.label}</span>}
+                  </span>
+                  <button className="dice-history-delete" onClick={() => deleteRecord(r.id)} aria-label={`Delete roll ${r.notation}${r.label ? ` (${r.label})` : ""}`}>×</button>
+                </div>
                 <span className="entity-meta">
                   [{r.results.join(", ")}]{r.modifier ? ` ${r.modifier > 0 ? "+" : ""}${r.modifier}` : ""} = <strong>{r.total}</strong>
+                  {timeAgo(r.timestamp) && <span className="dice-history-time"> · {timeAgo(r.timestamp)}</span>}
                 </span>
               </li>
             ))}

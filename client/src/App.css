@@ -952,15 +952,40 @@ textarea {
 
 .dice-history-row {
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 10px;
+  flex-direction: column;
+  gap: 2px;
   padding: 8px 0;
   border-bottom: 1px dashed var(--border);
 }
 
 .dice-history-row:last-child {
   border-bottom: none;
+}
+
+.dice-history-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.dice-history-time {
+  color: var(--text-muted);
+}
+
+.dice-history-delete {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+  flex-shrink: 0;
+}
+
+.dice-history-delete:hover {
+  color: var(--danger);
 }
 
 /* Initiative tracker */

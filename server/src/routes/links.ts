@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
 import { getAdapter, isEntityType } from "../entityAdapters.js";
+import { getMemberWorldIds } from "../worldAccess.js";
 import type { EntityLink } from "@spark/shared";
 
 export const linksRouter = Router();
@@ -11,8 +12,13 @@ linksRouter.get("/", async (req, res) => {
     return res.status(400).json({ error: "type and id query params are required" });
   }
 
+  const memberWorldIds = await getMemberWorldIds(req.userId!);
+  const adapter = getAdapter(type);
+  const anchorRow = adapter ? await adapter.findUnique(id, req.userId!, memberWorldIds) : null;
+  if (!anchorRow) return res.status(404).json({ error: "Entity not found" });
+
   const rows = await prisma.link.findMany({
-    where: { userId: req.userId, OR: [{ fromType: type, fromId: id }, { toType: type, toId: id }] },
+    where: { OR: [{ fromType: type, fromId: id }, { toType: type, toId: id }] },
     orderBy: { createdAt: "desc" },
   });
 
@@ -21,8 +27,8 @@ linksRouter.get("/", async (req, res) => {
       const isFrom = link.fromType === type && link.fromId === id;
       const otherType = isFrom ? link.toType : link.fromType;
       const otherId = isFrom ? link.toId : link.fromId;
-      const adapter = getAdapter(otherType);
-      const otherRow = adapter ? await adapter.findUnique(otherId, req.userId!) : null;
+      const otherAdapter = getAdapter(otherType);
+      const otherRow = otherAdapter ? await otherAdapter.findUnique(otherId, req.userId!, memberWorldIds) : null;
 
       return {
         id: link.id,
@@ -30,7 +36,7 @@ linksRouter.get("/", async (req, res) => {
         other: {
           type: otherType as EntityLink["other"]["type"],
           id: otherId,
-          name: otherRow && adapter ? adapter.getName(otherRow) : "(deleted)",
+          name: otherRow && otherAdapter ? otherAdapter.getName(otherRow) : "(deleted)",
         },
       };
     })
@@ -49,14 +55,21 @@ linksRouter.post("/", async (req, res) => {
     return res.status(400).json({ error: "Cannot link an entry to itself" });
   }
 
+  const memberWorldIds = await getMemberWorldIds(req.userId!);
   const fromAdapter = getAdapter(fromType);
   const toAdapter = getAdapter(toType);
   const [fromRow, toRow] = await Promise.all([
-    fromAdapter!.findUnique(fromId, req.userId!),
-    toAdapter!.findUnique(toId, req.userId!),
+    fromAdapter!.findUnique(fromId, req.userId!, memberWorldIds),
+    toAdapter!.findUnique(toId, req.userId!, memberWorldIds),
   ]);
   if (!fromRow || !toRow) {
     return res.status(404).json({ error: "One or both entries could not be found" });
+  }
+  // A shared-world member can only link things they actually own (typically
+  // their own PC) to something else in the world — not arbitrarily wire
+  // together two entities that both belong to someone else.
+  if (fromRow.userId !== req.userId && toRow.userId !== req.userId) {
+    return res.status(403).json({ error: "You must own at least one side of the link" });
   }
 
   const row = await prisma.link.create({

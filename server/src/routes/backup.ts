@@ -1,11 +1,13 @@
 import { Router } from "express";
 import { buildExport, applyImport, type ExportBundle } from "../backup.js";
+import { getMemberWorldIds } from "../worldAccess.js";
 
 export const backupRouter = Router();
 
 backupRouter.get("/export", async (req, res) => {
   const worldId = typeof req.query.worldId === "string" ? req.query.worldId : undefined;
-  const bundle = await buildExport(req.userId!, worldId);
+  const memberWorldIds = await getMemberWorldIds(req.userId!);
+  const bundle = await buildExport(req.userId!, worldId, memberWorldIds);
   res.json(bundle);
 });
 

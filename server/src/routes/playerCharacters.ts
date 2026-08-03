@@ -2,13 +2,15 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { toPlayerCharacterDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
+import { getMemberWorldIds } from "../worldAccess.js";
 
 export const playerCharactersRouter = Router();
 
 playerCharactersRouter.get("/", async (req, res) => {
   const { worldId } = req.query;
+  const memberWorldIds = await getMemberWorldIds(req.userId!);
   const where = {
-    userId: req.userId,
+    OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds } }],
     ...(worldId === "unassigned" ? { worldId: null } : typeof worldId === "string" ? { worldId } : {}),
   };
   const rows = await prisma.playerCharacter.findMany({ where, orderBy: { createdAt: "desc" } });
@@ -16,7 +18,8 @@ playerCharactersRouter.get("/", async (req, res) => {
 });
 
 playerCharactersRouter.get("/:id", async (req, res) => {
-  const row = await prisma.playerCharacter.findFirst({ where: { id: req.params.id, userId: req.userId } });
+  const memberWorldIds = await getMemberWorldIds(req.userId!);
+  const row = await prisma.playerCharacter.findFirst({ where: { id: req.params.id, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds } }] } });
   if (!row) return res.status(404).json({ error: "Player character not found" });
   res.json(toPlayerCharacterDTO(row));
 });

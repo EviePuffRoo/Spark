@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { api, type WorldSummary } from "../api";
+import { api, type WorldSummary, type WorldMemberInfo } from "../api";
 
 function summarizeCounts(w: WorldSummary): string {
   const parts: [number, string][] = [
@@ -11,6 +11,7 @@ function summarizeCounts(w: WorldSummary): string {
     [w.encounterTableCount, "encounter table"],
     [w.sessionNoteCount, "session note"],
     [w.adventureCount, "adventure"],
+    [w.playerCharacterCount, "player character"],
   ];
   const nonEmpty = parts.filter(([count]) => count > 0);
   if (nonEmpty.length === 0) return "Empty so far";
@@ -43,6 +44,15 @@ export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) =
   const [creating, setCreating] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
 
+  const [joinCodeInput, setJoinCodeInput] = useState("");
+  const [joining, setJoining] = useState(false);
+  const [joinStatus, setJoinStatus] = useState<string | null>(null);
+
+  const [expandedWorldId, setExpandedWorldId] = useState<string | null>(null);
+  const [generatedCode, setGeneratedCode] = useState<string | null>(null);
+  const [members, setMembers] = useState<WorldMemberInfo[]>([]);
+  const [memberError, setMemberError] = useState<string | null>(null);
+
   function refresh() {
     api.listWorlds().then(setWorlds).catch((e) => setError(e.message)).finally(() => setLoading(false));
   }
@@ -65,7 +75,7 @@ export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) =
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Delete this world? Everything in it (characters, items, locations, quests, factions, encounter tables, and session notes) will become unassigned, not deleted.")) return;
+    if (!confirm("Delete this world? Everything in it (characters, items, locations, quests, factions, encounter tables, player characters, and session notes) will become unassigned, not deleted. Anyone it was shared with will lose access.")) return;
     await api.deleteWorld(id);
     refresh();
   }
@@ -106,6 +116,63 @@ export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) =
     }
   }
 
+  async function toggleInvitePanel(worldId: string) {
+    if (expandedWorldId === worldId) {
+      setExpandedWorldId(null);
+      return;
+    }
+    setExpandedWorldId(worldId);
+    setGeneratedCode(null);
+    setMemberError(null);
+    try {
+      setMembers(await api.getWorldMembers(worldId));
+    } catch (e) {
+      setMemberError((e as Error).message);
+    }
+  }
+
+  async function handleGenerateCode(worldId: string) {
+    try {
+      const { code } = await api.generateWorldJoinCode(worldId);
+      setGeneratedCode(code);
+    } catch (e) {
+      setMemberError((e as Error).message);
+    }
+  }
+
+  async function handleRemoveMember(worldId: string, userId: string) {
+    if (!confirm("Remove this member? They'll lose access to the world immediately.")) return;
+    await api.removeWorldMember(worldId, userId);
+    setMembers(await api.getWorldMembers(worldId));
+    refresh();
+  }
+
+  async function handleLeave(worldId: string, worldName: string) {
+    if (!confirm(`Leave "${worldName}"? You'll lose access unless you're invited back.`)) return;
+    await api.leaveWorld(worldId);
+    refresh();
+  }
+
+  async function handleJoin() {
+    if (!joinCodeInput.trim() || joining) return;
+    setJoining(true);
+    setError(null);
+    setJoinStatus(null);
+    try {
+      const result = await api.joinWorld(joinCodeInput.trim());
+      setJoinStatus(`Joined "${result.worldName}".`);
+      setJoinCodeInput("");
+      refresh();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setJoining(false);
+    }
+  }
+
+  const myWorlds = worlds.filter((w) => w.isOwner);
+  const sharedWorlds = worlds.filter((w) => !w.isOwner);
+
   return (
     <div className="page">
       <div className="panel">
@@ -122,6 +189,15 @@ export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) =
             <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} />
           </label>
           <button className="btn-primary" onClick={handleCreate} disabled={creating}>{creating ? "Creating…" : "Create World"}</button>
+        </div>
+
+        <div className="save-panel">
+          <label className="field">
+            <span>Join a world</span>
+            <input type="text" value={joinCodeInput} onChange={(e) => setJoinCodeInput(e.target.value)} placeholder="XXXX-XXXX-XXXX-XXXX" />
+          </label>
+          <button className="btn-secondary" onClick={handleJoin} disabled={joining}>{joining ? "Joining…" : "Join World"}</button>
+          {joinStatus && <p className="success">{joinStatus}</p>}
         </div>
 
         <div className="button-row backup-row">
@@ -142,8 +218,9 @@ export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) =
         {importStatus && <p className="success">{importStatus}</p>}
         {error && <p className="error">{error}</p>}
 
+        <h3 className="section-heading">My Worlds</h3>
         <ul className="entity-list world-list">
-          {worlds.map((w) => (
+          {myWorlds.map((w) => (
             <li key={w.id} className="world-row">
               <div>
                 <div className="entity-name">{w.name}</div>
@@ -152,14 +229,65 @@ export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) =
               </div>
               <div className="button-row">
                 <button className="btn-secondary" onClick={() => onViewRoster(w.id)} aria-label={`View roster for ${w.name}`}>View Roster</button>
+                <button className="btn-secondary" onClick={() => toggleInvitePanel(w.id)} aria-label={`Manage sharing for ${w.name}`}>
+                  {expandedWorldId === w.id ? "Hide Sharing" : "Sharing"}
+                </button>
                 <button className="btn-secondary" onClick={() => handleExportWorld(w)} aria-label={`Export ${w.name}`}>Export</button>
                 <button className="btn-danger" onClick={() => handleDelete(w.id)} aria-label={`Delete ${w.name}`}>Delete</button>
               </div>
+
+              {expandedWorldId === w.id && (
+                <div className="save-panel world-sharing-panel">
+                  <h3 className="section-heading">Sharing</h3>
+                  <button className="btn-secondary" onClick={() => handleGenerateCode(w.id)}>
+                    {generatedCode ? "Regenerate Invite Code" : "Get Invite Code"}
+                  </button>
+                  {generatedCode && (
+                    <p className="hint">
+                      Share this code — it won't be shown again: <strong>{generatedCode}</strong>
+                    </p>
+                  )}
+                  {memberError && <p className="error">{memberError}</p>}
+                  {members.length === 0 && <p className="hint">Nobody has joined this world yet.</p>}
+                  {members.length > 0 && (
+                    <ul className="entity-list">
+                      {members.map((m) => (
+                        <li key={m.userId} className="world-row">
+                          <span className="entity-name">{m.username}</span>
+                          <button className="btn-danger" onClick={() => handleRemoveMember(w.id, m.userId)} aria-label={`Remove ${m.username}`}>Remove</button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
             </li>
           ))}
         </ul>
         {loading && <p className="hint">Loading…</p>}
-        {!loading && worlds.length === 0 && <p className="hint">No worlds yet — create one above.</p>}
+        {!loading && myWorlds.length === 0 && <p className="hint">No worlds yet — create one above.</p>}
+
+        {sharedWorlds.length > 0 && (
+          <>
+            <h3 className="section-heading">Shared With Me</h3>
+            <ul className="entity-list world-list">
+              {sharedWorlds.map((w) => (
+                <li key={w.id} className="world-row">
+                  <div>
+                    <div className="entity-name">{w.name}</div>
+                    {w.ownerUsername && <div className="entity-meta">Shared by {w.ownerUsername}</div>}
+                    <div className="entity-meta">{summarizeCounts(w)}</div>
+                  </div>
+                  <div className="button-row">
+                    <button className="btn-secondary" onClick={() => onViewRoster(w.id)} aria-label={`View roster for ${w.name}`}>View Roster</button>
+                    <button className="btn-secondary" onClick={() => handleExportWorld(w)} aria-label={`Export ${w.name}`}>Export</button>
+                    <button className="btn-danger" onClick={() => handleLeave(w.id, w.name)} aria-label={`Leave ${w.name}`}>Leave</button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
       </div>
     </div>
   );

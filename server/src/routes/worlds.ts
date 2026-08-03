@@ -1,42 +1,64 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
+import { generateRecoveryCode, hashRecoveryCode, verifyRecoveryCode } from "../auth.js";
+import { getMemberWorldIds } from "../worldAccess.js";
 
 export const worldsRouter = Router();
 
+const COUNT_SELECT = {
+  characters: true, items: true, locations: true, questHooks: true,
+  factions: true, encounterTables: true, sessionNotes: true, adventures: true,
+  playerCharacters: true,
+};
+
+function toSummary(
+  row: { id: string; name: string; description: string | null; createdAt: Date; updatedAt: Date; _count: Record<string, number> },
+  isOwner: boolean,
+  ownerUsername?: string
+) {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description ?? undefined,
+    isOwner,
+    ownerUsername,
+    characterCount: row._count.characters,
+    itemCount: row._count.items,
+    locationCount: row._count.locations,
+    questCount: row._count.questHooks,
+    factionCount: row._count.factions,
+    encounterTableCount: row._count.encounterTables,
+    sessionNoteCount: row._count.sessionNotes,
+    adventureCount: row._count.adventures,
+    playerCharacterCount: row._count.playerCharacters,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
 worldsRouter.get("/", async (req, res) => {
-  const rows = await prisma.world.findMany({
-    where: { userId: req.userId },
-    orderBy: { updatedAt: "desc" },
-    include: {
-      _count: {
-        select: {
-          characters: true, items: true, locations: true, questHooks: true,
-          factions: true, encounterTables: true, sessionNotes: true, adventures: true,
-        },
-      },
-    },
-  });
-  res.json(
-    rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      description: row.description ?? undefined,
-      characterCount: row._count.characters,
-      itemCount: row._count.items,
-      locationCount: row._count.locations,
-      questCount: row._count.questHooks,
-      factionCount: row._count.factions,
-      encounterTableCount: row._count.encounterTables,
-      sessionNoteCount: row._count.sessionNotes,
-      adventureCount: row._count.adventures,
-      createdAt: row.createdAt.toISOString(),
-      updatedAt: row.updatedAt.toISOString(),
-    }))
-  );
+  const [owned, memberships] = await Promise.all([
+    prisma.world.findMany({
+      where: { userId: req.userId },
+      orderBy: { updatedAt: "desc" },
+      include: { _count: { select: COUNT_SELECT } },
+    }),
+    prisma.worldMember.findMany({
+      where: { userId: req.userId },
+      include: { world: { include: { _count: { select: COUNT_SELECT }, user: { select: { username: true } } } } },
+    }),
+  ]);
+
+  const ownedSummaries = owned.map((row) => toSummary(row, true));
+  const sharedSummaries = memberships.map((m) => toSummary(m.world, false, m.world.user.username));
+  res.json([...ownedSummaries, ...sharedSummaries]);
 });
 
 worldsRouter.get("/:id", async (req, res) => {
-  const row = await prisma.world.findFirst({ where: { id: req.params.id, userId: req.userId } });
+  const memberWorldIds = await getMemberWorldIds(req.userId!);
+  const row = await prisma.world.findFirst({
+    where: { id: req.params.id, OR: [{ userId: req.userId }, { id: { in: memberWorldIds } }] },
+  });
   if (!row) return res.status(404).json({ error: "World not found" });
   res.json({
     id: row.id,
@@ -69,5 +91,63 @@ worldsRouter.patch("/:id", async (req, res) => {
 worldsRouter.delete("/:id", async (req, res) => {
   const result = await prisma.world.deleteMany({ where: { id: req.params.id, userId: req.userId } });
   if (result.count === 0) return res.status(404).json({ error: "World not found" });
+  res.status(204).end();
+});
+
+// Owner-only: (re)generate this world's join code. Returns the plaintext
+// code once, same as the account recovery code — only the bcrypt hash is
+// stored, and regenerating invalidates whatever code was issued before.
+worldsRouter.post("/:id/join-code", async (req, res) => {
+  const world = await prisma.world.findFirst({ where: { id: req.params.id, userId: req.userId } });
+  if (!world) return res.status(404).json({ error: "World not found" });
+  const code = generateRecoveryCode();
+  const joinCodeHash = await hashRecoveryCode(code);
+  await prisma.world.update({ where: { id: world.id }, data: { joinCodeHash } });
+  res.json({ code });
+});
+
+worldsRouter.post("/join", async (req, res) => {
+  const { code } = req.body ?? {};
+  if (!code || typeof code !== "string") return res.status(400).json({ error: "Join code is required" });
+
+  const candidates = await prisma.world.findMany({ where: { joinCodeHash: { not: null } } });
+  let matched: (typeof candidates)[number] | null = null;
+  for (const candidate of candidates) {
+    if (candidate.joinCodeHash && (await verifyRecoveryCode(code, candidate.joinCodeHash))) {
+      matched = candidate;
+      break;
+    }
+  }
+  if (!matched) return res.status(404).json({ error: "Invalid join code" });
+  if (matched.userId === req.userId) return res.status(400).json({ error: "You already own this world" });
+
+  await prisma.worldMember.upsert({
+    where: { worldId_userId: { worldId: matched.id, userId: req.userId! } },
+    create: { worldId: matched.id, userId: req.userId! },
+    update: {},
+  });
+  res.status(201).json({ worldId: matched.id, worldName: matched.name });
+});
+
+worldsRouter.get("/:id/members", async (req, res) => {
+  const world = await prisma.world.findFirst({ where: { id: req.params.id, userId: req.userId } });
+  if (!world) return res.status(404).json({ error: "World not found" });
+  const members = await prisma.worldMember.findMany({
+    where: { worldId: req.params.id },
+    include: { user: { select: { id: true, username: true } } },
+  });
+  res.json(members.map((m) => ({ userId: m.user.id, username: m.user.username })));
+});
+
+worldsRouter.delete("/:id/members/:userId", async (req, res) => {
+  const world = await prisma.world.findFirst({ where: { id: req.params.id, userId: req.userId } });
+  if (!world) return res.status(404).json({ error: "World not found" });
+  await prisma.worldMember.deleteMany({ where: { worldId: req.params.id, userId: req.params.userId } });
+  res.status(204).end();
+});
+
+worldsRouter.post("/:id/leave", async (req, res) => {
+  const result = await prisma.worldMember.deleteMany({ where: { worldId: req.params.id, userId: req.userId } });
+  if (result.count === 0) return res.status(404).json({ error: "You are not a member of this world" });
   res.status(204).end();
 });

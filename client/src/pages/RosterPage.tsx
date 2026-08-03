@@ -107,6 +107,7 @@ export function RosterPage({
   const [tags, setTags] = useState("");
   const [assignedWorld, setAssignedWorld] = useState("");
   const [status, setStatus] = useState<"idle" | "saving">("idle");
+  const [actionError, setActionError] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState(false);
   const [loading, setLoading] = useState(true);
   const [tagFilter, setTagFilter] = useState("");
@@ -185,26 +186,33 @@ export function RosterPage({
     }
     if (selectedQuest) setQuestStatus(selectedQuest.status);
     setEditingContent(false);
+    setActionError(null);
   }, [selected, selectedQuest]);
 
   async function handleUpdate() {
     if (!selected) return;
     setStatus("saving");
+    setActionError(null);
     const patch = {
       notes: metaNotes, tags: tags.split(",").map((t) => t.trim()).filter(Boolean), worldId: assignedWorld || null,
       ...(mode === "quests" ? { status: questStatus } : {}),
     };
-    if (mode === "characters") await api.updateCharacter(selected.id, patch);
-    else if (mode === "items") await api.updateItem(selected.id, patch);
-    else if (mode === "locations") await api.updateLocation(selected.id, patch);
-    else if (mode === "quests") await api.updateQuest(selected.id, patch);
-    else if (mode === "factions") await api.updateFaction(selected.id, patch);
-    else if (mode === "encounters") await api.updateEncounterTable(selected.id, patch);
-    else if (mode === "notes") await api.updateSessionNote(selected.id, patch);
-    else if (mode === "adventures") await api.updateAdventure(selected.id, patch);
-    else await api.updatePlayerCharacter(selected.id, patch);
-    setStatus("idle");
-    refresh();
+    try {
+      if (mode === "characters") await api.updateCharacter(selected.id, patch);
+      else if (mode === "items") await api.updateItem(selected.id, patch);
+      else if (mode === "locations") await api.updateLocation(selected.id, patch);
+      else if (mode === "quests") await api.updateQuest(selected.id, patch);
+      else if (mode === "factions") await api.updateFaction(selected.id, patch);
+      else if (mode === "encounters") await api.updateEncounterTable(selected.id, patch);
+      else if (mode === "notes") await api.updateSessionNote(selected.id, patch);
+      else if (mode === "adventures") await api.updateAdventure(selected.id, patch);
+      else await api.updatePlayerCharacter(selected.id, patch);
+      refresh();
+    } catch (e) {
+      setActionError((e as Error).message);
+    } finally {
+      setStatus("idle");
+    }
   }
 
   async function handleDuplicate() {
@@ -308,15 +316,21 @@ export function RosterPage({
   async function handleDelete() {
     if (!selected) return;
     if (!confirm(`Delete ${selectedDisplayName}? This cannot be undone.`)) return;
-    if (mode === "characters") await api.deleteCharacter(selected.id);
-    else if (mode === "items") await api.deleteItem(selected.id);
-    else if (mode === "locations") await api.deleteLocation(selected.id);
-    else if (mode === "quests") await api.deleteQuest(selected.id);
-    else if (mode === "factions") await api.deleteFaction(selected.id);
-    else if (mode === "encounters") await api.deleteEncounterTable(selected.id);
-    else if (mode === "notes") await api.deleteSessionNote(selected.id);
-    else if (mode === "adventures") await api.deleteAdventure(selected.id);
-    else await api.deletePlayerCharacter(selected.id);
+    setActionError(null);
+    try {
+      if (mode === "characters") await api.deleteCharacter(selected.id);
+      else if (mode === "items") await api.deleteItem(selected.id);
+      else if (mode === "locations") await api.deleteLocation(selected.id);
+      else if (mode === "quests") await api.deleteQuest(selected.id);
+      else if (mode === "factions") await api.deleteFaction(selected.id);
+      else if (mode === "encounters") await api.deleteEncounterTable(selected.id);
+      else if (mode === "notes") await api.deleteSessionNote(selected.id);
+      else if (mode === "adventures") await api.deleteAdventure(selected.id);
+      else await api.deletePlayerCharacter(selected.id);
+    } catch (e) {
+      setActionError((e as Error).message);
+      return;
+    }
     setSelectedId(null);
     refresh();
   }
@@ -564,6 +578,7 @@ export function RosterPage({
                 <span>Notes</span>
                 <textarea value={metaNotes} onChange={(e) => setMetaNotes(e.target.value)} rows={3} />
               </label>
+              {actionError && <p className="error">{actionError}</p>}
               <div className="button-row">
                 <button className="btn-primary" onClick={handleUpdate} disabled={status === "saving"}>
                   {status === "saving" ? "Saving…" : "Save Changes"}

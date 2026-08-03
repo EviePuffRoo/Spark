@@ -25,12 +25,14 @@ model User {
   adventures      Adventure[]
   playerCharacters PlayerCharacter[]
   links           Link[]
+  worldMemberships WorldMember[]
 }
 
 model World {
   id          String      @id @default(cuid())
   name        String
   description String?
+  joinCodeHash String?
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   userId      String
@@ -44,7 +46,20 @@ model World {
   sessionNotes    SessionNote[]
   adventures      Adventure[]
   playerCharacters PlayerCharacter[]
+  members         WorldMember[]
 
+  @@index([userId])
+}
+
+model WorldMember {
+  id        String   @id @default(cuid())
+  worldId   String
+  world     World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([worldId, userId])
   @@index([userId])
 }
 

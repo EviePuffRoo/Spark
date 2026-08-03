@@ -11,6 +11,7 @@ export function AccountMenu() {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -21,6 +22,18 @@ export function AccountMenu() {
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open]);
 
   // Don't leave a half-filled password form sitting around once the menu closes.
   useEffect(() => {
@@ -56,7 +69,15 @@ export function AccountMenu() {
 
   return (
     <div className="account-menu" ref={containerRef}>
-      <button className="btn-secondary" onClick={() => setOpen((o) => !o)}>{user.username}</button>
+      <button
+        ref={triggerRef}
+        className="btn-secondary"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="true"
+        aria-expanded={open}
+      >
+        {user.username}
+      </button>
       {open && (
         <div className="account-menu-dropdown">
           <a href="https://github.com/EviePuffRoo/Spark/issues" target="_blank" rel="noreferrer">Send Feedback</a>

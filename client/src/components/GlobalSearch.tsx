@@ -55,11 +55,15 @@ export function GlobalSearch({ onSelect }: { onSelect: (type: EntityType, id: st
       <input
         type="text"
         placeholder="Search everything…"
+        aria-label="Search everything"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onFocus={() => results.length > 0 && setOpen(true)}
         onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
       />
+      <span className="sr-only" role="status">
+        {open && (results.length > 0 ? `${results.length} result${results.length === 1 ? "" : "s"} found.` : "No matches found.")}
+      </span>
       {open && (
         <div className="global-search-results">
           {results.length === 0 && <div className="global-search-empty">No matches.</div>}

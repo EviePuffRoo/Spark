@@ -312,6 +312,8 @@ export function RosterPage({
       <div className="panel result-panel">
         {!selected && <p className="hint">Select an entry to view details.</p>}
 
+        {selected && editingContent && <h2>Editing {selectedDisplayName}</h2>}
+
         {selectedCharacter && !editingContent && (
           <>
             <StatBlockView

@@ -467,6 +467,18 @@ textarea {
   text-align: center;
 }
 
+.encounter-roll-result {
+  margin: 10px 0;
+  padding: 8px 12px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-panel));
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+}
+
+.encounter-roll-active {
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-panel));
+}
+
 .world-row {
   display: flex;
   justify-content: space-between;
@@ -638,4 +650,12 @@ textarea {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+.welcome-panel {
+  margin-bottom: 20px;
+}
+
+.welcome-panel p {
+  line-height: 1.5;
 }

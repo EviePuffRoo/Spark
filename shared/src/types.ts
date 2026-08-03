@@ -277,3 +277,11 @@ export interface AuthUser {
   id: string;
   username: string;
 }
+
+export interface SignupResult extends AuthUser {
+  recoveryCode: string;
+}
+
+export interface RecoveryCodeResult {
+  recoveryCode: string;
+}

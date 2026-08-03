@@ -1,8 +1,11 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { prisma } from "../db.js";
-import { hashPassword, verifyPassword, signToken, setSessionCookie, clearSessionCookie, requireAuth } from "../auth.js";
-import type { AuthUser } from "@spark/shared";
+import {
+  hashPassword, verifyPassword, signToken, setSessionCookie, clearSessionCookie, requireAuth,
+  generateRecoveryCode, hashRecoveryCode, verifyRecoveryCode,
+} from "../auth.js";
+import type { AuthUser, SignupResult, RecoveryCodeResult } from "@spark/shared";
 
 export const authRouter = Router();
 
@@ -27,10 +30,13 @@ authRouter.post("/signup", authLimiter, async (req, res) => {
   if (existing) return res.status(409).json({ error: "That username is already taken." });
 
   const passwordHash = await hashPassword(password);
-  const user = await prisma.user.create({ data: { username: username.trim(), passwordHash } });
+  const recoveryCode = generateRecoveryCode();
+  const recoveryCodeHash = await hashRecoveryCode(recoveryCode);
+  const user = await prisma.user.create({ data: { username: username.trim(), passwordHash, recoveryCodeHash } });
 
   setSessionCookie(res, signToken(user.id));
-  res.status(201).json(toAuthUser(user));
+  const result: SignupResult = { ...toAuthUser(user), recoveryCode };
+  res.status(201).json(result);
 });
 
 authRouter.post("/login", authLimiter, async (req, res) => {
@@ -73,4 +79,35 @@ authRouter.post("/change-password", requireAuth, async (req, res) => {
   const passwordHash = await hashPassword(newPassword);
   await prisma.user.update({ where: { id: user.id }, data: { passwordHash } });
   res.status(204).end();
+});
+
+// Generates (or replaces) the signed-in user's recovery code. Useful both for
+// accounts created before this feature existed and for anyone who lost their code.
+authRouter.post("/recovery-code", requireAuth, async (req, res) => {
+  const recoveryCode = generateRecoveryCode();
+  const recoveryCodeHash = await hashRecoveryCode(recoveryCode);
+  await prisma.user.update({ where: { id: req.userId }, data: { recoveryCodeHash } });
+  const result: RecoveryCodeResult = { recoveryCode };
+  res.json(result);
+});
+
+authRouter.post("/reset-password", authLimiter, async (req, res) => {
+  const { username, recoveryCode, newPassword } = req.body ?? {};
+  if (typeof username !== "string" || typeof recoveryCode !== "string" || typeof newPassword !== "string" || newPassword.length < 8) {
+    return res.status(400).json({ error: "Username, recovery code, and a new password (8+ characters) are required." });
+  }
+
+  const user = await prisma.user.findUnique({ where: { username: username.trim() } });
+  if (!user?.recoveryCodeHash || !(await verifyRecoveryCode(recoveryCode, user.recoveryCodeHash))) {
+    return res.status(401).json({ error: "That username and recovery code don't match." });
+  }
+
+  const passwordHash = await hashPassword(newPassword);
+  const nextRecoveryCode = generateRecoveryCode();
+  const recoveryCodeHash = await hashRecoveryCode(nextRecoveryCode);
+  await prisma.user.update({ where: { id: user.id }, data: { passwordHash, recoveryCodeHash } });
+
+  setSessionCookie(res, signToken(user.id));
+  const result: SignupResult = { ...toAuthUser(user), recoveryCode: nextRecoveryCode };
+  res.json(result);
 });

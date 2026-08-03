@@ -1,10 +1,14 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { randomInt } from "node:crypto";
 import type { Request, Response, NextFunction } from "express";
 
 const JWT_SECRET = process.env.JWT_SECRET ?? "dev-only-insecure-secret-change-me";
 const COOKIE_NAME = "spark_session";
 const TOKEN_TTL = "30d";
+
+// Excludes visually ambiguous characters (0/O, 1/I/L).
+const RECOVERY_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 
 export function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, 10);
@@ -12,6 +16,30 @@ export function hashPassword(password: string): Promise<string> {
 
 export function verifyPassword(password: string, hash: string): Promise<boolean> {
   return bcrypt.compare(password, hash);
+}
+
+export function generateRecoveryCode(): string {
+  const groups: string[] = [];
+  for (let g = 0; g < 4; g++) {
+    let group = "";
+    for (let i = 0; i < 4; i++) {
+      group += RECOVERY_CODE_ALPHABET[randomInt(RECOVERY_CODE_ALPHABET.length)];
+    }
+    groups.push(group);
+  }
+  return groups.join("-");
+}
+
+function normalizeRecoveryCode(code: string): string {
+  return code.trim().toUpperCase();
+}
+
+export function hashRecoveryCode(code: string): Promise<string> {
+  return bcrypt.hash(normalizeRecoveryCode(code), 10);
+}
+
+export function verifyRecoveryCode(code: string, hash: string): Promise<boolean> {
+  return bcrypt.compare(normalizeRecoveryCode(code), hash);
 }
 
 export function signToken(userId: string): string {

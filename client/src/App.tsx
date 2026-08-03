@@ -4,6 +4,7 @@ import type { EntityType } from "@spark/shared";
 import { useAuth } from "./AuthContext";
 import { AuthPage } from "./pages/AuthPage";
 import { AccountMenu } from "./components/AccountMenu";
+import { RecoveryCodeDisplay } from "./components/RecoveryCodeDisplay";
 import { CreatePage } from "./pages/CreatePage";
 import { SessionNotesPage } from "./pages/SessionNotesPage";
 import { RosterPage, type RosterSelection } from "./pages/RosterPage";
@@ -14,7 +15,7 @@ import { PrintPane, type PrintItem } from "./components/PrintPane";
 type Tab = "create" | "notes" | "roster" | "worlds";
 
 function App() {
-  const { user, loading } = useAuth();
+  const { user, loading, pendingRecoveryCode } = useAuth();
   const [tab, setTab] = useState<Tab>("create");
   const [rosterWorldFilter, setRosterWorldFilter] = useState("");
   const [rosterSelection, setRosterSelection] = useState<RosterSelection | null>(null);
@@ -32,6 +33,7 @@ function App() {
 
   if (loading) return null;
   if (!user) return <AuthPage />;
+  if (pendingRecoveryCode) return <RecoveryCodeDisplay code={pendingRecoveryCode} />;
 
   return (
     <div className="app">

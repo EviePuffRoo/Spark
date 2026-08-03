@@ -7,7 +7,7 @@ import type {
   EncounterTable, GenerateEncounterTableRequest, GeneratedEncounterTable,
   SessionNote, SessionNoteInput,
   EntityType, EntityLink, SearchResult,
-  AuthUser,
+  AuthUser, SignupResult, RecoveryCodeResult,
 } from "@spark/shared";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -157,11 +157,14 @@ export const api = {
     request<ImportResult>("/backup/import", { method: "POST", body: JSON.stringify(bundle) }),
 
   signup: (username: string, password: string) =>
-    request<AuthUser>("/auth/signup", { method: "POST", body: JSON.stringify({ username, password }) }),
+    request<SignupResult>("/auth/signup", { method: "POST", body: JSON.stringify({ username, password }) }),
   login: (username: string, password: string) =>
     request<AuthUser>("/auth/login", { method: "POST", body: JSON.stringify({ username, password }) }),
   logout: () => request<void>("/auth/logout", { method: "POST" }),
   me: () => request<AuthUser>("/auth/me"),
   changePassword: (currentPassword: string, newPassword: string) =>
     request<void>("/auth/change-password", { method: "POST", body: JSON.stringify({ currentPassword, newPassword }) }),
+  regenerateRecoveryCode: () => request<RecoveryCodeResult>("/auth/recovery-code", { method: "POST" }),
+  resetPassword: (username: string, recoveryCode: string, newPassword: string) =>
+    request<SignupResult>("/auth/reset-password", { method: "POST", body: JSON.stringify({ username, recoveryCode, newPassword }) }),
 };

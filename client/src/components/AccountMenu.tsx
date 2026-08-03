@@ -3,7 +3,7 @@ import { useAuth } from "../AuthContext";
 import { api } from "../api";
 
 export function AccountMenu() {
-  const { user, logout } = useAuth();
+  const { user, logout, regenerateRecoveryCode } = useAuth();
   const [open, setOpen] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -35,6 +35,7 @@ export function AccountMenu() {
         <div className="account-menu-dropdown">
           <a href="https://github.com/EviePuffRoo/Spark/issues" target="_blank" rel="noreferrer">Send Feedback</a>
           <button onClick={() => setChangingPassword((c) => !c)}>Change Password</button>
+          <button onClick={() => regenerateRecoveryCode()}>Get Recovery Code</button>
           <button onClick={() => logout()}>Log Out</button>
 
           {changingPassword && (

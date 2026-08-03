@@ -600,3 +600,28 @@ textarea {
   margin-top: 4px;
   padding-top: 8px;
 }
+
+.link-button {
+  background: none;
+  border: none;
+  font: inherit;
+  color: var(--accent);
+  cursor: pointer;
+  margin-top: 12px;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.recovery-code {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-align: center;
+  background: var(--bg);
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin: 16px 0;
+  user-select: all;
+}

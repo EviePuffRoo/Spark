@@ -256,6 +256,7 @@ textarea {
 
 .button-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   margin-top: 4px;
 }
@@ -602,6 +603,7 @@ textarea {
 
 .world-row {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
@@ -857,6 +859,11 @@ textarea {
   stroke: var(--text-muted);
 }
 
+.faction-web-node.playerCharacter circle {
+  fill: var(--bg-panel);
+  stroke: var(--success);
+}
+
 .faction-web-node text {
   fill: var(--text);
   font-size: 13px;
@@ -895,6 +902,11 @@ textarea {
 .faction-web-swatch.character {
   background: var(--bg-panel);
   border: 2px solid var(--text-muted);
+}
+
+.faction-web-swatch.playerCharacter {
+  background: var(--bg-panel);
+  border: 2px solid var(--success);
 }
 
 .faction-web-tooltip {

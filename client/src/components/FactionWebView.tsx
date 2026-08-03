@@ -8,7 +8,7 @@ import { api } from "../api";
 
 interface WebNode extends SimulationNodeDatum {
   id: string;
-  entityType: "faction" | "character";
+  entityType: "faction" | "character" | "playerCharacter";
   name: string;
 }
 
@@ -66,7 +66,7 @@ export function FactionWebView({
       const edgeById = new Map<string, WebEdge>();
       for (const { factionId, links } of results) {
         for (const link of links) {
-          if (link.other.type !== "faction" && link.other.type !== "character") continue;
+          if (link.other.type !== "faction" && link.other.type !== "character" && link.other.type !== "playerCharacter") continue;
           if (edgeById.has(link.id)) continue;
           if (!nodeById.has(link.other.id)) {
             nodeById.set(link.other.id, { id: link.other.id, entityType: link.other.type, name: link.other.name, ...jitteredCenter() });
@@ -225,7 +225,8 @@ export function FactionWebView({
 
           <div className="faction-web-legend">
             <span><i className="faction-web-swatch faction" />Faction</span>
-            <span><i className="faction-web-swatch character" />Character</span>
+            <span><i className="faction-web-swatch character" />NPC/Monster</span>
+            <span><i className="faction-web-swatch playerCharacter" />Player Character</span>
           </div>
 
           {hoveredEdge && (

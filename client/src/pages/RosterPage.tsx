@@ -92,20 +92,37 @@ export function RosterPage({
   const [assignedWorld, setAssignedWorld] = useState("");
   const [status, setStatus] = useState<"idle" | "saving">("idle");
   const [editingContent, setEditingContent] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   function refresh() {
     const w = worldFilter || undefined;
-    api.listCharacters(w).then(setCharacters).catch(() => {});
-    api.listItems(w).then(setItems).catch(() => {});
-    api.listLocations(w).then(setLocations).catch(() => {});
-    api.listQuests(w).then(setQuests).catch(() => {});
-    api.listFactions(w).then(setFactions).catch(() => {});
-    api.listEncounterTables(w).then(setEncounters).catch(() => {});
-    api.listSessionNotes(w).then(setNotes).catch(() => {});
-    api.listWorlds().then(setWorlds).catch(() => {});
+    setLoading(true);
+    Promise.all([
+      api.listCharacters(w).then(setCharacters).catch(() => {}),
+      api.listItems(w).then(setItems).catch(() => {}),
+      api.listLocations(w).then(setLocations).catch(() => {}),
+      api.listQuests(w).then(setQuests).catch(() => {}),
+      api.listFactions(w).then(setFactions).catch(() => {}),
+      api.listEncounterTables(w).then(setEncounters).catch(() => {}),
+      api.listSessionNotes(w).then(setNotes).catch(() => {}),
+      api.listWorlds().then(setWorlds).catch(() => {}),
+    ]).finally(() => setLoading(false));
   }
 
   useEffect(refresh, [worldFilter]);
+
+  // If the world currently selected in the filter gets deleted elsewhere, the
+  // dropdown falls back to displaying "All" (no matching <option> anymore),
+  // but the filter itself would silently stay pointed at the dead world's id
+  // unless we reset it - showing zero results instead of actually falling
+  // back to "All".
+  useEffect(() => {
+    if (loading) return;
+    if (!worldFilter || worldFilter === "unassigned") return;
+    if (!worlds.some((w) => w.id === worldFilter)) {
+      onWorldFilterChange("");
+    }
+  }, [loading, worlds, worldFilter, onWorldFilterChange]);
 
   useEffect(() => {
     if (!pendingSelection) return;
@@ -262,7 +279,7 @@ export function RosterPage({
       <div className="panel roster-list">
         <div className="tabs roster-mode-tabs">
           {(Object.keys(MODE_LABELS) as Mode[]).map((m) => (
-            <button key={m} className={mode === m ? "active" : ""} onClick={() => switchMode(m)}>{MODE_LABELS[m]}</button>
+            <button key={m} className={mode === m ? "active" : ""} aria-current={mode === m ? "true" : undefined} onClick={() => switchMode(m)}>{MODE_LABELS[m]}</button>
           ))}
         </div>
 
@@ -275,12 +292,14 @@ export function RosterPage({
           </select>
         </label>
 
-        {activeList.length === 0 && <p className="hint">No saved {MODE_LABELS[mode].toLowerCase()} yet.</p>}
+        {loading && <p className="hint">Loading…</p>}
+        {!loading && activeList.length === 0 && <p className="hint">No saved {MODE_LABELS[mode].toLowerCase()} yet.</p>}
         <ul className="entity-list">
           {activeList.map((entry) => (
             <li key={entry.id}>
               <button
                 className={`entity-item ${entry.id === selectedId ? "active" : ""}`}
+                aria-current={entry.id === selectedId ? "true" : undefined}
                 onClick={() => setSelectedId(entry.id)}
               >
                 <span className="entity-name">{entry.name}</span>
@@ -293,6 +312,8 @@ export function RosterPage({
 
       <div className="panel result-panel">
         {!selected && <p className="hint">Select an entry to view details.</p>}
+
+        {selected && editingContent && <h2>Editing {selectedDisplayName}</h2>}
 
         {selectedCharacter && !editingContent && (
           <>

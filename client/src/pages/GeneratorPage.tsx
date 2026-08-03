@@ -188,7 +188,7 @@ export function GeneratorPage() {
                   />
                   <BackstoryView backstory={result.backstory} />
                   {results.length > 1 && saveStatus !== "saved" && (
-                    <button className="btn-danger" onClick={() => removeResult(index)}>Remove from batch</button>
+                    <button className="btn-danger" onClick={() => removeResult(index)} aria-label={`Remove ${result.name} from batch`}>Remove from batch</button>
                   )}
                 </div>
               ))}

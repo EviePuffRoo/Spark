@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../AuthContext";
 import { api } from "../api";
 
@@ -10,6 +10,40 @@ export function AccountMenu() {
   const [newPassword, setNewPassword] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open]);
+
+  // Don't leave a half-filled password form sitting around once the menu closes.
+  useEffect(() => {
+    if (open) return;
+    setChangingPassword(false);
+    setCurrentPassword("");
+    setNewPassword("");
+    setStatus(null);
+    setError(null);
+  }, [open]);
 
   async function handleChangePassword(e: React.FormEvent) {
     e.preventDefault();
@@ -26,16 +60,29 @@ export function AccountMenu() {
     }
   }
 
+  function handleGetRecoveryCode() {
+    if (!confirm("This replaces your current recovery code — the old one will stop working. Continue?")) return;
+    regenerateRecoveryCode();
+  }
+
   if (!user) return null;
 
   return (
-    <div className="account-menu">
-      <button className="btn-secondary" onClick={() => setOpen((o) => !o)}>{user.username}</button>
+    <div className="account-menu" ref={containerRef}>
+      <button
+        ref={triggerRef}
+        className="btn-secondary"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="true"
+        aria-expanded={open}
+      >
+        {user.username}
+      </button>
       {open && (
         <div className="account-menu-dropdown">
           <a href="https://github.com/EviePuffRoo/Spark/issues" target="_blank" rel="noreferrer">Send Feedback</a>
           <button onClick={() => setChangingPassword((c) => !c)}>Change Password</button>
-          <button onClick={() => regenerateRecoveryCode()}>Get Recovery Code</button>
+          <button onClick={handleGetRecoveryCode}>Get Recovery Code</button>
           <button onClick={() => logout()}>Log Out</button>
 
           {changingPassword && (

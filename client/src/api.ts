@@ -10,12 +10,24 @@ import type {
   AuthUser, SignupResult, RecoveryCodeResult,
 } from "@spark/shared";
 
+let onSessionExpired: (() => void) | null = null;
+
+// Called once by AuthProvider so a 401 on any authenticated request (not the
+// auth endpoints themselves, where a 401 is an expected outcome) can bounce
+// the user back to the login screen instead of showing a raw error inline.
+export function setSessionExpiredHandler(handler: () => void) {
+  onSessionExpired = handler;
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
     headers: { "Content-Type": "application/json" },
     ...options,
   });
   if (!res.ok) {
+    if (res.status === 401 && !path.startsWith("/auth/")) {
+      onSessionExpired?.();
+    }
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error ?? `Request failed: ${res.status}`);
   }

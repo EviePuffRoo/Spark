@@ -31,7 +31,16 @@ function App() {
     setTab("roster");
   }
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <div className="app">
+        <header className="app-header">
+          <h1>Spark</h1>
+          <p className="tagline">Loading…</p>
+        </header>
+      </div>
+    );
+  }
   if (!user) return <AuthPage />;
   if (pendingRecoveryCode) return <RecoveryCodeDisplay code={pendingRecoveryCode} />;
 
@@ -42,10 +51,10 @@ function App() {
         <p className="tagline">Everything a DM needs to prep and run a session, ready for the table</p>
         <GlobalSearch onSelect={openInRoster} />
         <nav className="tabs">
-          <button className={tab === "create" ? "active" : ""} onClick={() => setTab("create")}>Create</button>
-          <button className={tab === "notes" ? "active" : ""} onClick={() => setTab("notes")}>Notes</button>
-          <button className={tab === "roster" ? "active" : ""} onClick={() => setTab("roster")}>Roster</button>
-          <button className={tab === "worlds" ? "active" : ""} onClick={() => setTab("worlds")}>Worlds</button>
+          <button className={tab === "create" ? "active" : ""} aria-current={tab === "create" ? "true" : undefined} onClick={() => setTab("create")}>Create</button>
+          <button className={tab === "notes" ? "active" : ""} aria-current={tab === "notes" ? "true" : undefined} onClick={() => setTab("notes")}>Notes</button>
+          <button className={tab === "roster" ? "active" : ""} aria-current={tab === "roster" ? "true" : undefined} onClick={() => setTab("roster")}>Roster</button>
+          <button className={tab === "worlds" ? "active" : ""} aria-current={tab === "worlds" ? "true" : undefined} onClick={() => setTab("worlds")}>Worlds</button>
         </nav>
         <AccountMenu />
       </header>

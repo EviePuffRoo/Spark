@@ -19,9 +19,10 @@ export function SessionNotesPage() {
   const [form, setForm] = useState(BLANK);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "saving">("idle");
+  const [loading, setLoading] = useState(true);
 
   function refresh() {
-    api.listSessionNotes().then(setNotes).catch((e) => setError(e.message));
+    api.listSessionNotes().then(setNotes).catch((e) => setError(e.message)).finally(() => setLoading(false));
     api.listWorlds().then(setWorlds).catch(() => {});
   }
 
@@ -133,7 +134,8 @@ export function SessionNotesPage() {
 
         <div className="panel result-panel">
           <h3 className="section-heading">Recent Session Notes</h3>
-          {notes.length === 0 && <p className="hint">No session notes yet.</p>}
+          {loading && <p className="hint">Loading…</p>}
+          {!loading && notes.length === 0 && <p className="hint">No session notes yet.</p>}
           <ul className="entity-list">
             {notes.map((n) => (
               <li key={n.id} className="world-row">
@@ -141,7 +143,7 @@ export function SessionNotesPage() {
                   <span className="entity-name">{n.title}</span>
                   <span className="entity-meta">{n.sessionLabel || new Date(n.createdAt).toLocaleDateString()}</span>
                 </button>
-                <button className="btn-danger" onClick={() => handleDelete(n.id)}>Delete</button>
+                <button className="btn-danger" onClick={() => handleDelete(n.id)} aria-label={`Delete ${n.title}`}>Delete</button>
               </li>
             ))}
           </ul>

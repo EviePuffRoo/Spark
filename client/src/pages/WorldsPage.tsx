@@ -34,20 +34,23 @@ function downloadJson(filename: string, data: unknown) {
 
 export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) => void }) {
   const [worlds, setWorlds] = useState<WorldSummary[]>([]);
+  const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [importStatus, setImportStatus] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
 
   function refresh() {
-    api.listWorlds().then(setWorlds).catch((e) => setError(e.message));
+    api.listWorlds().then(setWorlds).catch((e) => setError(e.message)).finally(() => setLoading(false));
   }
 
   useEffect(refresh, []);
 
   async function handleCreate() {
-    if (!name.trim()) return;
+    if (!name.trim() || creating) return;
+    setCreating(true);
     try {
       await api.createWorld(name.trim(), description.trim() || undefined);
       setName("");
@@ -55,11 +58,13 @@ export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) =
       refresh();
     } catch (e) {
       setError((e as Error).message);
+    } finally {
+      setCreating(false);
     }
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Delete this world? Its characters will become unassigned, not deleted.")) return;
+    if (!confirm("Delete this world? Everything in it (characters, items, locations, quests, factions, encounter tables, and session notes) will become unassigned, not deleted.")) return;
     await api.deleteWorld(id);
     refresh();
   }
@@ -115,7 +120,7 @@ export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) =
             <span>Description (optional)</span>
             <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} />
           </label>
-          <button className="btn-primary" onClick={handleCreate}>Create World</button>
+          <button className="btn-primary" onClick={handleCreate} disabled={creating}>{creating ? "Creating…" : "Create World"}</button>
         </div>
 
         <div className="button-row backup-row">
@@ -145,14 +150,15 @@ export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) =
                 <div className="entity-meta">{summarizeCounts(w)}</div>
               </div>
               <div className="button-row">
-                <button className="btn-secondary" onClick={() => onViewRoster(w.id)}>View Roster</button>
-                <button className="btn-secondary" onClick={() => handleExportWorld(w)}>Export</button>
-                <button className="btn-danger" onClick={() => handleDelete(w.id)}>Delete</button>
+                <button className="btn-secondary" onClick={() => onViewRoster(w.id)} aria-label={`View roster for ${w.name}`}>View Roster</button>
+                <button className="btn-secondary" onClick={() => handleExportWorld(w)} aria-label={`Export ${w.name}`}>Export</button>
+                <button className="btn-danger" onClick={() => handleDelete(w.id)} aria-label={`Delete ${w.name}`}>Delete</button>
               </div>
             </li>
           ))}
         </ul>
-        {worlds.length === 0 && <p className="hint">No worlds yet — create one above.</p>}
+        {loading && <p className="hint">Loading…</p>}
+        {!loading && worlds.length === 0 && <p className="hint">No worlds yet — create one above.</p>}
       </div>
     </div>
   );

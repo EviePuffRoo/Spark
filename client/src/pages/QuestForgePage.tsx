@@ -122,7 +122,7 @@ export function QuestForgePage() {
             <div className="batch-result-card" key={index}>
               <QuestHookCardView quest={quest} />
               {results.length > 1 && saveStatus !== "saved" && (
-                <button className="btn-danger" onClick={() => removeResult(index)}>Remove from batch</button>
+                <button className="btn-danger" onClick={() => removeResult(index)} aria-label={`Remove ${quest.title} from batch`}>Remove from batch</button>
               )}
             </div>
           ))}
@@ -150,8 +150,8 @@ export function QuestForgePage() {
   return (
     <div className="page">
       <div className="tabs forge-mode-tabs">
-        <button className={creationMode === "generate" ? "active" : ""} onClick={() => switchMode("generate")}>Generate</button>
-        <button className={creationMode === "manual" ? "active" : ""} onClick={() => switchMode("manual")}>Create Your Own</button>
+        <button className={creationMode === "generate" ? "active" : ""} aria-current={creationMode === "generate" ? "true" : undefined} onClick={() => switchMode("generate")}>Generate</button>
+        <button className={creationMode === "manual" ? "active" : ""} aria-current={creationMode === "manual" ? "true" : undefined} onClick={() => switchMode("manual")}>Create Your Own</button>
       </div>
 
       {creationMode === "generate" && (

@@ -133,7 +133,7 @@
 @media (max-width: 800px) {
   .generator-layout,
   .roster-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -187,6 +187,8 @@ textarea {
   border-radius: 6px;
   background: var(--bg);
   color: var(--text);
+  width: 100%;
+  min-width: 0;
 }
 
 textarea {
@@ -624,4 +626,16 @@ textarea {
   padding: 16px;
   margin: 16px 0;
   user-select: all;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

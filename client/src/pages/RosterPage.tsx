@@ -262,15 +262,21 @@ export function RosterPage({
     else if (selectedAdventure) onPrint([{ type: "adventure", data: selectedAdventure }]);
   }
 
-  async function handlePrintSessionPack() {
-    if (!selectedNote || !onPrint) return;
-    const links = await api.getLinks("sessionNote", selectedNote.id);
+  async function handlePrintPack(rootItem: PrintItem) {
+    if (!onPrint) return;
+    const links = await api.getLinks(rootItem.type, rootItem.data.id);
     const linkedItems = await Promise.all(links.map((l) => fetchPrintItem(l.other.type, l.other.id)));
-    const items: PrintItem[] = [
-      { type: "sessionNote", data: selectedNote },
-      ...linkedItems.filter((i): i is PrintItem => i !== null),
-    ];
-    onPrint(items);
+    onPrint([rootItem, ...linkedItems.filter((i): i is PrintItem => i !== null)]);
+  }
+
+  function handlePrintSessionPack() {
+    if (!selectedNote) return;
+    return handlePrintPack({ type: "sessionNote", data: selectedNote });
+  }
+
+  function handlePrintAdventurePack() {
+    if (!selectedAdventure) return;
+    return handlePrintPack({ type: "adventure", data: selectedAdventure });
   }
 
   async function handleDelete() {
@@ -476,6 +482,9 @@ export function RosterPage({
         )}
         {selected && !editingContent && onPrint && mode === "notes" && (
           <button className="btn-secondary" onClick={handlePrintSessionPack}>Print Session Pack</button>
+        )}
+        {selected && !editingContent && onPrint && mode === "adventures" && (
+          <button className="btn-secondary" onClick={handlePrintAdventurePack}>Print Adventure Pack</button>
         )}
 
         {selected && !editingContent && (

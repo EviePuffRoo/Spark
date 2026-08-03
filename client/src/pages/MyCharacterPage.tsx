@@ -1,0 +1,87 @@
+import { useEffect, useState } from "react";
+import type { PlayerCharacter, PlayerCharacterInput } from "@spark/shared";
+import { api, type WorldSummary } from "../api";
+import { PlayerCharacterCardView } from "../components/PlayerCharacterCardView";
+import { PlayerCharacterEditor } from "../components/PlayerCharacterEditor";
+
+export function MyCharacterPage({ onViewRoster }: { onViewRoster: (worldId: string) => void }) {
+  const [characters, setCharacters] = useState<PlayerCharacter[]>([]);
+  const [worlds, setWorlds] = useState<WorldSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [status, setStatus] = useState<"idle" | "saving">("idle");
+  const [error, setError] = useState<string | null>(null);
+
+  function refresh() {
+    setLoading(true);
+    Promise.all([
+      api.listMyPlayerCharacters().then(setCharacters).catch(() => {}),
+      api.listWorlds().then(setWorlds).catch(() => {}),
+    ]).finally(() => setLoading(false));
+  }
+
+  useEffect(refresh, []);
+
+  function worldFor(pc: PlayerCharacter): WorldSummary | undefined {
+    return pc.worldId ? worlds.find((w) => w.id === pc.worldId) : undefined;
+  }
+
+  async function handleSave(id: string, patch: PlayerCharacterInput) {
+    setStatus("saving");
+    setError(null);
+    try {
+      await api.updatePlayerCharacter(id, patch);
+      setEditingId(null);
+      refresh();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setStatus("idle");
+    }
+  }
+
+  async function handleDelete(id: string, name: string) {
+    if (!confirm(`Delete ${name}? This cannot be undone.`)) return;
+    await api.deletePlayerCharacter(id);
+    refresh();
+  }
+
+  return (
+    <div className="page">
+      <div className="panel">
+        <h2>My Character{characters.length === 1 ? "" : "s"}</h2>
+        <p className="hint">Your own player characters, wherever they're assigned.</p>
+
+        {loading && <p className="hint">Loading…</p>}
+        {!loading && characters.length === 0 && (
+          <p className="hint">You haven't created a character yet — head to Create → Player Characters to add one.</p>
+        )}
+        {error && <p className="error">{error}</p>}
+
+        {characters.map((pc) => {
+          const world = worldFor(pc);
+          return (
+            <div key={pc.id} className="my-character-card">
+              {editingId === pc.id ? (
+                <PlayerCharacterEditor
+                  value={pc}
+                  onSave={(patch) => handleSave(pc.id, patch)}
+                  onCancel={() => setEditingId(null)}
+                />
+              ) : (
+                <>
+                  <PlayerCharacterCardView pc={pc} />
+                  <div className="button-row">
+                    <button className="btn-secondary" onClick={() => setEditingId(pc.id)} disabled={status === "saving"}>Edit</button>
+                    {world && <button className="btn-secondary" onClick={() => onViewRoster(world.id)}>View {world.name}</button>}
+                    <button className="btn-danger" onClick={() => handleDelete(pc.id, pc.name)}>Delete</button>
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

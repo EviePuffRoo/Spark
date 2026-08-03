@@ -7,7 +7,13 @@ import { getMemberWorldIds } from "../worldAccess.js";
 export const playerCharactersRouter = Router();
 
 playerCharactersRouter.get("/", async (req, res) => {
-  const { worldId } = req.query;
+  const { worldId, mine } = req.query;
+
+  if (mine === "true") {
+    const rows = await prisma.playerCharacter.findMany({ where: { userId: req.userId }, orderBy: { createdAt: "desc" } });
+    return res.json(rows.map(toPlayerCharacterDTO));
+  }
+
   const memberWorldIds = await getMemberWorldIds(req.userId!);
   const where = {
     OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }],

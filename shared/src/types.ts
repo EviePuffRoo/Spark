@@ -262,6 +262,7 @@ export interface GenerateEncounterTableRequest {
 export interface SessionNoteInput {
   title: string;
   sessionLabel?: string;
+  sessionDate?: string;
   summary: string;
   looseThreads?: string;
   nextSteps?: string;

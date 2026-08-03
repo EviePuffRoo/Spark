@@ -5,11 +5,19 @@
 }
 
 .app-header {
-  position: relative;
   text-align: center;
-  padding: 24px 0 12px;
+  padding: 16px 0 12px;
   border-bottom: 2px solid var(--rule-gold);
   margin-bottom: 24px;
+}
+
+.app-header-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
 }
 
 .app-header h1 {
@@ -24,6 +32,22 @@
   color: var(--text-muted);
   margin: 4px 0 16px;
   font-style: italic;
+}
+
+.theme-toggle {
+  padding: 8px 12px;
+  line-height: 1;
+}
+
+@media (max-width: 480px) {
+  .app-header h1 {
+    font-size: 1.9rem;
+  }
+
+  .tabs button {
+    padding: 7px 12px;
+    font-size: 0.85rem;
+  }
 }
 
 .global-search {
@@ -510,6 +534,18 @@ textarea {
   margin-top: 20px;
 }
 
+.my-character-card {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px dashed var(--border);
+}
+
+.my-character-card:first-of-type {
+  margin-top: 12px;
+  padding-top: 0;
+  border-top: none;
+}
+
 .roster-mode-tabs {
   justify-content: flex-start;
   margin-bottom: 16px;
@@ -654,9 +690,21 @@ textarea {
 }
 
 .account-menu {
-  position: absolute;
-  top: 24px;
-  right: 0;
+  position: relative;
+  min-width: 0;
+}
+
+.account-menu > button {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .account-menu > button {
+    max-width: 140px;
+  }
 }
 
 .account-menu-dropdown {
@@ -962,9 +1010,78 @@ textarea {
   min-width: 100px;
 }
 
+.combatant-conditions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  position: relative;
+}
+
+.condition-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--danger) 18%, transparent);
+  color: var(--danger);
+}
+
+.condition-chip button {
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.condition-toggle {
+  margin-top: 0;
+  padding: 2px 10px;
+  font-size: 0.8rem;
+}
+
+.condition-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
+  padding: 10px;
+  margin-top: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.condition-picker button {
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-panel);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.condition-picker button.active {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--accent-contrast);
+}
+
+.combatant-notes-row {
+  margin-bottom: 8px;
+}
+
 .combatant-notes {
-  flex: 1;
-  min-width: 140px;
+  width: 100%;
 }
 
 .combatant-hp {
@@ -980,4 +1097,91 @@ textarea {
 
 .combatant-hp-input {
   width: 80px;
+}
+
+@media (max-width: 640px) {
+  .initiative-tracker .button-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .initiative-tracker .button-row button {
+    margin: 0;
+  }
+
+  .combatant-main {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .combatant-main .combatant-initiative {
+    width: 100%;
+    text-align: left;
+  }
+
+  .combatant-hp {
+    flex-wrap: wrap;
+  }
+
+  .combatant-row input,
+  .combatant-row button,
+  .dice-presets button {
+    min-height: 40px;
+  }
+}
+
+/* Session timeline */
+.timeline-list {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0 0 0 20px;
+  border-left: 2px solid var(--border);
+}
+
+.timeline-entry {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.timeline-entry::before {
+  content: "";
+  position: absolute;
+  left: -25px;
+  top: 6px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.timeline-entry-button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-panel);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: var(--text);
+}
+
+.timeline-entry-button:hover {
+  border-color: var(--accent);
+}
+
+.timeline-date {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.timeline-summary {
+  font-size: 0.9rem;
+  color: var(--text-muted);
 }

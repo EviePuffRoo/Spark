@@ -227,6 +227,7 @@ model SessionNote {
   id           String   @id @default(cuid())
   title        String
   sessionLabel String?
+  sessionDate  DateTime?
   summary      String
   looseThreads String?
   nextSteps    String?

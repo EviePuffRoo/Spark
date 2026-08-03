@@ -10,6 +10,7 @@ function summarizeCounts(w: WorldSummary): string {
     [w.factionCount, "faction"],
     [w.encounterTableCount, "encounter table"],
     [w.sessionNoteCount, "session note"],
+    [w.adventureCount, "adventure"],
   ];
   const nonEmpty = parts.filter(([count]) => count > 0);
   if (nonEmpty.length === 0) return "Empty so far";

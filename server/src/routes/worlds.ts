@@ -11,7 +11,7 @@ worldsRouter.get("/", async (req, res) => {
       _count: {
         select: {
           characters: true, items: true, locations: true, questHooks: true,
-          factions: true, encounterTables: true, sessionNotes: true,
+          factions: true, encounterTables: true, sessionNotes: true, adventures: true,
         },
       },
     },
@@ -28,6 +28,7 @@ worldsRouter.get("/", async (req, res) => {
       factionCount: row._count.factions,
       encounterTableCount: row._count.encounterTables,
       sessionNoteCount: row._count.sessionNotes,
+      adventureCount: row._count.adventures,
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
     }))

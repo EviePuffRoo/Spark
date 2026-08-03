@@ -6,6 +6,7 @@ import type {
   Faction, GenerateFactionRequest, GeneratedFaction,
   EncounterTable, GenerateEncounterTableRequest, GeneratedEncounterTable,
   SessionNote, SessionNoteInput,
+  Adventure, GenerateAdventureRequest, GeneratedAdventure,
   EntityType, EntityLink, SearchResult,
   AuthUser, SignupResult, RecoveryCodeResult,
 } from "@spark/shared";
@@ -64,6 +65,7 @@ export interface WorldSummary extends World {
   factionCount: number;
   encounterTableCount: number;
   sessionNoteCount: number;
+  adventureCount: number;
 }
 
 export const api = {
@@ -80,6 +82,8 @@ export const api = {
     request<GeneratedFaction>("/generate-faction", { method: "POST", body: JSON.stringify(body) }),
   generateEncounterTable: (body: GenerateEncounterTableRequest) =>
     request<GeneratedEncounterTable>("/generate-encounter-table", { method: "POST", body: JSON.stringify(body) }),
+  generateAdventure: (body: GenerateAdventureRequest) =>
+    request<GeneratedAdventure>("/generate-adventure", { method: "POST", body: JSON.stringify(body) }),
 
   listCharacters: (worldId?: string) =>
     request<Character[]>(`/characters${worldId ? `?worldId=${worldId}` : ""}`),
@@ -143,6 +147,15 @@ export const api = {
   updateSessionNote: (id: string, patch: Partial<SessionNote>) =>
     request<SessionNote>(`/session-notes/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   deleteSessionNote: (id: string) => request<void>(`/session-notes/${id}`, { method: "DELETE" }),
+
+  listAdventures: (worldId?: string) =>
+    request<Adventure[]>(`/adventures${worldId ? `?worldId=${worldId}` : ""}`),
+  getAdventure: (id: string) => request<Adventure>(`/adventures/${id}`),
+  saveAdventure: (adventure: GeneratedAdventure & { worldId?: string | null; tags?: string[]; notes?: string }) =>
+    request<Adventure>("/adventures", { method: "POST", body: JSON.stringify(adventure) }),
+  updateAdventure: (id: string, patch: Partial<Adventure>) =>
+    request<Adventure>(`/adventures/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+  deleteAdventure: (id: string) => request<void>(`/adventures/${id}`, { method: "DELETE" }),
 
   listWorlds: () => request<WorldSummary[]>("/worlds"),
   getWorld: (id: string) => request<World>(`/worlds/${id}`),

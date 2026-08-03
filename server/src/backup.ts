@@ -1,4 +1,4 @@
-import type { Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Link } from "@prisma/client";
+import type { Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, Link } from "@prisma/client";
 import { prisma } from "./db.js";
 
 export interface ExportBundle {
@@ -12,6 +12,7 @@ export interface ExportBundle {
   factions: Faction[];
   encounterTables: EncounterTable[];
   sessionNotes: SessionNote[];
+  adventures: Adventure[];
   links: Pick<Link, "fromType" | "fromId" | "toType" | "toId" | "label">[];
 }
 
@@ -19,7 +20,7 @@ export async function buildExport(userId: string, worldId?: string): Promise<Exp
   const worlds = await prisma.world.findMany({ where: worldId ? { id: worldId, userId } : { userId } });
   const scopeWhere = worldId ? { worldId, userId } : { userId };
 
-  const [characters, items, locations, quests, factions, encounterTables, sessionNotes] = await Promise.all([
+  const [characters, items, locations, quests, factions, encounterTables, sessionNotes, adventures] = await Promise.all([
     prisma.character.findMany({ where: scopeWhere }),
     prisma.item.findMany({ where: scopeWhere }),
     prisma.location.findMany({ where: scopeWhere }),
@@ -27,12 +28,13 @@ export async function buildExport(userId: string, worldId?: string): Promise<Exp
     prisma.faction.findMany({ where: scopeWhere }),
     prisma.encounterTable.findMany({ where: scopeWhere }),
     prisma.sessionNote.findMany({ where: scopeWhere }),
+    prisma.adventure.findMany({ where: scopeWhere }),
   ]);
 
   const entityIds = new Set<string>([
     ...characters.map((c) => c.id), ...items.map((i) => i.id), ...locations.map((l) => l.id),
     ...quests.map((q) => q.id), ...factions.map((f) => f.id), ...encounterTables.map((e) => e.id),
-    ...sessionNotes.map((n) => n.id),
+    ...sessionNotes.map((n) => n.id), ...adventures.map((a) => a.id),
   ]);
 
   const allLinks = await prisma.link.findMany({ where: { userId } });
@@ -42,7 +44,7 @@ export async function buildExport(userId: string, worldId?: string): Promise<Exp
     version: 1,
     exportedAt: new Date().toISOString(),
     worlds: worlds.map((w) => ({ id: w.id, name: w.name, description: w.description })),
-    characters, items, locations, quests, factions, encounterTables, sessionNotes,
+    characters, items, locations, quests, factions, encounterTables, sessionNotes, adventures,
     links: links.map(({ fromType, fromId, toType, toId, label }) => ({ fromType, fromId, toType, toId, label })),
   };
 }
@@ -135,6 +137,16 @@ export async function applyImport(userId: string, bundle: ExportBundle): Promise
         },
       });
       entityIdMap.set(n.id, created.id);
+    }
+
+    for (const a of bundle.adventures ?? []) {
+      const created = await tx.adventure.create({
+        data: {
+          title: a.title, tier: a.tier, premise: a.premise, hook: a.hook, objective: a.objective,
+          complication: a.complication, reward: a.reward, tags: a.tags, notes: a.notes, worldId: remapWorldId(a.worldId), userId,
+        },
+      });
+      entityIdMap.set(a.id, created.id);
     }
 
     let linksImported = 0;

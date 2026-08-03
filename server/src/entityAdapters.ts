@@ -63,6 +63,13 @@ const adapters: Record<EntityType, EntityAdapter> = {
     getMeta: (row) => row.sessionLabel ?? "",
     searchFields: ["title", "sessionLabel", "summary", "looseThreads", "nextSteps", "notes", "tags"],
   },
+  adventure: {
+    findMany: (args) => prisma.adventure.findMany(args),
+    findUnique: (id, userId) => prisma.adventure.findFirst({ where: { id, userId } }),
+    getName: (row) => row.title,
+    getMeta: (row) => row.tier,
+    searchFields: ["title", "tier", "premise", "hook", "objective", "complication", "reward", "notes", "tags"],
+  },
 };
 
 export function getAdapter(type: string): EntityAdapter | null {

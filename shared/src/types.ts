@@ -239,7 +239,41 @@ export interface SessionNote extends SessionNoteInput {
   updatedAt: string;
 }
 
-export type EntityType = "character" | "item" | "location" | "quest" | "faction" | "encounterTable" | "sessionNote";
+export interface AdventureCastNames {
+  questGiverName?: string;
+  antagonistName?: string;
+  startLocationName?: string;
+  climaxLocationName?: string;
+  rewardName?: string;
+}
+
+export interface GenerateAdventureRequest {
+  tier?: string;
+  title?: string;
+  fullyRandom?: boolean;
+  cast: AdventureCastNames;
+}
+
+export interface GeneratedAdventure {
+  title: string;
+  tier: string;
+  premise: string;
+  hook: string;
+  objective: string;
+  complication: string;
+  reward: string;
+}
+
+export interface Adventure extends GeneratedAdventure {
+  id: string;
+  worldId?: string | null;
+  tags: string[];
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type EntityType = "character" | "item" | "location" | "quest" | "faction" | "encounterTable" | "sessionNote" | "adventure";
 
 export interface EntityTypeDef {
   type: EntityType;
@@ -254,6 +288,7 @@ export const ENTITY_TYPES: EntityTypeDef[] = [
   { type: "faction", label: "Faction" },
   { type: "encounterTable", label: "Encounter Table" },
   { type: "sessionNote", label: "Session Note" },
+  { type: "adventure", label: "Adventure" },
 ];
 
 export interface EntityRef {

@@ -6,8 +6,9 @@ import { LocationForgePage } from "./LocationForgePage";
 import { QuestForgePage } from "./QuestForgePage";
 import { FactionForgePage } from "./FactionForgePage";
 import { EncounterForgePage } from "./EncounterForgePage";
+import { AdventureForgePage } from "./AdventureForgePage";
 
-type CreateType = "npc" | "item" | "location" | "quest" | "faction" | "encounter";
+type CreateType = "npc" | "item" | "location" | "quest" | "faction" | "encounter" | "adventure";
 
 const CREATE_TYPE_LABELS: Record<CreateType, string> = {
   npc: "NPCs & Monsters",
@@ -16,6 +17,7 @@ const CREATE_TYPE_LABELS: Record<CreateType, string> = {
   quest: "Quests",
   faction: "Factions",
   encounter: "Encounter Tables",
+  adventure: "Adventures",
 };
 
 export function CreatePage() {
@@ -38,6 +40,7 @@ export function CreatePage() {
       {createType === "quest" && <QuestForgePage />}
       {createType === "faction" && <FactionForgePage />}
       {createType === "encounter" && <EncounterForgePage />}
+      {createType === "adventure" && <AdventureForgePage />}
     </div>
   );
 }

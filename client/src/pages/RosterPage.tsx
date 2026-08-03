@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, EntityType } from "@spark/shared";
+import type { Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, EntityType } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { StatBlockView } from "../components/StatBlockView";
 import { BackstoryView } from "../components/BackstoryView";
@@ -10,6 +10,7 @@ import { FactionCardView } from "../components/FactionCardView";
 import { EncounterTableCardView } from "../components/EncounterTableCardView";
 import { LinkedEntities } from "../components/LinkedEntities";
 import { SessionNoteCardView } from "../components/SessionNoteCardView";
+import { AdventureCardView } from "../components/AdventureCardView";
 import type { PrintItem } from "../components/PrintPane";
 import { CharacterEditor } from "../components/CharacterEditor";
 import { ItemEditor } from "../components/ItemEditor";
@@ -17,8 +18,9 @@ import { LocationEditor } from "../components/LocationEditor";
 import { QuestEditor } from "../components/QuestEditor";
 import { FactionEditor } from "../components/FactionEditor";
 import { EncounterTableEditor } from "../components/EncounterTableEditor";
+import { AdventureEditor } from "../components/AdventureEditor";
 
-export type Mode = "characters" | "items" | "locations" | "quests" | "factions" | "encounters" | "notes";
+export type Mode = "characters" | "items" | "locations" | "quests" | "factions" | "encounters" | "notes" | "adventures";
 
 const MODE_LABELS: Record<Mode, string> = {
   characters: "Characters",
@@ -28,6 +30,7 @@ const MODE_LABELS: Record<Mode, string> = {
   factions: "Factions",
   encounters: "Encounters",
   notes: "Notes",
+  adventures: "Adventures",
 };
 
 export const ENTITY_TYPE_TO_MODE: Record<EntityType, Mode> = {
@@ -38,6 +41,7 @@ export const ENTITY_TYPE_TO_MODE: Record<EntityType, Mode> = {
   faction: "factions",
   encounterTable: "encounters",
   sessionNote: "notes",
+  adventure: "adventures",
 };
 
 const MODE_TO_ENTITY_TYPE: Record<Mode, EntityType> = {
@@ -48,6 +52,7 @@ const MODE_TO_ENTITY_TYPE: Record<Mode, EntityType> = {
   factions: "faction",
   encounters: "encounterTable",
   notes: "sessionNote",
+  adventures: "adventure",
 };
 
 export interface RosterSelection {
@@ -64,6 +69,7 @@ async function fetchPrintItem(type: EntityType, id: string): Promise<PrintItem |
     case "faction": return { type, data: await api.getFaction(id) };
     case "encounterTable": return { type, data: await api.getEncounterTable(id) };
     case "sessionNote": return { type, data: await api.getSessionNote(id) };
+    case "adventure": return { type, data: await api.getAdventure(id) };
     default: return null;
   }
 }
@@ -85,6 +91,7 @@ export function RosterPage({
   const [factions, setFactions] = useState<Faction[]>([]);
   const [encounters, setEncounters] = useState<EncounterTable[]>([]);
   const [notes, setNotes] = useState<SessionNote[]>([]);
+  const [adventures, setAdventures] = useState<Adventure[]>([]);
   const [worlds, setWorlds] = useState<WorldSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [metaNotes, setMetaNotes] = useState("");
@@ -106,6 +113,7 @@ export function RosterPage({
       api.listFactions(w).then(setFactions).catch(() => {}),
       api.listEncounterTables(w).then(setEncounters).catch(() => {}),
       api.listSessionNotes(w).then(setNotes).catch(() => {}),
+      api.listAdventures(w).then(setAdventures).catch(() => {}),
       api.listWorlds().then(setWorlds).catch(() => {}),
     ]).finally(() => setLoading(false));
   }
@@ -147,10 +155,11 @@ export function RosterPage({
   const selectedFaction = mode === "factions" ? factions.find((f) => f.id === selectedId) ?? null : null;
   const selectedEncounter = mode === "encounters" ? encounters.find((e) => e.id === selectedId) ?? null : null;
   const selectedNote = mode === "notes" ? notes.find((n) => n.id === selectedId) ?? null : null;
-  const selected = selectedCharacter ?? selectedItem ?? selectedLocation ?? selectedQuest ?? selectedFaction ?? selectedEncounter ?? selectedNote;
+  const selectedAdventure = mode === "adventures" ? adventures.find((a) => a.id === selectedId) ?? null : null;
+  const selected = selectedCharacter ?? selectedItem ?? selectedLocation ?? selectedQuest ?? selectedFaction ?? selectedEncounter ?? selectedNote ?? selectedAdventure;
   const selectedDisplayName =
     selectedCharacter?.name ?? selectedItem?.name ?? selectedLocation?.name ?? selectedQuest?.title ??
-    selectedFaction?.name ?? selectedEncounter?.name ?? selectedNote?.title ?? "";
+    selectedFaction?.name ?? selectedEncounter?.name ?? selectedNote?.title ?? selectedAdventure?.title ?? "";
 
   useEffect(() => {
     if (selected) {
@@ -171,7 +180,8 @@ export function RosterPage({
     else if (mode === "quests") await api.updateQuest(selected.id, patch);
     else if (mode === "factions") await api.updateFaction(selected.id, patch);
     else if (mode === "encounters") await api.updateEncounterTable(selected.id, patch);
-    else await api.updateSessionNote(selected.id, patch);
+    else if (mode === "notes") await api.updateSessionNote(selected.id, patch);
+    else await api.updateAdventure(selected.id, patch);
     setStatus("idle");
     refresh();
   }
@@ -225,6 +235,12 @@ export function RosterPage({
         title: `${selectedNote.title} (Copy)`, sessionLabel: selectedNote.sessionLabel, summary: selectedNote.summary,
         looseThreads: selectedNote.looseThreads, nextSteps: selectedNote.nextSteps, worldId, tags: tagsCopy, notes: notesCopy,
       });
+    } else if (selectedAdventure) {
+      created = await api.saveAdventure({
+        title: `${selectedAdventure.title} (Copy)`, tier: selectedAdventure.tier, premise: selectedAdventure.premise,
+        hook: selectedAdventure.hook, objective: selectedAdventure.objective, complication: selectedAdventure.complication,
+        reward: selectedAdventure.reward, worldId, tags: tagsCopy, notes: notesCopy,
+      });
     }
     setStatus("idle");
     refresh();
@@ -240,6 +256,7 @@ export function RosterPage({
     else if (selectedFaction) onPrint([{ type: "faction", data: selectedFaction }]);
     else if (selectedEncounter) onPrint([{ type: "encounterTable", data: selectedEncounter }]);
     else if (selectedNote) onPrint([{ type: "sessionNote", data: selectedNote }]);
+    else if (selectedAdventure) onPrint([{ type: "adventure", data: selectedAdventure }]);
   }
 
   async function handlePrintSessionPack() {
@@ -262,7 +279,8 @@ export function RosterPage({
     else if (mode === "quests") await api.deleteQuest(selected.id);
     else if (mode === "factions") await api.deleteFaction(selected.id);
     else if (mode === "encounters") await api.deleteEncounterTable(selected.id);
-    else await api.deleteSessionNote(selected.id);
+    else if (mode === "notes") await api.deleteSessionNote(selected.id);
+    else await api.deleteAdventure(selected.id);
     setSelectedId(null);
     refresh();
   }
@@ -274,7 +292,8 @@ export function RosterPage({
     mode === "quests" ? quests :
     mode === "factions" ? factions :
     mode === "encounters" ? encounters :
-    notes;
+    mode === "notes" ? notes :
+    adventures;
 
   const availableTags = Array.from(new Set(activeEntities.flatMap((e) => e.tags))).sort();
 
@@ -292,7 +311,8 @@ export function RosterPage({
     mode === "quests" ? quests.filter((q) => !tagFilter || q.tags.includes(tagFilter)).map((q) => ({ id: q.id, name: q.title, meta: `${q.questType} · ${q.tier}` })) :
     mode === "factions" ? factions.filter((f) => !tagFilter || f.tags.includes(tagFilter)).map((f) => ({ id: f.id, name: f.name, meta: f.factionType })) :
     mode === "encounters" ? encounters.filter((e) => !tagFilter || e.tags.includes(tagFilter)).map((e) => ({ id: e.id, name: e.name, meta: `${e.terrain} · d${e.entries.length}` })) :
-    notes.filter((n) => !tagFilter || n.tags.includes(tagFilter)).map((n) => ({ id: n.id, name: n.title, meta: n.sessionLabel || new Date(n.createdAt).toLocaleDateString() }));
+    mode === "notes" ? notes.filter((n) => !tagFilter || n.tags.includes(tagFilter)).map((n) => ({ id: n.id, name: n.title, meta: n.sessionLabel || new Date(n.createdAt).toLocaleDateString() })) :
+    adventures.filter((a) => !tagFilter || a.tags.includes(tagFilter)).map((a) => ({ id: a.id, name: a.title, meta: a.tier }));
 
   return (
     <div className="page roster-layout">
@@ -413,6 +433,15 @@ export function RosterPage({
             <SessionNoteCardView note={selectedNote} />
             <p className="hint">Edit this note from the Notes tab.</p>
           </>
+        )}
+
+        {selectedAdventure && !editingContent && <AdventureCardView adventure={selectedAdventure} />}
+        {selectedAdventure && editingContent && (
+          <AdventureEditor
+            value={selectedAdventure}
+            onSave={async (patch) => { await api.updateAdventure(selectedAdventure.id, patch); setEditingContent(false); refresh(); }}
+            onCancel={() => setEditingContent(false)}
+          />
         )}
 
         {selected && !editingContent && mode !== "notes" && (

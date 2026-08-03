@@ -1,8 +1,9 @@
 import type {
   Character as CharacterRow, Item as ItemRow, Location as LocationRow, QuestHook as QuestHookRow,
   Faction as FactionRow, EncounterTable as EncounterTableRow, SessionNote as SessionNoteRow,
+  Adventure as AdventureRow,
 } from "@prisma/client";
-import type { Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote } from "@spark/shared";
+import type { Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure } from "@spark/shared";
 
 export function toCharacterDTO(row: CharacterRow): Character {
   return {
@@ -113,6 +114,24 @@ export function toQuestHookDTO(row: QuestHookRow): QuestHook {
     title: row.title,
     questType: row.questType,
     tier: row.tier,
+    hook: row.hook,
+    objective: row.objective,
+    complication: row.complication,
+    reward: row.reward,
+    worldId: row.worldId,
+    tags: JSON.parse(row.tags),
+    notes: row.notes ?? undefined,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+export function toAdventureDTO(row: AdventureRow): Adventure {
+  return {
+    id: row.id,
+    title: row.title,
+    tier: row.tier,
+    premise: row.premise,
     hook: row.hook,
     objective: row.objective,
     complication: row.complication,

@@ -259,6 +259,52 @@ textarea {
   border-top: 1px dashed var(--border);
 }
 
+/* Adventure Forge role slots */
+.role-slot {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px dashed var(--border);
+}
+
+.role-slot:last-of-type {
+  border-bottom: none;
+}
+
+.role-slot-label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.role-slot-optional {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.role-slot-filled {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.role-slot-value {
+  font-weight: 600;
+}
+
+.role-slot-value em {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.role-slot-picker {
+  margin-top: 6px;
+}
+
+.entity-search-picker input {
+  margin-bottom: 8px;
+}
+
 /* Stat block */
 .statblock {
   border: 2px solid var(--rule-gold);

@@ -18,6 +18,8 @@ import { encounterTablesRouter } from "./routes/encounterTables.js";
 import { sessionNotesRouter } from "./routes/sessionNotes.js";
 import { worldsRouter } from "./routes/worlds.js";
 import { referenceRouter } from "./routes/reference.js";
+import { searchRouter } from "./routes/search.js";
+import { linksRouter } from "./routes/links.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const clientDist = path.resolve(__dirname, "../../client/dist");
@@ -42,6 +44,8 @@ app.use("/api/encounter-tables", encounterTablesRouter);
 app.use("/api/session-notes", sessionNotesRouter);
 app.use("/api/worlds", worldsRouter);
 app.use("/api/reference", referenceRouter);
+app.use("/api/search", searchRouter);
+app.use("/api/links", linksRouter);
 
 if (fs.existsSync(clientDist)) {
   app.use(express.static(clientDist));

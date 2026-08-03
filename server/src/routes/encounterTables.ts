@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
 import { toEncounterTableDTO } from "../serialize.js";
+import { deleteLinksForEntity } from "../entityAdapters.js";
 
 export const encounterTablesRouter = Router();
 
@@ -60,6 +61,7 @@ encounterTablesRouter.patch("/:id", async (req, res) => {
 encounterTablesRouter.delete("/:id", async (req, res) => {
   try {
     await prisma.encounterTable.delete({ where: { id: req.params.id } });
+    await deleteLinksForEntity("encounterTable", req.params.id);
     res.status(204).end();
   } catch {
     res.status(404).json({ error: "Encounter table not found" });

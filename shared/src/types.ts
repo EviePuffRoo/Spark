@@ -238,3 +238,37 @@ export interface SessionNote extends SessionNoteInput {
   createdAt: string;
   updatedAt: string;
 }
+
+export type EntityType = "character" | "item" | "location" | "quest" | "faction" | "encounterTable" | "sessionNote";
+
+export interface EntityTypeDef {
+  type: EntityType;
+  label: string;
+}
+
+export const ENTITY_TYPES: EntityTypeDef[] = [
+  { type: "character", label: "Character" },
+  { type: "item", label: "Item" },
+  { type: "location", label: "Location" },
+  { type: "quest", label: "Quest Hook" },
+  { type: "faction", label: "Faction" },
+  { type: "encounterTable", label: "Encounter Table" },
+  { type: "sessionNote", label: "Session Note" },
+];
+
+export interface EntityRef {
+  type: EntityType;
+  id: string;
+  name: string;
+}
+
+export interface SearchResult extends EntityRef {
+  meta: string;
+  worldId?: string | null;
+}
+
+export interface EntityLink {
+  id: string;
+  label?: string;
+  other: EntityRef;
+}

@@ -32,6 +32,14 @@ Everything above can be **saved to your Roster**, tagged and annotated, and orga
 **Worlds** (campaign containers) as your setting grows into a larger project. The Roster page
 lets you browse and edit anything you've saved, filtered by world or by type.
 
+A **global search bar** in the header searches across every saved entry (name, description,
+tags, notes) and jumps straight to it in the Roster. From any Roster entry you can **link it
+to any other entry** — an NPC works for a Faction, is found at a Location, gives a Quest,
+carries an Item — with an optional freeform relationship label, so the repository becomes an
+actual web of connections instead of a pile of disconnected content. Links are bidirectional
+(visible from both linked entries) and clean themselves up automatically when either side is
+deleted.
+
 ## Stack
 
 - **Client**: React + TypeScript + Vite
@@ -94,9 +102,9 @@ configuration.
 ```
 shared/       SRD dataset, types, and the generation engines (characters, items,
               locations, quests, factions, encounter tables)
-server/       Express API + Prisma/SQLite persistence
+server/       Express API + Prisma/SQLite persistence, plus cross-entity search & links
 client/       React SPA — Create (NPCs/Monsters, Items, Locations, Quests, Factions,
-              Encounter Tables), Notes, Roster, Worlds
+              Encounter Tables), Notes, Roster, Worlds, global search
 render.yaml   Render Blueprint for a one-click paid deploy with a persistent disk
 ```
 

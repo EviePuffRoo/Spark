@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
 import { toCharacterDTO } from "../serialize.js";
+import { deleteLinksForEntity } from "../entityAdapters.js";
 
 export const charactersRouter = Router();
 
@@ -66,6 +67,7 @@ charactersRouter.patch("/:id", async (req, res) => {
 charactersRouter.delete("/:id", async (req, res) => {
   try {
     await prisma.character.delete({ where: { id: req.params.id } });
+    await deleteLinksForEntity("character", req.params.id);
     res.status(204).end();
   } catch {
     res.status(404).json({ error: "Character not found" });

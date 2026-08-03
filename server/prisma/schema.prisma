@@ -149,3 +149,16 @@ model SessionNote {
 
   @@index([worldId])
 }
+
+model Link {
+  id        String   @id @default(cuid())
+  fromType  String
+  fromId    String
+  toType    String
+  toId      String
+  label     String?
+  createdAt DateTime @default(now())
+
+  @@index([fromType, fromId])
+  @@index([toType, toId])
+}

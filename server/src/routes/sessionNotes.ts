@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
 import { toSessionNoteDTO } from "../serialize.js";
+import { deleteLinksForEntity } from "../entityAdapters.js";
 
 export const sessionNotesRouter = Router();
 
@@ -61,6 +62,7 @@ sessionNotesRouter.patch("/:id", async (req, res) => {
 sessionNotesRouter.delete("/:id", async (req, res) => {
   try {
     await prisma.sessionNote.delete({ where: { id: req.params.id } });
+    await deleteLinksForEntity("sessionNote", req.params.id);
     res.status(204).end();
   } catch {
     res.status(404).json({ error: "Session note not found" });

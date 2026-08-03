@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
 import { toFactionDTO } from "../serialize.js";
+import { deleteLinksForEntity } from "../entityAdapters.js";
 
 export const factionsRouter = Router();
 
@@ -58,6 +59,7 @@ factionsRouter.patch("/:id", async (req, res) => {
 factionsRouter.delete("/:id", async (req, res) => {
   try {
     await prisma.faction.delete({ where: { id: req.params.id } });
+    await deleteLinksForEntity("faction", req.params.id);
     res.status(204).end();
   } catch {
     res.status(404).json({ error: "Faction not found" });

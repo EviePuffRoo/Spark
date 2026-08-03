@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
 import { toQuestHookDTO } from "../serialize.js";
+import { deleteLinksForEntity } from "../entityAdapters.js";
 
 export const questsRouter = Router();
 
@@ -58,6 +59,7 @@ questsRouter.patch("/:id", async (req, res) => {
 questsRouter.delete("/:id", async (req, res) => {
   try {
     await prisma.questHook.delete({ where: { id: req.params.id } });
+    await deleteLinksForEntity("quest", req.params.id);
     res.status(204).end();
   } catch {
     res.status(404).json({ error: "Quest hook not found" });

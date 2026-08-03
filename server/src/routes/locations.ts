@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
 import { toLocationDTO } from "../serialize.js";
+import { deleteLinksForEntity } from "../entityAdapters.js";
 
 export const locationsRouter = Router();
 
@@ -58,6 +59,7 @@ locationsRouter.patch("/:id", async (req, res) => {
 locationsRouter.delete("/:id", async (req, res) => {
   try {
     await prisma.location.delete({ where: { id: req.params.id } });
+    await deleteLinksForEntity("location", req.params.id);
     res.status(204).end();
   } catch {
     res.status(404).json({ error: "Location not found" });

@@ -6,6 +6,7 @@ import type {
   Faction, GenerateFactionRequest, GeneratedFaction,
   EncounterTable, GenerateEncounterTableRequest, GeneratedEncounterTable,
   SessionNote, SessionNoteInput,
+  EntityType, EntityLink, SearchResult,
 } from "@spark/shared";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -131,4 +132,15 @@ export const api = {
   updateWorld: (id: string, patch: Partial<World>) =>
     request<World>(`/worlds/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   deleteWorld: (id: string) => request<void>(`/worlds/${id}`, { method: "DELETE" }),
+
+  search: (q: string, type?: EntityType) =>
+    request<{ query: string; results: SearchResult[] }>(
+      `/search?q=${encodeURIComponent(q)}${type ? `&type=${type}` : ""}`
+    ),
+
+  getLinks: (type: EntityType, id: string) =>
+    request<EntityLink[]>(`/links?type=${type}&id=${id}`),
+  createLink: (fromType: EntityType, fromId: string, toType: EntityType, toId: string, label?: string) =>
+    request<unknown>("/links", { method: "POST", body: JSON.stringify({ fromType, fromId, toType, toId, label }) }),
+  deleteLink: (id: string) => request<void>(`/links/${id}`, { method: "DELETE" }),
 };

@@ -1,18 +1,26 @@
 import { useState } from "react";
 import "./App.css";
+import type { EntityType } from "@spark/shared";
 import { CreatePage } from "./pages/CreatePage";
 import { SessionNotesPage } from "./pages/SessionNotesPage";
-import { RosterPage } from "./pages/RosterPage";
+import { RosterPage, type RosterSelection } from "./pages/RosterPage";
 import { WorldsPage } from "./pages/WorldsPage";
+import { GlobalSearch } from "./components/GlobalSearch";
 
 type Tab = "create" | "notes" | "roster" | "worlds";
 
 function App() {
   const [tab, setTab] = useState<Tab>("create");
   const [rosterWorldFilter, setRosterWorldFilter] = useState("");
+  const [rosterSelection, setRosterSelection] = useState<RosterSelection | null>(null);
 
   function viewRosterForWorld(worldId: string) {
     setRosterWorldFilter(worldId);
+    setTab("roster");
+  }
+
+  function openInRoster(type: EntityType, id: string) {
+    setRosterSelection({ type, id });
     setTab("roster");
   }
 
@@ -21,6 +29,7 @@ function App() {
       <header className="app-header">
         <h1>Spark</h1>
         <p className="tagline">Everything a DM needs to prep and run a session, ready for the table</p>
+        <GlobalSearch onSelect={openInRoster} />
         <nav className="tabs">
           <button className={tab === "create" ? "active" : ""} onClick={() => setTab("create")}>Create</button>
           <button className={tab === "notes" ? "active" : ""} onClick={() => setTab("notes")}>Notes</button>
@@ -33,7 +42,12 @@ function App() {
         {tab === "create" && <CreatePage />}
         {tab === "notes" && <SessionNotesPage />}
         {tab === "roster" && (
-          <RosterPage worldFilter={rosterWorldFilter} onWorldFilterChange={setRosterWorldFilter} />
+          <RosterPage
+            worldFilter={rosterWorldFilter}
+            onWorldFilterChange={setRosterWorldFilter}
+            pendingSelection={rosterSelection}
+            onConsumeSelection={() => setRosterSelection(null)}
+          />
         )}
         {tab === "worlds" && <WorldsPage onViewRoster={viewRosterForWorld} />}
       </main>

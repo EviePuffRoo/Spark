@@ -1,0 +1,210 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String   @id @default(cuid())
+  username          String   @unique
+  passwordHash      String
+  recoveryCodeHash  String?
+  createdAt         DateTime @default(now())
+
+  worlds          World[]
+  characters      Character[]
+  items           Item[]
+  locations       Location[]
+  questHooks      QuestHook[]
+  factions        Faction[]
+  encounterTables EncounterTable[]
+  sessionNotes    SessionNote[]
+  links           Link[]
+}
+
+model World {
+  id          String      @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  userId      String
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  characters      Character[]
+  items           Item[]
+  locations       Location[]
+  questHooks      QuestHook[]
+  factions        Faction[]
+  encounterTables EncounterTable[]
+  sessionNotes    SessionNote[]
+
+  @@index([userId])
+}
+
+model Character {
+  id           String   @id @default(cuid())
+  kind         String
+  name         String
+  race         String?
+  background   String?
+  alignment    String
+  templateId   String
+  templateName String
+  statBlock    String
+  backstory    String
+  tags         String   @default("[]")
+  notes        String?
+  worldId      String?
+  world        World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([worldId])
+  @@index([userId])
+}
+
+model Item {
+  id          String   @id @default(cuid())
+  name        String
+  itemType    String
+  category    String
+  rarity      String
+  description String
+  property    String
+  history     String
+  tags        String   @default("[]")
+  notes       String?
+  worldId     String?
+  world       World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([worldId])
+  @@index([userId])
+}
+
+model Location {
+  id             String   @id @default(cuid())
+  name           String
+  locationType   String
+  category       String
+  description    String
+  notableFeature String
+  keeper         String
+  rumor          String
+  tags           String   @default("[]")
+  notes          String?
+  worldId        String?
+  world          World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([worldId])
+  @@index([userId])
+}
+
+model QuestHook {
+  id           String   @id @default(cuid())
+  title        String
+  questType    String
+  tier         String
+  hook         String
+  objective    String
+  complication String
+  reward       String
+  tags         String   @default("[]")
+  notes        String?
+  worldId      String?
+  world        World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([worldId])
+  @@index([userId])
+}
+
+model Faction {
+  id          String   @id @default(cuid())
+  name        String
+  factionType String
+  agenda      String
+  methods     String
+  publicFace  String
+  hook        String
+  tags        String   @default("[]")
+  notes       String?
+  worldId     String?
+  world       World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([worldId])
+  @@index([userId])
+}
+
+model EncounterTable {
+  id        String   @id @default(cuid())
+  name      String
+  terrain   String
+  entries   String
+  tags      String   @default("[]")
+  notes     String?
+  worldId   String?
+  world     World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([worldId])
+  @@index([userId])
+}
+
+model SessionNote {
+  id           String   @id @default(cuid())
+  title        String
+  sessionLabel String?
+  summary      String
+  looseThreads String?
+  nextSteps    String?
+  tags         String   @default("[]")
+  notes        String?
+  worldId      String?
+  world        World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([worldId])
+  @@index([userId])
+}
+
+model Link {
+  id        String   @id @default(cuid())
+  fromType  String
+  fromId    String
+  toType    String
+  toId      String
+  label     String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([fromType, fromId])
+  @@index([toType, toId])
+  @@index([userId])
+}

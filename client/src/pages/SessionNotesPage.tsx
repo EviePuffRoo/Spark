@@ -1,0 +1,152 @@
+import { useEffect, useState } from "react";
+import type { SessionNote } from "@spark/shared";
+import { api, type WorldSummary } from "../api";
+
+const BLANK = {
+  title: "",
+  sessionLabel: "",
+  summary: "",
+  looseThreads: "",
+  nextSteps: "",
+  worldId: "",
+  tags: "",
+};
+
+export function SessionNotesPage() {
+  const [notes, setNotes] = useState<SessionNote[]>([]);
+  const [worlds, setWorlds] = useState<WorldSummary[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState(BLANK);
+  const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<"idle" | "saving">("idle");
+
+  function refresh() {
+    api.listSessionNotes().then(setNotes).catch((e) => setError(e.message));
+    api.listWorlds().then(setWorlds).catch(() => {});
+  }
+
+  useEffect(refresh, []);
+
+  function startNew() {
+    setEditingId(null);
+    setForm(BLANK);
+  }
+
+  function startEdit(note: SessionNote) {
+    setEditingId(note.id);
+    setForm({
+      title: note.title,
+      sessionLabel: note.sessionLabel ?? "",
+      summary: note.summary,
+      looseThreads: note.looseThreads ?? "",
+      nextSteps: note.nextSteps ?? "",
+      worldId: note.worldId ?? "",
+      tags: note.tags.join(", "),
+    });
+  }
+
+  async function handleSave() {
+    if (!form.title.trim() || !form.summary.trim()) {
+      setError("Title and summary are required.");
+      return;
+    }
+    setStatus("saving");
+    setError(null);
+    const payload = {
+      title: form.title.trim(),
+      sessionLabel: form.sessionLabel.trim() || undefined,
+      summary: form.summary.trim(),
+      looseThreads: form.looseThreads.trim() || undefined,
+      nextSteps: form.nextSteps.trim() || undefined,
+      worldId: form.worldId || null,
+      tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
+    };
+    try {
+      if (editingId) {
+        await api.updateSessionNote(editingId, payload);
+      } else {
+        await api.saveSessionNote(payload);
+      }
+      startNew();
+      refresh();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setStatus("idle");
+    }
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm("Delete this session note? This cannot be undone.")) return;
+    await api.deleteSessionNote(id);
+    if (editingId === id) startNew();
+    refresh();
+  }
+
+  return (
+    <div className="page">
+      <div className="generator-layout">
+        <div className="panel">
+          <h2>{editingId ? "Edit Session Note" : "New Session Note"}</h2>
+          <p className="hint">A quick recap so you never open a session unsure what happened last time.</p>
+
+          <label className="field">
+            <span>Title</span>
+            <input type="text" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="The Fall of Blackwater Keep" />
+          </label>
+          <label className="field">
+            <span>Session label (optional)</span>
+            <input type="text" value={form.sessionLabel} onChange={(e) => setForm({ ...form, sessionLabel: e.target.value })} placeholder="Session 12, or a date" />
+          </label>
+          <label className="field">
+            <span>Summary</span>
+            <textarea value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} rows={4} placeholder="What happened this session…" />
+          </label>
+          <label className="field">
+            <span>Loose threads (optional)</span>
+            <textarea value={form.looseThreads} onChange={(e) => setForm({ ...form, looseThreads: e.target.value })} rows={3} placeholder="Cliffhangers, unresolved questions…" />
+          </label>
+          <label className="field">
+            <span>Next steps (optional)</span>
+            <textarea value={form.nextSteps} onChange={(e) => setForm({ ...form, nextSteps: e.target.value })} rows={3} placeholder="What's planned for next time…" />
+          </label>
+          <label className="field">
+            <span>World (optional)</span>
+            <select value={form.worldId} onChange={(e) => setForm({ ...form, worldId: e.target.value })}>
+              <option value="">Unassigned</option>
+              {worlds.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
+            </select>
+          </label>
+          <label className="field">
+            <span>Tags</span>
+            <input type="text" value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} placeholder="act-2, milestone" />
+          </label>
+
+          {error && <p className="error">{error}</p>}
+          <div className="button-row">
+            <button className="btn-primary" onClick={handleSave} disabled={status === "saving"}>
+              {status === "saving" ? "Saving…" : editingId ? "Update Note" : "Save Note"}
+            </button>
+            {editingId && <button className="btn-secondary" onClick={startNew}>New Note</button>}
+          </div>
+        </div>
+
+        <div className="panel result-panel">
+          <h3 className="section-heading">Recent Session Notes</h3>
+          {notes.length === 0 && <p className="hint">No session notes yet.</p>}
+          <ul className="entity-list">
+            {notes.map((n) => (
+              <li key={n.id} className="world-row">
+                <button className="entity-item" style={{ border: "none", flex: 1 }} onClick={() => startEdit(n)}>
+                  <span className="entity-name">{n.title}</span>
+                  <span className="entity-meta">{n.sessionLabel || new Date(n.createdAt).toLocaleDateString()}</span>
+                </button>
+                <button className="btn-danger" onClick={() => handleDelete(n.id)}>Delete</button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}

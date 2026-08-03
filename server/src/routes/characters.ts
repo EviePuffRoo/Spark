@@ -1,0 +1,73 @@
+import { Router } from "express";
+import { prisma } from "../db.js";
+import { toCharacterDTO } from "../serialize.js";
+import { deleteLinksForEntity } from "../entityAdapters.js";
+
+export const charactersRouter = Router();
+
+charactersRouter.get("/", async (req, res) => {
+  const { worldId } = req.query;
+  const where = {
+    userId: req.userId,
+    ...(worldId === "unassigned" ? { worldId: null } : typeof worldId === "string" ? { worldId } : {}),
+  };
+  const rows = await prisma.character.findMany({ where, orderBy: { createdAt: "desc" } });
+  res.json(rows.map(toCharacterDTO));
+});
+
+charactersRouter.get("/:id", async (req, res) => {
+  const row = await prisma.character.findFirst({ where: { id: req.params.id, userId: req.userId } });
+  if (!row) return res.status(404).json({ error: "Character not found" });
+  res.json(toCharacterDTO(row));
+});
+
+charactersRouter.post("/", async (req, res) => {
+  const body = req.body ?? {};
+  const {
+    kind, name, race, background, alignment, templateId, templateName,
+    statBlock, backstory, worldId, tags, notes,
+  } = body;
+
+  if (!kind || !name || !alignment || !templateId || !templateName || !statBlock || !backstory) {
+    return res.status(400).json({ error: "Missing required character fields" });
+  }
+
+  const row = await prisma.character.create({
+    data: {
+      kind, name, race: race ?? null, background: background ?? null, alignment,
+      templateId, templateName,
+      statBlock: JSON.stringify(statBlock),
+      backstory: JSON.stringify(backstory),
+      worldId: worldId ?? null,
+      tags: JSON.stringify(Array.isArray(tags) ? tags : []),
+      notes: notes ?? null,
+      userId: req.userId!,
+    },
+  });
+  res.status(201).json(toCharacterDTO(row));
+});
+
+charactersRouter.patch("/:id", async (req, res) => {
+  const body = req.body ?? {};
+  const data: Record<string, unknown> = {};
+
+  for (const field of ["name", "race", "background", "alignment", "notes"] as const) {
+    if (field in body) data[field] = body[field];
+  }
+  if ("worldId" in body) data.worldId = body.worldId ?? null;
+  if ("tags" in body) data.tags = JSON.stringify(Array.isArray(body.tags) ? body.tags : []);
+  if ("statBlock" in body) data.statBlock = JSON.stringify(body.statBlock);
+  if ("backstory" in body) data.backstory = JSON.stringify(body.backstory);
+
+  const result = await prisma.character.updateMany({ where: { id: req.params.id, userId: req.userId }, data });
+  if (result.count === 0) return res.status(404).json({ error: "Character not found" });
+  const row = await prisma.character.findUnique({ where: { id: req.params.id } });
+  res.json(toCharacterDTO(row!));
+});
+
+charactersRouter.delete("/:id", async (req, res) => {
+  const result = await prisma.character.deleteMany({ where: { id: req.params.id, userId: req.userId } });
+  if (result.count === 0) return res.status(404).json({ error: "Character not found" });
+  await deleteLinksForEntity("character", req.params.id, req.userId!);
+  res.status(204).end();
+});

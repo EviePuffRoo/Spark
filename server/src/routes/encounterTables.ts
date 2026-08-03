@@ -10,7 +10,7 @@ encounterTablesRouter.get("/", async (req, res) => {
   const { worldId } = req.query;
   const memberWorldIds = await getMemberWorldIds(req.userId!);
   const where = {
-    OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds } }],
+    OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }],
     ...(worldId === "unassigned" ? { worldId: null } : typeof worldId === "string" ? { worldId } : {}),
   };
   const rows = await prisma.encounterTable.findMany({ where, orderBy: { createdAt: "desc" } });
@@ -19,7 +19,7 @@ encounterTablesRouter.get("/", async (req, res) => {
 
 encounterTablesRouter.get("/:id", async (req, res) => {
   const memberWorldIds = await getMemberWorldIds(req.userId!);
-  const row = await prisma.encounterTable.findFirst({ where: { id: req.params.id, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds } }] } });
+  const row = await prisma.encounterTable.findFirst({ where: { id: req.params.id, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }] } });
   if (!row) return res.status(404).json({ error: "Encounter table not found" });
   res.json(toEncounterTableDTO(row));
 });
@@ -49,7 +49,7 @@ encounterTablesRouter.patch("/:id", async (req, res) => {
   const body = req.body ?? {};
   const data: Record<string, unknown> = {};
 
-  for (const field of ["name", "terrain", "notes"] as const) {
+  for (const field of ["name", "terrain", "notes", "hiddenFromParty"] as const) {
     if (field in body) data[field] = body[field];
   }
   if ("entries" in body) data.entries = JSON.stringify(body.entries);

@@ -10,7 +10,7 @@ playerCharactersRouter.get("/", async (req, res) => {
   const { worldId } = req.query;
   const memberWorldIds = await getMemberWorldIds(req.userId!);
   const where = {
-    OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds } }],
+    OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }],
     ...(worldId === "unassigned" ? { worldId: null } : typeof worldId === "string" ? { worldId } : {}),
   };
   const rows = await prisma.playerCharacter.findMany({ where, orderBy: { createdAt: "desc" } });
@@ -19,7 +19,7 @@ playerCharactersRouter.get("/", async (req, res) => {
 
 playerCharactersRouter.get("/:id", async (req, res) => {
   const memberWorldIds = await getMemberWorldIds(req.userId!);
-  const row = await prisma.playerCharacter.findFirst({ where: { id: req.params.id, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds } }] } });
+  const row = await prisma.playerCharacter.findFirst({ where: { id: req.params.id, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }] } });
   if (!row) return res.status(404).json({ error: "Player character not found" });
   res.json(toPlayerCharacterDTO(row));
 });
@@ -50,7 +50,7 @@ playerCharactersRouter.patch("/:id", async (req, res) => {
   const body = req.body ?? {};
   const data: Record<string, unknown> = {};
 
-  for (const field of ["name", "className", "race", "playerName", "notes"] as const) {
+  for (const field of ["name", "className", "race", "playerName", "notes", "hiddenFromParty"] as const) {
     if (field in body) data[field] = body[field];
   }
   for (const field of ["level", "armorClass", "maxHp"] as const) {

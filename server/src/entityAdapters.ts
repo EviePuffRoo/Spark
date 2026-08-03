@@ -14,7 +14,7 @@ function buildSearchWhere(fields: string[], q: string) {
 }
 
 function accessWhere(id: string, userId: string, memberWorldIds: string[]) {
-  return { id, OR: [{ userId }, { worldId: { in: memberWorldIds } }] };
+  return { id, OR: [{ userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }] };
 }
 
 const adapters: Record<EntityType, EntityAdapter> = {
@@ -96,7 +96,7 @@ export async function searchEntities(type: EntityType, q: string, userId: string
   return adapter.findMany({
     where: {
       AND: [
-        { OR: [{ userId }, { worldId: { in: memberWorldIds } }] },
+        { OR: [{ userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }] },
         buildSearchWhere(adapter.searchFields, q),
       ],
     },

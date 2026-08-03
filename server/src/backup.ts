@@ -86,7 +86,7 @@ export async function applyImport(userId: string, bundle: ExportBundle): Promise
         data: {
           kind: c.kind, name: c.name, race: c.race, background: c.background, alignment: c.alignment,
           templateId: c.templateId, templateName: c.templateName, statBlock: c.statBlock, backstory: c.backstory,
-          tags: c.tags, notes: c.notes, worldId: remapWorldId(c.worldId), userId,
+          tags: c.tags, notes: c.notes, worldId: remapWorldId(c.worldId), hiddenFromParty: c.hiddenFromParty, userId,
         },
       });
       entityIdMap.set(c.id, created.id);
@@ -96,7 +96,7 @@ export async function applyImport(userId: string, bundle: ExportBundle): Promise
       const created = await tx.item.create({
         data: {
           name: i.name, itemType: i.itemType, category: i.category, rarity: i.rarity, description: i.description,
-          property: i.property, history: i.history, tags: i.tags, notes: i.notes, worldId: remapWorldId(i.worldId), userId,
+          property: i.property, history: i.history, tags: i.tags, notes: i.notes, worldId: remapWorldId(i.worldId), hiddenFromParty: i.hiddenFromParty, userId,
         },
       });
       entityIdMap.set(i.id, created.id);
@@ -107,7 +107,7 @@ export async function applyImport(userId: string, bundle: ExportBundle): Promise
         data: {
           name: l.name, locationType: l.locationType, category: l.category, description: l.description,
           notableFeature: l.notableFeature, keeper: l.keeper, rumor: l.rumor,
-          tags: l.tags, notes: l.notes, worldId: remapWorldId(l.worldId), userId,
+          tags: l.tags, notes: l.notes, worldId: remapWorldId(l.worldId), hiddenFromParty: l.hiddenFromParty, userId,
         },
       });
       entityIdMap.set(l.id, created.id);
@@ -117,7 +117,7 @@ export async function applyImport(userId: string, bundle: ExportBundle): Promise
       const created = await tx.questHook.create({
         data: {
           title: q.title, questType: q.questType, tier: q.tier, hook: q.hook, objective: q.objective,
-          complication: q.complication, reward: q.reward, tags: q.tags, notes: q.notes, worldId: remapWorldId(q.worldId), userId,
+          complication: q.complication, reward: q.reward, tags: q.tags, notes: q.notes, worldId: remapWorldId(q.worldId), hiddenFromParty: q.hiddenFromParty, userId,
         },
       });
       entityIdMap.set(q.id, created.id);
@@ -127,7 +127,7 @@ export async function applyImport(userId: string, bundle: ExportBundle): Promise
       const created = await tx.faction.create({
         data: {
           name: f.name, factionType: f.factionType, agenda: f.agenda, methods: f.methods,
-          publicFace: f.publicFace, hook: f.hook, tags: f.tags, notes: f.notes, worldId: remapWorldId(f.worldId), userId,
+          publicFace: f.publicFace, hook: f.hook, tags: f.tags, notes: f.notes, worldId: remapWorldId(f.worldId), hiddenFromParty: f.hiddenFromParty, userId,
         },
       });
       entityIdMap.set(f.id, created.id);
@@ -137,7 +137,7 @@ export async function applyImport(userId: string, bundle: ExportBundle): Promise
       const created = await tx.encounterTable.create({
         data: {
           name: e.name, terrain: e.terrain, entries: e.entries, tags: e.tags, notes: e.notes,
-          worldId: remapWorldId(e.worldId), userId,
+          worldId: remapWorldId(e.worldId), hiddenFromParty: e.hiddenFromParty, userId,
         },
       });
       entityIdMap.set(e.id, created.id);
@@ -147,7 +147,7 @@ export async function applyImport(userId: string, bundle: ExportBundle): Promise
       const created = await tx.sessionNote.create({
         data: {
           title: n.title, sessionLabel: n.sessionLabel, summary: n.summary, looseThreads: n.looseThreads,
-          nextSteps: n.nextSteps, tags: n.tags, notes: n.notes, worldId: remapWorldId(n.worldId), userId,
+          nextSteps: n.nextSteps, tags: n.tags, notes: n.notes, worldId: remapWorldId(n.worldId), hiddenFromParty: n.hiddenFromParty, userId,
         },
       });
       entityIdMap.set(n.id, created.id);
@@ -157,7 +157,7 @@ export async function applyImport(userId: string, bundle: ExportBundle): Promise
       const created = await tx.adventure.create({
         data: {
           title: a.title, tier: a.tier, premise: a.premise, hook: a.hook, objective: a.objective,
-          complication: a.complication, reward: a.reward, tags: a.tags, notes: a.notes, worldId: remapWorldId(a.worldId), userId,
+          complication: a.complication, reward: a.reward, tags: a.tags, notes: a.notes, worldId: remapWorldId(a.worldId), hiddenFromParty: a.hiddenFromParty, userId,
         },
       });
       entityIdMap.set(a.id, created.id);
@@ -168,7 +168,7 @@ export async function applyImport(userId: string, bundle: ExportBundle): Promise
         data: {
           name: p.name, className: p.className, level: p.level, race: p.race, armorClass: p.armorClass, maxHp: p.maxHp,
           abilityScores: p.abilityScores, playerName: p.playerName, tags: p.tags, notes: p.notes,
-          worldId: remapWorldId(p.worldId), userId,
+          worldId: remapWorldId(p.worldId), hiddenFromParty: p.hiddenFromParty, userId,
         },
       });
       entityIdMap.set(p.id, created.id);

@@ -10,7 +10,7 @@ charactersRouter.get("/", async (req, res) => {
   const { worldId } = req.query;
   const memberWorldIds = await getMemberWorldIds(req.userId!);
   const where = {
-    OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds } }],
+    OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }],
     ...(worldId === "unassigned" ? { worldId: null } : typeof worldId === "string" ? { worldId } : {}),
   };
   const rows = await prisma.character.findMany({ where, orderBy: { createdAt: "desc" } });
@@ -19,7 +19,7 @@ charactersRouter.get("/", async (req, res) => {
 
 charactersRouter.get("/:id", async (req, res) => {
   const memberWorldIds = await getMemberWorldIds(req.userId!);
-  const row = await prisma.character.findFirst({ where: { id: req.params.id, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds } }] } });
+  const row = await prisma.character.findFirst({ where: { id: req.params.id, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }] } });
   if (!row) return res.status(404).json({ error: "Character not found" });
   res.json(toCharacterDTO(row));
 });
@@ -54,7 +54,7 @@ charactersRouter.patch("/:id", async (req, res) => {
   const body = req.body ?? {};
   const data: Record<string, unknown> = {};
 
-  for (const field of ["name", "race", "background", "alignment", "notes"] as const) {
+  for (const field of ["name", "race", "background", "alignment", "notes", "hiddenFromParty"] as const) {
     if (field in body) data[field] = body[field];
   }
   if ("worldId" in body) data.worldId = body.worldId ?? null;

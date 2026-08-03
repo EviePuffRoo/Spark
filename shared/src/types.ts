@@ -58,6 +58,7 @@ export interface Character {
   statBlock: StatBlock;
   backstory: Backstory;
   worldId?: string | null;
+  hiddenFromParty: boolean;
   tags: string[];
   notes?: string;
   createdAt: string;
@@ -108,6 +109,7 @@ export interface GeneratedItem {
 export interface Item extends GeneratedItem {
   id: string;
   worldId?: string | null;
+  hiddenFromParty: boolean;
   tags: string[];
   notes?: string;
   createdAt: string;
@@ -134,6 +136,7 @@ export interface GeneratedLocation {
 export interface Location extends GeneratedLocation {
   id: string;
   worldId?: string | null;
+  hiddenFromParty: boolean;
   tags: string[];
   notes?: string;
   createdAt: string;
@@ -169,6 +172,7 @@ export interface QuestHook extends GeneratedQuestHook {
   id: string;
   status: QuestStatus;
   worldId?: string | null;
+  hiddenFromParty: boolean;
   tags: string[];
   notes?: string;
   createdAt: string;
@@ -194,6 +198,7 @@ export interface GeneratedFaction {
 export interface Faction extends GeneratedFaction {
   id: string;
   worldId?: string | null;
+  hiddenFromParty: boolean;
   tags: string[];
   notes?: string;
   createdAt: string;
@@ -214,6 +219,7 @@ export interface PlayerCharacterInput {
 export interface PlayerCharacter extends PlayerCharacterInput {
   id: string;
   worldId?: string | null;
+  hiddenFromParty: boolean;
   tags: string[];
   notes?: string;
   createdAt: string;
@@ -240,6 +246,7 @@ export interface GeneratedEncounterTable {
 export interface EncounterTable extends GeneratedEncounterTable {
   id: string;
   worldId?: string | null;
+  hiddenFromParty: boolean;
   tags: string[];
   notes?: string;
   createdAt: string;
@@ -263,6 +270,7 @@ export interface SessionNoteInput {
 export interface SessionNote extends SessionNoteInput {
   id: string;
   worldId?: string | null;
+  hiddenFromParty: boolean;
   tags: string[];
   notes?: string;
   createdAt: string;
@@ -297,6 +305,7 @@ export interface GeneratedAdventure {
 export interface Adventure extends GeneratedAdventure {
   id: string;
   worldId?: string | null;
+  hiddenFromParty: boolean;
   tags: string[];
   notes?: string;
   createdAt: string;

@@ -106,6 +106,7 @@ export function RosterPage({
   const [metaNotes, setMetaNotes] = useState("");
   const [tags, setTags] = useState("");
   const [assignedWorld, setAssignedWorld] = useState("");
+  const [hiddenFromParty, setHiddenFromParty] = useState(false);
   const [status, setStatus] = useState<"idle" | "saving">("idle");
   const [actionError, setActionError] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState(false);
@@ -183,6 +184,7 @@ export function RosterPage({
       setMetaNotes(selected.notes ?? "");
       setTags(selected.tags.join(", "));
       setAssignedWorld(selected.worldId ?? "");
+      setHiddenFromParty(selected.hiddenFromParty);
     }
     if (selectedQuest) setQuestStatus(selectedQuest.status);
     setEditingContent(false);
@@ -195,6 +197,7 @@ export function RosterPage({
     setActionError(null);
     const patch = {
       notes: metaNotes, tags: tags.split(",").map((t) => t.trim()).filter(Boolean), worldId: assignedWorld || null,
+      hiddenFromParty,
       ...(mode === "quests" ? { status: questStatus } : {}),
     };
     try {
@@ -356,15 +359,15 @@ export function RosterPage({
   }, [loading, availableTags.join("|"), tagFilter]);
 
   const activeList =
-    mode === "characters" ? characters.filter((c) => !tagFilter || c.tags.includes(tagFilter)).map((c) => ({ id: c.id, name: c.name, meta: `${c.kind === "npc" ? c.race : c.templateName} · CR ${c.statBlock.challengeRating}` })) :
-    mode === "items" ? items.filter((i) => !tagFilter || i.tags.includes(tagFilter)).map((i) => ({ id: i.id, name: i.name, meta: `${i.category} · ${i.rarity}` })) :
-    mode === "locations" ? locations.filter((l) => !tagFilter || l.tags.includes(tagFilter)).map((l) => ({ id: l.id, name: l.name, meta: `${l.category} · ${l.locationType}` })) :
-    mode === "quests" ? quests.filter((q) => (!tagFilter || q.tags.includes(tagFilter)) && (!statusFilter || q.status === statusFilter)).map((q) => ({ id: q.id, name: q.title, meta: `${q.questType} · ${q.tier} · ${QUEST_STATUS_LABELS[q.status]}` })) :
-    mode === "factions" ? factions.filter((f) => !tagFilter || f.tags.includes(tagFilter)).map((f) => ({ id: f.id, name: f.name, meta: f.factionType })) :
-    mode === "encounters" ? encounters.filter((e) => !tagFilter || e.tags.includes(tagFilter)).map((e) => ({ id: e.id, name: e.name, meta: `${e.terrain} · d${e.entries.length}` })) :
-    mode === "notes" ? notes.filter((n) => !tagFilter || n.tags.includes(tagFilter)).map((n) => ({ id: n.id, name: n.title, meta: n.sessionLabel || new Date(n.createdAt).toLocaleDateString() })) :
-    mode === "adventures" ? adventures.filter((a) => !tagFilter || a.tags.includes(tagFilter)).map((a) => ({ id: a.id, name: a.title, meta: a.tier })) :
-    playerCharacters.filter((p) => !tagFilter || p.tags.includes(tagFilter)).map((p) => ({ id: p.id, name: p.name, meta: `Level ${p.level} ${p.race} ${p.className}` }));
+    mode === "characters" ? characters.filter((c) => !tagFilter || c.tags.includes(tagFilter)).map((c) => ({ id: c.id, name: c.name, meta: `${c.kind === "npc" ? c.race : c.templateName} · CR ${c.statBlock.challengeRating}`, hidden: c.hiddenFromParty })) :
+    mode === "items" ? items.filter((i) => !tagFilter || i.tags.includes(tagFilter)).map((i) => ({ id: i.id, name: i.name, meta: `${i.category} · ${i.rarity}`, hidden: i.hiddenFromParty })) :
+    mode === "locations" ? locations.filter((l) => !tagFilter || l.tags.includes(tagFilter)).map((l) => ({ id: l.id, name: l.name, meta: `${l.category} · ${l.locationType}`, hidden: l.hiddenFromParty })) :
+    mode === "quests" ? quests.filter((q) => (!tagFilter || q.tags.includes(tagFilter)) && (!statusFilter || q.status === statusFilter)).map((q) => ({ id: q.id, name: q.title, meta: `${q.questType} · ${q.tier} · ${QUEST_STATUS_LABELS[q.status]}`, hidden: q.hiddenFromParty })) :
+    mode === "factions" ? factions.filter((f) => !tagFilter || f.tags.includes(tagFilter)).map((f) => ({ id: f.id, name: f.name, meta: f.factionType, hidden: f.hiddenFromParty })) :
+    mode === "encounters" ? encounters.filter((e) => !tagFilter || e.tags.includes(tagFilter)).map((e) => ({ id: e.id, name: e.name, meta: `${e.terrain} · d${e.entries.length}`, hidden: e.hiddenFromParty })) :
+    mode === "notes" ? notes.filter((n) => !tagFilter || n.tags.includes(tagFilter)).map((n) => ({ id: n.id, name: n.title, meta: n.sessionLabel || new Date(n.createdAt).toLocaleDateString(), hidden: n.hiddenFromParty })) :
+    mode === "adventures" ? adventures.filter((a) => !tagFilter || a.tags.includes(tagFilter)).map((a) => ({ id: a.id, name: a.title, meta: a.tier, hidden: a.hiddenFromParty })) :
+    playerCharacters.filter((p) => !tagFilter || p.tags.includes(tagFilter)).map((p) => ({ id: p.id, name: p.name, meta: `Level ${p.level} ${p.race} ${p.className}`, hidden: p.hiddenFromParty }));
 
   if (showFactionWeb) {
     return (
@@ -434,7 +437,10 @@ export function RosterPage({
                 aria-current={entry.id === selectedId ? "true" : undefined}
                 onClick={() => setSelectedId(entry.id)}
               >
-                <span className="entity-name">{entry.name}</span>
+                <span className="entity-name">
+                  {entry.name}
+                  {entry.hidden && <span className="hidden-badge" title="Hidden from party">🔒</span>}
+                </span>
                 <span className="entity-meta">{entry.meta}</span>
               </button>
             </li>
@@ -570,6 +576,10 @@ export function RosterPage({
                   </select>
                 </label>
               )}
+              <label className="field">
+                <input type="checkbox" checked={hiddenFromParty} onChange={(e) => setHiddenFromParty(e.target.checked)} />
+                {" "}Hidden from party
+              </label>
               <label className="field">
                 <span>Tags</span>
                 <input type="text" value={tags} onChange={(e) => setTags(e.target.value)} />

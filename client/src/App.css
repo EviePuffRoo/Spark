@@ -326,6 +326,14 @@ textarea {
   margin: 2px 0 10px;
 }
 
+.hidden-badge {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 0.8rem;
+  vertical-align: middle;
+  opacity: 0.75;
+}
+
 .status-badge {
   display: inline-block;
   margin-left: 8px;

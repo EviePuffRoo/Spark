@@ -6,6 +6,12 @@ and a growing repository of everything worth reusing as a campaign world takes s
 
 ## What it does
 
+Generation is meant to spark ideas, not cage them: once something's saved, every field is
+yours to rewrite from the Roster (down to individual stat block traits and actions), and for
+Items, Locations, Quests, Factions, and Encounter Tables you can skip generation entirely and
+write one from a blank page with **Create Your Own**. NPCs/monsters lean on templates instead
+of a from-scratch stat-block builder — generate close to what you want, then hand-edit it.
+
 The **Create** tab generates six kinds of content, each with its own "surprise me completely"
 fully-random mode:
 
@@ -30,7 +36,8 @@ steps — since that's content only you can write, not generate.
 
 Everything above can be **saved to your Roster**, tagged and annotated, and organized into
 **Worlds** (campaign containers) as your setting grows into a larger project. The Roster page
-lets you browse and edit anything you've saved, filtered by world or by type.
+lets you browse and fully edit anything you've saved (not just tags/notes — the actual
+content), filtered by world or by type.
 
 A **global search bar** in the header searches across every saved entry (name, description,
 tags, notes) and jumps straight to it in the Roster. From any Roster entry you can **link it

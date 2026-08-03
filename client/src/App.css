@@ -302,6 +302,45 @@ textarea {
   font-size: 0.95rem;
 }
 
+.ability-grid.editable {
+  grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+}
+
+.ability-field {
+  margin-bottom: 0;
+}
+
+.ability-field input {
+  text-align: center;
+}
+
+.editor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0 16px;
+}
+
+.dynamic-list-editor {
+  margin-bottom: 16px;
+}
+
+.dynamic-list-row {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.stat-block-editor,
+.backstory-editor,
+.content-editor {
+  margin-top: 12px;
+}
+
+.editor-actions {
+  margin-top: 16px;
+}
+
 .section-heading {
   font-family: Georgia, "Times New Roman", serif;
   color: var(--accent);
@@ -386,7 +425,8 @@ textarea {
   font-size: 0.85rem;
 }
 
-.create-type-tabs {
+.create-type-tabs,
+.forge-mode-tabs {
   justify-content: flex-start;
   margin-bottom: 20px;
   flex-wrap: wrap;

@@ -9,6 +9,12 @@ import { QuestHookCardView } from "../components/QuestHookCardView";
 import { FactionCardView } from "../components/FactionCardView";
 import { EncounterTableCardView } from "../components/EncounterTableCardView";
 import { LinkedEntities } from "../components/LinkedEntities";
+import { CharacterEditor } from "../components/CharacterEditor";
+import { ItemEditor } from "../components/ItemEditor";
+import { LocationEditor } from "../components/LocationEditor";
+import { QuestEditor } from "../components/QuestEditor";
+import { FactionEditor } from "../components/FactionEditor";
+import { EncounterTableEditor } from "../components/EncounterTableEditor";
 
 export type Mode = "characters" | "items" | "locations" | "quests" | "factions" | "encounters" | "notes";
 
@@ -69,6 +75,7 @@ export function RosterPage({
   const [tags, setTags] = useState("");
   const [assignedWorld, setAssignedWorld] = useState("");
   const [status, setStatus] = useState<"idle" | "saving">("idle");
+  const [editingContent, setEditingContent] = useState(false);
 
   function refresh() {
     const w = worldFilter || undefined;
@@ -116,6 +123,7 @@ export function RosterPage({
       setTags(selected.tags.join(", "));
       setAssignedWorld(selected.worldId ?? "");
     }
+    setEditingContent(false);
   }, [selected]);
 
   async function handleUpdate() {
@@ -192,7 +200,8 @@ export function RosterPage({
 
       <div className="panel result-panel">
         {!selected && <p className="hint">Select an entry to view details.</p>}
-        {selectedCharacter && (
+
+        {selectedCharacter && !editingContent && (
           <>
             <StatBlockView
               name={selectedCharacter.name}
@@ -202,11 +211,59 @@ export function RosterPage({
             <BackstoryView backstory={selectedCharacter.backstory} />
           </>
         )}
-        {selectedItem && <ItemCardView item={selectedItem} />}
-        {selectedLocation && <LocationCardView location={selectedLocation} />}
-        {selectedQuest && <QuestHookCardView quest={selectedQuest} />}
-        {selectedFaction && <FactionCardView faction={selectedFaction} />}
-        {selectedEncounter && <EncounterTableCardView table={selectedEncounter} />}
+        {selectedCharacter && editingContent && (
+          <CharacterEditor
+            character={selectedCharacter}
+            onSave={async (patch) => { await api.updateCharacter(selectedCharacter.id, patch); setEditingContent(false); refresh(); }}
+            onCancel={() => setEditingContent(false)}
+          />
+        )}
+
+        {selectedItem && !editingContent && <ItemCardView item={selectedItem} />}
+        {selectedItem && editingContent && (
+          <ItemEditor
+            value={selectedItem}
+            onSave={async (patch) => { await api.updateItem(selectedItem.id, patch); setEditingContent(false); refresh(); }}
+            onCancel={() => setEditingContent(false)}
+          />
+        )}
+
+        {selectedLocation && !editingContent && <LocationCardView location={selectedLocation} />}
+        {selectedLocation && editingContent && (
+          <LocationEditor
+            value={selectedLocation}
+            onSave={async (patch) => { await api.updateLocation(selectedLocation.id, patch); setEditingContent(false); refresh(); }}
+            onCancel={() => setEditingContent(false)}
+          />
+        )}
+
+        {selectedQuest && !editingContent && <QuestHookCardView quest={selectedQuest} />}
+        {selectedQuest && editingContent && (
+          <QuestEditor
+            value={selectedQuest}
+            onSave={async (patch) => { await api.updateQuest(selectedQuest.id, patch); setEditingContent(false); refresh(); }}
+            onCancel={() => setEditingContent(false)}
+          />
+        )}
+
+        {selectedFaction && !editingContent && <FactionCardView faction={selectedFaction} />}
+        {selectedFaction && editingContent && (
+          <FactionEditor
+            value={selectedFaction}
+            onSave={async (patch) => { await api.updateFaction(selectedFaction.id, patch); setEditingContent(false); refresh(); }}
+            onCancel={() => setEditingContent(false)}
+          />
+        )}
+
+        {selectedEncounter && !editingContent && <EncounterTableCardView table={selectedEncounter} />}
+        {selectedEncounter && editingContent && (
+          <EncounterTableEditor
+            value={selectedEncounter}
+            onSave={async (patch) => { await api.updateEncounterTable(selectedEncounter.id, patch); setEditingContent(false); refresh(); }}
+            onCancel={() => setEditingContent(false)}
+          />
+        )}
+
         {selectedNote && (
           <div className="statblock item-card">
             <h2 className="statblock-name">{selectedNote.title}</h2>
@@ -216,10 +273,15 @@ export function RosterPage({
             <p>{selectedNote.summary}</p>
             {selectedNote.looseThreads && <><h3 className="section-heading">Loose Threads</h3><p>{selectedNote.looseThreads}</p></>}
             {selectedNote.nextSteps && <><h3 className="section-heading">Next Steps</h3><p>{selectedNote.nextSteps}</p></>}
+            <p className="hint">Edit this note from the Notes tab.</p>
           </div>
         )}
 
-        {selected && (
+        {selected && !editingContent && mode !== "notes" && (
+          <button className="btn-secondary" onClick={() => setEditingContent(true)}>Edit Content</button>
+        )}
+
+        {selected && !editingContent && (
           <>
             <LinkedEntities type={MODE_TO_ENTITY_TYPE[mode]} id={selected.id} />
 

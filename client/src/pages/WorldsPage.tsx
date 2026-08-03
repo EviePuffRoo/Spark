@@ -1,6 +1,21 @@
 import { useEffect, useState } from "react";
 import { api, type WorldSummary } from "../api";
 
+function summarizeCounts(w: WorldSummary): string {
+  const parts: [number, string][] = [
+    [w.characterCount, "character"],
+    [w.itemCount, "item"],
+    [w.locationCount, "location"],
+    [w.questCount, "quest"],
+    [w.factionCount, "faction"],
+    [w.encounterTableCount, "encounter table"],
+    [w.sessionNoteCount, "session note"],
+  ];
+  const nonEmpty = parts.filter(([count]) => count > 0);
+  if (nonEmpty.length === 0) return "Empty so far";
+  return nonEmpty.map(([count, label]) => `${count} ${label}${count === 1 ? "" : "s"}`).join(" · ");
+}
+
 export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) => void }) {
   const [worlds, setWorlds] = useState<WorldSummary[]>([]);
   const [name, setName] = useState("");
@@ -35,7 +50,7 @@ export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) =
     <div className="page">
       <div className="panel">
         <h2>Worlds &amp; Campaigns</h2>
-        <p className="hint">Group your NPCs, monsters, items, locations, and quest hooks into worlds or campaigns as you build them out.</p>
+        <p className="hint">Group everything you create into worlds or campaigns as you build them out.</p>
 
         <div className="save-panel">
           <label className="field">
@@ -56,10 +71,7 @@ export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) =
               <div>
                 <div className="entity-name">{w.name}</div>
                 {w.description && <div className="entity-meta">{w.description}</div>}
-                <div className="entity-meta">
-                  {w.characterCount} character{w.characterCount === 1 ? "" : "s"} &middot; {w.itemCount} item{w.itemCount === 1 ? "" : "s"}
-                  {" "}&middot; {w.locationCount} location{w.locationCount === 1 ? "" : "s"} &middot; {w.questCount} quest{w.questCount === 1 ? "" : "s"}
-                </div>
+                <div className="entity-meta">{summarizeCounts(w)}</div>
               </div>
               <div className="button-row">
                 <button className="btn-secondary" onClick={() => onViewRoster(w.id)}>View Roster</button>

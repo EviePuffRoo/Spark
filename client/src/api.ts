@@ -3,6 +3,9 @@ import type {
   Item, GenerateItemRequest, GeneratedItem,
   Location, GenerateLocationRequest, GeneratedLocation,
   QuestHook, GenerateQuestHookRequest, GeneratedQuestHook,
+  Faction, GenerateFactionRequest, GeneratedFaction,
+  EncounterTable, GenerateEncounterTableRequest, GeneratedEncounterTable,
+  SessionNote, SessionNoteInput,
 } from "@spark/shared";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -29,6 +32,8 @@ export interface ReferenceData {
   locationCategories: { id: string; name: string }[];
   questTypes: string[];
   questTiers: string[];
+  factionTypes: string[];
+  encounterTerrains: { id: string; name: string }[];
 }
 
 export interface WorldSummary extends World {
@@ -36,6 +41,9 @@ export interface WorldSummary extends World {
   itemCount: number;
   locationCount: number;
   questCount: number;
+  factionCount: number;
+  encounterTableCount: number;
+  sessionNoteCount: number;
 }
 
 export const api = {
@@ -48,6 +56,10 @@ export const api = {
     request<GeneratedLocation>("/generate-location", { method: "POST", body: JSON.stringify(body) }),
   generateQuest: (body: GenerateQuestHookRequest) =>
     request<GeneratedQuestHook>("/generate-quest", { method: "POST", body: JSON.stringify(body) }),
+  generateFaction: (body: GenerateFactionRequest) =>
+    request<GeneratedFaction>("/generate-faction", { method: "POST", body: JSON.stringify(body) }),
+  generateEncounterTable: (body: GenerateEncounterTableRequest) =>
+    request<GeneratedEncounterTable>("/generate-encounter-table", { method: "POST", body: JSON.stringify(body) }),
 
   listCharacters: (worldId?: string) =>
     request<Character[]>(`/characters${worldId ? `?worldId=${worldId}` : ""}`),
@@ -84,6 +96,33 @@ export const api = {
   updateQuest: (id: string, patch: Partial<QuestHook>) =>
     request<QuestHook>(`/quests/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   deleteQuest: (id: string) => request<void>(`/quests/${id}`, { method: "DELETE" }),
+
+  listFactions: (worldId?: string) =>
+    request<Faction[]>(`/factions${worldId ? `?worldId=${worldId}` : ""}`),
+  getFaction: (id: string) => request<Faction>(`/factions/${id}`),
+  saveFaction: (faction: GeneratedFaction & { worldId?: string | null; tags?: string[]; notes?: string }) =>
+    request<Faction>("/factions", { method: "POST", body: JSON.stringify(faction) }),
+  updateFaction: (id: string, patch: Partial<Faction>) =>
+    request<Faction>(`/factions/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+  deleteFaction: (id: string) => request<void>(`/factions/${id}`, { method: "DELETE" }),
+
+  listEncounterTables: (worldId?: string) =>
+    request<EncounterTable[]>(`/encounter-tables${worldId ? `?worldId=${worldId}` : ""}`),
+  getEncounterTable: (id: string) => request<EncounterTable>(`/encounter-tables/${id}`),
+  saveEncounterTable: (table: GeneratedEncounterTable & { worldId?: string | null; tags?: string[]; notes?: string }) =>
+    request<EncounterTable>("/encounter-tables", { method: "POST", body: JSON.stringify(table) }),
+  updateEncounterTable: (id: string, patch: Partial<EncounterTable>) =>
+    request<EncounterTable>(`/encounter-tables/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+  deleteEncounterTable: (id: string) => request<void>(`/encounter-tables/${id}`, { method: "DELETE" }),
+
+  listSessionNotes: (worldId?: string) =>
+    request<SessionNote[]>(`/session-notes${worldId ? `?worldId=${worldId}` : ""}`),
+  getSessionNote: (id: string) => request<SessionNote>(`/session-notes/${id}`),
+  saveSessionNote: (note: SessionNoteInput & { worldId?: string | null; tags?: string[]; notes?: string }) =>
+    request<SessionNote>("/session-notes", { method: "POST", body: JSON.stringify(note) }),
+  updateSessionNote: (id: string, patch: Partial<SessionNote>) =>
+    request<SessionNote>(`/session-notes/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+  deleteSessionNote: (id: string) => request<void>(`/session-notes/${id}`, { method: "DELETE" }),
 
   listWorlds: () => request<WorldSummary[]>("/worlds"),
   getWorld: (id: string) => request<World>(`/worlds/${id}`),

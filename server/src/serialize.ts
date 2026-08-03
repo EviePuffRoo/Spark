@@ -1,5 +1,8 @@
-import type { Character as CharacterRow, Item as ItemRow, Location as LocationRow, QuestHook as QuestHookRow } from "@prisma/client";
-import type { Character, Item, Location, QuestHook } from "@spark/shared";
+import type {
+  Character as CharacterRow, Item as ItemRow, Location as LocationRow, QuestHook as QuestHookRow,
+  Faction as FactionRow, EncounterTable as EncounterTableRow, SessionNote as SessionNoteRow,
+} from "@prisma/client";
+import type { Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote } from "@spark/shared";
 
 export function toCharacterDTO(row: CharacterRow): Character {
   return {
@@ -49,6 +52,53 @@ export function toLocationDTO(row: LocationRow): Location {
     notableFeature: row.notableFeature,
     keeper: row.keeper,
     rumor: row.rumor,
+    worldId: row.worldId,
+    tags: JSON.parse(row.tags),
+    notes: row.notes ?? undefined,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+export function toFactionDTO(row: FactionRow): Faction {
+  return {
+    id: row.id,
+    name: row.name,
+    factionType: row.factionType,
+    agenda: row.agenda,
+    methods: row.methods,
+    publicFace: row.publicFace,
+    hook: row.hook,
+    worldId: row.worldId,
+    tags: JSON.parse(row.tags),
+    notes: row.notes ?? undefined,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+export function toEncounterTableDTO(row: EncounterTableRow): EncounterTable {
+  return {
+    id: row.id,
+    name: row.name,
+    terrain: row.terrain,
+    entries: JSON.parse(row.entries),
+    worldId: row.worldId,
+    tags: JSON.parse(row.tags),
+    notes: row.notes ?? undefined,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+export function toSessionNoteDTO(row: SessionNoteRow): SessionNote {
+  return {
+    id: row.id,
+    title: row.title,
+    sessionLabel: row.sessionLabel ?? undefined,
+    summary: row.summary,
+    looseThreads: row.looseThreads ?? undefined,
+    nextSteps: row.nextSteps ?? undefined,
     worldId: row.worldId,
     tags: JSON.parse(row.tags),
     notes: row.notes ?? undefined,

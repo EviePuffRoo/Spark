@@ -1,19 +1,24 @@
 import { useEffect, useState } from "react";
-import type { Character, Item, Location, QuestHook } from "@spark/shared";
+import type { Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { StatBlockView } from "../components/StatBlockView";
 import { BackstoryView } from "../components/BackstoryView";
 import { ItemCardView } from "../components/ItemCardView";
 import { LocationCardView } from "../components/LocationCardView";
 import { QuestHookCardView } from "../components/QuestHookCardView";
+import { FactionCardView } from "../components/FactionCardView";
+import { EncounterTableCardView } from "../components/EncounterTableCardView";
 
-type Mode = "characters" | "items" | "locations" | "quests";
+type Mode = "characters" | "items" | "locations" | "quests" | "factions" | "encounters" | "notes";
 
 const MODE_LABELS: Record<Mode, string> = {
   characters: "Characters",
   items: "Items",
   locations: "Locations",
   quests: "Quests",
+  factions: "Factions",
+  encounters: "Encounters",
+  notes: "Notes",
 };
 
 export function RosterPage({ worldFilter, onWorldFilterChange }: { worldFilter: string; onWorldFilterChange: (v: string) => void }) {
@@ -22,18 +27,25 @@ export function RosterPage({ worldFilter, onWorldFilterChange }: { worldFilter: 
   const [items, setItems] = useState<Item[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [quests, setQuests] = useState<QuestHook[]>([]);
+  const [factions, setFactions] = useState<Faction[]>([]);
+  const [encounters, setEncounters] = useState<EncounterTable[]>([]);
+  const [notes, setNotes] = useState<SessionNote[]>([]);
   const [worlds, setWorlds] = useState<WorldSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [notes, setNotes] = useState("");
+  const [metaNotes, setMetaNotes] = useState("");
   const [tags, setTags] = useState("");
   const [assignedWorld, setAssignedWorld] = useState("");
   const [status, setStatus] = useState<"idle" | "saving">("idle");
 
   function refresh() {
-    api.listCharacters(worldFilter || undefined).then(setCharacters).catch(() => {});
-    api.listItems(worldFilter || undefined).then(setItems).catch(() => {});
-    api.listLocations(worldFilter || undefined).then(setLocations).catch(() => {});
-    api.listQuests(worldFilter || undefined).then(setQuests).catch(() => {});
+    const w = worldFilter || undefined;
+    api.listCharacters(w).then(setCharacters).catch(() => {});
+    api.listItems(w).then(setItems).catch(() => {});
+    api.listLocations(w).then(setLocations).catch(() => {});
+    api.listQuests(w).then(setQuests).catch(() => {});
+    api.listFactions(w).then(setFactions).catch(() => {});
+    api.listEncounterTables(w).then(setEncounters).catch(() => {});
+    api.listSessionNotes(w).then(setNotes).catch(() => {});
     api.listWorlds().then(setWorlds).catch(() => {});
   }
 
@@ -48,12 +60,17 @@ export function RosterPage({ worldFilter, onWorldFilterChange }: { worldFilter: 
   const selectedItem = mode === "items" ? items.find((i) => i.id === selectedId) ?? null : null;
   const selectedLocation = mode === "locations" ? locations.find((l) => l.id === selectedId) ?? null : null;
   const selectedQuest = mode === "quests" ? quests.find((q) => q.id === selectedId) ?? null : null;
-  const selected = selectedCharacter ?? selectedItem ?? selectedLocation ?? selectedQuest;
-  const selectedDisplayName = selectedCharacter?.name ?? selectedItem?.name ?? selectedLocation?.name ?? selectedQuest?.title ?? "";
+  const selectedFaction = mode === "factions" ? factions.find((f) => f.id === selectedId) ?? null : null;
+  const selectedEncounter = mode === "encounters" ? encounters.find((e) => e.id === selectedId) ?? null : null;
+  const selectedNote = mode === "notes" ? notes.find((n) => n.id === selectedId) ?? null : null;
+  const selected = selectedCharacter ?? selectedItem ?? selectedLocation ?? selectedQuest ?? selectedFaction ?? selectedEncounter ?? selectedNote;
+  const selectedDisplayName =
+    selectedCharacter?.name ?? selectedItem?.name ?? selectedLocation?.name ?? selectedQuest?.title ??
+    selectedFaction?.name ?? selectedEncounter?.name ?? selectedNote?.title ?? "";
 
   useEffect(() => {
     if (selected) {
-      setNotes(selected.notes ?? "");
+      setMetaNotes(selected.notes ?? "");
       setTags(selected.tags.join(", "));
       setAssignedWorld(selected.worldId ?? "");
     }
@@ -62,11 +79,14 @@ export function RosterPage({ worldFilter, onWorldFilterChange }: { worldFilter: 
   async function handleUpdate() {
     if (!selected) return;
     setStatus("saving");
-    const patch = { notes, tags: tags.split(",").map((t) => t.trim()).filter(Boolean), worldId: assignedWorld || null };
+    const patch = { notes: metaNotes, tags: tags.split(",").map((t) => t.trim()).filter(Boolean), worldId: assignedWorld || null };
     if (mode === "characters") await api.updateCharacter(selected.id, patch);
     else if (mode === "items") await api.updateItem(selected.id, patch);
     else if (mode === "locations") await api.updateLocation(selected.id, patch);
-    else await api.updateQuest(selected.id, patch);
+    else if (mode === "quests") await api.updateQuest(selected.id, patch);
+    else if (mode === "factions") await api.updateFaction(selected.id, patch);
+    else if (mode === "encounters") await api.updateEncounterTable(selected.id, patch);
+    else await api.updateSessionNote(selected.id, patch);
     setStatus("idle");
     refresh();
   }
@@ -77,7 +97,10 @@ export function RosterPage({ worldFilter, onWorldFilterChange }: { worldFilter: 
     if (mode === "characters") await api.deleteCharacter(selected.id);
     else if (mode === "items") await api.deleteItem(selected.id);
     else if (mode === "locations") await api.deleteLocation(selected.id);
-    else await api.deleteQuest(selected.id);
+    else if (mode === "quests") await api.deleteQuest(selected.id);
+    else if (mode === "factions") await api.deleteFaction(selected.id);
+    else if (mode === "encounters") await api.deleteEncounterTable(selected.id);
+    else await api.deleteSessionNote(selected.id);
     setSelectedId(null);
     refresh();
   }
@@ -86,7 +109,10 @@ export function RosterPage({ worldFilter, onWorldFilterChange }: { worldFilter: 
     mode === "characters" ? characters.map((c) => ({ id: c.id, name: c.name, meta: `${c.kind === "npc" ? c.race : c.templateName} · CR ${c.statBlock.challengeRating}` })) :
     mode === "items" ? items.map((i) => ({ id: i.id, name: i.name, meta: `${i.category} · ${i.rarity}` })) :
     mode === "locations" ? locations.map((l) => ({ id: l.id, name: l.name, meta: `${l.category} · ${l.locationType}` })) :
-    quests.map((q) => ({ id: q.id, name: q.title, meta: `${q.questType} · ${q.tier}` }));
+    mode === "quests" ? quests.map((q) => ({ id: q.id, name: q.title, meta: `${q.questType} · ${q.tier}` })) :
+    mode === "factions" ? factions.map((f) => ({ id: f.id, name: f.name, meta: f.factionType })) :
+    mode === "encounters" ? encounters.map((e) => ({ id: e.id, name: e.name, meta: `${e.terrain} · d${e.entries.length}` })) :
+    notes.map((n) => ({ id: n.id, name: n.title, meta: n.sessionLabel || new Date(n.createdAt).toLocaleDateString() }));
 
   return (
     <div className="page roster-layout">
@@ -123,7 +149,7 @@ export function RosterPage({ worldFilter, onWorldFilterChange }: { worldFilter: 
       </div>
 
       <div className="panel result-panel">
-        {!selected && <p className="hint">Select a {mode === "characters" ? "character" : mode.slice(0, -1)} to view details.</p>}
+        {!selected && <p className="hint">Select an entry to view details.</p>}
         {selectedCharacter && (
           <>
             <StatBlockView
@@ -137,6 +163,19 @@ export function RosterPage({ worldFilter, onWorldFilterChange }: { worldFilter: 
         {selectedItem && <ItemCardView item={selectedItem} />}
         {selectedLocation && <LocationCardView location={selectedLocation} />}
         {selectedQuest && <QuestHookCardView quest={selectedQuest} />}
+        {selectedFaction && <FactionCardView faction={selectedFaction} />}
+        {selectedEncounter && <EncounterTableCardView table={selectedEncounter} />}
+        {selectedNote && (
+          <div className="statblock item-card">
+            <h2 className="statblock-name">{selectedNote.title}</h2>
+            {selectedNote.sessionLabel && <p className="statblock-subtitle">{selectedNote.sessionLabel}</p>}
+            <hr className="rule gold" />
+            <h3 className="section-heading">Summary</h3>
+            <p>{selectedNote.summary}</p>
+            {selectedNote.looseThreads && <><h3 className="section-heading">Loose Threads</h3><p>{selectedNote.looseThreads}</p></>}
+            {selectedNote.nextSteps && <><h3 className="section-heading">Next Steps</h3><p>{selectedNote.nextSteps}</p></>}
+          </div>
+        )}
 
         {selected && (
           <div className="save-panel">
@@ -154,7 +193,7 @@ export function RosterPage({ worldFilter, onWorldFilterChange }: { worldFilter: 
             </label>
             <label className="field">
               <span>Notes</span>
-              <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
+              <textarea value={metaNotes} onChange={(e) => setMetaNotes(e.target.value)} rows={3} />
             </label>
             <div className="button-row">
               <button className="btn-primary" onClick={handleUpdate} disabled={status === "saving"}>

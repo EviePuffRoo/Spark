@@ -13,10 +13,13 @@ model World {
   description String?
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
-  characters  Character[]
-  items       Item[]
-  locations   Location[]
-  questHooks  QuestHook[]
+  characters      Character[]
+  items           Item[]
+  locations       Location[]
+  questHooks      QuestHook[]
+  factions        Faction[]
+  encounterTables EncounterTable[]
+  sessionNotes    SessionNote[]
 }
 
 model Character {
@@ -87,6 +90,56 @@ model QuestHook {
   objective    String
   complication String
   reward       String
+  tags         String   @default("[]")
+  notes        String?
+  worldId      String?
+  world        World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([worldId])
+}
+
+model Faction {
+  id          String   @id @default(cuid())
+  name        String
+  factionType String
+  agenda      String
+  methods     String
+  publicFace  String
+  hook        String
+  tags        String   @default("[]")
+  notes       String?
+  worldId     String?
+  world       World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([worldId])
+}
+
+model EncounterTable {
+  id        String   @id @default(cuid())
+  name      String
+  terrain   String
+  entries   String
+  tags      String   @default("[]")
+  notes     String?
+  worldId   String?
+  world     World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([worldId])
+}
+
+model SessionNote {
+  id           String   @id @default(cuid())
+  title        String
+  sessionLabel String?
+  summary      String
+  looseThreads String?
+  nextSteps    String?
   tags         String   @default("[]")
   notes        String?
   worldId      String?

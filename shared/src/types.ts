@@ -171,3 +171,70 @@ export interface GenerateQuestHookRequest {
   title?: string;
   fullyRandom?: boolean;
 }
+
+export interface GeneratedFaction {
+  name: string;
+  factionType: string;
+  agenda: string;
+  methods: string;
+  publicFace: string;
+  hook: string;
+}
+
+export interface Faction extends GeneratedFaction {
+  id: string;
+  worldId?: string | null;
+  tags: string[];
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GenerateFactionRequest {
+  factionType?: string;
+  name?: string;
+  fullyRandom?: boolean;
+}
+
+export interface EncounterTableEntry {
+  roll: string;
+  description: string;
+}
+
+export interface GeneratedEncounterTable {
+  name: string;
+  terrain: string;
+  entries: EncounterTableEntry[];
+}
+
+export interface EncounterTable extends GeneratedEncounterTable {
+  id: string;
+  worldId?: string | null;
+  tags: string[];
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GenerateEncounterTableRequest {
+  terrain?: string;
+  name?: string;
+  fullyRandom?: boolean;
+}
+
+export interface SessionNoteInput {
+  title: string;
+  sessionLabel?: string;
+  summary: string;
+  looseThreads?: string;
+  nextSteps?: string;
+}
+
+export interface SessionNote extends SessionNoteInput {
+  id: string;
+  worldId?: string | null;
+  tags: string[];
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}

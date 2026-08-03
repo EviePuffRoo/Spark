@@ -45,6 +45,7 @@ const generateLimiter = rateLimit({
   limit: 60,
   standardHeaders: true,
   legacyHeaders: false,
+  message: { error: "You're generating a bit fast — please wait a moment and try again." },
 });
 
 app.use("/api/generate", generateLimiter, generateRouter);

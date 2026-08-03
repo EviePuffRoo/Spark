@@ -14,6 +14,7 @@ const authLimiter = rateLimit({
   limit: 20,
   standardHeaders: true,
   legacyHeaders: false,
+  message: { error: "Too many attempts — please wait a few minutes and try again." },
 });
 
 function toAuthUser(user: { id: string; username: string }): AuthUser {

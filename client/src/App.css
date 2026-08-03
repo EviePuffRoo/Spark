@@ -853,3 +853,123 @@ textarea {
   font-size: 0.9rem;
   pointer-events: none;
 }
+
+/* Dice roller */
+.dice-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.dice-presets button {
+  min-width: 48px;
+}
+
+.dice-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.dice-input-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.dice-history {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+}
+
+.dice-history-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--border);
+}
+
+.dice-history-row:last-child {
+  border-bottom: none;
+}
+
+/* Initiative tracker */
+.initiative-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.round-banner {
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.combatant-list {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+}
+
+.combatant-row {
+  padding: 12px;
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-panel);
+}
+
+.combatant-row.active-turn {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.combatant-row.down {
+  opacity: 0.5;
+}
+
+.combatant-row.down .combatant-name {
+  text-decoration: line-through;
+}
+
+.combatant-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.combatant-initiative {
+  width: 56px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.combatant-name {
+  font-weight: 700;
+  flex: 1;
+  min-width: 100px;
+}
+
+.combatant-notes {
+  flex: 1;
+  min-width: 140px;
+}
+
+.combatant-hp {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.combatant-hp-value {
+  font-weight: 600;
+  min-width: 90px;
+}
+
+.combatant-hp-input {
+  width: 80px;
+}

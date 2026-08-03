@@ -4,6 +4,12 @@ import { api } from "../api";
 import { EntitySearchPicker } from "./EntitySearchPicker";
 import { useLocalStorage } from "../useLocalStorage";
 
+const CONDITIONS = [
+  "Blinded", "Charmed", "Deafened", "Exhausted", "Frightened", "Grappled",
+  "Incapacitated", "Invisible", "Paralyzed", "Petrified", "Poisoned",
+  "Prone", "Restrained", "Stunned", "Unconscious",
+];
+
 interface Combatant {
   id: string;
   name: string;
@@ -11,6 +17,7 @@ interface Combatant {
   maxHp: number;
   currentHp: number;
   armorClass?: number;
+  conditions: string[];
   notes: string;
 }
 
@@ -39,8 +46,12 @@ export function InitiativeTracker() {
   const [customMaxHp, setCustomMaxHp] = useState(10);
   const [customAc, setCustomAc] = useState<number | "">("");
   const [hpDelta, setHpDelta] = useState<Record<string, string>>({});
+  const [openConditionsFor, setOpenConditionsFor] = useState<string | null>(null);
 
-  const sorted = [...encounter.combatants].sort((a, b) => b.initiative - a.initiative);
+  // Older saved encounters (before conditions existed) won't have this field.
+  const sorted = [...encounter.combatants]
+    .map((c) => ({ ...c, conditions: c.conditions ?? [] }))
+    .sort((a, b) => b.initiative - a.initiative);
   const activeId = sorted.length > 0 ? sorted[encounter.turnIndex % sorted.length]?.id : null;
 
   function addCombatant(c: Combatant) {
@@ -59,6 +70,7 @@ export function InitiativeTracker() {
         maxHp: character.statBlock.hitPointsAverage,
         currentHp: character.statBlock.hitPointsAverage,
         armorClass: character.statBlock.armorClass,
+        conditions: [],
         notes: "",
       });
     } else if (type === "playerCharacter") {
@@ -70,6 +82,7 @@ export function InitiativeTracker() {
         maxHp: pc.maxHp,
         currentHp: pc.maxHp,
         armorClass: pc.armorClass,
+        conditions: [],
         notes: "",
       });
     }
@@ -84,6 +97,7 @@ export function InitiativeTracker() {
       maxHp: Number(customMaxHp) || 1,
       currentHp: Number(customMaxHp) || 1,
       armorClass: customAc === "" ? undefined : Number(customAc),
+      conditions: [],
       notes: "",
     });
     setCustomName("");
@@ -95,6 +109,17 @@ export function InitiativeTracker() {
 
   function updateCombatant(id: string, patch: Partial<Combatant>) {
     setEncounter((e) => ({ ...e, combatants: e.combatants.map((c) => (c.id === id ? { ...c, ...patch } : c)) }));
+  }
+
+  function toggleCondition(id: string, condition: string) {
+    setEncounter((e) => ({
+      ...e,
+      combatants: e.combatants.map((c) => {
+        if (c.id !== id) return c;
+        const conditions = c.conditions ?? [];
+        return { ...c, conditions: conditions.includes(condition) ? conditions.filter((x) => x !== condition) : [...conditions, condition] };
+      }),
+    }));
   }
 
   function adjustHp(id: string, delta: number) {
@@ -193,15 +218,44 @@ export function InitiativeTracker() {
               />
               <span className="combatant-name">{c.name}</span>
               {c.armorClass !== undefined && <span className="entity-meta">AC {c.armorClass}</span>}
+              <button className="btn-danger" onClick={() => removeCombatant(c.id)} aria-label={`Remove ${c.name}`}>Remove</button>
+            </div>
+
+            <div className="combatant-conditions">
+              {c.conditions.map((cond) => (
+                <span key={cond} className="condition-chip">
+                  {cond}
+                  <button onClick={() => toggleCondition(c.id, cond)} aria-label={`Remove ${cond} from ${c.name}`}>×</button>
+                </span>
+              ))}
+              <button className="btn-secondary condition-toggle" onClick={() => setOpenConditionsFor(openConditionsFor === c.id ? null : c.id)}>
+                + Condition
+              </button>
+              {openConditionsFor === c.id && (
+                <div className="condition-picker">
+                  {CONDITIONS.map((cond) => (
+                    <button
+                      key={cond}
+                      className={c.conditions.includes(cond) ? "active" : ""}
+                      onClick={() => toggleCondition(c.id, cond)}
+                    >
+                      {cond}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="combatant-notes-row">
               <input
                 type="text"
                 className="combatant-notes"
                 value={c.notes}
                 onChange={(e) => updateCombatant(c.id, { notes: e.target.value })}
-                placeholder="conditions, notes…"
+                placeholder="other notes…"
               />
-              <button className="btn-danger" onClick={() => removeCombatant(c.id)} aria-label={`Remove ${c.name}`}>Remove</button>
             </div>
+
             <div className="combatant-hp">
               <span className="combatant-hp-value">{c.currentHp} / {c.maxHp} HP</span>
               <input

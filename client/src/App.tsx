@@ -10,10 +10,11 @@ import { SessionNotesPage } from "./pages/SessionNotesPage";
 import { RosterPage, type RosterSelection } from "./pages/RosterPage";
 import { WorldsPage } from "./pages/WorldsPage";
 import { CombatPage } from "./pages/CombatPage";
+import { MyCharacterPage } from "./pages/MyCharacterPage";
 import { GlobalSearch } from "./components/GlobalSearch";
 import { PrintPane, type PrintItem } from "./components/PrintPane";
 
-type Tab = "create" | "notes" | "roster" | "worlds" | "combat";
+type Tab = "create" | "notes" | "roster" | "myCharacter" | "worlds" | "combat";
 
 function App() {
   const { user, loading, pendingRecoveryCode } = useAuth();
@@ -55,6 +56,7 @@ function App() {
           <button className={tab === "create" ? "active" : ""} aria-current={tab === "create" ? "true" : undefined} onClick={() => setTab("create")}>Create</button>
           <button className={tab === "notes" ? "active" : ""} aria-current={tab === "notes" ? "true" : undefined} onClick={() => setTab("notes")}>Notes</button>
           <button className={tab === "roster" ? "active" : ""} aria-current={tab === "roster" ? "true" : undefined} onClick={() => setTab("roster")}>Roster</button>
+          <button className={tab === "myCharacter" ? "active" : ""} aria-current={tab === "myCharacter" ? "true" : undefined} onClick={() => setTab("myCharacter")}>My Character</button>
           <button className={tab === "worlds" ? "active" : ""} aria-current={tab === "worlds" ? "true" : undefined} onClick={() => setTab("worlds")}>Worlds</button>
           <button className={tab === "combat" ? "active" : ""} aria-current={tab === "combat" ? "true" : undefined} onClick={() => setTab("combat")}>Combat</button>
         </nav>
@@ -73,6 +75,7 @@ function App() {
             onPrint={setPrintItems}
           />
         )}
+        {tab === "myCharacter" && <MyCharacterPage onViewRoster={viewRosterForWorld} />}
         {tab === "worlds" && <WorldsPage onViewRoster={viewRosterForWorld} />}
         {tab === "combat" && <CombatPage />}
       </main>

@@ -26,7 +26,7 @@ sessionNotesRouter.get("/:id", async (req, res) => {
 
 sessionNotesRouter.post("/", async (req, res) => {
   const body = req.body ?? {};
-  const { title, sessionLabel, summary, looseThreads, nextSteps, worldId, tags, notes } = body;
+  const { title, sessionLabel, sessionDate, summary, looseThreads, nextSteps, worldId, tags, notes } = body;
 
   if (!title || !summary) {
     return res.status(400).json({ error: "Title and summary are required" });
@@ -36,6 +36,7 @@ sessionNotesRouter.post("/", async (req, res) => {
     data: {
       title, summary,
       sessionLabel: sessionLabel ?? null,
+      sessionDate: sessionDate ? new Date(sessionDate) : null,
       looseThreads: looseThreads ?? null,
       nextSteps: nextSteps ?? null,
       worldId: worldId ?? null,
@@ -54,6 +55,7 @@ sessionNotesRouter.patch("/:id", async (req, res) => {
   for (const field of ["title", "sessionLabel", "summary", "looseThreads", "nextSteps", "notes", "hiddenFromParty"] as const) {
     if (field in body) data[field] = body[field];
   }
+  if ("sessionDate" in body) data.sessionDate = body.sessionDate ? new Date(body.sessionDate) : null;
   if ("worldId" in body) data.worldId = body.worldId ?? null;
   if ("tags" in body) data.tags = JSON.stringify(Array.isArray(body.tags) ? body.tags : []);
 

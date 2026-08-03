@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import type { SessionNote } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
+import { SessionTimelineView } from "../components/SessionTimelineView";
 
 const BLANK = {
   title: "",
   sessionLabel: "",
+  sessionDate: "",
   summary: "",
   looseThreads: "",
   nextSteps: "",
@@ -20,6 +22,7 @@ export function SessionNotesPage() {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "saving">("idle");
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<"list" | "timeline">("list");
 
   function refresh() {
     api.listSessionNotes().then(setNotes).catch((e) => setError(e.message)).finally(() => setLoading(false));
@@ -38,12 +41,18 @@ export function SessionNotesPage() {
     setForm({
       title: note.title,
       sessionLabel: note.sessionLabel ?? "",
+      sessionDate: note.sessionDate ?? "",
       summary: note.summary,
       looseThreads: note.looseThreads ?? "",
       nextSteps: note.nextSteps ?? "",
       worldId: note.worldId ?? "",
       tags: note.tags.join(", "),
     });
+  }
+
+  function openInEditor(note: SessionNote) {
+    startEdit(note);
+    setViewMode("list");
   }
 
   async function handleSave() {
@@ -56,6 +65,7 @@ export function SessionNotesPage() {
     const payload = {
       title: form.title.trim(),
       sessionLabel: form.sessionLabel.trim() || undefined,
+      sessionDate: form.sessionDate || undefined,
       summary: form.summary.trim(),
       looseThreads: form.looseThreads.trim() || undefined,
       nextSteps: form.nextSteps.trim() || undefined,
@@ -86,69 +96,84 @@ export function SessionNotesPage() {
 
   return (
     <div className="page">
-      <div className="generator-layout">
-        <div className="panel">
-          <h2>{editingId ? "Edit Session Note" : "New Session Note"}</h2>
-          <p className="hint">A quick recap so you never open a session unsure what happened last time.</p>
+      <div className="tabs forge-mode-tabs">
+        <button className={viewMode === "list" ? "active" : ""} aria-current={viewMode === "list" ? "true" : undefined} onClick={() => setViewMode("list")}>List</button>
+        <button className={viewMode === "timeline" ? "active" : ""} aria-current={viewMode === "timeline" ? "true" : undefined} onClick={() => setViewMode("timeline")}>Timeline</button>
+      </div>
 
-          <label className="field">
-            <span>Title</span>
-            <input type="text" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="The Fall of Blackwater Keep" />
-          </label>
-          <label className="field">
-            <span>Session label (optional)</span>
-            <input type="text" value={form.sessionLabel} onChange={(e) => setForm({ ...form, sessionLabel: e.target.value })} placeholder="Session 12, or a date" />
-          </label>
-          <label className="field">
-            <span>Summary</span>
-            <textarea value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} rows={4} placeholder="What happened this session…" />
-          </label>
-          <label className="field">
-            <span>Loose threads (optional)</span>
-            <textarea value={form.looseThreads} onChange={(e) => setForm({ ...form, looseThreads: e.target.value })} rows={3} placeholder="Cliffhangers, unresolved questions…" />
-          </label>
-          <label className="field">
-            <span>Next steps (optional)</span>
-            <textarea value={form.nextSteps} onChange={(e) => setForm({ ...form, nextSteps: e.target.value })} rows={3} placeholder="What's planned for next time…" />
-          </label>
-          <label className="field">
-            <span>World (optional)</span>
-            <select value={form.worldId} onChange={(e) => setForm({ ...form, worldId: e.target.value })}>
-              <option value="">Unassigned</option>
-              {worlds.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
-            </select>
-          </label>
-          <label className="field">
-            <span>Tags</span>
-            <input type="text" value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} placeholder="act-2, milestone" />
-          </label>
+      {viewMode === "timeline" && (
+        <SessionTimelineView notes={notes} worlds={worlds} onSelectNote={openInEditor} />
+      )}
 
-          {error && <p className="error">{error}</p>}
-          <div className="button-row">
-            <button className="btn-primary" onClick={handleSave} disabled={status === "saving"}>
-              {status === "saving" ? "Saving…" : editingId ? "Update Note" : "Save Note"}
-            </button>
-            {editingId && <button className="btn-secondary" onClick={startNew}>New Note</button>}
+      {viewMode === "list" && (
+        <div className="generator-layout">
+          <div className="panel">
+            <h2>{editingId ? "Edit Session Note" : "New Session Note"}</h2>
+            <p className="hint">A quick recap so you never open a session unsure what happened last time.</p>
+
+            <label className="field">
+              <span>Title</span>
+              <input type="text" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="The Fall of Blackwater Keep" />
+            </label>
+            <label className="field">
+              <span>Session label (optional)</span>
+              <input type="text" value={form.sessionLabel} onChange={(e) => setForm({ ...form, sessionLabel: e.target.value })} placeholder="Session 12, or a date" />
+            </label>
+            <label className="field">
+              <span>Session date (optional)</span>
+              <input type="date" value={form.sessionDate} onChange={(e) => setForm({ ...form, sessionDate: e.target.value })} />
+            </label>
+            <label className="field">
+              <span>Summary</span>
+              <textarea value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} rows={4} placeholder="What happened this session…" />
+            </label>
+            <label className="field">
+              <span>Loose threads (optional)</span>
+              <textarea value={form.looseThreads} onChange={(e) => setForm({ ...form, looseThreads: e.target.value })} rows={3} placeholder="Cliffhangers, unresolved questions…" />
+            </label>
+            <label className="field">
+              <span>Next steps (optional)</span>
+              <textarea value={form.nextSteps} onChange={(e) => setForm({ ...form, nextSteps: e.target.value })} rows={3} placeholder="What's planned for next time…" />
+            </label>
+            <label className="field">
+              <span>World (optional)</span>
+              <select value={form.worldId} onChange={(e) => setForm({ ...form, worldId: e.target.value })}>
+                <option value="">Unassigned</option>
+                {worlds.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
+              </select>
+            </label>
+            <label className="field">
+              <span>Tags</span>
+              <input type="text" value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} placeholder="act-2, milestone" />
+            </label>
+
+            {error && <p className="error">{error}</p>}
+            <div className="button-row">
+              <button className="btn-primary" onClick={handleSave} disabled={status === "saving"}>
+                {status === "saving" ? "Saving…" : editingId ? "Update Note" : "Save Note"}
+              </button>
+              {editingId && <button className="btn-secondary" onClick={startNew}>New Note</button>}
+            </div>
+          </div>
+
+          <div className="panel result-panel">
+            <h3 className="section-heading">Recent Session Notes</h3>
+            {loading && <p className="hint">Loading…</p>}
+            {!loading && notes.length === 0 && <p className="hint">No session notes yet.</p>}
+            <ul className="entity-list">
+              {notes.map((n) => (
+                <li key={n.id} className="world-row">
+                  <button className="entity-item" style={{ border: "none", flex: 1 }} onClick={() => startEdit(n)}>
+                    <span className="entity-name">{n.title}</span>
+                    <span className="entity-meta">{n.sessionLabel || new Date(n.createdAt).toLocaleDateString()}</span>
+                  </button>
+                  <button className="btn-danger" onClick={() => handleDelete(n.id)} aria-label={`Delete ${n.title}`}>Delete</button>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
-
-        <div className="panel result-panel">
-          <h3 className="section-heading">Recent Session Notes</h3>
-          {loading && <p className="hint">Loading…</p>}
-          {!loading && notes.length === 0 && <p className="hint">No session notes yet.</p>}
-          <ul className="entity-list">
-            {notes.map((n) => (
-              <li key={n.id} className="world-row">
-                <button className="entity-item" style={{ border: "none", flex: 1 }} onClick={() => startEdit(n)}>
-                  <span className="entity-name">{n.title}</span>
-                  <span className="entity-meta">{n.sessionLabel || new Date(n.createdAt).toLocaleDateString()}</span>
-                </button>
-                <button className="btn-danger" onClick={() => handleDelete(n.id)} aria-label={`Delete ${n.title}`}>Delete</button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

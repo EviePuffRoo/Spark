@@ -168,6 +168,7 @@ export const api = {
 
   listPlayerCharacters: (worldId?: string) =>
     request<PlayerCharacter[]>(`/player-characters${worldId ? `?worldId=${worldId}` : ""}`),
+  listMyPlayerCharacters: () => request<PlayerCharacter[]>("/player-characters?mine=true"),
   getPlayerCharacter: (id: string) => request<PlayerCharacter>(`/player-characters/${id}`),
   savePlayerCharacter: (pc: PlayerCharacterInput & { worldId?: string | null; tags?: string[]; notes?: string }) =>
     request<PlayerCharacter>("/player-characters", { method: "POST", body: JSON.stringify(pc) }),

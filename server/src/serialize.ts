@@ -102,6 +102,7 @@ export function toSessionNoteDTO(row: SessionNoteRow): SessionNote {
     id: row.id,
     title: row.title,
     sessionLabel: row.sessionLabel ?? undefined,
+    sessionDate: row.sessionDate ? row.sessionDate.toISOString().slice(0, 10) : undefined,
     summary: row.summary,
     looseThreads: row.looseThreads ?? undefined,
     nextSteps: row.nextSteps ?? undefined,

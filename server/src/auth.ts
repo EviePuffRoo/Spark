@@ -31,7 +31,7 @@ export function setSessionCookie(res: Response, token: string) {
   res.cookie(COOKIE_NAME, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: process.env.RENDER === "true",
     maxAge: 30 * 24 * 60 * 60 * 1000,
   });
 }

@@ -64,7 +64,7 @@ export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) =
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Delete this world? Its characters will become unassigned, not deleted.")) return;
+    if (!confirm("Delete this world? Everything in it (characters, items, locations, quests, factions, encounter tables, and session notes) will become unassigned, not deleted.")) return;
     await api.deleteWorld(id);
     refresh();
   }

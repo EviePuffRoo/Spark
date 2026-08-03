@@ -22,6 +22,16 @@ export function AccountMenu() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
+  // Don't leave a half-filled password form sitting around once the menu closes.
+  useEffect(() => {
+    if (open) return;
+    setChangingPassword(false);
+    setCurrentPassword("");
+    setNewPassword("");
+    setStatus(null);
+    setError(null);
+  }, [open]);
+
   async function handleChangePassword(e: React.FormEvent) {
     e.preventDefault();
     setError(null);

@@ -111,6 +111,19 @@ export function RosterPage({
 
   useEffect(refresh, [worldFilter]);
 
+  // If the world currently selected in the filter gets deleted elsewhere, the
+  // dropdown falls back to displaying "All" (no matching <option> anymore),
+  // but the filter itself would silently stay pointed at the dead world's id
+  // unless we reset it - showing zero results instead of actually falling
+  // back to "All".
+  useEffect(() => {
+    if (loading) return;
+    if (!worldFilter || worldFilter === "unassigned") return;
+    if (!worlds.some((w) => w.id === worldFilter)) {
+      onWorldFilterChange("");
+    }
+  }, [loading, worlds, worldFilter, onWorldFilterChange]);
+
   useEffect(() => {
     if (!pendingSelection) return;
     setMode(ENTITY_TYPE_TO_MODE[pendingSelection.type]);

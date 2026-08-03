@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: spark
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: npm install && npm run build --workspace client
+    startCommand: npm run migrate:deploy --workspace server && npm run start:server
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    disk:
+      name: spark-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: DATABASE_URL
+        value: file:/var/data/spark.db
+      - key: NODE_VERSION
+        value: 22.22.2

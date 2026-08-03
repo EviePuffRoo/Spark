@@ -50,15 +50,37 @@ npm run build          # builds the client to client/dist
 npm run start:server   # runs the API with tsx
 ```
 
-Serve `client/dist` with any static file server, pointed at an API host that has
-`/api/*` reachable (or reverse-proxy `/api` to the server process).
+In production the Express server serves the built `client/dist` itself (with an SPA
+fallback for client-side routes) alongside `/api/*`, so a single running process is
+enough — no separate static host or reverse proxy required.
+
+## Deploying to Render
+
+`render.yaml` at the repo root is a [Render Blueprint](https://render.com/docs/blueprint-spec)
+that provisions this as one paid **Starter** web service with a 1GB persistent disk
+(mounted at `/var/data`) holding the SQLite database, so saved NPCs/monsters survive
+restarts and redeploys.
+
+1. Push this repo to GitHub (already done if you're reading this from the PR).
+2. In the Render dashboard: **New > Blueprint**, connect this repo, and Render will
+   read `render.yaml` and propose the `spark` service + disk.
+3. Click **Apply** (you'll need a payment method on file — this uses a paid plan, not
+   the free tier, specifically so the SQLite disk persists).
+4. On first deploy, the start command runs `prisma migrate deploy` before starting the
+   server, so the database schema is created automatically on the disk.
+
+Want a free-tier deploy instead? Change `plan: starter` to `plan: free` and delete the
+`disk` block in `render.yaml` — but note the SQLite file will then reset on every
+redeploy and periodically on restart, so treat Roster/Worlds as non-persistent in that
+configuration.
 
 ## Project layout
 
 ```
-shared/   SRD dataset, types, and the character/monster generation engine
-server/   Express API + Prisma/SQLite persistence (worlds, characters)
-client/   React SPA (Generator, Roster, Worlds)
+shared/       SRD dataset, types, and the character/monster generation engine
+server/       Express API + Prisma/SQLite persistence (worlds, characters)
+client/       React SPA (Generator, Roster, Worlds)
+render.yaml   Render Blueprint for a one-click paid deploy with a persistent disk
 ```
 
 ## Data & licensing note

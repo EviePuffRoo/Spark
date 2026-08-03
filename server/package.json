@@ -7,9 +7,10 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
+    "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:seed": "tsx prisma/seed.ts"
+    "migrate:deploy": "prisma migrate deploy"
   },
   "dependencies": {
     "@prisma/client": "^5.20.0",

@@ -3,8 +3,9 @@ import { prisma } from "../db.js";
 
 export const worldsRouter = Router();
 
-worldsRouter.get("/", async (_req, res) => {
+worldsRouter.get("/", async (req, res) => {
   const rows = await prisma.world.findMany({
+    where: { userId: req.userId },
     orderBy: { updatedAt: "desc" },
     include: {
       _count: {
@@ -34,7 +35,7 @@ worldsRouter.get("/", async (_req, res) => {
 });
 
 worldsRouter.get("/:id", async (req, res) => {
-  const row = await prisma.world.findUnique({ where: { id: req.params.id } });
+  const row = await prisma.world.findFirst({ where: { id: req.params.id, userId: req.userId } });
   if (!row) return res.status(404).json({ error: "World not found" });
   res.json({
     id: row.id,
@@ -48,7 +49,7 @@ worldsRouter.get("/:id", async (req, res) => {
 worldsRouter.post("/", async (req, res) => {
   const { name, description } = req.body ?? {};
   if (!name) return res.status(400).json({ error: "World name is required" });
-  const row = await prisma.world.create({ data: { name, description: description ?? null } });
+  const row = await prisma.world.create({ data: { name, description: description ?? null, userId: req.userId! } });
   res.status(201).json(row);
 });
 
@@ -57,19 +58,15 @@ worldsRouter.patch("/:id", async (req, res) => {
   const data: Record<string, unknown> = {};
   if (name !== undefined) data.name = name;
   if (description !== undefined) data.description = description;
-  try {
-    const row = await prisma.world.update({ where: { id: req.params.id }, data });
-    res.json(row);
-  } catch {
-    res.status(404).json({ error: "World not found" });
-  }
+
+  const result = await prisma.world.updateMany({ where: { id: req.params.id, userId: req.userId }, data });
+  if (result.count === 0) return res.status(404).json({ error: "World not found" });
+  const row = await prisma.world.findUnique({ where: { id: req.params.id } });
+  res.json(row);
 });
 
 worldsRouter.delete("/:id", async (req, res) => {
-  try {
-    await prisma.world.delete({ where: { id: req.params.id } });
-    res.status(204).end();
-  } catch {
-    res.status(404).json({ error: "World not found" });
-  }
+  const result = await prisma.world.deleteMany({ where: { id: req.params.id, userId: req.userId } });
+  if (result.count === 0) return res.status(404).json({ error: "World not found" });
+  res.status(204).end();
 });

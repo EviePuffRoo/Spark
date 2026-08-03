@@ -12,7 +12,7 @@ linksRouter.get("/", async (req, res) => {
   }
 
   const rows = await prisma.link.findMany({
-    where: { OR: [{ fromType: type, fromId: id }, { toType: type, toId: id }] },
+    where: { userId: req.userId, OR: [{ fromType: type, fromId: id }, { toType: type, toId: id }] },
     orderBy: { createdAt: "desc" },
   });
 
@@ -22,7 +22,7 @@ linksRouter.get("/", async (req, res) => {
       const otherType = isFrom ? link.toType : link.fromType;
       const otherId = isFrom ? link.toId : link.fromId;
       const adapter = getAdapter(otherType);
-      const otherRow = adapter ? await adapter.findUnique(otherId) : null;
+      const otherRow = adapter ? await adapter.findUnique(otherId, req.userId!) : null;
 
       return {
         id: link.id,
@@ -49,17 +49,24 @@ linksRouter.post("/", async (req, res) => {
     return res.status(400).json({ error: "Cannot link an entry to itself" });
   }
 
+  const fromAdapter = getAdapter(fromType);
+  const toAdapter = getAdapter(toType);
+  const [fromRow, toRow] = await Promise.all([
+    fromAdapter!.findUnique(fromId, req.userId!),
+    toAdapter!.findUnique(toId, req.userId!),
+  ]);
+  if (!fromRow || !toRow) {
+    return res.status(404).json({ error: "One or both entries could not be found" });
+  }
+
   const row = await prisma.link.create({
-    data: { fromType, fromId, toType, toId, label: label || null },
+    data: { fromType, fromId, toType, toId, label: label || null, userId: req.userId! },
   });
   res.status(201).json(row);
 });
 
 linksRouter.delete("/:id", async (req, res) => {
-  try {
-    await prisma.link.delete({ where: { id: req.params.id } });
-    res.status(204).end();
-  } catch {
-    res.status(404).json({ error: "Link not found" });
-  }
+  const result = await prisma.link.deleteMany({ where: { id: req.params.id, userId: req.userId } });
+  if (result.count === 0) return res.status(404).json({ error: "Link not found" });
+  res.status(204).end();
 });

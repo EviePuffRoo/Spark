@@ -7,14 +7,16 @@ export const charactersRouter = Router();
 
 charactersRouter.get("/", async (req, res) => {
   const { worldId } = req.query;
-  const where =
-    worldId === "unassigned" ? { worldId: null } : typeof worldId === "string" ? { worldId } : {};
+  const where = {
+    userId: req.userId,
+    ...(worldId === "unassigned" ? { worldId: null } : typeof worldId === "string" ? { worldId } : {}),
+  };
   const rows = await prisma.character.findMany({ where, orderBy: { createdAt: "desc" } });
   res.json(rows.map(toCharacterDTO));
 });
 
 charactersRouter.get("/:id", async (req, res) => {
-  const row = await prisma.character.findUnique({ where: { id: req.params.id } });
+  const row = await prisma.character.findFirst({ where: { id: req.params.id, userId: req.userId } });
   if (!row) return res.status(404).json({ error: "Character not found" });
   res.json(toCharacterDTO(row));
 });
@@ -39,6 +41,7 @@ charactersRouter.post("/", async (req, res) => {
       worldId: worldId ?? null,
       tags: JSON.stringify(Array.isArray(tags) ? tags : []),
       notes: notes ?? null,
+      userId: req.userId!,
     },
   });
   res.status(201).json(toCharacterDTO(row));
@@ -56,20 +59,15 @@ charactersRouter.patch("/:id", async (req, res) => {
   if ("statBlock" in body) data.statBlock = JSON.stringify(body.statBlock);
   if ("backstory" in body) data.backstory = JSON.stringify(body.backstory);
 
-  try {
-    const row = await prisma.character.update({ where: { id: req.params.id }, data });
-    res.json(toCharacterDTO(row));
-  } catch {
-    res.status(404).json({ error: "Character not found" });
-  }
+  const result = await prisma.character.updateMany({ where: { id: req.params.id, userId: req.userId }, data });
+  if (result.count === 0) return res.status(404).json({ error: "Character not found" });
+  const row = await prisma.character.findUnique({ where: { id: req.params.id } });
+  res.json(toCharacterDTO(row!));
 });
 
 charactersRouter.delete("/:id", async (req, res) => {
-  try {
-    await prisma.character.delete({ where: { id: req.params.id } });
-    await deleteLinksForEntity("character", req.params.id);
-    res.status(204).end();
-  } catch {
-    res.status(404).json({ error: "Character not found" });
-  }
+  const result = await prisma.character.deleteMany({ where: { id: req.params.id, userId: req.userId } });
+  if (result.count === 0) return res.status(404).json({ error: "Character not found" });
+  await deleteLinksForEntity("character", req.params.id, req.userId!);
+  res.status(204).end();
 });

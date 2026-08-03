@@ -5,7 +5,7 @@ export const backupRouter = Router();
 
 backupRouter.get("/export", async (req, res) => {
   const worldId = typeof req.query.worldId === "string" ? req.query.worldId : undefined;
-  const bundle = await buildExport(worldId);
+  const bundle = await buildExport(req.userId!, worldId);
   res.json(bundle);
 });
 
@@ -15,7 +15,7 @@ backupRouter.post("/import", async (req, res) => {
     return res.status(400).json({ error: "This doesn't look like a valid Spark backup file." });
   }
   try {
-    const result = await applyImport(bundle);
+    const result = await applyImport(req.userId!, bundle);
     res.status(201).json(result);
   } catch (e) {
     res.status(400).json({ error: `Failed to import backup: ${(e as Error).message}` });

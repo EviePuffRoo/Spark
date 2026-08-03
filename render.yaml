@@ -17,3 +17,7 @@ services:
         value: file:/var/data/spark.db
       - key: NODE_VERSION
         value: 22.22.2
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true

@@ -272,3 +272,8 @@ export interface EntityLink {
   label?: string;
   other: EntityRef;
 }
+
+export interface AuthUser {
+  id: string;
+  username: string;
+}

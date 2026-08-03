@@ -19,7 +19,7 @@ searchRouter.get("/", async (req, res) => {
   for (const type of types) {
     const adapter = getAdapter(type);
     if (!adapter) continue;
-    const rows = await searchEntities(type, q);
+    const rows = await searchEntities(type, q, req.userId!);
     for (const row of rows) {
       results.push({
         type,

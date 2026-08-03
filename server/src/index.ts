@@ -3,6 +3,10 @@ import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
+import rateLimit from "express-rate-limit";
+import { requireAuth } from "./auth.js";
+import { authRouter } from "./routes/auth.js";
 import { generateRouter } from "./routes/generate.js";
 import { generateItemRouter } from "./routes/generateItem.js";
 import { generateLocationRouter } from "./routes/generateLocation.js";
@@ -27,15 +31,28 @@ const clientDist = path.resolve(__dirname, "../../client/dist");
 
 const app = express();
 app.use(cors());
+app.use(cookieParser());
 app.use(express.json({ limit: "10mb" }));
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
-app.use("/api/generate", generateRouter);
-app.use("/api/generate-item", generateItemRouter);
-app.use("/api/generate-location", generateLocationRouter);
-app.use("/api/generate-quest", generateQuestRouter);
-app.use("/api/generate-faction", generateFactionRouter);
-app.use("/api/generate-encounter-table", generateEncounterTableRouter);
+app.use("/api/auth", authRouter);
+
+// Everything below requires a signed-in user.
+app.use("/api", requireAuth);
+
+const generateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use("/api/generate", generateLimiter, generateRouter);
+app.use("/api/generate-item", generateLimiter, generateItemRouter);
+app.use("/api/generate-location", generateLimiter, generateLocationRouter);
+app.use("/api/generate-quest", generateLimiter, generateQuestRouter);
+app.use("/api/generate-faction", generateLimiter, generateFactionRouter);
+app.use("/api/generate-encounter-table", generateLimiter, generateEncounterTableRouter);
 app.use("/api/characters", charactersRouter);
 app.use("/api/items", itemsRouter);
 app.use("/api/locations", locationsRouter);

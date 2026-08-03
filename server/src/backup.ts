@@ -15,9 +15,9 @@ export interface ExportBundle {
   links: Pick<Link, "fromType" | "fromId" | "toType" | "toId" | "label">[];
 }
 
-export async function buildExport(worldId?: string): Promise<ExportBundle> {
-  const worlds = await prisma.world.findMany({ where: worldId ? { id: worldId } : {} });
-  const scopeWhere = worldId ? { worldId } : {};
+export async function buildExport(userId: string, worldId?: string): Promise<ExportBundle> {
+  const worlds = await prisma.world.findMany({ where: worldId ? { id: worldId, userId } : { userId } });
+  const scopeWhere = worldId ? { worldId, userId } : { userId };
 
   const [characters, items, locations, quests, factions, encounterTables, sessionNotes] = await Promise.all([
     prisma.character.findMany({ where: scopeWhere }),
@@ -35,7 +35,7 @@ export async function buildExport(worldId?: string): Promise<ExportBundle> {
     ...sessionNotes.map((n) => n.id),
   ]);
 
-  const allLinks = await prisma.link.findMany();
+  const allLinks = await prisma.link.findMany({ where: { userId } });
   const links = allLinks.filter((l) => entityIds.has(l.fromId) && entityIds.has(l.toId));
 
   return {
@@ -53,13 +53,13 @@ export interface ImportResult {
   linksImported: number;
 }
 
-export async function applyImport(bundle: ExportBundle): Promise<ImportResult> {
+export async function applyImport(userId: string, bundle: ExportBundle): Promise<ImportResult> {
   return prisma.$transaction(async (tx) => {
     const worldIdMap = new Map<string, string>();
     const entityIdMap = new Map<string, string>();
 
     for (const w of bundle.worlds ?? []) {
-      const created = await tx.world.create({ data: { name: w.name, description: w.description } });
+      const created = await tx.world.create({ data: { name: w.name, description: w.description, userId } });
       worldIdMap.set(w.id, created.id);
     }
 
@@ -70,7 +70,7 @@ export async function applyImport(bundle: ExportBundle): Promise<ImportResult> {
         data: {
           kind: c.kind, name: c.name, race: c.race, background: c.background, alignment: c.alignment,
           templateId: c.templateId, templateName: c.templateName, statBlock: c.statBlock, backstory: c.backstory,
-          tags: c.tags, notes: c.notes, worldId: remapWorldId(c.worldId),
+          tags: c.tags, notes: c.notes, worldId: remapWorldId(c.worldId), userId,
         },
       });
       entityIdMap.set(c.id, created.id);
@@ -80,7 +80,7 @@ export async function applyImport(bundle: ExportBundle): Promise<ImportResult> {
       const created = await tx.item.create({
         data: {
           name: i.name, itemType: i.itemType, category: i.category, rarity: i.rarity, description: i.description,
-          property: i.property, history: i.history, tags: i.tags, notes: i.notes, worldId: remapWorldId(i.worldId),
+          property: i.property, history: i.history, tags: i.tags, notes: i.notes, worldId: remapWorldId(i.worldId), userId,
         },
       });
       entityIdMap.set(i.id, created.id);
@@ -91,7 +91,7 @@ export async function applyImport(bundle: ExportBundle): Promise<ImportResult> {
         data: {
           name: l.name, locationType: l.locationType, category: l.category, description: l.description,
           notableFeature: l.notableFeature, keeper: l.keeper, rumor: l.rumor,
-          tags: l.tags, notes: l.notes, worldId: remapWorldId(l.worldId),
+          tags: l.tags, notes: l.notes, worldId: remapWorldId(l.worldId), userId,
         },
       });
       entityIdMap.set(l.id, created.id);
@@ -101,7 +101,7 @@ export async function applyImport(bundle: ExportBundle): Promise<ImportResult> {
       const created = await tx.questHook.create({
         data: {
           title: q.title, questType: q.questType, tier: q.tier, hook: q.hook, objective: q.objective,
-          complication: q.complication, reward: q.reward, tags: q.tags, notes: q.notes, worldId: remapWorldId(q.worldId),
+          complication: q.complication, reward: q.reward, tags: q.tags, notes: q.notes, worldId: remapWorldId(q.worldId), userId,
         },
       });
       entityIdMap.set(q.id, created.id);
@@ -111,7 +111,7 @@ export async function applyImport(bundle: ExportBundle): Promise<ImportResult> {
       const created = await tx.faction.create({
         data: {
           name: f.name, factionType: f.factionType, agenda: f.agenda, methods: f.methods,
-          publicFace: f.publicFace, hook: f.hook, tags: f.tags, notes: f.notes, worldId: remapWorldId(f.worldId),
+          publicFace: f.publicFace, hook: f.hook, tags: f.tags, notes: f.notes, worldId: remapWorldId(f.worldId), userId,
         },
       });
       entityIdMap.set(f.id, created.id);
@@ -121,7 +121,7 @@ export async function applyImport(bundle: ExportBundle): Promise<ImportResult> {
       const created = await tx.encounterTable.create({
         data: {
           name: e.name, terrain: e.terrain, entries: e.entries, tags: e.tags, notes: e.notes,
-          worldId: remapWorldId(e.worldId),
+          worldId: remapWorldId(e.worldId), userId,
         },
       });
       entityIdMap.set(e.id, created.id);
@@ -131,7 +131,7 @@ export async function applyImport(bundle: ExportBundle): Promise<ImportResult> {
       const created = await tx.sessionNote.create({
         data: {
           title: n.title, sessionLabel: n.sessionLabel, summary: n.summary, looseThreads: n.looseThreads,
-          nextSteps: n.nextSteps, tags: n.tags, notes: n.notes, worldId: remapWorldId(n.worldId),
+          nextSteps: n.nextSteps, tags: n.tags, notes: n.notes, worldId: remapWorldId(n.worldId), userId,
         },
       });
       entityIdMap.set(n.id, created.id);
@@ -142,7 +142,7 @@ export async function applyImport(bundle: ExportBundle): Promise<ImportResult> {
       const newFromId = entityIdMap.get(l.fromId);
       const newToId = entityIdMap.get(l.toId);
       if (!newFromId || !newToId) continue;
-      await tx.link.create({ data: { fromType: l.fromType, fromId: newFromId, toType: l.toType, toId: newToId, label: l.label } });
+      await tx.link.create({ data: { fromType: l.fromType, fromId: newFromId, toType: l.toType, toId: newToId, label: l.label, userId } });
       linksImported++;
     }
 

@@ -1,6 +1,9 @@
 import { useState } from "react";
 import "./App.css";
 import type { EntityType } from "@spark/shared";
+import { useAuth } from "./AuthContext";
+import { AuthPage } from "./pages/AuthPage";
+import { AccountMenu } from "./components/AccountMenu";
 import { CreatePage } from "./pages/CreatePage";
 import { SessionNotesPage } from "./pages/SessionNotesPage";
 import { RosterPage, type RosterSelection } from "./pages/RosterPage";
@@ -11,6 +14,7 @@ import { PrintPane, type PrintItem } from "./components/PrintPane";
 type Tab = "create" | "notes" | "roster" | "worlds";
 
 function App() {
+  const { user, loading } = useAuth();
   const [tab, setTab] = useState<Tab>("create");
   const [rosterWorldFilter, setRosterWorldFilter] = useState("");
   const [rosterSelection, setRosterSelection] = useState<RosterSelection | null>(null);
@@ -26,6 +30,9 @@ function App() {
     setTab("roster");
   }
 
+  if (loading) return null;
+  if (!user) return <AuthPage />;
+
   return (
     <div className="app">
       <header className="app-header">
@@ -38,6 +45,7 @@ function App() {
           <button className={tab === "roster" ? "active" : ""} onClick={() => setTab("roster")}>Roster</button>
           <button className={tab === "worlds" ? "active" : ""} onClick={() => setTab("worlds")}>Worlds</button>
         </nav>
+        <AccountMenu />
       </header>
 
       <main>

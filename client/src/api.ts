@@ -7,6 +7,7 @@ import type {
   EncounterTable, GenerateEncounterTableRequest, GeneratedEncounterTable,
   SessionNote, SessionNoteInput,
   EntityType, EntityLink, SearchResult,
+  AuthUser,
 } from "@spark/shared";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -154,4 +155,13 @@ export const api = {
   exportAll: () => request<unknown>("/backup/export"),
   importBackup: (bundle: unknown) =>
     request<ImportResult>("/backup/import", { method: "POST", body: JSON.stringify(bundle) }),
+
+  signup: (username: string, password: string) =>
+    request<AuthUser>("/auth/signup", { method: "POST", body: JSON.stringify({ username, password }) }),
+  login: (username: string, password: string) =>
+    request<AuthUser>("/auth/login", { method: "POST", body: JSON.stringify({ username, password }) }),
+  logout: () => request<void>("/auth/logout", { method: "POST" }),
+  me: () => request<AuthUser>("/auth/me"),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<void>("/auth/change-password", { method: "POST", body: JSON.stringify({ currentPassword, newPassword }) }),
 };

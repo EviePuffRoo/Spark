@@ -7,12 +7,13 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model World {
-  id          String      @id @default(cuid())
-  name        String
-  description String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  worlds          World[]
   characters      Character[]
   items           Item[]
   locations       Location[]
@@ -20,6 +21,26 @@ model World {
   factions        Faction[]
   encounterTables EncounterTable[]
   sessionNotes    SessionNote[]
+  links           Link[]
+}
+
+model World {
+  id          String      @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  userId      String
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  characters      Character[]
+  items           Item[]
+  locations       Location[]
+  questHooks      QuestHook[]
+  factions        Faction[]
+  encounterTables EncounterTable[]
+  sessionNotes    SessionNote[]
+
+  @@index([userId])
 }
 
 model Character {
@@ -37,10 +58,13 @@ model Character {
   notes        String?
   worldId      String?
   world        World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   @@index([worldId])
+  @@index([userId])
 }
 
 model Item {
@@ -56,10 +80,13 @@ model Item {
   notes       String?
   worldId     String?
   world       World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([worldId])
+  @@index([userId])
 }
 
 model Location {
@@ -75,10 +102,13 @@ model Location {
   notes          String?
   worldId        String?
   world          World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   @@index([worldId])
+  @@index([userId])
 }
 
 model QuestHook {
@@ -94,10 +124,13 @@ model QuestHook {
   notes        String?
   worldId      String?
   world        World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   @@index([worldId])
+  @@index([userId])
 }
 
 model Faction {
@@ -112,10 +145,13 @@ model Faction {
   notes       String?
   worldId     String?
   world       World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([worldId])
+  @@index([userId])
 }
 
 model EncounterTable {
@@ -127,10 +163,13 @@ model EncounterTable {
   notes     String?
   worldId   String?
   world     World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([worldId])
+  @@index([userId])
 }
 
 model SessionNote {
@@ -144,10 +183,13 @@ model SessionNote {
   notes        String?
   worldId      String?
   world        World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   @@index([worldId])
+  @@index([userId])
 }
 
 model Link {
@@ -157,8 +199,11 @@ model Link {
   toType    String
   toId      String
   label     String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 
   @@index([fromType, fromId])
   @@index([toType, toId])
+  @@index([userId])
 }

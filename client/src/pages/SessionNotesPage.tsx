@@ -143,7 +143,7 @@ export function SessionNotesPage() {
                   <span className="entity-name">{n.title}</span>
                   <span className="entity-meta">{n.sessionLabel || new Date(n.createdAt).toLocaleDateString()}</span>
                 </button>
-                <button className="btn-danger" onClick={() => handleDelete(n.id)}>Delete</button>
+                <button className="btn-danger" onClick={() => handleDelete(n.id)} aria-label={`Delete ${n.title}`}>Delete</button>
               </li>
             ))}
           </ul>

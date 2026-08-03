@@ -122,7 +122,7 @@ export function LocationForgePage() {
             <div className="batch-result-card" key={index}>
               <LocationCardView location={location} />
               {results.length > 1 && saveStatus !== "saved" && (
-                <button className="btn-danger" onClick={() => removeResult(index)}>Remove from batch</button>
+                <button className="btn-danger" onClick={() => removeResult(index)} aria-label={`Remove ${location.name} from batch`}>Remove from batch</button>
               )}
             </div>
           ))}

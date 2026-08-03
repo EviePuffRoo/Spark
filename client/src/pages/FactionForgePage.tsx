@@ -122,7 +122,7 @@ export function FactionForgePage() {
             <div className="batch-result-card" key={index}>
               <FactionCardView faction={faction} />
               {results.length > 1 && saveStatus !== "saved" && (
-                <button className="btn-danger" onClick={() => removeResult(index)}>Remove from batch</button>
+                <button className="btn-danger" onClick={() => removeResult(index)} aria-label={`Remove ${faction.name} from batch`}>Remove from batch</button>
               )}
             </div>
           ))}

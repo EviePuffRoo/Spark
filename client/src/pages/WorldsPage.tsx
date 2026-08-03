@@ -150,9 +150,9 @@ export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) =
                 <div className="entity-meta">{summarizeCounts(w)}</div>
               </div>
               <div className="button-row">
-                <button className="btn-secondary" onClick={() => onViewRoster(w.id)}>View Roster</button>
-                <button className="btn-secondary" onClick={() => handleExportWorld(w)}>Export</button>
-                <button className="btn-danger" onClick={() => handleDelete(w.id)}>Delete</button>
+                <button className="btn-secondary" onClick={() => onViewRoster(w.id)} aria-label={`View roster for ${w.name}`}>View Roster</button>
+                <button className="btn-secondary" onClick={() => handleExportWorld(w)} aria-label={`Export ${w.name}`}>Export</button>
+                <button className="btn-danger" onClick={() => handleDelete(w.id)} aria-label={`Delete ${w.name}`}>Delete</button>
               </div>
             </li>
           ))}

@@ -84,7 +84,7 @@ export function LinkedEntities({ type, id }: { type: EntityType; id: string }) {
                 <div className="entity-name">{link.other.name}</div>
                 <div className="entity-meta">{TYPE_LABELS[link.other.type]}{link.label ? ` · ${link.label}` : ""}</div>
               </div>
-              <button className="btn-danger" onClick={() => handleRemove(link.id)}>Remove</button>
+              <button className="btn-danger" onClick={() => handleRemove(link.id)} aria-label={`Remove link to ${link.other.name}`}>Remove</button>
             </li>
           ))}
         </ul>

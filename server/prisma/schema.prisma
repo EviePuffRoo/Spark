@@ -1,0 +1,38 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model World {
+  id          String      @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  characters  Character[]
+}
+
+model Character {
+  id           String   @id @default(cuid())
+  kind         String
+  name         String
+  race         String?
+  background   String?
+  alignment    String
+  templateId   String
+  templateName String
+  statBlock    String
+  backstory    String
+  tags         String   @default("[]")
+  notes        String?
+  worldId      String?
+  world        World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([worldId])
+}

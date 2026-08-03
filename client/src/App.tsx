@@ -31,7 +31,16 @@ function App() {
     setTab("roster");
   }
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <div className="app">
+        <header className="app-header">
+          <h1>Spark</h1>
+          <p className="tagline">Loading…</p>
+        </header>
+      </div>
+    );
+  }
   if (!user) return <AuthPage />;
   if (pendingRecoveryCode) return <RecoveryCodeDisplay code={pendingRecoveryCode} />;
 

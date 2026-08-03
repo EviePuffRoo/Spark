@@ -39,6 +39,7 @@ export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) =
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [importStatus, setImportStatus] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
 
   function refresh() {
@@ -48,7 +49,8 @@ export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) =
   useEffect(refresh, []);
 
   async function handleCreate() {
-    if (!name.trim()) return;
+    if (!name.trim() || creating) return;
+    setCreating(true);
     try {
       await api.createWorld(name.trim(), description.trim() || undefined);
       setName("");
@@ -56,6 +58,8 @@ export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) =
       refresh();
     } catch (e) {
       setError((e as Error).message);
+    } finally {
+      setCreating(false);
     }
   }
 
@@ -116,7 +120,7 @@ export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) =
             <span>Description (optional)</span>
             <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} />
           </label>
-          <button className="btn-primary" onClick={handleCreate}>Create World</button>
+          <button className="btn-primary" onClick={handleCreate} disabled={creating}>{creating ? "Creating…" : "Create World"}</button>
         </div>
 
         <div className="button-row backup-row">

@@ -9,6 +9,7 @@ import { QuestHookCardView } from "../components/QuestHookCardView";
 import { FactionCardView } from "../components/FactionCardView";
 import { EncounterTableCardView } from "../components/EncounterTableCardView";
 import { LinkedEntities } from "../components/LinkedEntities";
+import { FactionWebView } from "../components/FactionWebView";
 import { SessionNoteCardView } from "../components/SessionNoteCardView";
 import { AdventureCardView } from "../components/AdventureCardView";
 import type { PrintItem } from "../components/PrintPane";
@@ -101,6 +102,7 @@ export function RosterPage({
   const [editingContent, setEditingContent] = useState(false);
   const [loading, setLoading] = useState(true);
   const [tagFilter, setTagFilter] = useState("");
+  const [showFactionWeb, setShowFactionWeb] = useState(false);
 
   function refresh() {
     const w = worldFilter || undefined;
@@ -146,6 +148,7 @@ export function RosterPage({
     setMode(next);
     setSelectedId(null);
     setTagFilter("");
+    setShowFactionWeb(false);
   }
 
   const selectedCharacter = mode === "characters" ? characters.find((c) => c.id === selectedId) ?? null : null;
@@ -314,6 +317,22 @@ export function RosterPage({
     mode === "notes" ? notes.filter((n) => !tagFilter || n.tags.includes(tagFilter)).map((n) => ({ id: n.id, name: n.title, meta: n.sessionLabel || new Date(n.createdAt).toLocaleDateString() })) :
     adventures.filter((a) => !tagFilter || a.tags.includes(tagFilter)).map((a) => ({ id: a.id, name: a.title, meta: a.tier }));
 
+  if (showFactionWeb) {
+    return (
+      <div className="page">
+        <FactionWebView
+          factions={factions}
+          onSelectEntity={(type, id) => {
+            setShowFactionWeb(false);
+            setMode(ENTITY_TYPE_TO_MODE[type]);
+            setSelectedId(id);
+          }}
+          onClose={() => setShowFactionWeb(false)}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="page roster-layout">
       <div className="panel roster-list">
@@ -322,6 +341,10 @@ export function RosterPage({
             <button key={m} className={mode === m ? "active" : ""} aria-current={mode === m ? "true" : undefined} onClick={() => switchMode(m)}>{MODE_LABELS[m]}</button>
           ))}
         </div>
+
+        {mode === "factions" && (
+          <button className="btn-secondary" onClick={() => setShowFactionWeb(true)}>Relationship Web</button>
+        )}
 
         <label className="field">
           <span>Filter by world</span>

@@ -705,3 +705,120 @@ textarea {
 .welcome-panel p {
   line-height: 1.5;
 }
+
+/* Faction relationship web */
+.faction-web-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.faction-web-header h2 {
+  margin: 0;
+}
+
+.faction-web-canvas {
+  position: relative;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.faction-web-svg {
+  display: block;
+  width: 100%;
+  height: 70vh;
+  touch-action: none;
+}
+
+.faction-web-edge {
+  stroke: var(--text-muted);
+  stroke-width: 1.5px;
+  cursor: default;
+}
+
+.faction-web-edge.hovered {
+  stroke: var(--accent);
+  stroke-width: 2.5px;
+}
+
+.faction-web-edge.dimmed {
+  opacity: 0.15;
+}
+
+.faction-web-node {
+  cursor: grab;
+  user-select: none;
+}
+
+.faction-web-node.dimmed {
+  opacity: 0.25;
+}
+
+.faction-web-node circle {
+  stroke-width: 2px;
+}
+
+.faction-web-node.faction circle {
+  fill: var(--accent);
+  stroke: var(--accent-dark);
+}
+
+.faction-web-node.character circle {
+  fill: var(--bg-panel);
+  stroke: var(--text-muted);
+}
+
+.faction-web-node text {
+  fill: var(--text);
+  font-size: 13px;
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+.faction-web-legend {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  gap: 16px;
+  padding: 8px 12px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.faction-web-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.faction-web-swatch.faction {
+  background: var(--accent);
+  border: 2px solid var(--accent-dark);
+}
+
+.faction-web-swatch.character {
+  background: var(--bg-panel);
+  border: 2px solid var(--text-muted);
+}
+
+.faction-web-tooltip {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  padding: 8px 12px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  pointer-events: none;
+}

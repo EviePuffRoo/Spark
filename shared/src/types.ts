@@ -58,6 +58,7 @@ export interface Character {
   statBlock: StatBlock;
   backstory: Backstory;
   worldId?: string | null;
+  hiddenFromParty: boolean;
   tags: string[];
   notes?: string;
   createdAt: string;
@@ -108,6 +109,7 @@ export interface GeneratedItem {
 export interface Item extends GeneratedItem {
   id: string;
   worldId?: string | null;
+  hiddenFromParty: boolean;
   tags: string[];
   notes?: string;
   createdAt: string;
@@ -134,6 +136,7 @@ export interface GeneratedLocation {
 export interface Location extends GeneratedLocation {
   id: string;
   worldId?: string | null;
+  hiddenFromParty: boolean;
   tags: string[];
   notes?: string;
   createdAt: string;
@@ -156,9 +159,20 @@ export interface GeneratedQuestHook {
   reward: string;
 }
 
+export const QUEST_STATUSES = ["active", "completed", "failed", "abandoned"] as const;
+export type QuestStatus = typeof QUEST_STATUSES[number];
+export const QUEST_STATUS_LABELS: Record<QuestStatus, string> = {
+  active: "Active",
+  completed: "Completed",
+  failed: "Failed",
+  abandoned: "Abandoned",
+};
+
 export interface QuestHook extends GeneratedQuestHook {
   id: string;
+  status: QuestStatus;
   worldId?: string | null;
+  hiddenFromParty: boolean;
   tags: string[];
   notes?: string;
   createdAt: string;
@@ -184,6 +198,28 @@ export interface GeneratedFaction {
 export interface Faction extends GeneratedFaction {
   id: string;
   worldId?: string | null;
+  hiddenFromParty: boolean;
+  tags: string[];
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PlayerCharacterInput {
+  name: string;
+  className: string;
+  level: number;
+  race: string;
+  armorClass: number;
+  maxHp: number;
+  abilityScores: AbilityScores;
+  playerName?: string;
+}
+
+export interface PlayerCharacter extends PlayerCharacterInput {
+  id: string;
+  worldId?: string | null;
+  hiddenFromParty: boolean;
   tags: string[];
   notes?: string;
   createdAt: string;
@@ -210,6 +246,7 @@ export interface GeneratedEncounterTable {
 export interface EncounterTable extends GeneratedEncounterTable {
   id: string;
   worldId?: string | null;
+  hiddenFromParty: boolean;
   tags: string[];
   notes?: string;
   createdAt: string;
@@ -233,6 +270,7 @@ export interface SessionNoteInput {
 export interface SessionNote extends SessionNoteInput {
   id: string;
   worldId?: string | null;
+  hiddenFromParty: boolean;
   tags: string[];
   notes?: string;
   createdAt: string;
@@ -267,13 +305,14 @@ export interface GeneratedAdventure {
 export interface Adventure extends GeneratedAdventure {
   id: string;
   worldId?: string | null;
+  hiddenFromParty: boolean;
   tags: string[];
   notes?: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export type EntityType = "character" | "item" | "location" | "quest" | "faction" | "encounterTable" | "sessionNote" | "adventure";
+export type EntityType = "character" | "item" | "location" | "quest" | "faction" | "encounterTable" | "sessionNote" | "adventure" | "playerCharacter";
 
 export interface EntityTypeDef {
   type: EntityType;
@@ -289,6 +328,7 @@ export const ENTITY_TYPES: EntityTypeDef[] = [
   { type: "encounterTable", label: "Encounter Table" },
   { type: "sessionNote", label: "Session Note" },
   { type: "adventure", label: "Adventure" },
+  { type: "playerCharacter", label: "Player Character" },
 ];
 
 export interface EntityRef {

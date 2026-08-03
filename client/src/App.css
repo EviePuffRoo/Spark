@@ -326,6 +326,45 @@ textarea {
   margin: 2px 0 10px;
 }
 
+.hidden-badge {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 0.8rem;
+  vertical-align: middle;
+  opacity: 0.75;
+}
+
+.status-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-style: normal;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.status-badge.status-active {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+}
+
+.status-badge.status-completed {
+  background: color-mix(in srgb, var(--success) 18%, transparent);
+  color: var(--success);
+}
+
+.status-badge.status-failed {
+  background: color-mix(in srgb, var(--danger) 18%, transparent);
+  color: var(--danger);
+}
+
+.status-badge.status-abandoned {
+  background: color-mix(in srgb, var(--text-muted) 18%, transparent);
+  color: var(--text-muted);
+}
+
 .rule {
   border: none;
   border-top: 2px solid var(--rule-gold);
@@ -704,4 +743,241 @@ textarea {
 
 .welcome-panel p {
   line-height: 1.5;
+}
+
+/* Faction relationship web */
+.faction-web-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.faction-web-header h2 {
+  margin: 0;
+}
+
+.faction-web-canvas {
+  position: relative;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.faction-web-svg {
+  display: block;
+  width: 100%;
+  height: 70vh;
+  touch-action: none;
+}
+
+.faction-web-edge {
+  stroke: var(--text-muted);
+  stroke-width: 1.5px;
+  cursor: default;
+}
+
+.faction-web-edge.hovered {
+  stroke: var(--accent);
+  stroke-width: 2.5px;
+}
+
+.faction-web-edge.dimmed {
+  opacity: 0.15;
+}
+
+.faction-web-node {
+  cursor: grab;
+  user-select: none;
+}
+
+.faction-web-node.dimmed {
+  opacity: 0.25;
+}
+
+.faction-web-node circle {
+  stroke-width: 2px;
+}
+
+.faction-web-node.faction circle {
+  fill: var(--accent);
+  stroke: var(--accent-dark);
+}
+
+.faction-web-node.character circle {
+  fill: var(--bg-panel);
+  stroke: var(--text-muted);
+}
+
+.faction-web-node text {
+  fill: var(--text);
+  font-size: 13px;
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+.faction-web-legend {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  gap: 16px;
+  padding: 8px 12px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.faction-web-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.faction-web-swatch.faction {
+  background: var(--accent);
+  border: 2px solid var(--accent-dark);
+}
+
+.faction-web-swatch.character {
+  background: var(--bg-panel);
+  border: 2px solid var(--text-muted);
+}
+
+.faction-web-tooltip {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  padding: 8px 12px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  pointer-events: none;
+}
+
+/* Dice roller */
+.dice-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.dice-presets button {
+  min-width: 48px;
+}
+
+.dice-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.dice-input-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.dice-history {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+}
+
+.dice-history-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--border);
+}
+
+.dice-history-row:last-child {
+  border-bottom: none;
+}
+
+/* Initiative tracker */
+.initiative-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.round-banner {
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.combatant-list {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+}
+
+.combatant-row {
+  padding: 12px;
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-panel);
+}
+
+.combatant-row.active-turn {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.combatant-row.down {
+  opacity: 0.5;
+}
+
+.combatant-row.down .combatant-name {
+  text-decoration: line-through;
+}
+
+.combatant-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.combatant-initiative {
+  width: 56px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.combatant-name {
+  font-weight: 700;
+  flex: 1;
+  min-width: 100px;
+}
+
+.combatant-notes {
+  flex: 1;
+  min-width: 140px;
+}
+
+.combatant-hp {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.combatant-hp-value {
+  font-weight: 600;
+  min-width: 90px;
+}
+
+.combatant-hp-input {
+  width: 80px;
 }

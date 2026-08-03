@@ -23,13 +23,16 @@ model User {
   encounterTables EncounterTable[]
   sessionNotes    SessionNote[]
   adventures      Adventure[]
+  playerCharacters PlayerCharacter[]
   links           Link[]
+  worldMemberships WorldMember[]
 }
 
 model World {
   id          String      @id @default(cuid())
   name        String
   description String?
+  joinCodeHash String?
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   userId      String
@@ -42,7 +45,45 @@ model World {
   encounterTables EncounterTable[]
   sessionNotes    SessionNote[]
   adventures      Adventure[]
+  playerCharacters PlayerCharacter[]
+  members         WorldMember[]
 
+  @@index([userId])
+}
+
+model WorldMember {
+  id        String   @id @default(cuid())
+  worldId   String
+  world     World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([worldId, userId])
+  @@index([userId])
+}
+
+model PlayerCharacter {
+  id            String   @id @default(cuid())
+  name          String
+  className     String
+  level         Int
+  race          String
+  armorClass    Int
+  maxHp         Int
+  abilityScores String   @default("{}")
+  playerName    String?
+  tags          String   @default("[]")
+  notes         String?
+  worldId       String?
+  hiddenFromParty Boolean @default(false)
+  world         World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([worldId])
   @@index([userId])
 }
 
@@ -60,6 +101,7 @@ model Character {
   tags         String   @default("[]")
   notes        String?
   worldId      String?
+  hiddenFromParty Boolean @default(false)
   world        World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
   userId       String
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -82,6 +124,7 @@ model Item {
   tags        String   @default("[]")
   notes       String?
   worldId     String?
+  hiddenFromParty Boolean @default(false)
   world       World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -104,6 +147,7 @@ model Location {
   tags           String   @default("[]")
   notes          String?
   worldId        String?
+  hiddenFromParty Boolean @default(false)
   world          World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
   userId         String
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -123,9 +167,11 @@ model QuestHook {
   objective    String
   complication String
   reward       String
+  status       String   @default("active")
   tags         String   @default("[]")
   notes        String?
   worldId      String?
+  hiddenFromParty Boolean @default(false)
   world        World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
   userId       String
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -147,6 +193,7 @@ model Faction {
   tags        String   @default("[]")
   notes       String?
   worldId     String?
+  hiddenFromParty Boolean @default(false)
   world       World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -165,6 +212,7 @@ model EncounterTable {
   tags      String   @default("[]")
   notes     String?
   worldId   String?
+  hiddenFromParty Boolean @default(false)
   world     World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -185,6 +233,7 @@ model SessionNote {
   tags         String   @default("[]")
   notes        String?
   worldId      String?
+  hiddenFromParty Boolean @default(false)
   world        World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
   userId       String
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -207,6 +256,7 @@ model Adventure {
   tags         String   @default("[]")
   notes        String?
   worldId      String?
+  hiddenFromParty Boolean @default(false)
   world        World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
   userId       String
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)

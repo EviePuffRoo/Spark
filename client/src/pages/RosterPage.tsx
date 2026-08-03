@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import type { Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, EntityType } from "@spark/shared";
+import type { Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, PlayerCharacter, EntityType, QuestStatus } from "@spark/shared";
+import { QUEST_STATUSES, QUEST_STATUS_LABELS } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { StatBlockView } from "../components/StatBlockView";
 import { BackstoryView } from "../components/BackstoryView";
@@ -9,8 +10,10 @@ import { QuestHookCardView } from "../components/QuestHookCardView";
 import { FactionCardView } from "../components/FactionCardView";
 import { EncounterTableCardView } from "../components/EncounterTableCardView";
 import { LinkedEntities } from "../components/LinkedEntities";
+import { FactionWebView } from "../components/FactionWebView";
 import { SessionNoteCardView } from "../components/SessionNoteCardView";
 import { AdventureCardView } from "../components/AdventureCardView";
+import { PlayerCharacterCardView } from "../components/PlayerCharacterCardView";
 import type { PrintItem } from "../components/PrintPane";
 import { CharacterEditor } from "../components/CharacterEditor";
 import { ItemEditor } from "../components/ItemEditor";
@@ -19,8 +22,9 @@ import { QuestEditor } from "../components/QuestEditor";
 import { FactionEditor } from "../components/FactionEditor";
 import { EncounterTableEditor } from "../components/EncounterTableEditor";
 import { AdventureEditor } from "../components/AdventureEditor";
+import { PlayerCharacterEditor } from "../components/PlayerCharacterEditor";
 
-export type Mode = "characters" | "items" | "locations" | "quests" | "factions" | "encounters" | "notes" | "adventures";
+export type Mode = "characters" | "items" | "locations" | "quests" | "factions" | "encounters" | "notes" | "adventures" | "playerCharacters";
 
 const MODE_LABELS: Record<Mode, string> = {
   characters: "Characters",
@@ -31,6 +35,7 @@ const MODE_LABELS: Record<Mode, string> = {
   encounters: "Encounters",
   notes: "Notes",
   adventures: "Adventures",
+  playerCharacters: "Player Characters",
 };
 
 export const ENTITY_TYPE_TO_MODE: Record<EntityType, Mode> = {
@@ -42,6 +47,7 @@ export const ENTITY_TYPE_TO_MODE: Record<EntityType, Mode> = {
   encounterTable: "encounters",
   sessionNote: "notes",
   adventure: "adventures",
+  playerCharacter: "playerCharacters",
 };
 
 const MODE_TO_ENTITY_TYPE: Record<Mode, EntityType> = {
@@ -53,6 +59,7 @@ const MODE_TO_ENTITY_TYPE: Record<Mode, EntityType> = {
   encounters: "encounterTable",
   notes: "sessionNote",
   adventures: "adventure",
+  playerCharacters: "playerCharacter",
 };
 
 export interface RosterSelection {
@@ -70,6 +77,7 @@ async function fetchPrintItem(type: EntityType, id: string): Promise<PrintItem |
     case "encounterTable": return { type, data: await api.getEncounterTable(id) };
     case "sessionNote": return { type, data: await api.getSessionNote(id) };
     case "adventure": return { type, data: await api.getAdventure(id) };
+    case "playerCharacter": return { type, data: await api.getPlayerCharacter(id) };
     default: return null;
   }
 }
@@ -92,15 +100,21 @@ export function RosterPage({
   const [encounters, setEncounters] = useState<EncounterTable[]>([]);
   const [notes, setNotes] = useState<SessionNote[]>([]);
   const [adventures, setAdventures] = useState<Adventure[]>([]);
+  const [playerCharacters, setPlayerCharacters] = useState<PlayerCharacter[]>([]);
   const [worlds, setWorlds] = useState<WorldSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [metaNotes, setMetaNotes] = useState("");
   const [tags, setTags] = useState("");
   const [assignedWorld, setAssignedWorld] = useState("");
+  const [hiddenFromParty, setHiddenFromParty] = useState(false);
   const [status, setStatus] = useState<"idle" | "saving">("idle");
+  const [actionError, setActionError] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState(false);
   const [loading, setLoading] = useState(true);
   const [tagFilter, setTagFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<QuestStatus | "">("");
+  const [questStatus, setQuestStatus] = useState<QuestStatus>("active");
+  const [showFactionWeb, setShowFactionWeb] = useState(false);
 
   function refresh() {
     const w = worldFilter || undefined;
@@ -114,6 +128,7 @@ export function RosterPage({
       api.listEncounterTables(w).then(setEncounters).catch(() => {}),
       api.listSessionNotes(w).then(setNotes).catch(() => {}),
       api.listAdventures(w).then(setAdventures).catch(() => {}),
+      api.listPlayerCharacters(w).then(setPlayerCharacters).catch(() => {}),
       api.listWorlds().then(setWorlds).catch(() => {}),
     ]).finally(() => setLoading(false));
   }
@@ -146,6 +161,8 @@ export function RosterPage({
     setMode(next);
     setSelectedId(null);
     setTagFilter("");
+    setStatusFilter("");
+    setShowFactionWeb(false);
   }
 
   const selectedCharacter = mode === "characters" ? characters.find((c) => c.id === selectedId) ?? null : null;
@@ -156,34 +173,49 @@ export function RosterPage({
   const selectedEncounter = mode === "encounters" ? encounters.find((e) => e.id === selectedId) ?? null : null;
   const selectedNote = mode === "notes" ? notes.find((n) => n.id === selectedId) ?? null : null;
   const selectedAdventure = mode === "adventures" ? adventures.find((a) => a.id === selectedId) ?? null : null;
-  const selected = selectedCharacter ?? selectedItem ?? selectedLocation ?? selectedQuest ?? selectedFaction ?? selectedEncounter ?? selectedNote ?? selectedAdventure;
+  const selectedPlayerCharacter = mode === "playerCharacters" ? playerCharacters.find((p) => p.id === selectedId) ?? null : null;
+  const selected = selectedCharacter ?? selectedItem ?? selectedLocation ?? selectedQuest ?? selectedFaction ?? selectedEncounter ?? selectedNote ?? selectedAdventure ?? selectedPlayerCharacter;
   const selectedDisplayName =
     selectedCharacter?.name ?? selectedItem?.name ?? selectedLocation?.name ?? selectedQuest?.title ??
-    selectedFaction?.name ?? selectedEncounter?.name ?? selectedNote?.title ?? selectedAdventure?.title ?? "";
+    selectedFaction?.name ?? selectedEncounter?.name ?? selectedNote?.title ?? selectedAdventure?.title ?? selectedPlayerCharacter?.name ?? "";
 
   useEffect(() => {
     if (selected) {
       setMetaNotes(selected.notes ?? "");
       setTags(selected.tags.join(", "));
       setAssignedWorld(selected.worldId ?? "");
+      setHiddenFromParty(selected.hiddenFromParty);
     }
+    if (selectedQuest) setQuestStatus(selectedQuest.status);
     setEditingContent(false);
-  }, [selected]);
+    setActionError(null);
+  }, [selected, selectedQuest]);
 
   async function handleUpdate() {
     if (!selected) return;
     setStatus("saving");
-    const patch = { notes: metaNotes, tags: tags.split(",").map((t) => t.trim()).filter(Boolean), worldId: assignedWorld || null };
-    if (mode === "characters") await api.updateCharacter(selected.id, patch);
-    else if (mode === "items") await api.updateItem(selected.id, patch);
-    else if (mode === "locations") await api.updateLocation(selected.id, patch);
-    else if (mode === "quests") await api.updateQuest(selected.id, patch);
-    else if (mode === "factions") await api.updateFaction(selected.id, patch);
-    else if (mode === "encounters") await api.updateEncounterTable(selected.id, patch);
-    else if (mode === "notes") await api.updateSessionNote(selected.id, patch);
-    else await api.updateAdventure(selected.id, patch);
-    setStatus("idle");
-    refresh();
+    setActionError(null);
+    const patch = {
+      notes: metaNotes, tags: tags.split(",").map((t) => t.trim()).filter(Boolean), worldId: assignedWorld || null,
+      hiddenFromParty,
+      ...(mode === "quests" ? { status: questStatus } : {}),
+    };
+    try {
+      if (mode === "characters") await api.updateCharacter(selected.id, patch);
+      else if (mode === "items") await api.updateItem(selected.id, patch);
+      else if (mode === "locations") await api.updateLocation(selected.id, patch);
+      else if (mode === "quests") await api.updateQuest(selected.id, patch);
+      else if (mode === "factions") await api.updateFaction(selected.id, patch);
+      else if (mode === "encounters") await api.updateEncounterTable(selected.id, patch);
+      else if (mode === "notes") await api.updateSessionNote(selected.id, patch);
+      else if (mode === "adventures") await api.updateAdventure(selected.id, patch);
+      else await api.updatePlayerCharacter(selected.id, patch);
+      refresh();
+    } catch (e) {
+      setActionError((e as Error).message);
+    } finally {
+      setStatus("idle");
+    }
   }
 
   async function handleDuplicate() {
@@ -241,6 +273,13 @@ export function RosterPage({
         hook: selectedAdventure.hook, objective: selectedAdventure.objective, complication: selectedAdventure.complication,
         reward: selectedAdventure.reward, worldId, tags: tagsCopy, notes: notesCopy,
       });
+    } else if (selectedPlayerCharacter) {
+      created = await api.savePlayerCharacter({
+        name: `${selectedPlayerCharacter.name} (Copy)`, className: selectedPlayerCharacter.className, level: selectedPlayerCharacter.level,
+        race: selectedPlayerCharacter.race, armorClass: selectedPlayerCharacter.armorClass, maxHp: selectedPlayerCharacter.maxHp,
+        abilityScores: selectedPlayerCharacter.abilityScores, playerName: selectedPlayerCharacter.playerName,
+        worldId, tags: tagsCopy, notes: notesCopy,
+      });
     }
     setStatus("idle");
     refresh();
@@ -257,30 +296,44 @@ export function RosterPage({
     else if (selectedEncounter) onPrint([{ type: "encounterTable", data: selectedEncounter }]);
     else if (selectedNote) onPrint([{ type: "sessionNote", data: selectedNote }]);
     else if (selectedAdventure) onPrint([{ type: "adventure", data: selectedAdventure }]);
+    else if (selectedPlayerCharacter) onPrint([{ type: "playerCharacter", data: selectedPlayerCharacter }]);
   }
 
-  async function handlePrintSessionPack() {
-    if (!selectedNote || !onPrint) return;
-    const links = await api.getLinks("sessionNote", selectedNote.id);
+  async function handlePrintPack(rootItem: PrintItem) {
+    if (!onPrint) return;
+    const links = await api.getLinks(rootItem.type, rootItem.data.id);
     const linkedItems = await Promise.all(links.map((l) => fetchPrintItem(l.other.type, l.other.id)));
-    const items: PrintItem[] = [
-      { type: "sessionNote", data: selectedNote },
-      ...linkedItems.filter((i): i is PrintItem => i !== null),
-    ];
-    onPrint(items);
+    onPrint([rootItem, ...linkedItems.filter((i): i is PrintItem => i !== null)]);
+  }
+
+  function handlePrintSessionPack() {
+    if (!selectedNote) return;
+    return handlePrintPack({ type: "sessionNote", data: selectedNote });
+  }
+
+  function handlePrintAdventurePack() {
+    if (!selectedAdventure) return;
+    return handlePrintPack({ type: "adventure", data: selectedAdventure });
   }
 
   async function handleDelete() {
     if (!selected) return;
     if (!confirm(`Delete ${selectedDisplayName}? This cannot be undone.`)) return;
-    if (mode === "characters") await api.deleteCharacter(selected.id);
-    else if (mode === "items") await api.deleteItem(selected.id);
-    else if (mode === "locations") await api.deleteLocation(selected.id);
-    else if (mode === "quests") await api.deleteQuest(selected.id);
-    else if (mode === "factions") await api.deleteFaction(selected.id);
-    else if (mode === "encounters") await api.deleteEncounterTable(selected.id);
-    else if (mode === "notes") await api.deleteSessionNote(selected.id);
-    else await api.deleteAdventure(selected.id);
+    setActionError(null);
+    try {
+      if (mode === "characters") await api.deleteCharacter(selected.id);
+      else if (mode === "items") await api.deleteItem(selected.id);
+      else if (mode === "locations") await api.deleteLocation(selected.id);
+      else if (mode === "quests") await api.deleteQuest(selected.id);
+      else if (mode === "factions") await api.deleteFaction(selected.id);
+      else if (mode === "encounters") await api.deleteEncounterTable(selected.id);
+      else if (mode === "notes") await api.deleteSessionNote(selected.id);
+      else if (mode === "adventures") await api.deleteAdventure(selected.id);
+      else await api.deletePlayerCharacter(selected.id);
+    } catch (e) {
+      setActionError((e as Error).message);
+      return;
+    }
     setSelectedId(null);
     refresh();
   }
@@ -293,7 +346,8 @@ export function RosterPage({
     mode === "factions" ? factions :
     mode === "encounters" ? encounters :
     mode === "notes" ? notes :
-    adventures;
+    mode === "adventures" ? adventures :
+    playerCharacters;
 
   const availableTags = Array.from(new Set(activeEntities.flatMap((e) => e.tags))).sort();
 
@@ -305,14 +359,31 @@ export function RosterPage({
   }, [loading, availableTags.join("|"), tagFilter]);
 
   const activeList =
-    mode === "characters" ? characters.filter((c) => !tagFilter || c.tags.includes(tagFilter)).map((c) => ({ id: c.id, name: c.name, meta: `${c.kind === "npc" ? c.race : c.templateName} · CR ${c.statBlock.challengeRating}` })) :
-    mode === "items" ? items.filter((i) => !tagFilter || i.tags.includes(tagFilter)).map((i) => ({ id: i.id, name: i.name, meta: `${i.category} · ${i.rarity}` })) :
-    mode === "locations" ? locations.filter((l) => !tagFilter || l.tags.includes(tagFilter)).map((l) => ({ id: l.id, name: l.name, meta: `${l.category} · ${l.locationType}` })) :
-    mode === "quests" ? quests.filter((q) => !tagFilter || q.tags.includes(tagFilter)).map((q) => ({ id: q.id, name: q.title, meta: `${q.questType} · ${q.tier}` })) :
-    mode === "factions" ? factions.filter((f) => !tagFilter || f.tags.includes(tagFilter)).map((f) => ({ id: f.id, name: f.name, meta: f.factionType })) :
-    mode === "encounters" ? encounters.filter((e) => !tagFilter || e.tags.includes(tagFilter)).map((e) => ({ id: e.id, name: e.name, meta: `${e.terrain} · d${e.entries.length}` })) :
-    mode === "notes" ? notes.filter((n) => !tagFilter || n.tags.includes(tagFilter)).map((n) => ({ id: n.id, name: n.title, meta: n.sessionLabel || new Date(n.createdAt).toLocaleDateString() })) :
-    adventures.filter((a) => !tagFilter || a.tags.includes(tagFilter)).map((a) => ({ id: a.id, name: a.title, meta: a.tier }));
+    mode === "characters" ? characters.filter((c) => !tagFilter || c.tags.includes(tagFilter)).map((c) => ({ id: c.id, name: c.name, meta: `${c.kind === "npc" ? c.race : c.templateName} · CR ${c.statBlock.challengeRating}`, hidden: c.hiddenFromParty })) :
+    mode === "items" ? items.filter((i) => !tagFilter || i.tags.includes(tagFilter)).map((i) => ({ id: i.id, name: i.name, meta: `${i.category} · ${i.rarity}`, hidden: i.hiddenFromParty })) :
+    mode === "locations" ? locations.filter((l) => !tagFilter || l.tags.includes(tagFilter)).map((l) => ({ id: l.id, name: l.name, meta: `${l.category} · ${l.locationType}`, hidden: l.hiddenFromParty })) :
+    mode === "quests" ? quests.filter((q) => (!tagFilter || q.tags.includes(tagFilter)) && (!statusFilter || q.status === statusFilter)).map((q) => ({ id: q.id, name: q.title, meta: `${q.questType} · ${q.tier} · ${QUEST_STATUS_LABELS[q.status]}`, hidden: q.hiddenFromParty })) :
+    mode === "factions" ? factions.filter((f) => !tagFilter || f.tags.includes(tagFilter)).map((f) => ({ id: f.id, name: f.name, meta: f.factionType, hidden: f.hiddenFromParty })) :
+    mode === "encounters" ? encounters.filter((e) => !tagFilter || e.tags.includes(tagFilter)).map((e) => ({ id: e.id, name: e.name, meta: `${e.terrain} · d${e.entries.length}`, hidden: e.hiddenFromParty })) :
+    mode === "notes" ? notes.filter((n) => !tagFilter || n.tags.includes(tagFilter)).map((n) => ({ id: n.id, name: n.title, meta: n.sessionLabel || new Date(n.createdAt).toLocaleDateString(), hidden: n.hiddenFromParty })) :
+    mode === "adventures" ? adventures.filter((a) => !tagFilter || a.tags.includes(tagFilter)).map((a) => ({ id: a.id, name: a.title, meta: a.tier, hidden: a.hiddenFromParty })) :
+    playerCharacters.filter((p) => !tagFilter || p.tags.includes(tagFilter)).map((p) => ({ id: p.id, name: p.name, meta: `Level ${p.level} ${p.race} ${p.className}`, hidden: p.hiddenFromParty }));
+
+  if (showFactionWeb) {
+    return (
+      <div className="page">
+        <FactionWebView
+          factions={factions}
+          onSelectEntity={(type, id) => {
+            setShowFactionWeb(false);
+            setMode(ENTITY_TYPE_TO_MODE[type]);
+            setSelectedId(id);
+          }}
+          onClose={() => setShowFactionWeb(false)}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="page roster-layout">
@@ -322,6 +393,10 @@ export function RosterPage({
             <button key={m} className={mode === m ? "active" : ""} aria-current={mode === m ? "true" : undefined} onClick={() => switchMode(m)}>{MODE_LABELS[m]}</button>
           ))}
         </div>
+
+        {mode === "factions" && (
+          <button className="btn-secondary" onClick={() => setShowFactionWeb(true)}>Relationship Web</button>
+        )}
 
         <label className="field">
           <span>Filter by world</span>
@@ -342,6 +417,16 @@ export function RosterPage({
           </label>
         )}
 
+        {mode === "quests" && (
+          <label className="field">
+            <span>Filter by status</span>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as QuestStatus | "")}>
+              <option value="">All statuses</option>
+              {QUEST_STATUSES.map((s) => <option key={s} value={s}>{QUEST_STATUS_LABELS[s]}</option>)}
+            </select>
+          </label>
+        )}
+
         {loading && <p className="hint">Loading…</p>}
         {!loading && activeList.length === 0 && <p className="hint">No saved {MODE_LABELS[mode].toLowerCase()} yet.</p>}
         <ul className="entity-list">
@@ -352,7 +437,10 @@ export function RosterPage({
                 aria-current={entry.id === selectedId ? "true" : undefined}
                 onClick={() => setSelectedId(entry.id)}
               >
-                <span className="entity-name">{entry.name}</span>
+                <span className="entity-name">
+                  {entry.name}
+                  {entry.hidden && <span className="hidden-badge" title="Hidden from party">🔒</span>}
+                </span>
                 <span className="entity-meta">{entry.meta}</span>
               </button>
             </li>
@@ -444,6 +532,15 @@ export function RosterPage({
           />
         )}
 
+        {selectedPlayerCharacter && !editingContent && <PlayerCharacterCardView pc={selectedPlayerCharacter} />}
+        {selectedPlayerCharacter && editingContent && (
+          <PlayerCharacterEditor
+            value={selectedPlayerCharacter}
+            onSave={async (patch) => { await api.updatePlayerCharacter(selectedPlayerCharacter.id, patch); setEditingContent(false); refresh(); }}
+            onCancel={() => setEditingContent(false)}
+          />
+        )}
+
         {selected && !editingContent && mode !== "notes" && (
           <button className="btn-secondary" onClick={() => setEditingContent(true)}>Edit Content</button>
         )}
@@ -453,6 +550,9 @@ export function RosterPage({
         )}
         {selected && !editingContent && onPrint && mode === "notes" && (
           <button className="btn-secondary" onClick={handlePrintSessionPack}>Print Session Pack</button>
+        )}
+        {selected && !editingContent && onPrint && mode === "adventures" && (
+          <button className="btn-secondary" onClick={handlePrintAdventurePack}>Print Adventure Pack</button>
         )}
 
         {selected && !editingContent && (
@@ -468,6 +568,18 @@ export function RosterPage({
                   {worlds.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
                 </select>
               </label>
+              {mode === "quests" && (
+                <label className="field">
+                  <span>Status</span>
+                  <select value={questStatus} onChange={(e) => setQuestStatus(e.target.value as QuestStatus)}>
+                    {QUEST_STATUSES.map((s) => <option key={s} value={s}>{QUEST_STATUS_LABELS[s]}</option>)}
+                  </select>
+                </label>
+              )}
+              <label className="field">
+                <input type="checkbox" checked={hiddenFromParty} onChange={(e) => setHiddenFromParty(e.target.checked)} />
+                {" "}Hidden from party
+              </label>
               <label className="field">
                 <span>Tags</span>
                 <input type="text" value={tags} onChange={(e) => setTags(e.target.value)} />
@@ -476,6 +588,7 @@ export function RosterPage({
                 <span>Notes</span>
                 <textarea value={metaNotes} onChange={(e) => setMetaNotes(e.target.value)} rows={3} />
               </label>
+              {actionError && <p className="error">{actionError}</p>}
               <div className="button-row">
                 <button className="btn-primary" onClick={handleUpdate} disabled={status === "saving"}>
                   {status === "saving" ? "Saving…" : "Save Changes"}

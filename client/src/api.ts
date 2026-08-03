@@ -7,6 +7,7 @@ import type {
   EncounterTable, GenerateEncounterTableRequest, GeneratedEncounterTable,
   SessionNote, SessionNoteInput,
   Adventure, GenerateAdventureRequest, GeneratedAdventure,
+  PlayerCharacter, PlayerCharacterInput,
   EntityType, EntityLink, SearchResult,
   AuthUser, SignupResult, RecoveryCodeResult,
 } from "@spark/shared";
@@ -58,6 +59,8 @@ export interface ImportResult {
 }
 
 export interface WorldSummary extends World {
+  isOwner: boolean;
+  ownerUsername?: string;
   characterCount: number;
   itemCount: number;
   locationCount: number;
@@ -66,6 +69,12 @@ export interface WorldSummary extends World {
   encounterTableCount: number;
   sessionNoteCount: number;
   adventureCount: number;
+  playerCharacterCount: number;
+}
+
+export interface WorldMemberInfo {
+  userId: string;
+  username: string;
 }
 
 export const api = {
@@ -157,6 +166,15 @@ export const api = {
     request<Adventure>(`/adventures/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   deleteAdventure: (id: string) => request<void>(`/adventures/${id}`, { method: "DELETE" }),
 
+  listPlayerCharacters: (worldId?: string) =>
+    request<PlayerCharacter[]>(`/player-characters${worldId ? `?worldId=${worldId}` : ""}`),
+  getPlayerCharacter: (id: string) => request<PlayerCharacter>(`/player-characters/${id}`),
+  savePlayerCharacter: (pc: PlayerCharacterInput & { worldId?: string | null; tags?: string[]; notes?: string }) =>
+    request<PlayerCharacter>("/player-characters", { method: "POST", body: JSON.stringify(pc) }),
+  updatePlayerCharacter: (id: string, patch: Partial<PlayerCharacter>) =>
+    request<PlayerCharacter>(`/player-characters/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+  deletePlayerCharacter: (id: string) => request<void>(`/player-characters/${id}`, { method: "DELETE" }),
+
   listWorlds: () => request<WorldSummary[]>("/worlds"),
   getWorld: (id: string) => request<World>(`/worlds/${id}`),
   createWorld: (name: string, description?: string) =>
@@ -164,6 +182,15 @@ export const api = {
   updateWorld: (id: string, patch: Partial<World>) =>
     request<World>(`/worlds/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   deleteWorld: (id: string) => request<void>(`/worlds/${id}`, { method: "DELETE" }),
+
+  generateWorldJoinCode: (worldId: string) =>
+    request<{ code: string }>(`/worlds/${worldId}/join-code`, { method: "POST" }),
+  joinWorld: (code: string) =>
+    request<{ worldId: string; worldName: string }>("/worlds/join", { method: "POST", body: JSON.stringify({ code }) }),
+  getWorldMembers: (worldId: string) => request<WorldMemberInfo[]>(`/worlds/${worldId}/members`),
+  removeWorldMember: (worldId: string, userId: string) =>
+    request<void>(`/worlds/${worldId}/members/${userId}`, { method: "DELETE" }),
+  leaveWorld: (worldId: string) => request<void>(`/worlds/${worldId}/leave`, { method: "POST" }),
 
   search: (q: string, type?: EntityType) =>
     request<{ query: string; results: SearchResult[] }>(

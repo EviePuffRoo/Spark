@@ -1,4 +1,4 @@
-import type { Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, Link } from "@prisma/client";
+import type { Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, PlayerCharacter, Link } from "@prisma/client";
 import { prisma } from "./db.js";
 
 export interface ExportBundle {
@@ -13,14 +13,27 @@ export interface ExportBundle {
   encounterTables: EncounterTable[];
   sessionNotes: SessionNote[];
   adventures: Adventure[];
+  playerCharacters: PlayerCharacter[];
   links: Pick<Link, "fromType" | "fromId" | "toType" | "toId" | "label">[];
 }
 
-export async function buildExport(userId: string, worldId?: string): Promise<ExportBundle> {
-  const worlds = await prisma.world.findMany({ where: worldId ? { id: worldId, userId } : { userId } });
-  const scopeWhere = worldId ? { worldId, userId } : { userId };
+// A world export additionally allows a shared-world member (not just the
+// owner) to export the whole world's content, matching their normal
+// read access — but the account-wide export (no worldId) always stays
+// owner-only, since silently folding someone else's shared campaign into
+// "export everything" would be surprising.
+export async function buildExport(userId: string, worldId: string | undefined, memberWorldIds: string[]): Promise<ExportBundle> {
+  const hasSharedAccess = !!worldId && memberWorldIds.includes(worldId);
+  const worldsWhere = worldId
+    ? (hasSharedAccess ? { id: worldId } : { id: worldId, userId })
+    : { userId };
+  const scopeWhere = worldId
+    ? (hasSharedAccess ? { worldId } : { worldId, userId })
+    : { userId };
 
-  const [characters, items, locations, quests, factions, encounterTables, sessionNotes, adventures] = await Promise.all([
+  const worlds = await prisma.world.findMany({ where: worldsWhere });
+
+  const [characters, items, locations, quests, factions, encounterTables, sessionNotes, adventures, playerCharacters] = await Promise.all([
     prisma.character.findMany({ where: scopeWhere }),
     prisma.item.findMany({ where: scopeWhere }),
     prisma.location.findMany({ where: scopeWhere }),
@@ -29,22 +42,23 @@ export async function buildExport(userId: string, worldId?: string): Promise<Exp
     prisma.encounterTable.findMany({ where: scopeWhere }),
     prisma.sessionNote.findMany({ where: scopeWhere }),
     prisma.adventure.findMany({ where: scopeWhere }),
+    prisma.playerCharacter.findMany({ where: scopeWhere }),
   ]);
 
   const entityIds = new Set<string>([
     ...characters.map((c) => c.id), ...items.map((i) => i.id), ...locations.map((l) => l.id),
     ...quests.map((q) => q.id), ...factions.map((f) => f.id), ...encounterTables.map((e) => e.id),
-    ...sessionNotes.map((n) => n.id), ...adventures.map((a) => a.id),
+    ...sessionNotes.map((n) => n.id), ...adventures.map((a) => a.id), ...playerCharacters.map((p) => p.id),
   ]);
 
-  const allLinks = await prisma.link.findMany({ where: { userId } });
+  const allLinks = await prisma.link.findMany({ where: hasSharedAccess ? {} : { userId } });
   const links = allLinks.filter((l) => entityIds.has(l.fromId) && entityIds.has(l.toId));
 
   return {
     version: 1,
     exportedAt: new Date().toISOString(),
     worlds: worlds.map((w) => ({ id: w.id, name: w.name, description: w.description })),
-    characters, items, locations, quests, factions, encounterTables, sessionNotes, adventures,
+    characters, items, locations, quests, factions, encounterTables, sessionNotes, adventures, playerCharacters,
     links: links.map(({ fromType, fromId, toType, toId, label }) => ({ fromType, fromId, toType, toId, label })),
   };
 }
@@ -72,7 +86,7 @@ export async function applyImport(userId: string, bundle: ExportBundle): Promise
         data: {
           kind: c.kind, name: c.name, race: c.race, background: c.background, alignment: c.alignment,
           templateId: c.templateId, templateName: c.templateName, statBlock: c.statBlock, backstory: c.backstory,
-          tags: c.tags, notes: c.notes, worldId: remapWorldId(c.worldId), userId,
+          tags: c.tags, notes: c.notes, worldId: remapWorldId(c.worldId), hiddenFromParty: c.hiddenFromParty, userId,
         },
       });
       entityIdMap.set(c.id, created.id);
@@ -82,7 +96,7 @@ export async function applyImport(userId: string, bundle: ExportBundle): Promise
       const created = await tx.item.create({
         data: {
           name: i.name, itemType: i.itemType, category: i.category, rarity: i.rarity, description: i.description,
-          property: i.property, history: i.history, tags: i.tags, notes: i.notes, worldId: remapWorldId(i.worldId), userId,
+          property: i.property, history: i.history, tags: i.tags, notes: i.notes, worldId: remapWorldId(i.worldId), hiddenFromParty: i.hiddenFromParty, userId,
         },
       });
       entityIdMap.set(i.id, created.id);
@@ -93,7 +107,7 @@ export async function applyImport(userId: string, bundle: ExportBundle): Promise
         data: {
           name: l.name, locationType: l.locationType, category: l.category, description: l.description,
           notableFeature: l.notableFeature, keeper: l.keeper, rumor: l.rumor,
-          tags: l.tags, notes: l.notes, worldId: remapWorldId(l.worldId), userId,
+          tags: l.tags, notes: l.notes, worldId: remapWorldId(l.worldId), hiddenFromParty: l.hiddenFromParty, userId,
         },
       });
       entityIdMap.set(l.id, created.id);
@@ -103,7 +117,7 @@ export async function applyImport(userId: string, bundle: ExportBundle): Promise
       const created = await tx.questHook.create({
         data: {
           title: q.title, questType: q.questType, tier: q.tier, hook: q.hook, objective: q.objective,
-          complication: q.complication, reward: q.reward, tags: q.tags, notes: q.notes, worldId: remapWorldId(q.worldId), userId,
+          complication: q.complication, reward: q.reward, tags: q.tags, notes: q.notes, worldId: remapWorldId(q.worldId), hiddenFromParty: q.hiddenFromParty, userId,
         },
       });
       entityIdMap.set(q.id, created.id);
@@ -113,7 +127,7 @@ export async function applyImport(userId: string, bundle: ExportBundle): Promise
       const created = await tx.faction.create({
         data: {
           name: f.name, factionType: f.factionType, agenda: f.agenda, methods: f.methods,
-          publicFace: f.publicFace, hook: f.hook, tags: f.tags, notes: f.notes, worldId: remapWorldId(f.worldId), userId,
+          publicFace: f.publicFace, hook: f.hook, tags: f.tags, notes: f.notes, worldId: remapWorldId(f.worldId), hiddenFromParty: f.hiddenFromParty, userId,
         },
       });
       entityIdMap.set(f.id, created.id);
@@ -123,7 +137,7 @@ export async function applyImport(userId: string, bundle: ExportBundle): Promise
       const created = await tx.encounterTable.create({
         data: {
           name: e.name, terrain: e.terrain, entries: e.entries, tags: e.tags, notes: e.notes,
-          worldId: remapWorldId(e.worldId), userId,
+          worldId: remapWorldId(e.worldId), hiddenFromParty: e.hiddenFromParty, userId,
         },
       });
       entityIdMap.set(e.id, created.id);
@@ -133,7 +147,7 @@ export async function applyImport(userId: string, bundle: ExportBundle): Promise
       const created = await tx.sessionNote.create({
         data: {
           title: n.title, sessionLabel: n.sessionLabel, summary: n.summary, looseThreads: n.looseThreads,
-          nextSteps: n.nextSteps, tags: n.tags, notes: n.notes, worldId: remapWorldId(n.worldId), userId,
+          nextSteps: n.nextSteps, tags: n.tags, notes: n.notes, worldId: remapWorldId(n.worldId), hiddenFromParty: n.hiddenFromParty, userId,
         },
       });
       entityIdMap.set(n.id, created.id);
@@ -143,10 +157,21 @@ export async function applyImport(userId: string, bundle: ExportBundle): Promise
       const created = await tx.adventure.create({
         data: {
           title: a.title, tier: a.tier, premise: a.premise, hook: a.hook, objective: a.objective,
-          complication: a.complication, reward: a.reward, tags: a.tags, notes: a.notes, worldId: remapWorldId(a.worldId), userId,
+          complication: a.complication, reward: a.reward, tags: a.tags, notes: a.notes, worldId: remapWorldId(a.worldId), hiddenFromParty: a.hiddenFromParty, userId,
         },
       });
       entityIdMap.set(a.id, created.id);
+    }
+
+    for (const p of bundle.playerCharacters ?? []) {
+      const created = await tx.playerCharacter.create({
+        data: {
+          name: p.name, className: p.className, level: p.level, race: p.race, armorClass: p.armorClass, maxHp: p.maxHp,
+          abilityScores: p.abilityScores, playerName: p.playerName, tags: p.tags, notes: p.notes,
+          worldId: remapWorldId(p.worldId), hiddenFromParty: p.hiddenFromParty, userId,
+        },
+      });
+      entityIdMap.set(p.id, created.id);
     }
 
     let linksImported = 0;

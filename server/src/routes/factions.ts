@@ -2,13 +2,15 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { toFactionDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
+import { getMemberWorldIds } from "../worldAccess.js";
 
 export const factionsRouter = Router();
 
 factionsRouter.get("/", async (req, res) => {
   const { worldId } = req.query;
+  const memberWorldIds = await getMemberWorldIds(req.userId!);
   const where = {
-    userId: req.userId,
+    OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }],
     ...(worldId === "unassigned" ? { worldId: null } : typeof worldId === "string" ? { worldId } : {}),
   };
   const rows = await prisma.faction.findMany({ where, orderBy: { createdAt: "desc" } });
@@ -16,7 +18,8 @@ factionsRouter.get("/", async (req, res) => {
 });
 
 factionsRouter.get("/:id", async (req, res) => {
-  const row = await prisma.faction.findFirst({ where: { id: req.params.id, userId: req.userId } });
+  const memberWorldIds = await getMemberWorldIds(req.userId!);
+  const row = await prisma.faction.findFirst({ where: { id: req.params.id, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }] } });
   if (!row) return res.status(404).json({ error: "Faction not found" });
   res.json(toFactionDTO(row));
 });
@@ -45,7 +48,7 @@ factionsRouter.patch("/:id", async (req, res) => {
   const body = req.body ?? {};
   const data: Record<string, unknown> = {};
 
-  for (const field of ["name", "factionType", "agenda", "methods", "publicFace", "hook", "notes"] as const) {
+  for (const field of ["name", "factionType", "agenda", "methods", "publicFace", "hook", "notes", "hiddenFromParty"] as const) {
     if (field in body) data[field] = body[field];
   }
   if ("worldId" in body) data.worldId = body.worldId ?? null;

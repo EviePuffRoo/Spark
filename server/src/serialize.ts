@@ -1,9 +1,9 @@
 import type {
   Character as CharacterRow, Item as ItemRow, Location as LocationRow, QuestHook as QuestHookRow,
   Faction as FactionRow, EncounterTable as EncounterTableRow, SessionNote as SessionNoteRow,
-  Adventure as AdventureRow,
+  Adventure as AdventureRow, PlayerCharacter as PlayerCharacterRow,
 } from "@prisma/client";
-import type { Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure } from "@spark/shared";
+import type { Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, PlayerCharacter } from "@spark/shared";
 
 export function toCharacterDTO(row: CharacterRow): Character {
   return {
@@ -18,6 +18,7 @@ export function toCharacterDTO(row: CharacterRow): Character {
     statBlock: JSON.parse(row.statBlock),
     backstory: JSON.parse(row.backstory),
     worldId: row.worldId,
+    hiddenFromParty: row.hiddenFromParty,
     tags: JSON.parse(row.tags),
     notes: row.notes ?? undefined,
     createdAt: row.createdAt.toISOString(),
@@ -36,6 +37,7 @@ export function toItemDTO(row: ItemRow): Item {
     property: row.property,
     history: row.history,
     worldId: row.worldId,
+    hiddenFromParty: row.hiddenFromParty,
     tags: JSON.parse(row.tags),
     notes: row.notes ?? undefined,
     createdAt: row.createdAt.toISOString(),
@@ -54,6 +56,7 @@ export function toLocationDTO(row: LocationRow): Location {
     keeper: row.keeper,
     rumor: row.rumor,
     worldId: row.worldId,
+    hiddenFromParty: row.hiddenFromParty,
     tags: JSON.parse(row.tags),
     notes: row.notes ?? undefined,
     createdAt: row.createdAt.toISOString(),
@@ -71,6 +74,7 @@ export function toFactionDTO(row: FactionRow): Faction {
     publicFace: row.publicFace,
     hook: row.hook,
     worldId: row.worldId,
+    hiddenFromParty: row.hiddenFromParty,
     tags: JSON.parse(row.tags),
     notes: row.notes ?? undefined,
     createdAt: row.createdAt.toISOString(),
@@ -85,6 +89,7 @@ export function toEncounterTableDTO(row: EncounterTableRow): EncounterTable {
     terrain: row.terrain,
     entries: JSON.parse(row.entries),
     worldId: row.worldId,
+    hiddenFromParty: row.hiddenFromParty,
     tags: JSON.parse(row.tags),
     notes: row.notes ?? undefined,
     createdAt: row.createdAt.toISOString(),
@@ -101,6 +106,7 @@ export function toSessionNoteDTO(row: SessionNoteRow): SessionNote {
     looseThreads: row.looseThreads ?? undefined,
     nextSteps: row.nextSteps ?? undefined,
     worldId: row.worldId,
+    hiddenFromParty: row.hiddenFromParty,
     tags: JSON.parse(row.tags),
     notes: row.notes ?? undefined,
     createdAt: row.createdAt.toISOString(),
@@ -118,7 +124,9 @@ export function toQuestHookDTO(row: QuestHookRow): QuestHook {
     objective: row.objective,
     complication: row.complication,
     reward: row.reward,
+    status: row.status as QuestHook["status"],
     worldId: row.worldId,
+    hiddenFromParty: row.hiddenFromParty,
     tags: JSON.parse(row.tags),
     notes: row.notes ?? undefined,
     createdAt: row.createdAt.toISOString(),
@@ -137,6 +145,27 @@ export function toAdventureDTO(row: AdventureRow): Adventure {
     complication: row.complication,
     reward: row.reward,
     worldId: row.worldId,
+    hiddenFromParty: row.hiddenFromParty,
+    tags: JSON.parse(row.tags),
+    notes: row.notes ?? undefined,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+export function toPlayerCharacterDTO(row: PlayerCharacterRow): PlayerCharacter {
+  return {
+    id: row.id,
+    name: row.name,
+    className: row.className,
+    level: row.level,
+    race: row.race,
+    armorClass: row.armorClass,
+    maxHp: row.maxHp,
+    abilityScores: JSON.parse(row.abilityScores),
+    playerName: row.playerName ?? undefined,
+    worldId: row.worldId,
+    hiddenFromParty: row.hiddenFromParty,
     tags: JSON.parse(row.tags),
     notes: row.notes ?? undefined,
     createdAt: row.createdAt.toISOString(),

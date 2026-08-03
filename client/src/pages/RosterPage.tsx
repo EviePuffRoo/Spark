@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import type { Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, EntityType } from "@spark/shared";
+import type { Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, EntityType, QuestStatus } from "@spark/shared";
+import { QUEST_STATUSES, QUEST_STATUS_LABELS } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { StatBlockView } from "../components/StatBlockView";
 import { BackstoryView } from "../components/BackstoryView";
@@ -102,6 +103,8 @@ export function RosterPage({
   const [editingContent, setEditingContent] = useState(false);
   const [loading, setLoading] = useState(true);
   const [tagFilter, setTagFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<QuestStatus | "">("");
+  const [questStatus, setQuestStatus] = useState<QuestStatus>("active");
   const [showFactionWeb, setShowFactionWeb] = useState(false);
 
   function refresh() {
@@ -148,6 +151,7 @@ export function RosterPage({
     setMode(next);
     setSelectedId(null);
     setTagFilter("");
+    setStatusFilter("");
     setShowFactionWeb(false);
   }
 
@@ -170,13 +174,17 @@ export function RosterPage({
       setTags(selected.tags.join(", "));
       setAssignedWorld(selected.worldId ?? "");
     }
+    if (selectedQuest) setQuestStatus(selectedQuest.status);
     setEditingContent(false);
-  }, [selected]);
+  }, [selected, selectedQuest]);
 
   async function handleUpdate() {
     if (!selected) return;
     setStatus("saving");
-    const patch = { notes: metaNotes, tags: tags.split(",").map((t) => t.trim()).filter(Boolean), worldId: assignedWorld || null };
+    const patch = {
+      notes: metaNotes, tags: tags.split(",").map((t) => t.trim()).filter(Boolean), worldId: assignedWorld || null,
+      ...(mode === "quests" ? { status: questStatus } : {}),
+    };
     if (mode === "characters") await api.updateCharacter(selected.id, patch);
     else if (mode === "items") await api.updateItem(selected.id, patch);
     else if (mode === "locations") await api.updateLocation(selected.id, patch);
@@ -317,7 +325,7 @@ export function RosterPage({
     mode === "characters" ? characters.filter((c) => !tagFilter || c.tags.includes(tagFilter)).map((c) => ({ id: c.id, name: c.name, meta: `${c.kind === "npc" ? c.race : c.templateName} · CR ${c.statBlock.challengeRating}` })) :
     mode === "items" ? items.filter((i) => !tagFilter || i.tags.includes(tagFilter)).map((i) => ({ id: i.id, name: i.name, meta: `${i.category} · ${i.rarity}` })) :
     mode === "locations" ? locations.filter((l) => !tagFilter || l.tags.includes(tagFilter)).map((l) => ({ id: l.id, name: l.name, meta: `${l.category} · ${l.locationType}` })) :
-    mode === "quests" ? quests.filter((q) => !tagFilter || q.tags.includes(tagFilter)).map((q) => ({ id: q.id, name: q.title, meta: `${q.questType} · ${q.tier}` })) :
+    mode === "quests" ? quests.filter((q) => (!tagFilter || q.tags.includes(tagFilter)) && (!statusFilter || q.status === statusFilter)).map((q) => ({ id: q.id, name: q.title, meta: `${q.questType} · ${q.tier} · ${QUEST_STATUS_LABELS[q.status]}` })) :
     mode === "factions" ? factions.filter((f) => !tagFilter || f.tags.includes(tagFilter)).map((f) => ({ id: f.id, name: f.name, meta: f.factionType })) :
     mode === "encounters" ? encounters.filter((e) => !tagFilter || e.tags.includes(tagFilter)).map((e) => ({ id: e.id, name: e.name, meta: `${e.terrain} · d${e.entries.length}` })) :
     mode === "notes" ? notes.filter((n) => !tagFilter || n.tags.includes(tagFilter)).map((n) => ({ id: n.id, name: n.title, meta: n.sessionLabel || new Date(n.createdAt).toLocaleDateString() })) :
@@ -367,6 +375,16 @@ export function RosterPage({
             <select value={tagFilter} onChange={(e) => setTagFilter(e.target.value)}>
               <option value="">All tags</option>
               {availableTags.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </label>
+        )}
+
+        {mode === "quests" && (
+          <label className="field">
+            <span>Filter by status</span>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as QuestStatus | "")}>
+              <option value="">All statuses</option>
+              {QUEST_STATUSES.map((s) => <option key={s} value={s}>{QUEST_STATUS_LABELS[s]}</option>)}
             </select>
           </label>
         )}
@@ -500,6 +518,14 @@ export function RosterPage({
                   {worlds.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
                 </select>
               </label>
+              {mode === "quests" && (
+                <label className="field">
+                  <span>Status</span>
+                  <select value={questStatus} onChange={(e) => setQuestStatus(e.target.value as QuestStatus)}>
+                    {QUEST_STATUSES.map((s) => <option key={s} value={s}>{QUEST_STATUS_LABELS[s]}</option>)}
+                  </select>
+                </label>
+              )}
               <label className="field">
                 <span>Tags</span>
                 <input type="text" value={tags} onChange={(e) => setTags(e.target.value)} />

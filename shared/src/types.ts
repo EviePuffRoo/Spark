@@ -156,8 +156,18 @@ export interface GeneratedQuestHook {
   reward: string;
 }
 
+export const QUEST_STATUSES = ["active", "completed", "failed", "abandoned"] as const;
+export type QuestStatus = typeof QUEST_STATUSES[number];
+export const QUEST_STATUS_LABELS: Record<QuestStatus, string> = {
+  active: "Active",
+  completed: "Completed",
+  failed: "Failed",
+  abandoned: "Abandoned",
+};
+
 export interface QuestHook extends GeneratedQuestHook {
   id: string;
+  status: QuestStatus;
   worldId?: string | null;
   tags: string[];
   notes?: string;

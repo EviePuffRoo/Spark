@@ -123,6 +123,7 @@ model QuestHook {
   objective    String
   complication String
   reward       String
+  status       String   @default("active")
   tags         String   @default("[]")
   notes        String?
   worldId      String?

@@ -118,6 +118,7 @@ export function toQuestHookDTO(row: QuestHookRow): QuestHook {
     objective: row.objective,
     complication: row.complication,
     reward: row.reward,
+    status: row.status as QuestHook["status"],
     worldId: row.worldId,
     tags: JSON.parse(row.tags),
     notes: row.notes ?? undefined,

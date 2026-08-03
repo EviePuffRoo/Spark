@@ -11,6 +11,7 @@ const TYPE_LABELS: Record<EntityType, string> = {
   encounterTable: "Encounter Table",
   sessionNote: "Session Note",
   adventure: "Adventure",
+  playerCharacter: "Player Character",
 };
 
 const ALL_TYPES = Object.keys(TYPE_LABELS) as EntityType[];

@@ -32,7 +32,7 @@ function rollD20(): number {
 
 export function InitiativeTracker() {
   const [encounter, setEncounter] = useLocalStorage<EncounterState>("spark-combat-encounter", BLANK_ENCOUNTER);
-  const [addingFromRoster, setAddingFromRoster] = useState(false);
+  const [rosterPickType, setRosterPickType] = useState<"character" | "playerCharacter" | null>(null);
   const [addingCustom, setAddingCustom] = useState(false);
   const [customName, setCustomName] = useState("");
   const [customInitiative, setCustomInitiative] = useState(10);
@@ -48,17 +48,31 @@ export function InitiativeTracker() {
   }
 
   async function handlePickFromRoster(result: SearchResult) {
-    setAddingFromRoster(false);
-    const character = await api.getCharacter(result.id);
-    addCombatant({
-      id: crypto.randomUUID(),
-      name: character.name,
-      initiative: rollD20() + abilityModifier(character.statBlock.abilityScores.dex),
-      maxHp: character.statBlock.hitPointsAverage,
-      currentHp: character.statBlock.hitPointsAverage,
-      armorClass: character.statBlock.armorClass,
-      notes: "",
-    });
+    const type = rosterPickType;
+    setRosterPickType(null);
+    if (type === "character") {
+      const character = await api.getCharacter(result.id);
+      addCombatant({
+        id: crypto.randomUUID(),
+        name: character.name,
+        initiative: rollD20() + abilityModifier(character.statBlock.abilityScores.dex),
+        maxHp: character.statBlock.hitPointsAverage,
+        currentHp: character.statBlock.hitPointsAverage,
+        armorClass: character.statBlock.armorClass,
+        notes: "",
+      });
+    } else if (type === "playerCharacter") {
+      const pc = await api.getPlayerCharacter(result.id);
+      addCombatant({
+        id: crypto.randomUUID(),
+        name: pc.name,
+        initiative: rollD20() + abilityModifier(pc.abilityScores.dex),
+        maxHp: pc.maxHp,
+        currentHp: pc.maxHp,
+        armorClass: pc.armorClass,
+        notes: "",
+      });
+    }
   }
 
   function handleAddCustom() {
@@ -125,15 +139,20 @@ export function InitiativeTracker() {
       </div>
 
       <div className="button-row">
-        <button className="btn-secondary" onClick={() => { setAddingFromRoster((v) => !v); setAddingCustom(false); }}>+ Add from Roster</button>
-        <button className="btn-secondary" onClick={() => { setAddingCustom((v) => !v); setAddingFromRoster(false); }}>+ Add Custom</button>
+        <button className="btn-secondary" onClick={() => { setRosterPickType(rosterPickType === "character" ? null : "character"); setAddingCustom(false); }}>+ Add NPC/Monster</button>
+        <button className="btn-secondary" onClick={() => { setRosterPickType(rosterPickType === "playerCharacter" ? null : "playerCharacter"); setAddingCustom(false); }}>+ Add PC from Roster</button>
+        <button className="btn-secondary" onClick={() => { setAddingCustom((v) => !v); setRosterPickType(null); }}>+ Add Custom</button>
         {encounter.combatants.length > 0 && <button className="btn-secondary" onClick={nextTurn}>Next Turn</button>}
         {encounter.combatants.length > 0 && <button className="btn-danger" onClick={clearEncounter}>Clear Encounter</button>}
       </div>
 
-      {addingFromRoster && (
+      {rosterPickType && (
         <div className="save-panel">
-          <EntitySearchPicker type="character" onSelect={handlePickFromRoster} placeholder="Search NPCs & monsters…" />
+          <EntitySearchPicker
+            type={rosterPickType}
+            onSelect={handlePickFromRoster}
+            placeholder={rosterPickType === "character" ? "Search NPCs & monsters…" : "Search player characters…"}
+          />
         </div>
       )}
 

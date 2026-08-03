@@ -200,6 +200,26 @@ export interface Faction extends GeneratedFaction {
   updatedAt: string;
 }
 
+export interface PlayerCharacterInput {
+  name: string;
+  className: string;
+  level: number;
+  race: string;
+  armorClass: number;
+  maxHp: number;
+  abilityScores: AbilityScores;
+  playerName?: string;
+}
+
+export interface PlayerCharacter extends PlayerCharacterInput {
+  id: string;
+  worldId?: string | null;
+  tags: string[];
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface GenerateFactionRequest {
   factionType?: string;
   name?: string;
@@ -283,7 +303,7 @@ export interface Adventure extends GeneratedAdventure {
   updatedAt: string;
 }
 
-export type EntityType = "character" | "item" | "location" | "quest" | "faction" | "encounterTable" | "sessionNote" | "adventure";
+export type EntityType = "character" | "item" | "location" | "quest" | "faction" | "encounterTable" | "sessionNote" | "adventure" | "playerCharacter";
 
 export interface EntityTypeDef {
   type: EntityType;
@@ -299,6 +319,7 @@ export const ENTITY_TYPES: EntityTypeDef[] = [
   { type: "encounterTable", label: "Encounter Table" },
   { type: "sessionNote", label: "Session Note" },
   { type: "adventure", label: "Adventure" },
+  { type: "playerCharacter", label: "Player Character" },
 ];
 
 export interface EntityRef {

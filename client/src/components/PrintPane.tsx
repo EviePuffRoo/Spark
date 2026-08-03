@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import type { Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure } from "@spark/shared";
+import type { Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, PlayerCharacter } from "@spark/shared";
 import { StatBlockView } from "./StatBlockView";
 import { BackstoryView } from "./BackstoryView";
 import { ItemCardView } from "./ItemCardView";
@@ -9,6 +9,7 @@ import { FactionCardView } from "./FactionCardView";
 import { EncounterTableCardView } from "./EncounterTableCardView";
 import { SessionNoteCardView } from "./SessionNoteCardView";
 import { AdventureCardView } from "./AdventureCardView";
+import { PlayerCharacterCardView } from "./PlayerCharacterCardView";
 
 export type PrintItem =
   | { type: "character"; data: Character }
@@ -18,7 +19,8 @@ export type PrintItem =
   | { type: "faction"; data: Faction }
   | { type: "encounterTable"; data: EncounterTable }
   | { type: "sessionNote"; data: SessionNote }
-  | { type: "adventure"; data: Adventure };
+  | { type: "adventure"; data: Adventure }
+  | { type: "playerCharacter"; data: PlayerCharacter };
 
 export function PrintPane({ items }: { items: PrintItem[] | null }) {
   useEffect(() => {
@@ -50,6 +52,7 @@ export function PrintPane({ items }: { items: PrintItem[] | null }) {
           {item.type === "encounterTable" && <EncounterTableCardView table={item.data} />}
           {item.type === "sessionNote" && <SessionNoteCardView note={item.data} />}
           {item.type === "adventure" && <AdventureCardView adventure={item.data} />}
+          {item.type === "playerCharacter" && <PlayerCharacterCardView pc={item.data} />}
         </div>
       ))}
     </div>

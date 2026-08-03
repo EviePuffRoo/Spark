@@ -70,6 +70,13 @@ const adapters: Record<EntityType, EntityAdapter> = {
     getMeta: (row) => row.tier,
     searchFields: ["title", "tier", "premise", "hook", "objective", "complication", "reward", "notes", "tags"],
   },
+  playerCharacter: {
+    findMany: (args) => prisma.playerCharacter.findMany(args),
+    findUnique: (id, userId) => prisma.playerCharacter.findFirst({ where: { id, userId } }),
+    getName: (row) => row.name,
+    getMeta: (row) => `${row.className} ${row.level}`,
+    searchFields: ["name", "className", "race", "playerName", "notes", "tags"],
+  },
 };
 
 export function getAdapter(type: string): EntityAdapter | null {

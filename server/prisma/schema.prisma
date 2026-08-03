@@ -23,6 +23,7 @@ model User {
   encounterTables EncounterTable[]
   sessionNotes    SessionNote[]
   adventures      Adventure[]
+  playerCharacters PlayerCharacter[]
   links           Link[]
 }
 
@@ -42,7 +43,31 @@ model World {
   encounterTables EncounterTable[]
   sessionNotes    SessionNote[]
   adventures      Adventure[]
+  playerCharacters PlayerCharacter[]
 
+  @@index([userId])
+}
+
+model PlayerCharacter {
+  id            String   @id @default(cuid())
+  name          String
+  className     String
+  level         Int
+  race          String
+  armorClass    Int
+  maxHp         Int
+  abilityScores String   @default("{}")
+  playerName    String?
+  tags          String   @default("[]")
+  notes         String?
+  worldId       String?
+  world         World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([worldId])
   @@index([userId])
 }
 

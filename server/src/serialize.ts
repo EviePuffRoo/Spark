@@ -1,9 +1,9 @@
 import type {
   Character as CharacterRow, Item as ItemRow, Location as LocationRow, QuestHook as QuestHookRow,
   Faction as FactionRow, EncounterTable as EncounterTableRow, SessionNote as SessionNoteRow,
-  Adventure as AdventureRow,
+  Adventure as AdventureRow, PlayerCharacter as PlayerCharacterRow,
 } from "@prisma/client";
-import type { Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure } from "@spark/shared";
+import type { Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, PlayerCharacter } from "@spark/shared";
 
 export function toCharacterDTO(row: CharacterRow): Character {
   return {
@@ -137,6 +137,25 @@ export function toAdventureDTO(row: AdventureRow): Adventure {
     objective: row.objective,
     complication: row.complication,
     reward: row.reward,
+    worldId: row.worldId,
+    tags: JSON.parse(row.tags),
+    notes: row.notes ?? undefined,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+export function toPlayerCharacterDTO(row: PlayerCharacterRow): PlayerCharacter {
+  return {
+    id: row.id,
+    name: row.name,
+    className: row.className,
+    level: row.level,
+    race: row.race,
+    armorClass: row.armorClass,
+    maxHp: row.maxHp,
+    abilityScores: JSON.parse(row.abilityScores),
+    playerName: row.playerName ?? undefined,
     worldId: row.worldId,
     tags: JSON.parse(row.tags),
     notes: row.notes ?? undefined,

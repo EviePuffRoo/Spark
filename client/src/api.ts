@@ -7,6 +7,7 @@ import type {
   EncounterTable, GenerateEncounterTableRequest, GeneratedEncounterTable,
   SessionNote, SessionNoteInput,
   Adventure, GenerateAdventureRequest, GeneratedAdventure,
+  PlayerCharacter, PlayerCharacterInput,
   EntityType, EntityLink, SearchResult,
   AuthUser, SignupResult, RecoveryCodeResult,
 } from "@spark/shared";
@@ -156,6 +157,15 @@ export const api = {
   updateAdventure: (id: string, patch: Partial<Adventure>) =>
     request<Adventure>(`/adventures/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   deleteAdventure: (id: string) => request<void>(`/adventures/${id}`, { method: "DELETE" }),
+
+  listPlayerCharacters: (worldId?: string) =>
+    request<PlayerCharacter[]>(`/player-characters${worldId ? `?worldId=${worldId}` : ""}`),
+  getPlayerCharacter: (id: string) => request<PlayerCharacter>(`/player-characters/${id}`),
+  savePlayerCharacter: (pc: PlayerCharacterInput & { worldId?: string | null; tags?: string[]; notes?: string }) =>
+    request<PlayerCharacter>("/player-characters", { method: "POST", body: JSON.stringify(pc) }),
+  updatePlayerCharacter: (id: string, patch: Partial<PlayerCharacter>) =>
+    request<PlayerCharacter>(`/player-characters/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+  deletePlayerCharacter: (id: string) => request<void>(`/player-characters/${id}`, { method: "DELETE" }),
 
   listWorlds: () => request<WorldSummary[]>("/worlds"),
   getWorld: (id: string) => request<World>(`/worlds/${id}`),

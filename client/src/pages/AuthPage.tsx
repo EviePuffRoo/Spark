@@ -46,8 +46,8 @@ export function AuthPage() {
 
         {mode !== "reset" && (
           <div className="tabs forge-mode-tabs">
-            <button className={mode === "login" ? "active" : ""} onClick={() => switchMode("login")}>Log In</button>
-            <button className={mode === "signup" ? "active" : ""} onClick={() => switchMode("signup")}>Sign Up</button>
+            <button className={mode === "login" ? "active" : ""} aria-current={mode === "login" ? "true" : undefined} onClick={() => switchMode("login")}>Log In</button>
+            <button className={mode === "signup" ? "active" : ""} aria-current={mode === "signup" ? "true" : undefined} onClick={() => switchMode("signup")}>Sign Up</button>
           </div>
         )}
 

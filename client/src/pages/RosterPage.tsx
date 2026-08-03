@@ -279,7 +279,7 @@ export function RosterPage({
       <div className="panel roster-list">
         <div className="tabs roster-mode-tabs">
           {(Object.keys(MODE_LABELS) as Mode[]).map((m) => (
-            <button key={m} className={mode === m ? "active" : ""} onClick={() => switchMode(m)}>{MODE_LABELS[m]}</button>
+            <button key={m} className={mode === m ? "active" : ""} aria-current={mode === m ? "true" : undefined} onClick={() => switchMode(m)}>{MODE_LABELS[m]}</button>
           ))}
         </div>
 
@@ -299,6 +299,7 @@ export function RosterPage({
             <li key={entry.id}>
               <button
                 className={`entity-item ${entry.id === selectedId ? "active" : ""}`}
+                aria-current={entry.id === selectedId ? "true" : undefined}
                 onClick={() => setSelectedId(entry.id)}
               >
                 <span className="entity-name">{entry.name}</span>

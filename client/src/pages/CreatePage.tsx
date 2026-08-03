@@ -24,7 +24,7 @@ export function CreatePage() {
     <div>
       <div className="tabs create-type-tabs">
         {(Object.keys(CREATE_TYPE_LABELS) as CreateType[]).map((t) => (
-          <button key={t} className={createType === t ? "active" : ""} onClick={() => setCreateType(t)}>
+          <button key={t} className={createType === t ? "active" : ""} aria-current={createType === t ? "true" : undefined} onClick={() => setCreateType(t)}>
             {CREATE_TYPE_LABELS[t]}
           </button>
         ))}

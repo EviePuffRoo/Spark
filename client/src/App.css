@@ -5,11 +5,19 @@
 }
 
 .app-header {
-  position: relative;
   text-align: center;
-  padding: 24px 0 12px;
+  padding: 16px 0 12px;
   border-bottom: 2px solid var(--rule-gold);
   margin-bottom: 24px;
+}
+
+.app-header-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
 }
 
 .app-header h1 {
@@ -24,6 +32,22 @@
   color: var(--text-muted);
   margin: 4px 0 16px;
   font-style: italic;
+}
+
+.theme-toggle {
+  padding: 8px 12px;
+  line-height: 1;
+}
+
+@media (max-width: 480px) {
+  .app-header h1 {
+    font-size: 1.9rem;
+  }
+
+  .tabs button {
+    padding: 7px 12px;
+    font-size: 0.85rem;
+  }
 }
 
 .global-search {
@@ -666,9 +690,21 @@ textarea {
 }
 
 .account-menu {
-  position: absolute;
-  top: 24px;
-  right: 0;
+  position: relative;
+  min-width: 0;
+}
+
+.account-menu > button {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .account-menu > button {
+    max-width: 140px;
+  }
 }
 
 .account-menu-dropdown {

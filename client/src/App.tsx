@@ -4,6 +4,7 @@ import type { EntityType } from "@spark/shared";
 import { useAuth } from "./AuthContext";
 import { AuthPage } from "./pages/AuthPage";
 import { AccountMenu } from "./components/AccountMenu";
+import { ThemeToggle } from "./components/ThemeToggle";
 import { RecoveryCodeDisplay } from "./components/RecoveryCodeDisplay";
 import { CreatePage } from "./pages/CreatePage";
 import { SessionNotesPage } from "./pages/SessionNotesPage";
@@ -49,6 +50,10 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
+        <div className="app-header-actions">
+          <ThemeToggle />
+          <AccountMenu />
+        </div>
         <h1>Spark</h1>
         <p className="tagline">Everything a DM needs to prep and run a session, ready for the table</p>
         <GlobalSearch onSelect={openInRoster} />
@@ -60,7 +65,6 @@ function App() {
           <button className={tab === "worlds" ? "active" : ""} aria-current={tab === "worlds" ? "true" : undefined} onClick={() => setTab("worlds")}>Worlds</button>
           <button className={tab === "combat" ? "active" : ""} aria-current={tab === "combat" ? "true" : undefined} onClick={() => setTab("combat")}>Combat</button>
         </nav>
-        <AccountMenu />
       </header>
 
       <main>

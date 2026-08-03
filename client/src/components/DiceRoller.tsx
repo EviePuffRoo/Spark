@@ -1,4 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import type { RollLogEntry } from "@spark/shared";
+import { api, type WorldSummary } from "../api";
+import { useAuth } from "../AuthContext";
 import { useLocalStorage } from "../useLocalStorage";
 
 interface RollRecord {
@@ -14,6 +17,7 @@ interface RollRecord {
 
 const PRESETS = [4, 6, 8, 10, 12, 20, 100];
 const HISTORY_LIMIT = 50;
+const POLL_INTERVAL_MS = 5000;
 
 function parseNotation(input: string): { count: number; sides: number; modifier: number } | null {
   const match = input.trim().match(/^(\d*)d(\d+)([+-]\d+)?$/i);
@@ -42,13 +46,62 @@ function timeAgo(ms?: number): string | null {
 }
 
 export function DiceRoller() {
+  const { user } = useAuth();
   const [history, setHistory] = useLocalStorage<RollRecord[]>("spark-dice-history", []);
   const [notation, setNotation] = useState("1d20");
   const [label, setLabel] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  function pushRecord(record: RollRecord) {
+  const [mode, setMode] = useState<"personal" | "party">("personal");
+  const [worlds, setWorlds] = useState<WorldSummary[]>([]);
+  const [selectedWorldId, setSelectedWorldId] = useLocalStorage("spark-dice-world-id", "");
+  const [rollerName, setRollerName] = useState(user?.username ?? "");
+  const [secret, setSecret] = useState(false);
+  const [partyLog, setPartyLog] = useState<RollLogEntry[]>([]);
+  const [partyError, setPartyError] = useState<string | null>(null);
+
+  const selectedWorld = worlds.find((w) => w.id === selectedWorldId) ?? null;
+
+  useEffect(() => {
+    api.listWorlds().then(setWorlds).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (mode !== "party" || !selectedWorldId) {
+      setPartyLog([]);
+      return;
+    }
+    let cancelled = false;
+    function load() {
+      api.listRollLog(selectedWorldId)
+        .then((rows) => { if (!cancelled) setPartyLog(rows); })
+        .catch((e) => { if (!cancelled) setPartyError((e as Error).message); });
+    }
+    load();
+    const interval = setInterval(load, POLL_INTERVAL_MS);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [mode, selectedWorldId]);
+
+  function pushLocalRecord(record: RollRecord) {
     setHistory((h) => [record, ...h].slice(0, HISTORY_LIMIT));
+  }
+
+  async function postPartyRoll(payload: {
+    notation: string; results: number[]; modifier: number; total: number; mode?: "adv" | "dis"; label?: string;
+  }) {
+    if (!selectedWorldId || !user) return;
+    setPartyError(null);
+    try {
+      const row = await api.postRollLogEntry({
+        worldId: selectedWorldId,
+        rollerName: rollerName.trim() || user.username,
+        hiddenFromParty: secret,
+        ...payload,
+      });
+      setPartyLog((log) => [row, ...log].slice(0, 100));
+    } catch (e) {
+      setPartyError((e as Error).message);
+    }
   }
 
   function performRoll(input: string, rollLabel?: string) {
@@ -60,39 +113,80 @@ export function DiceRoller() {
     setError(null);
     const results = rollDice(parsed.count, parsed.sides);
     const total = results.reduce((sum, r) => sum + r, 0) + parsed.modifier;
-    pushRecord({
-      id: crypto.randomUUID(),
-      notation: input.trim(),
-      results,
-      modifier: parsed.modifier,
-      total,
-      timestamp: Date.now(),
-      label: rollLabel?.trim() || undefined,
-    });
+    const trimmedLabel = rollLabel?.trim() || undefined;
+
+    if (mode === "party") {
+      postPartyRoll({ notation: input.trim(), results, modifier: parsed.modifier, total, label: trimmedLabel });
+    } else {
+      pushLocalRecord({
+        id: crypto.randomUUID(), notation: input.trim(), results, modifier: parsed.modifier, total,
+        timestamp: Date.now(), label: trimmedLabel,
+      });
+    }
     if (rollLabel) setLabel("");
   }
 
-  function rollAdvantage(mode: "adv" | "dis") {
+  function rollAdvantage(advMode: "adv" | "dis") {
     const results = rollDice(2, 20);
-    const kept = mode === "adv" ? Math.max(...results) : Math.min(...results);
-    pushRecord({
-      id: crypto.randomUUID(),
-      notation: "1d20",
-      results,
-      modifier: 0,
-      total: kept,
-      timestamp: Date.now(),
-      mode,
-    });
+    const kept = advMode === "adv" ? Math.max(...results) : Math.min(...results);
+
+    if (mode === "party") {
+      postPartyRoll({ notation: "1d20", results, modifier: 0, total: kept, mode: advMode });
+    } else {
+      pushLocalRecord({
+        id: crypto.randomUUID(), notation: "1d20", results, modifier: 0, total: kept,
+        timestamp: Date.now(), mode: advMode,
+      });
+    }
   }
 
   function deleteRecord(id: string) {
     setHistory((h) => h.filter((r) => r.id !== id));
   }
 
+  async function deletePartyEntry(id: string) {
+    setPartyError(null);
+    try {
+      await api.deleteRollLogEntry(id);
+      setPartyLog((log) => log.filter((r) => r.id !== id));
+    } catch (e) {
+      setPartyError((e as Error).message);
+    }
+  }
+
+  const partyMode = mode === "party";
+
   return (
     <div className="panel dice-roller">
       <h2>Dice Roller</h2>
+
+      {worlds.length === 0 ? (
+        <p className="hint">Create or join a world to roll with your party.</p>
+      ) : (
+        <div className="tabs dice-mode-toggle" role="tablist">
+          <button className={mode === "personal" ? "active" : ""} aria-current={mode === "personal" ? "true" : undefined} onClick={() => setMode("personal")}>Personal</button>
+          <button className={partyMode ? "active" : ""} aria-current={partyMode ? "true" : undefined} onClick={() => setMode("party")}>Party</button>
+        </div>
+      )}
+
+      {partyMode && worlds.length > 0 && (
+        <>
+          <label className="field">
+            <span>World</span>
+            <select value={selectedWorldId} onChange={(e) => setSelectedWorldId(e.target.value)}>
+              <option value="">Select a world…</option>
+              {worlds.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
+            </select>
+          </label>
+          {selectedWorldId && (
+            <label className="field">
+              <span>Rolling as</span>
+              <input type="text" value={rollerName} onChange={(e) => setRollerName(e.target.value)} placeholder={user?.username} />
+            </label>
+          )}
+          {partyError && <p className="error">{partyError}</p>}
+        </>
+      )}
 
       <div className="dice-presets">
         {PRESETS.map((sides) => (
@@ -125,9 +219,15 @@ export function DiceRoller() {
           placeholder="e.g. Attack vs Goblin"
         />
       </label>
+      {partyMode && selectedWorld?.isOwner && (
+        <label className="field">
+          <input type="checkbox" checked={secret} onChange={(e) => setSecret(e.target.checked)} />
+          {" "}Secret (DM only — hidden from players)
+        </label>
+      )}
       {error && <p className="error">{error}</p>}
 
-      {history.length > 0 && (
+      {!partyMode && history.length > 0 && (
         <>
           <h3 className="section-heading">Recent Rolls</h3>
           <ul className="dice-history">
@@ -149,6 +249,37 @@ export function DiceRoller() {
             ))}
           </ul>
           <button className="btn-secondary" onClick={() => setHistory([])}>Clear History</button>
+        </>
+      )}
+
+      {partyMode && selectedWorldId && (
+        <>
+          <h3 className="section-heading">Party Log</h3>
+          {partyLog.length === 0 && <p className="hint">No rolls yet — be the first.</p>}
+          <ul className="dice-history">
+            {partyLog.map((r) => {
+              const canDelete = r.userId === user?.id || selectedWorld?.isOwner;
+              return (
+                <li key={r.id} className="dice-history-row">
+                  <div className="dice-history-main">
+                    <span className="entity-name">
+                      {r.rollerName}: {r.notation}
+                      {r.mode && <span className="entity-meta"> ({r.mode === "adv" ? "adv" : "dis"})</span>}
+                      {r.label && <span className="entity-meta"> — {r.label}</span>}
+                      {r.hiddenFromParty && <span className="dice-history-secret">secret</span>}
+                    </span>
+                    {canDelete && (
+                      <button className="dice-history-delete" onClick={() => deletePartyEntry(r.id)} aria-label={`Delete roll by ${r.rollerName}`}>×</button>
+                    )}
+                  </div>
+                  <span className="entity-meta">
+                    [{r.results.join(", ")}]{r.modifier ? ` ${r.modifier > 0 ? "+" : ""}${r.modifier}` : ""} = <strong>{r.total}</strong>
+                    <span className="dice-history-time"> · {timeAgo(new Date(r.createdAt).getTime())}</span>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
         </>
       )}
     </div>

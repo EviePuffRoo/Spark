@@ -278,6 +278,25 @@ export interface SessionNote extends SessionNoteInput {
   updatedAt: string;
 }
 
+export interface RollLogEntryInput {
+  worldId: string;
+  rollerName: string;
+  notation: string;
+  results: number[];
+  modifier: number;
+  total: number;
+  mode?: "adv" | "dis";
+  label?: string;
+  hiddenFromParty?: boolean;
+}
+
+export interface RollLogEntry extends RollLogEntryInput {
+  id: string;
+  userId: string;
+  hiddenFromParty: boolean;
+  createdAt: string;
+}
+
 export interface AdventureCastNames {
   questGiverName?: string;
   antagonistName?: string;

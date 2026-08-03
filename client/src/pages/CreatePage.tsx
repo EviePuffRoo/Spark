@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { WelcomePanel } from "../components/WelcomePanel";
 import { GeneratorPage } from "./GeneratorPage";
 import { ItemForgePage } from "./ItemForgePage";
 import { LocationForgePage } from "./LocationForgePage";
@@ -22,6 +23,7 @@ export function CreatePage() {
 
   return (
     <div>
+      <WelcomePanel />
       <div className="tabs create-type-tabs">
         {(Object.keys(CREATE_TYPE_LABELS) as CreateType[]).map((t) => (
           <button key={t} className={createType === t ? "active" : ""} aria-current={createType === t ? "true" : undefined} onClick={() => setCreateType(t)}>

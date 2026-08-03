@@ -93,6 +93,7 @@ export function RosterPage({
   const [status, setStatus] = useState<"idle" | "saving">("idle");
   const [editingContent, setEditingContent] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [tagFilter, setTagFilter] = useState("");
 
   function refresh() {
     const w = worldFilter || undefined;
@@ -136,6 +137,7 @@ export function RosterPage({
   function switchMode(next: Mode) {
     setMode(next);
     setSelectedId(null);
+    setTagFilter("");
   }
 
   const selectedCharacter = mode === "characters" ? characters.find((c) => c.id === selectedId) ?? null : null;
@@ -265,14 +267,32 @@ export function RosterPage({
     refresh();
   }
 
+  const activeEntities: { tags: string[] }[] =
+    mode === "characters" ? characters :
+    mode === "items" ? items :
+    mode === "locations" ? locations :
+    mode === "quests" ? quests :
+    mode === "factions" ? factions :
+    mode === "encounters" ? encounters :
+    notes;
+
+  const availableTags = Array.from(new Set(activeEntities.flatMap((e) => e.tags))).sort();
+
+  useEffect(() => {
+    if (loading) return;
+    if (!tagFilter) return;
+    if (!availableTags.includes(tagFilter)) setTagFilter("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, availableTags.join("|"), tagFilter]);
+
   const activeList =
-    mode === "characters" ? characters.map((c) => ({ id: c.id, name: c.name, meta: `${c.kind === "npc" ? c.race : c.templateName} · CR ${c.statBlock.challengeRating}` })) :
-    mode === "items" ? items.map((i) => ({ id: i.id, name: i.name, meta: `${i.category} · ${i.rarity}` })) :
-    mode === "locations" ? locations.map((l) => ({ id: l.id, name: l.name, meta: `${l.category} · ${l.locationType}` })) :
-    mode === "quests" ? quests.map((q) => ({ id: q.id, name: q.title, meta: `${q.questType} · ${q.tier}` })) :
-    mode === "factions" ? factions.map((f) => ({ id: f.id, name: f.name, meta: f.factionType })) :
-    mode === "encounters" ? encounters.map((e) => ({ id: e.id, name: e.name, meta: `${e.terrain} · d${e.entries.length}` })) :
-    notes.map((n) => ({ id: n.id, name: n.title, meta: n.sessionLabel || new Date(n.createdAt).toLocaleDateString() }));
+    mode === "characters" ? characters.filter((c) => !tagFilter || c.tags.includes(tagFilter)).map((c) => ({ id: c.id, name: c.name, meta: `${c.kind === "npc" ? c.race : c.templateName} · CR ${c.statBlock.challengeRating}` })) :
+    mode === "items" ? items.filter((i) => !tagFilter || i.tags.includes(tagFilter)).map((i) => ({ id: i.id, name: i.name, meta: `${i.category} · ${i.rarity}` })) :
+    mode === "locations" ? locations.filter((l) => !tagFilter || l.tags.includes(tagFilter)).map((l) => ({ id: l.id, name: l.name, meta: `${l.category} · ${l.locationType}` })) :
+    mode === "quests" ? quests.filter((q) => !tagFilter || q.tags.includes(tagFilter)).map((q) => ({ id: q.id, name: q.title, meta: `${q.questType} · ${q.tier}` })) :
+    mode === "factions" ? factions.filter((f) => !tagFilter || f.tags.includes(tagFilter)).map((f) => ({ id: f.id, name: f.name, meta: f.factionType })) :
+    mode === "encounters" ? encounters.filter((e) => !tagFilter || e.tags.includes(tagFilter)).map((e) => ({ id: e.id, name: e.name, meta: `${e.terrain} · d${e.entries.length}` })) :
+    notes.filter((n) => !tagFilter || n.tags.includes(tagFilter)).map((n) => ({ id: n.id, name: n.title, meta: n.sessionLabel || new Date(n.createdAt).toLocaleDateString() }));
 
   return (
     <div className="page roster-layout">
@@ -291,6 +311,16 @@ export function RosterPage({
             {worlds.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
           </select>
         </label>
+
+        {availableTags.length > 0 && (
+          <label className="field">
+            <span>Filter by tag</span>
+            <select value={tagFilter} onChange={(e) => setTagFilter(e.target.value)}>
+              <option value="">All tags</option>
+              {availableTags.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </label>
+        )}
 
         {loading && <p className="hint">Loading…</p>}
         {!loading && activeList.length === 0 && <p className="hint">No saved {MODE_LABELS[mode].toLowerCase()} yet.</p>}

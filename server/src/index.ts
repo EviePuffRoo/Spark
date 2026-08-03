@@ -5,8 +5,12 @@ import express from "express";
 import cors from "cors";
 import { generateRouter } from "./routes/generate.js";
 import { generateItemRouter } from "./routes/generateItem.js";
+import { generateLocationRouter } from "./routes/generateLocation.js";
+import { generateQuestRouter } from "./routes/generateQuest.js";
 import { charactersRouter } from "./routes/characters.js";
 import { itemsRouter } from "./routes/items.js";
+import { locationsRouter } from "./routes/locations.js";
+import { questsRouter } from "./routes/quests.js";
 import { worldsRouter } from "./routes/worlds.js";
 import { referenceRouter } from "./routes/reference.js";
 
@@ -20,8 +24,12 @@ app.use(express.json());
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 app.use("/api/generate", generateRouter);
 app.use("/api/generate-item", generateItemRouter);
+app.use("/api/generate-location", generateLocationRouter);
+app.use("/api/generate-quest", generateQuestRouter);
 app.use("/api/characters", charactersRouter);
 app.use("/api/items", itemsRouter);
+app.use("/api/locations", locationsRouter);
+app.use("/api/quests", questsRouter);
 app.use("/api/worlds", worldsRouter);
 app.use("/api/reference", referenceRouter);
 

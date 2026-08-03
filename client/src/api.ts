@@ -1,4 +1,9 @@
-import type { Character, GenerateRequest, GeneratedCharacter, World, Item, GenerateItemRequest, GeneratedItem } from "@spark/shared";
+import type {
+  Character, GenerateRequest, GeneratedCharacter, World,
+  Item, GenerateItemRequest, GeneratedItem,
+  Location, GenerateLocationRequest, GeneratedLocation,
+  QuestHook, GenerateQuestHookRequest, GeneratedQuestHook,
+} from "@spark/shared";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
@@ -21,11 +26,16 @@ export interface ReferenceData {
   monsterTemplates: { id: string; name: string; challengeRating: string; typicalAlignment: string }[];
   itemCategories: { id: string; name: string }[];
   itemRarities: string[];
+  locationCategories: { id: string; name: string }[];
+  questTypes: string[];
+  questTiers: string[];
 }
 
 export interface WorldSummary extends World {
   characterCount: number;
   itemCount: number;
+  locationCount: number;
+  questCount: number;
 }
 
 export const api = {
@@ -34,6 +44,10 @@ export const api = {
     request<GeneratedCharacter>("/generate", { method: "POST", body: JSON.stringify(body) }),
   generateItem: (body: GenerateItemRequest) =>
     request<GeneratedItem>("/generate-item", { method: "POST", body: JSON.stringify(body) }),
+  generateLocation: (body: GenerateLocationRequest) =>
+    request<GeneratedLocation>("/generate-location", { method: "POST", body: JSON.stringify(body) }),
+  generateQuest: (body: GenerateQuestHookRequest) =>
+    request<GeneratedQuestHook>("/generate-quest", { method: "POST", body: JSON.stringify(body) }),
 
   listCharacters: (worldId?: string) =>
     request<Character[]>(`/characters${worldId ? `?worldId=${worldId}` : ""}`),
@@ -52,6 +66,24 @@ export const api = {
   updateItem: (id: string, patch: Partial<Item>) =>
     request<Item>(`/items/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   deleteItem: (id: string) => request<void>(`/items/${id}`, { method: "DELETE" }),
+
+  listLocations: (worldId?: string) =>
+    request<Location[]>(`/locations${worldId ? `?worldId=${worldId}` : ""}`),
+  getLocation: (id: string) => request<Location>(`/locations/${id}`),
+  saveLocation: (location: GeneratedLocation & { worldId?: string | null; tags?: string[]; notes?: string }) =>
+    request<Location>("/locations", { method: "POST", body: JSON.stringify(location) }),
+  updateLocation: (id: string, patch: Partial<Location>) =>
+    request<Location>(`/locations/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+  deleteLocation: (id: string) => request<void>(`/locations/${id}`, { method: "DELETE" }),
+
+  listQuests: (worldId?: string) =>
+    request<QuestHook[]>(`/quests${worldId ? `?worldId=${worldId}` : ""}`),
+  getQuest: (id: string) => request<QuestHook>(`/quests/${id}`),
+  saveQuest: (quest: GeneratedQuestHook & { worldId?: string | null; tags?: string[]; notes?: string }) =>
+    request<QuestHook>("/quests", { method: "POST", body: JSON.stringify(quest) }),
+  updateQuest: (id: string, patch: Partial<QuestHook>) =>
+    request<QuestHook>(`/quests/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+  deleteQuest: (id: string) => request<void>(`/quests/${id}`, { method: "DELETE" }),
 
   listWorlds: () => request<WorldSummary[]>("/worlds"),
   getWorld: (id: string) => request<World>(`/worlds/${id}`),

@@ -1,14 +1,6 @@
 import { ITEM_CATEGORIES, ITEM_TYPES_BY_CATEGORY, ITEM_ADJECTIVES, ITEM_PROPERTIES, ITEM_HISTORIES, ITEM_RARITY_TIERS, ITEM_EPITHETS } from "../data/items.js";
-import { pick } from "./random.js";
+import { pick, titleCase, article } from "./random.js";
 import type { GenerateItemRequest, GeneratedItem } from "../types.js";
-
-function titleCase(str: string): string {
-  return str.replace(/\w\S*/g, (word) => word.charAt(0).toUpperCase() + word.slice(1));
-}
-
-function article(word: string): string {
-  return /^[aeiou]/i.test(word) ? "An" : "A";
-}
 
 export function generateItem(request: GenerateItemRequest = {}): GeneratedItem {
   const category =

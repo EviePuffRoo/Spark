@@ -120,3 +120,54 @@ export interface GenerateItemRequest {
   name?: string;
   fullyRandom?: boolean;
 }
+
+export interface GeneratedLocation {
+  name: string;
+  locationType: string;
+  category: string;
+  description: string;
+  notableFeature: string;
+  keeper: string;
+  rumor: string;
+}
+
+export interface Location extends GeneratedLocation {
+  id: string;
+  worldId?: string | null;
+  tags: string[];
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GenerateLocationRequest {
+  category?: string;
+  name?: string;
+  fullyRandom?: boolean;
+}
+
+export interface GeneratedQuestHook {
+  title: string;
+  questType: string;
+  tier: string;
+  hook: string;
+  objective: string;
+  complication: string;
+  reward: string;
+}
+
+export interface QuestHook extends GeneratedQuestHook {
+  id: string;
+  worldId?: string | null;
+  tags: string[];
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GenerateQuestHookRequest {
+  questType?: string;
+  tier?: string;
+  title?: string;
+  fullyRandom?: boolean;
+}

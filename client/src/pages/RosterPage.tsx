@@ -1,16 +1,27 @@
 import { useEffect, useState } from "react";
-import type { Character, Item } from "@spark/shared";
+import type { Character, Item, Location, QuestHook } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { StatBlockView } from "../components/StatBlockView";
 import { BackstoryView } from "../components/BackstoryView";
 import { ItemCardView } from "../components/ItemCardView";
+import { LocationCardView } from "../components/LocationCardView";
+import { QuestHookCardView } from "../components/QuestHookCardView";
 
-type Mode = "characters" | "items";
+type Mode = "characters" | "items" | "locations" | "quests";
+
+const MODE_LABELS: Record<Mode, string> = {
+  characters: "Characters",
+  items: "Items",
+  locations: "Locations",
+  quests: "Quests",
+};
 
 export function RosterPage({ worldFilter, onWorldFilterChange }: { worldFilter: string; onWorldFilterChange: (v: string) => void }) {
   const [mode, setMode] = useState<Mode>("characters");
   const [characters, setCharacters] = useState<Character[]>([]);
   const [items, setItems] = useState<Item[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [quests, setQuests] = useState<QuestHook[]>([]);
   const [worlds, setWorlds] = useState<WorldSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
@@ -21,6 +32,8 @@ export function RosterPage({ worldFilter, onWorldFilterChange }: { worldFilter: 
   function refresh() {
     api.listCharacters(worldFilter || undefined).then(setCharacters).catch(() => {});
     api.listItems(worldFilter || undefined).then(setItems).catch(() => {});
+    api.listLocations(worldFilter || undefined).then(setLocations).catch(() => {});
+    api.listQuests(worldFilter || undefined).then(setQuests).catch(() => {});
     api.listWorlds().then(setWorlds).catch(() => {});
   }
 
@@ -33,7 +46,10 @@ export function RosterPage({ worldFilter, onWorldFilterChange }: { worldFilter: 
 
   const selectedCharacter = mode === "characters" ? characters.find((c) => c.id === selectedId) ?? null : null;
   const selectedItem = mode === "items" ? items.find((i) => i.id === selectedId) ?? null : null;
-  const selected = selectedCharacter ?? selectedItem;
+  const selectedLocation = mode === "locations" ? locations.find((l) => l.id === selectedId) ?? null : null;
+  const selectedQuest = mode === "quests" ? quests.find((q) => q.id === selectedId) ?? null : null;
+  const selected = selectedCharacter ?? selectedItem ?? selectedLocation ?? selectedQuest;
+  const selectedDisplayName = selectedCharacter?.name ?? selectedItem?.name ?? selectedLocation?.name ?? selectedQuest?.title ?? "";
 
   useEffect(() => {
     if (selected) {
@@ -48,26 +64,37 @@ export function RosterPage({ worldFilter, onWorldFilterChange }: { worldFilter: 
     setStatus("saving");
     const patch = { notes, tags: tags.split(",").map((t) => t.trim()).filter(Boolean), worldId: assignedWorld || null };
     if (mode === "characters") await api.updateCharacter(selected.id, patch);
-    else await api.updateItem(selected.id, patch);
+    else if (mode === "items") await api.updateItem(selected.id, patch);
+    else if (mode === "locations") await api.updateLocation(selected.id, patch);
+    else await api.updateQuest(selected.id, patch);
     setStatus("idle");
     refresh();
   }
 
   async function handleDelete() {
     if (!selected) return;
-    if (!confirm(`Delete ${selected.name}? This cannot be undone.`)) return;
+    if (!confirm(`Delete ${selectedDisplayName}? This cannot be undone.`)) return;
     if (mode === "characters") await api.deleteCharacter(selected.id);
-    else await api.deleteItem(selected.id);
+    else if (mode === "items") await api.deleteItem(selected.id);
+    else if (mode === "locations") await api.deleteLocation(selected.id);
+    else await api.deleteQuest(selected.id);
     setSelectedId(null);
     refresh();
   }
+
+  const activeList =
+    mode === "characters" ? characters.map((c) => ({ id: c.id, name: c.name, meta: `${c.kind === "npc" ? c.race : c.templateName} · CR ${c.statBlock.challengeRating}` })) :
+    mode === "items" ? items.map((i) => ({ id: i.id, name: i.name, meta: `${i.category} · ${i.rarity}` })) :
+    mode === "locations" ? locations.map((l) => ({ id: l.id, name: l.name, meta: `${l.category} · ${l.locationType}` })) :
+    quests.map((q) => ({ id: q.id, name: q.title, meta: `${q.questType} · ${q.tier}` }));
 
   return (
     <div className="page roster-layout">
       <div className="panel roster-list">
         <div className="tabs roster-mode-tabs">
-          <button className={mode === "characters" ? "active" : ""} onClick={() => switchMode("characters")}>Characters</button>
-          <button className={mode === "items" ? "active" : ""} onClick={() => switchMode("items")}>Items</button>
+          {(Object.keys(MODE_LABELS) as Mode[]).map((m) => (
+            <button key={m} className={mode === m ? "active" : ""} onClick={() => switchMode(m)}>{MODE_LABELS[m]}</button>
+          ))}
         </div>
 
         <label className="field">
@@ -79,47 +106,24 @@ export function RosterPage({ worldFilter, onWorldFilterChange }: { worldFilter: 
           </select>
         </label>
 
-        {mode === "characters" && (
-          <>
-            {characters.length === 0 && <p className="hint">No saved characters yet.</p>}
-            <ul className="entity-list">
-              {characters.map((c) => (
-                <li key={c.id}>
-                  <button
-                    className={`entity-item ${c.id === selectedId ? "active" : ""}`}
-                    onClick={() => setSelectedId(c.id)}
-                  >
-                    <span className="entity-name">{c.name}</span>
-                    <span className="entity-meta">{c.kind === "npc" ? c.race : c.templateName} · CR {c.statBlock.challengeRating}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-
-        {mode === "items" && (
-          <>
-            {items.length === 0 && <p className="hint">No saved items yet.</p>}
-            <ul className="entity-list">
-              {items.map((i) => (
-                <li key={i.id}>
-                  <button
-                    className={`entity-item ${i.id === selectedId ? "active" : ""}`}
-                    onClick={() => setSelectedId(i.id)}
-                  >
-                    <span className="entity-name">{i.name}</span>
-                    <span className="entity-meta">{i.category} · {i.rarity}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
+        {activeList.length === 0 && <p className="hint">No saved {MODE_LABELS[mode].toLowerCase()} yet.</p>}
+        <ul className="entity-list">
+          {activeList.map((entry) => (
+            <li key={entry.id}>
+              <button
+                className={`entity-item ${entry.id === selectedId ? "active" : ""}`}
+                onClick={() => setSelectedId(entry.id)}
+              >
+                <span className="entity-name">{entry.name}</span>
+                <span className="entity-meta">{entry.meta}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
       </div>
 
       <div className="panel result-panel">
-        {!selected && <p className="hint">Select a {mode === "characters" ? "character" : "item"} to view details.</p>}
+        {!selected && <p className="hint">Select a {mode === "characters" ? "character" : mode.slice(0, -1)} to view details.</p>}
         {selectedCharacter && (
           <>
             <StatBlockView
@@ -131,6 +135,8 @@ export function RosterPage({ worldFilter, onWorldFilterChange }: { worldFilter: 
           </>
         )}
         {selectedItem && <ItemCardView item={selectedItem} />}
+        {selectedLocation && <LocationCardView location={selectedLocation} />}
+        {selectedQuest && <QuestHookCardView quest={selectedQuest} />}
 
         {selected && (
           <div className="save-panel">

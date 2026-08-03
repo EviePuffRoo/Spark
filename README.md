@@ -17,8 +17,12 @@ a growing repository of everything worth reusing as a campaign world takes shape
 - **Forge unique items** — flavorful weapons, wearables, trinkets, and curios with a
   physical description, a minor quirk or property, and a lore hook. Deliberately
   non-mechanical/non-game-breaking: these are about flavor and story hooks, not stat bonuses.
-- **Save characters and items to your roster**, tag and annotate them, and organize them
-  into **Worlds** (campaign containers) as your setting grows into a larger project.
+- **Sketch locations** — taverns, ruins, wilderness sites, and landmarks with a notable
+  feature, who (or what) is keeping the place, and a rumor tying it into your world.
+- **Draft quest hooks** — ready-to-use adventure seeds with a hook, an objective, a
+  complication, and a reward, tagged by type and rough tier.
+- **Save everything to your roster**, tag and annotate it, and organize it into
+  **Worlds** (campaign containers) as your setting grows into a larger project.
 
 ## Stack
 
@@ -80,14 +84,14 @@ configuration.
 ## Project layout
 
 ```
-shared/       SRD dataset, types, and the character/monster/item generation engines
-server/       Express API + Prisma/SQLite persistence (worlds, characters, items)
-client/       React SPA (Generator, Items, Roster, Worlds)
+shared/       SRD dataset, types, and the character/monster/item/location/quest generation engines
+server/       Express API + Prisma/SQLite persistence (worlds, characters, items, locations, quests)
+client/       React SPA (Generator, Items, Locations, Quests, Roster, Worlds)
 render.yaml   Render Blueprint for a one-click paid deploy with a persistent disk
 ```
 
 ## Data & licensing note
 
 Stat blocks are derived from the D&D 5e System Reference Document (SRD), which is
-available for reuse. Flavor text (names, personality/backstory tables, monster
-epithets, item flavor/properties/history) is original content written for this project.
+available for reuse. All other flavor text (names, personality/backstory tables, monster
+epithets, item/location/quest flavor content) is original content written for this project.

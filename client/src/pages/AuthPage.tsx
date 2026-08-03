@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAuth } from "../AuthContext";
 
 export function AuthPage() {
-  const { login, signup, resetPassword } = useAuth();
+  const { login, signup, resetPassword, sessionMessage } = useAuth();
   const [mode, setMode] = useState<"login" | "signup" | "reset">("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -41,6 +41,8 @@ export function AuthPage() {
       <div className="panel auth-panel">
         <h1>Spark</h1>
         <p className="tagline">Everything a DM needs to prep and run a session, ready for the table</p>
+
+        {sessionMessage && <p className="error">{sessionMessage}</p>}
 
         {mode !== "reset" && (
           <div className="tabs forge-mode-tabs">

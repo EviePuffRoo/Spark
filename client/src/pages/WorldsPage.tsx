@@ -34,6 +34,7 @@ function downloadJson(filename: string, data: unknown) {
 
 export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) => void }) {
   const [worlds, setWorlds] = useState<WorldSummary[]>([]);
+  const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +42,7 @@ export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) =
   const importInputRef = useRef<HTMLInputElement>(null);
 
   function refresh() {
-    api.listWorlds().then(setWorlds).catch((e) => setError(e.message));
+    api.listWorlds().then(setWorlds).catch((e) => setError(e.message)).finally(() => setLoading(false));
   }
 
   useEffect(refresh, []);
@@ -152,7 +153,8 @@ export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) =
             </li>
           ))}
         </ul>
-        {worlds.length === 0 && <p className="hint">No worlds yet — create one above.</p>}
+        {loading && <p className="hint">Loading…</p>}
+        {!loading && worlds.length === 0 && <p className="hint">No worlds yet — create one above.</p>}
       </div>
     </div>
   );

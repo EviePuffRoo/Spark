@@ -92,17 +92,21 @@ export function RosterPage({
   const [assignedWorld, setAssignedWorld] = useState("");
   const [status, setStatus] = useState<"idle" | "saving">("idle");
   const [editingContent, setEditingContent] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   function refresh() {
     const w = worldFilter || undefined;
-    api.listCharacters(w).then(setCharacters).catch(() => {});
-    api.listItems(w).then(setItems).catch(() => {});
-    api.listLocations(w).then(setLocations).catch(() => {});
-    api.listQuests(w).then(setQuests).catch(() => {});
-    api.listFactions(w).then(setFactions).catch(() => {});
-    api.listEncounterTables(w).then(setEncounters).catch(() => {});
-    api.listSessionNotes(w).then(setNotes).catch(() => {});
-    api.listWorlds().then(setWorlds).catch(() => {});
+    setLoading(true);
+    Promise.all([
+      api.listCharacters(w).then(setCharacters).catch(() => {}),
+      api.listItems(w).then(setItems).catch(() => {}),
+      api.listLocations(w).then(setLocations).catch(() => {}),
+      api.listQuests(w).then(setQuests).catch(() => {}),
+      api.listFactions(w).then(setFactions).catch(() => {}),
+      api.listEncounterTables(w).then(setEncounters).catch(() => {}),
+      api.listSessionNotes(w).then(setNotes).catch(() => {}),
+      api.listWorlds().then(setWorlds).catch(() => {}),
+    ]).finally(() => setLoading(false));
   }
 
   useEffect(refresh, [worldFilter]);
@@ -275,7 +279,8 @@ export function RosterPage({
           </select>
         </label>
 
-        {activeList.length === 0 && <p className="hint">No saved {MODE_LABELS[mode].toLowerCase()} yet.</p>}
+        {loading && <p className="hint">Loading…</p>}
+        {!loading && activeList.length === 0 && <p className="hint">No saved {MODE_LABELS[mode].toLowerCase()} yet.</p>}
         <ul className="entity-list">
           {activeList.map((entry) => (
             <li key={entry.id}>

@@ -133,7 +133,7 @@
 @media (max-width: 800px) {
   .generator-layout,
   .roster-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -187,6 +187,8 @@ textarea {
   border-radius: 6px;
   background: var(--bg);
   color: var(--text);
+  width: 100%;
+  min-width: 0;
 }
 
 textarea {

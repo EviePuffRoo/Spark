@@ -270,6 +270,7 @@ export interface SessionNoteInput {
 
 export interface SessionNote extends SessionNoteInput {
   id: string;
+  userId: string;
   worldId?: string | null;
   hiddenFromParty: boolean;
   tags: string[];

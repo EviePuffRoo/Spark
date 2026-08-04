@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { SessionNote } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
+import { useAuth } from "../AuthContext";
 import { SessionTimelineView } from "../components/SessionTimelineView";
 
 const BLANK = {
@@ -15,6 +16,7 @@ const BLANK = {
 };
 
 export function SessionNotesPage() {
+  const { user } = useAuth();
   const [notes, setNotes] = useState<SessionNote[]>([]);
   const [worlds, setWorlds] = useState<WorldSummary[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -94,6 +96,8 @@ export function SessionNotesPage() {
     refresh();
   }
 
+  const ownNotes = notes.filter((n) => n.userId === user?.id);
+
   return (
     <div className="page">
       <div className="tabs forge-mode-tabs">
@@ -159,9 +163,9 @@ export function SessionNotesPage() {
           <div className="panel result-panel">
             <h3 className="section-heading">Recent Session Notes</h3>
             {loading && <p className="hint">Loading…</p>}
-            {!loading && notes.length === 0 && <p className="hint">No session notes yet.</p>}
+            {!loading && ownNotes.length === 0 && <p className="hint">No session notes yet.</p>}
             <ul className="entity-list">
-              {notes.map((n) => (
+              {ownNotes.map((n) => (
                 <li key={n.id} className="world-row">
                   <button className="entity-item" style={{ border: "none", flex: 1 }} onClick={() => startEdit(n)}>
                     <span className="entity-name">{n.title}</span>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { SessionNote } from "@spark/shared";
 import type { WorldSummary } from "../api";
+import { useAuth } from "../AuthContext";
 
 function sortKey(note: SessionNote): number {
   return new Date(note.sessionDate ?? note.createdAt).getTime();
@@ -18,6 +19,7 @@ export function SessionTimelineView({
   worlds: WorldSummary[];
   onSelectNote: (note: SessionNote) => void;
 }) {
+  const { user } = useAuth();
   const [worldFilter, setWorldFilter] = useState("");
 
   const filtered = notes.filter((n) => !worldFilter || n.worldId === worldFilter);
@@ -26,7 +28,7 @@ export function SessionTimelineView({
   return (
     <div className="panel session-timeline">
       <h2>Session Timeline</h2>
-      <p className="hint">The campaign's story so far, oldest to newest.</p>
+      <p className="hint">Your campaign's story so far, oldest to newest — including recaps your DM has shared.</p>
 
       {worlds.length > 0 && (
         <label className="field">
@@ -41,17 +43,29 @@ export function SessionTimelineView({
       {sorted.length === 0 && <p className="hint">No session notes yet.</p>}
 
       <ul className="timeline-list">
-        {sorted.map((note) => (
-          <li key={note.id} className="timeline-entry">
-            <button className="timeline-entry-button" onClick={() => onSelectNote(note)}>
+        {sorted.map((note) => {
+          const isOwn = note.userId === user?.id;
+          const ownerUsername = !isOwn ? worlds.find((w) => w.id === note.worldId)?.ownerUsername : undefined;
+          const content = (
+            <>
               <span className="timeline-date">
                 {formatDate(note)}{note.sessionLabel ? ` · ${note.sessionLabel}` : ""}
+                {ownerUsername && ` · recapped by ${ownerUsername}`}
               </span>
               <span className="entity-name">{note.title}</span>
               <span className="timeline-summary">{note.summary}</span>
-            </button>
-          </li>
-        ))}
+            </>
+          );
+          return (
+            <li key={note.id} className="timeline-entry">
+              {isOwn ? (
+                <button className="timeline-entry-button" onClick={() => onSelectNote(note)}>{content}</button>
+              ) : (
+                <div className="timeline-entry-button timeline-entry-readonly">{content}</div>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

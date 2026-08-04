@@ -10,6 +10,7 @@ import type {
   PlayerCharacter, PlayerCharacterInput,
   RollLogEntry, RollLogEntryInput,
   Encounter, EncounterStateInput,
+  ActivitySummary,
   EntityType, EntityLink, SearchResult,
   AuthUser, SignupResult, RecoveryCodeResult,
 } from "@spark/shared";
@@ -186,6 +187,8 @@ export const api = {
   getEncounter: (worldId: string) => request<Encounter>(`/encounters/${worldId}`),
   saveEncounter: (worldId: string, state: EncounterStateInput) =>
     request<Encounter>(`/encounters/${worldId}`, { method: "PUT", body: JSON.stringify(state) }),
+
+  getActivity: () => request<ActivitySummary>("/activity"),
 
   listWorlds: () => request<WorldSummary[]>("/worlds"),
   getWorld: (id: string) => request<World>(`/worlds/${id}`),

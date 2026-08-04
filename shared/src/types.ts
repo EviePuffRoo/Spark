@@ -326,6 +326,11 @@ export interface Encounter extends EncounterStateInput {
   updatedAt: string | null;
 }
 
+export interface ActivitySummary {
+  combatActivityAt: string | null;
+  notesActivityAt: string | null;
+}
+
 export interface AdventureCastNames {
   questGiverName?: string;
   antagonistName?: string;

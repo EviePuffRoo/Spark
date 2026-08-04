@@ -2,7 +2,9 @@
 
 A lean, robust prep-and-run companion for tabletop RPGs (starting with D&D 5e). Built for
 Dungeon Masters who need a memorable NPC, monster, or plot hook *right now*, at the table —
-and a growing repository of everything worth reusing as a campaign world takes shape.
+a growing repository of everything worth reusing as a campaign world takes shape — and, once
+your table is ready, a shared space your players can join for live session notes, dice, and
+combat.
 
 ## What it does
 
@@ -32,12 +34,40 @@ fully-random mode:
   urban, dungeon, coastal, swamp), sampled from a larger pool so tables vary each time.
 
 The **Notes** tab is for your own session recaps — title, summary, loose threads, and next
-steps — since that's content only you can write, not generate.
+steps — since that's content only you can write, not generate. A **Timeline** view lays every
+note out in session order so you can skim how the campaign got here, and DM-only planning
+fields can be marked hidden so a **player-facing recap** (shared through a world) shows what
+happened without spoiling what you have planned next.
 
 Everything above can be **saved to your Roster**, tagged and annotated, and organized into
 **Worlds** (campaign containers) as your setting grows into a larger project. The Roster page
-lets you browse and fully edit anything you've saved (not just tags/notes — the actual
-content), filtered by world or by type.
+lets you browse, search, and filter anything you've saved (by world, by type, or by name/tag)
+and fully edit it — not just tags/notes, the actual content.
+
+**Worlds are shareable.** A world's owner can generate an invite code and hand it to their
+players; anyone who joins becomes a party member with read access to that world's public
+content (and, for planning content the DM marks hidden, none at all) plus write access to the
+collaborative tools below. Players get their own **My Character** page to maintain a character
+sheet inside a shared world, visible to the DM and — if they choose — the rest of the party.
+
+The **Combat** tab is the at-the-table toolkit, and its two panes work together in real time
+once a world is selected:
+
+- **Dice Roller** — quick d4–d20 buttons plus a custom-expression roller (`2d6+3`), with a
+  personal roll history and, in Party mode, a shared **party roll log** everyone in the world
+  can see and post to. Any roll can be **applied straight to combat** — pick a combatant and
+  a Damage/Heal direction and the total lands on their HP without retyping it.
+- **Initiative Tracker** — build an encounter (monsters, player characters, or custom
+  combatants), track initiative order, HP, AC, and conditions (with a built-in **condition
+  rules reference** for quick lookups at the table), and step through rounds/turns. In Party
+  mode this becomes **Live Session Mode**: the DM's encounter state syncs to every party
+  member in real time, with per-combatant control over whether HP numbers are shown exactly
+  or only as a status band (healthy/injured/bloodied/near death/down) — useful for keeping
+  monster HP a little mysterious without hiding whether the fight is going well. A one-click
+  **Rest** (short or long) resets HP and clears conditions between fights.
+
+Small **activity badges** on the Notes and Combat tabs let players know something happened —
+a new roll, a note, or a live encounter update — without having to keep a tab open and watch.
 
 A **global search bar** in the header searches across every saved entry (name, description,
 tags, notes) and jumps straight to it in the Roster. From any Roster entry you can **link it
@@ -109,9 +139,13 @@ configuration.
 ```
 shared/       SRD dataset, types, and the generation engines (characters, items,
               locations, quests, factions, encounter tables)
-server/       Express API + Prisma/SQLite persistence, plus cross-entity search & links
+server/       Express API + Prisma/SQLite persistence: entity CRUD, cross-entity
+              search & links, world sharing, session notes, player characters,
+              party roll log, live encounters, and activity aggregation
 client/       React SPA — Create (NPCs/Monsters, Items, Locations, Quests, Factions,
-              Encounter Tables), Notes, Roster, Worlds, global search
+              Encounter Tables), Notes (+ Timeline), Roster, My Character, Worlds
+              (sharing/invites), Combat (Dice Roller + Initiative Tracker / Live
+              Session Mode), global search
 render.yaml   Render Blueprint for a one-click paid deploy with a persistent disk
 ```
 

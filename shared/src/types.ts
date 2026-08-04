@@ -298,6 +298,34 @@ export interface RollLogEntry extends RollLogEntryInput {
   createdAt: string;
 }
 
+export type CombatantKind = "monster" | "playerCharacter" | "custom";
+export type HpStatus = "healthy" | "injured" | "bloodied" | "nearDeath" | "down";
+
+export interface LiveCombatant {
+  id: string;
+  name: string;
+  kind: CombatantKind;
+  initiative: number;
+  maxHp?: number;
+  currentHp?: number;
+  hpStatus: HpStatus;
+  armorClass?: number;
+  conditions: string[];
+  notes: string;
+  hpVisible: boolean;
+}
+
+export interface EncounterStateInput {
+  combatants: LiveCombatant[];
+  round: number;
+  turnIndex: number;
+}
+
+export interface Encounter extends EncounterStateInput {
+  worldId: string;
+  updatedAt: string | null;
+}
+
 export interface AdventureCastNames {
   questGiverName?: string;
   antagonistName?: string;

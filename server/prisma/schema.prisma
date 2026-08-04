@@ -49,6 +49,7 @@ model World {
   playerCharacters PlayerCharacter[]
   members         WorldMember[]
   rollLogEntries  RollLogEntry[]
+  encounter       Encounter?
 
   @@index([userId])
 }
@@ -288,6 +289,16 @@ model RollLogEntry {
 
   @@index([worldId])
   @@index([userId])
+}
+
+model Encounter {
+  id         String   @id @default(cuid())
+  worldId    String   @unique
+  world      World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  combatants String
+  round      Int      @default(1)
+  turnIndex  Int      @default(0)
+  updatedAt  DateTime @updatedAt
 }
 
 model Link {

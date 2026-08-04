@@ -1,6 +1,6 @@
-import { useState } from "react";
-import type { SearchResult } from "@spark/shared";
-import { api } from "../api";
+import { useEffect, useState } from "react";
+import type { SearchResult, LiveCombatant, EncounterStateInput, HpStatus } from "@spark/shared";
+import { api, type WorldSummary } from "../api";
 import { EntitySearchPicker } from "./EntitySearchPicker";
 import { useLocalStorage } from "../useLocalStorage";
 
@@ -28,24 +28,16 @@ const CONDITION_RULES: Record<string, string> = {
   Unconscious: "Incapacitated, can't move or speak, unaware of surroundings, drops what it's holding, and falls prone. Automatically fails Strength and Dexterity saves. Attacks against it have advantage, and hits from within 5 feet are automatic critical hits.",
 };
 
-interface Combatant {
-  id: string;
-  name: string;
-  initiative: number;
-  maxHp: number;
-  currentHp: number;
-  armorClass?: number;
-  conditions: string[];
-  notes: string;
-}
+const HP_STATUS_LABELS: Record<HpStatus, string> = {
+  healthy: "Healthy",
+  injured: "Injured",
+  bloodied: "Bloodied",
+  nearDeath: "Near Death",
+  down: "Down",
+};
 
-interface EncounterState {
-  combatants: Combatant[];
-  round: number;
-  turnIndex: number;
-}
-
-const BLANK_ENCOUNTER: EncounterState = { combatants: [], round: 1, turnIndex: 0 };
+const BLANK_ENCOUNTER: EncounterStateInput = { combatants: [], round: 1, turnIndex: 0 };
+const POLL_INTERVAL_MS = 5000;
 
 function abilityModifier(score: number): number {
   return Math.floor((score - 10) / 2);
@@ -55,8 +47,18 @@ function rollD20(): number {
   return Math.floor(Math.random() * 20) + 1;
 }
 
-export function InitiativeTracker() {
-  const [encounter, setEncounter] = useLocalStorage<EncounterState>("spark-combat-encounter", BLANK_ENCOUNTER);
+export function InitiativeTracker({
+  worlds, partyWorldId, setPartyWorldId,
+}: {
+  worlds: WorldSummary[];
+  partyWorldId: string;
+  setPartyWorldId: (id: string) => void;
+}) {
+  const [encounter, setEncounter] = useLocalStorage<EncounterStateInput>("spark-combat-encounter", BLANK_ENCOUNTER);
+  const [mode, setMode] = useState<"personal" | "party">("personal");
+  const [liveEncounter, setLiveEncounter] = useState<EncounterStateInput | null>(null);
+  const [liveError, setLiveError] = useState<string | null>(null);
+
   const [rosterPickType, setRosterPickType] = useState<"character" | "playerCharacter" | null>(null);
   const [addingCustom, setAddingCustom] = useState(false);
   const [customName, setCustomName] = useState("");
@@ -67,14 +69,49 @@ export function InitiativeTracker() {
   const [openConditionsFor, setOpenConditionsFor] = useState<string | null>(null);
   const [showConditionRules, setShowConditionRules] = useState(false);
 
-  // Older saved encounters (before conditions existed) won't have this field.
-  const sorted = [...encounter.combatants]
-    .map((c) => ({ ...c, conditions: c.conditions ?? [] }))
-    .sort((a, b) => b.initiative - a.initiative);
-  const activeId = sorted.length > 0 ? sorted[encounter.turnIndex % sorted.length]?.id : null;
+  const partyMode = mode === "party";
+  const selectedWorld = worlds.find((w) => w.id === partyWorldId) ?? null;
+  const isOwner = partyMode && !!selectedWorld?.isOwner;
+  const canEdit = !partyMode || isOwner;
 
-  function addCombatant(c: Combatant) {
-    setEncounter((e) => ({ ...e, combatants: [...e.combatants, c] }));
+  useEffect(() => {
+    if (!partyMode || !partyWorldId) {
+      setLiveEncounter(null);
+      return;
+    }
+    let cancelled = false;
+    function load() {
+      api.getEncounter(partyWorldId)
+        .then((row) => { if (!cancelled) setLiveEncounter(row); })
+        .catch((e) => { if (!cancelled) setLiveError((e as Error).message); });
+    }
+    load();
+    const interval = setInterval(load, POLL_INTERVAL_MS);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [partyMode, partyWorldId]);
+
+  const activeEncounter: EncounterStateInput = partyMode ? (liveEncounter ?? BLANK_ENCOUNTER) : encounter;
+
+  // Older saved encounters (before conditions/kind/hpVisible existed) won't have these fields.
+  const sorted = [...activeEncounter.combatants]
+    .map((c) => ({ ...c, conditions: c.conditions ?? [], kind: c.kind ?? "custom", hpVisible: c.hpVisible ?? false }))
+    .sort((a, b) => b.initiative - a.initiative);
+  const activeId = sorted.length > 0 ? sorted[activeEncounter.turnIndex % sorted.length]?.id : null;
+
+  function applyEncounterUpdate(updater: (e: EncounterStateInput) => EncounterStateInput) {
+    if (partyMode && isOwner && partyWorldId) {
+      setLiveEncounter((e) => {
+        const next = updater(e ?? BLANK_ENCOUNTER);
+        api.saveEncounter(partyWorldId, next).catch((err) => setLiveError((err as Error).message));
+        return next;
+      });
+    } else {
+      setEncounter(updater);
+    }
+  }
+
+  function addCombatant(c: LiveCombatant) {
+    applyEncounterUpdate((e) => ({ ...e, combatants: [...e.combatants, c] }));
   }
 
   async function handlePickFromRoster(result: SearchResult) {
@@ -85,24 +122,30 @@ export function InitiativeTracker() {
       addCombatant({
         id: crypto.randomUUID(),
         name: character.name,
+        kind: "monster",
         initiative: rollD20() + abilityModifier(character.statBlock.abilityScores.dex),
         maxHp: character.statBlock.hitPointsAverage,
         currentHp: character.statBlock.hitPointsAverage,
+        hpStatus: "healthy",
         armorClass: character.statBlock.armorClass,
         conditions: [],
         notes: "",
+        hpVisible: false,
       });
     } else if (type === "playerCharacter") {
       const pc = await api.getPlayerCharacter(result.id);
       addCombatant({
         id: crypto.randomUUID(),
         name: pc.name,
+        kind: "playerCharacter",
         initiative: rollD20() + abilityModifier(pc.abilityScores.dex),
         maxHp: pc.maxHp,
         currentHp: pc.maxHp,
+        hpStatus: "healthy",
         armorClass: pc.armorClass,
         conditions: [],
         notes: "",
+        hpVisible: true,
       });
     }
   }
@@ -112,12 +155,15 @@ export function InitiativeTracker() {
     addCombatant({
       id: crypto.randomUUID(),
       name: customName.trim(),
+      kind: "custom",
       initiative: Number(customInitiative) || 0,
       maxHp: Number(customMaxHp) || 1,
       currentHp: Number(customMaxHp) || 1,
+      hpStatus: "healthy",
       armorClass: customAc === "" ? undefined : Number(customAc),
       conditions: [],
       notes: "",
+      hpVisible: false,
     });
     setCustomName("");
     setCustomInitiative(10);
@@ -126,12 +172,12 @@ export function InitiativeTracker() {
     setAddingCustom(false);
   }
 
-  function updateCombatant(id: string, patch: Partial<Combatant>) {
-    setEncounter((e) => ({ ...e, combatants: e.combatants.map((c) => (c.id === id ? { ...c, ...patch } : c)) }));
+  function updateCombatant(id: string, patch: Partial<LiveCombatant>) {
+    applyEncounterUpdate((e) => ({ ...e, combatants: e.combatants.map((c) => (c.id === id ? { ...c, ...patch } : c)) }));
   }
 
   function toggleCondition(id: string, condition: string) {
-    setEncounter((e) => ({
+    applyEncounterUpdate((e) => ({
       ...e,
       combatants: e.combatants.map((c) => {
         if (c.id !== id) return c;
@@ -142,10 +188,10 @@ export function InitiativeTracker() {
   }
 
   function adjustHp(id: string, delta: number) {
-    setEncounter((e) => ({
+    applyEncounterUpdate((e) => ({
       ...e,
       combatants: e.combatants.map((c) =>
-        c.id === id ? { ...c, currentHp: Math.max(0, Math.min(c.maxHp, c.currentHp + delta)) } : c
+        c.id === id ? { ...c, currentHp: Math.max(0, Math.min(c.maxHp ?? 0, (c.currentHp ?? 0) + delta)) } : c
       ),
     }));
   }
@@ -158,11 +204,11 @@ export function InitiativeTracker() {
   }
 
   function removeCombatant(id: string) {
-    setEncounter((e) => ({ ...e, combatants: e.combatants.filter((c) => c.id !== id) }));
+    applyEncounterUpdate((e) => ({ ...e, combatants: e.combatants.filter((c) => c.id !== id) }));
   }
 
   function nextTurn() {
-    setEncounter((e) => {
+    applyEncounterUpdate((e) => {
       const count = e.combatants.length;
       if (count === 0) return e;
       const next = e.turnIndex + 1;
@@ -172,21 +218,21 @@ export function InitiativeTracker() {
 
   function clearEncounter() {
     if (!confirm("Clear the current encounter? This cannot be undone.")) return;
-    setEncounter(BLANK_ENCOUNTER);
+    applyEncounterUpdate(() => BLANK_ENCOUNTER);
   }
 
   function restCombatant(id: string) {
-    setEncounter((e) => ({
+    applyEncounterUpdate((e) => ({
       ...e,
-      combatants: e.combatants.map((c) => (c.id === id ? { ...c, currentHp: c.maxHp, conditions: [] } : c)),
+      combatants: e.combatants.map((c) => (c.id === id ? { ...c, currentHp: c.maxHp ?? 0, conditions: [] } : c)),
     }));
   }
 
   function restAll() {
     if (!confirm("Rest the whole party? Everyone's HP will be restored to max and all conditions cleared.")) return;
-    setEncounter((e) => ({
+    applyEncounterUpdate((e) => ({
       ...e,
-      combatants: e.combatants.map((c) => ({ ...c, currentHp: c.maxHp, conditions: [] })),
+      combatants: e.combatants.map((c) => ({ ...c, currentHp: c.maxHp ?? 0, conditions: [] })),
     }));
   }
 
@@ -194,17 +240,43 @@ export function InitiativeTracker() {
     <div className="panel result-panel initiative-tracker">
       <div className="initiative-header">
         <h2>Initiative Tracker</h2>
-        <span className="round-banner">Round {encounter.round}</span>
+        <span className="round-banner">Round {activeEncounter.round}</span>
       </div>
 
+      {worlds.length === 0 ? (
+        <p className="hint">Create or join a world to run combat with your party.</p>
+      ) : (
+        <div className="tabs dice-mode-toggle" role="tablist">
+          <button className={mode === "personal" ? "active" : ""} aria-current={mode === "personal" ? "true" : undefined} onClick={() => setMode("personal")}>Personal</button>
+          <button className={partyMode ? "active" : ""} aria-current={partyMode ? "true" : undefined} onClick={() => setMode("party")}>Party</button>
+        </div>
+      )}
+
+      {partyMode && worlds.length > 0 && (
+        <label className="field">
+          <span>World</span>
+          <select value={partyWorldId} onChange={(e) => setPartyWorldId(e.target.value)}>
+            <option value="">Select a world…</option>
+            {worlds.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
+          </select>
+        </label>
+      )}
+      {partyMode && liveError && <p className="error">{liveError}</p>}
+
       <div className="button-row">
-        <button className="btn-secondary" aria-expanded={rosterPickType === "character"} onClick={() => { setRosterPickType(rosterPickType === "character" ? null : "character"); setAddingCustom(false); }}>+ Add NPC/Monster</button>
-        <button className="btn-secondary" aria-expanded={rosterPickType === "playerCharacter"} onClick={() => { setRosterPickType(rosterPickType === "playerCharacter" ? null : "playerCharacter"); setAddingCustom(false); }}>+ Add PC from Roster</button>
-        <button className="btn-secondary" aria-expanded={addingCustom} onClick={() => { setAddingCustom((v) => !v); setRosterPickType(null); }}>+ Add Custom</button>
+        {canEdit && (
+          <button className="btn-secondary" aria-expanded={rosterPickType === "character"} onClick={() => { setRosterPickType(rosterPickType === "character" ? null : "character"); setAddingCustom(false); }}>+ Add NPC/Monster</button>
+        )}
+        {canEdit && (
+          <button className="btn-secondary" aria-expanded={rosterPickType === "playerCharacter"} onClick={() => { setRosterPickType(rosterPickType === "playerCharacter" ? null : "playerCharacter"); setAddingCustom(false); }}>+ Add PC from Roster</button>
+        )}
+        {canEdit && (
+          <button className="btn-secondary" aria-expanded={addingCustom} onClick={() => { setAddingCustom((v) => !v); setRosterPickType(null); }}>+ Add Custom</button>
+        )}
         <button className="btn-secondary" aria-expanded={showConditionRules} onClick={() => setShowConditionRules((v) => !v)}>Condition Rules</button>
-        {encounter.combatants.length > 0 && <button className="btn-secondary" onClick={nextTurn}>Next Turn</button>}
-        {encounter.combatants.length > 0 && <button className="btn-secondary" onClick={restAll}>Rest All</button>}
-        {encounter.combatants.length > 0 && <button className="btn-danger" onClick={clearEncounter}>Clear Encounter</button>}
+        {canEdit && sorted.length > 0 && <button className="btn-secondary" onClick={nextTurn}>Next Turn</button>}
+        {canEdit && sorted.length > 0 && <button className="btn-secondary" onClick={restAll}>Rest All</button>}
+        {canEdit && sorted.length > 0 && <button className="btn-danger" onClick={clearEncounter}>Clear Encounter</button>}
       </div>
 
       {showConditionRules && (
@@ -220,7 +292,7 @@ export function InitiativeTracker() {
         </div>
       )}
 
-      {rosterPickType && (
+      {canEdit && rosterPickType && (
         <div className="save-panel">
           <EntitySearchPicker
             type={rosterPickType}
@@ -230,7 +302,7 @@ export function InitiativeTracker() {
         </div>
       )}
 
-      {addingCustom && (
+      {canEdit && addingCustom && (
         <div className="save-panel">
           <label className="field">
             <span>Name</span>
@@ -252,11 +324,15 @@ export function InitiativeTracker() {
         </div>
       )}
 
-      {sorted.length === 0 && <p className="hint">No combatants yet. Add from the roster or add a custom entry (e.g. a PC).</p>}
+      {sorted.length === 0 && (
+        <p className="hint">
+          {canEdit ? "No combatants yet. Add from the roster or add a custom entry (e.g. a PC)." : "No combat happening right now."}
+        </p>
+      )}
 
       <ul className="combatant-list">
-        {sorted.map((c) => (
-          <li key={c.id} className={`combatant-row${c.id === activeId ? " active-turn" : ""}${c.currentHp <= 0 ? " down" : ""}`}>
+        {sorted.map((c) => canEdit ? (
+          <li key={c.id} className={`combatant-row${c.id === activeId ? " active-turn" : ""}${(c.currentHp ?? 0) <= 0 ? " down" : ""}`}>
             <div className="combatant-main">
               <input
                 type="number"
@@ -306,7 +382,7 @@ export function InitiativeTracker() {
             </div>
 
             <div className="combatant-hp">
-              <span className="combatant-hp-value">{c.currentHp} / {c.maxHp} HP</span>
+              <span className="combatant-hp-value">{c.currentHp ?? 0} / {c.maxHp ?? 0} HP</span>
               <input
                 type="number"
                 className="combatant-hp-input"
@@ -318,6 +394,35 @@ export function InitiativeTracker() {
               <button className="btn-danger" onClick={() => applyDelta(c.id, -1)}>Damage</button>
               <button className="btn-secondary" onClick={() => applyDelta(c.id, 1)}>Heal</button>
               <button className="btn-secondary" onClick={() => restCombatant(c.id)} aria-label={`Rest ${c.name}`}>Rest</button>
+              {partyMode && (
+                <button className="btn-secondary" onClick={() => updateCombatant(c.id, { hpVisible: !c.hpVisible })} aria-pressed={c.hpVisible}>
+                  {c.hpVisible ? "Hide HP" : "Show HP"}
+                </button>
+              )}
+            </div>
+          </li>
+        ) : (
+          <li key={c.id} className={`combatant-row read-only${c.id === activeId ? " active-turn" : ""}${c.hpStatus === "down" ? " down" : ""}`}>
+            <div className="combatant-main">
+              <span className="combatant-initiative-readonly">{c.initiative}</span>
+              <span className="combatant-name">{c.name}</span>
+              {c.armorClass !== undefined && <span className="entity-meta">AC {c.armorClass}</span>}
+            </div>
+
+            {c.conditions.length > 0 && (
+              <div className="combatant-conditions">
+                {c.conditions.map((cond) => (
+                  <span key={cond} className="condition-chip condition-chip-readonly">{cond}</span>
+                ))}
+              </div>
+            )}
+
+            <div className="combatant-hp">
+              {c.currentHp !== undefined && c.maxHp !== undefined ? (
+                <span className="combatant-hp-value">{c.currentHp} / {c.maxHp} HP</span>
+              ) : (
+                <span className={`hp-status-badge hp-status-${c.hpStatus}`}>{HP_STATUS_LABELS[c.hpStatus]}</span>
+              )}
             </div>
           </li>
         ))}

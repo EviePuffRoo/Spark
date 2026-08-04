@@ -2,6 +2,7 @@ import { useState } from "react";
 import "./App.css";
 import type { EntityType } from "@spark/shared";
 import { useAuth } from "./AuthContext";
+import { useActivityBadges } from "./useActivityBadges";
 import { AuthPage } from "./pages/AuthPage";
 import { AccountMenu } from "./components/AccountMenu";
 import { ThemeToggle } from "./components/ThemeToggle";
@@ -19,6 +20,7 @@ type Tab = "create" | "notes" | "roster" | "myCharacter" | "worlds" | "combat";
 
 function App() {
   const { user, loading, pendingRecoveryCode } = useAuth();
+  const { combatUnseen, notesUnseen, markSeen } = useActivityBadges();
   const [tab, setTab] = useState<Tab>("create");
   const [rosterWorldFilter, setRosterWorldFilter] = useState("");
   const [rosterSelection, setRosterSelection] = useState<RosterSelection | null>(null);
@@ -59,11 +61,15 @@ function App() {
         <GlobalSearch onSelect={openInRoster} />
         <nav className="tabs">
           <button className={tab === "create" ? "active" : ""} aria-current={tab === "create" ? "true" : undefined} onClick={() => setTab("create")}>Create</button>
-          <button className={tab === "notes" ? "active" : ""} aria-current={tab === "notes" ? "true" : undefined} onClick={() => setTab("notes")}>Notes</button>
+          <button className={tab === "notes" ? "active" : ""} aria-current={tab === "notes" ? "true" : undefined} onClick={() => { setTab("notes"); markSeen("notes"); }}>
+            Notes{notesUnseen && <span className="nav-badge" aria-label="New notes activity" />}
+          </button>
           <button className={tab === "roster" ? "active" : ""} aria-current={tab === "roster" ? "true" : undefined} onClick={() => setTab("roster")}>Roster</button>
           <button className={tab === "myCharacter" ? "active" : ""} aria-current={tab === "myCharacter" ? "true" : undefined} onClick={() => setTab("myCharacter")}>My Character</button>
           <button className={tab === "worlds" ? "active" : ""} aria-current={tab === "worlds" ? "true" : undefined} onClick={() => setTab("worlds")}>Worlds</button>
-          <button className={tab === "combat" ? "active" : ""} aria-current={tab === "combat" ? "true" : undefined} onClick={() => setTab("combat")}>Combat</button>
+          <button className={tab === "combat" ? "active" : ""} aria-current={tab === "combat" ? "true" : undefined} onClick={() => { setTab("combat"); markSeen("combat"); }}>
+            Combat{combatUnseen && <span className="nav-badge" aria-label="New combat activity" />}
+          </button>
         </nav>
       </header>
 

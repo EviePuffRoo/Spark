@@ -1135,6 +1135,25 @@ textarea {
   color: var(--accent-contrast);
 }
 
+.condition-rules-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.condition-rules-list li {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.condition-rules-list strong {
+  color: var(--text);
+}
+
 .combatant-notes-row {
   margin-bottom: 8px;
 }

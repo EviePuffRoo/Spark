@@ -10,6 +10,24 @@ const CONDITIONS = [
   "Prone", "Restrained", "Stunned", "Unconscious",
 ];
 
+const CONDITION_RULES: Record<string, string> = {
+  Blinded: "Can't see, and automatically fails any check that requires sight. Attack rolls against the creature have advantage, and its own attack rolls have disadvantage.",
+  Charmed: "Can't attack the charmer or target them with harmful abilities. The charmer has advantage on social ability checks against the creature.",
+  Deafened: "Can't hear, and automatically fails any check that requires hearing.",
+  Exhausted: "Cumulative levels (1–6) each add a penalty: disadvantage on ability checks, halved speed, disadvantage on attacks and saves, halved max HP, speed reduced to 0, then death.",
+  Frightened: "Disadvantage on ability checks and attack rolls while the source of fear is in sight, and can't willingly move closer to it.",
+  Grappled: "Speed becomes 0. Ends if the grappler is incapacitated or the creature is moved out of the grappler's reach.",
+  Incapacitated: "Can't take actions or reactions.",
+  Invisible: "Can't be seen without special senses or magic. Attack rolls against the creature have disadvantage, and its own attack rolls have advantage.",
+  Paralyzed: "Incapacitated, can't move or speak. Automatically fails Strength and Dexterity saves. Attacks against it have advantage, and hits from within 5 feet are automatic critical hits.",
+  Petrified: "Transformed to stone, incapacitated, can't move or speak, unaware of surroundings. Resistant to all damage, and immune to poison and disease.",
+  Poisoned: "Disadvantage on attack rolls and ability checks.",
+  Prone: "Can only crawl unless it stands up (costing half its speed). Disadvantage on attack rolls. Attacks against it have advantage from within 5 feet, disadvantage otherwise.",
+  Restrained: "Speed becomes 0. Disadvantage on attack rolls and Dexterity saves. Attacks against it have advantage.",
+  Stunned: "Incapacitated, can't move, and can speak only falteringly. Automatically fails Strength and Dexterity saves. Attacks against it have advantage.",
+  Unconscious: "Incapacitated, can't move or speak, unaware of surroundings, drops what it's holding, and falls prone. Automatically fails Strength and Dexterity saves. Attacks against it have advantage, and hits from within 5 feet are automatic critical hits.",
+};
+
 interface Combatant {
   id: string;
   name: string;
@@ -47,6 +65,7 @@ export function InitiativeTracker() {
   const [customAc, setCustomAc] = useState<number | "">("");
   const [hpDelta, setHpDelta] = useState<Record<string, string>>({});
   const [openConditionsFor, setOpenConditionsFor] = useState<string | null>(null);
+  const [showConditionRules, setShowConditionRules] = useState(false);
 
   // Older saved encounters (before conditions existed) won't have this field.
   const sorted = [...encounter.combatants]
@@ -167,9 +186,23 @@ export function InitiativeTracker() {
         <button className="btn-secondary" aria-expanded={rosterPickType === "character"} onClick={() => { setRosterPickType(rosterPickType === "character" ? null : "character"); setAddingCustom(false); }}>+ Add NPC/Monster</button>
         <button className="btn-secondary" aria-expanded={rosterPickType === "playerCharacter"} onClick={() => { setRosterPickType(rosterPickType === "playerCharacter" ? null : "playerCharacter"); setAddingCustom(false); }}>+ Add PC from Roster</button>
         <button className="btn-secondary" aria-expanded={addingCustom} onClick={() => { setAddingCustom((v) => !v); setRosterPickType(null); }}>+ Add Custom</button>
+        <button className="btn-secondary" aria-expanded={showConditionRules} onClick={() => setShowConditionRules((v) => !v)}>Condition Rules</button>
         {encounter.combatants.length > 0 && <button className="btn-secondary" onClick={nextTurn}>Next Turn</button>}
         {encounter.combatants.length > 0 && <button className="btn-danger" onClick={clearEncounter}>Clear Encounter</button>}
       </div>
+
+      {showConditionRules && (
+        <div className="save-panel condition-rules-panel">
+          <h3 className="section-heading">Condition Rules</h3>
+          <ul className="condition-rules-list">
+            {CONDITIONS.map((cond) => (
+              <li key={cond}>
+                <strong>{cond}.</strong> {CONDITION_RULES[cond]}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {rosterPickType && (
         <div className="save-panel">

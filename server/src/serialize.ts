@@ -1,9 +1,9 @@
 import type {
   Character as CharacterRow, Item as ItemRow, Location as LocationRow, QuestHook as QuestHookRow,
   Faction as FactionRow, EncounterTable as EncounterTableRow, SessionNote as SessionNoteRow,
-  Adventure as AdventureRow, PlayerCharacter as PlayerCharacterRow,
+  Adventure as AdventureRow, PlayerCharacter as PlayerCharacterRow, RollLogEntry as RollLogEntryRow,
 } from "@prisma/client";
-import type { Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, PlayerCharacter } from "@spark/shared";
+import type { Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, PlayerCharacter, RollLogEntry } from "@spark/shared";
 
 export function toCharacterDTO(row: CharacterRow): Character {
   return {
@@ -151,6 +151,23 @@ export function toAdventureDTO(row: AdventureRow): Adventure {
     notes: row.notes ?? undefined,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+export function toRollLogEntryDTO(row: RollLogEntryRow): RollLogEntry {
+  return {
+    id: row.id,
+    worldId: row.worldId,
+    userId: row.userId,
+    rollerName: row.rollerName,
+    notation: row.notation,
+    results: JSON.parse(row.results),
+    modifier: row.modifier,
+    total: row.total,
+    mode: row.mode === "adv" || row.mode === "dis" ? row.mode : undefined,
+    label: row.label ?? undefined,
+    hiddenFromParty: row.hiddenFromParty,
+    createdAt: row.createdAt.toISOString(),
   };
 }
 

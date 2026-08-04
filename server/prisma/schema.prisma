@@ -26,6 +26,7 @@ model User {
   playerCharacters PlayerCharacter[]
   links           Link[]
   worldMemberships WorldMember[]
+  rollLogEntries  RollLogEntry[]
 }
 
 model World {
@@ -47,6 +48,7 @@ model World {
   adventures      Adventure[]
   playerCharacters PlayerCharacter[]
   members         WorldMember[]
+  rollLogEntries  RollLogEntry[]
 
   @@index([userId])
 }
@@ -263,6 +265,26 @@ model Adventure {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  @@index([worldId])
+  @@index([userId])
+}
+
+model RollLogEntry {
+  id              String   @id @default(cuid())
+  worldId         String
+  world           World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rollerName      String
+  notation        String
+  results         String
+  modifier        Int      @default(0)
+  total           Int
+  mode            String?
+  label           String?
+  hiddenFromParty Boolean  @default(false)
+  createdAt       DateTime @default(now())
 
   @@index([worldId])
   @@index([userId])

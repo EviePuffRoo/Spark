@@ -76,8 +76,12 @@ export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) =
 
   async function handleDelete(id: string) {
     if (!confirm("Delete this world? Everything in it (characters, items, locations, quests, factions, encounter tables, player characters, and session notes) will become unassigned, not deleted. Anyone it was shared with will lose access.")) return;
-    await api.deleteWorld(id);
-    refresh();
+    try {
+      await api.deleteWorld(id);
+      refresh();
+    } catch (e) {
+      setError((e as Error).message);
+    }
   }
 
   async function handleExportWorld(w: WorldSummary) {
@@ -142,15 +146,23 @@ export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) =
 
   async function handleRemoveMember(worldId: string, userId: string) {
     if (!confirm("Remove this member? They'll lose access to the world immediately.")) return;
-    await api.removeWorldMember(worldId, userId);
-    setMembers(await api.getWorldMembers(worldId));
-    refresh();
+    try {
+      await api.removeWorldMember(worldId, userId);
+      setMembers(await api.getWorldMembers(worldId));
+      refresh();
+    } catch (e) {
+      setMemberError((e as Error).message);
+    }
   }
 
   async function handleLeave(worldId: string, worldName: string) {
     if (!confirm(`Leave "${worldName}"? You'll lose access unless you're invited back.`)) return;
-    await api.leaveWorld(worldId);
-    refresh();
+    try {
+      await api.leaveWorld(worldId);
+      refresh();
+    } catch (e) {
+      setError((e as Error).message);
+    }
   }
 
   async function handleJoin() {
@@ -229,7 +241,7 @@ export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) =
               </div>
               <div className="button-row">
                 <button className="btn-secondary" onClick={() => onViewRoster(w.id)} aria-label={`View roster for ${w.name}`}>View Roster</button>
-                <button className="btn-secondary" onClick={() => toggleInvitePanel(w.id)} aria-label={`Manage sharing for ${w.name}`}>
+                <button className="btn-secondary" onClick={() => toggleInvitePanel(w.id)} aria-label={`Manage sharing for ${w.name}`} aria-expanded={expandedWorldId === w.id}>
                   {expandedWorldId === w.id ? "Hide Sharing" : "Sharing"}
                 </button>
                 <button className="btn-secondary" onClick={() => handleExportWorld(w)} aria-label={`Export ${w.name}`}>Export</button>

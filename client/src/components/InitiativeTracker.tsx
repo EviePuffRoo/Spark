@@ -164,9 +164,9 @@ export function InitiativeTracker() {
       </div>
 
       <div className="button-row">
-        <button className="btn-secondary" onClick={() => { setRosterPickType(rosterPickType === "character" ? null : "character"); setAddingCustom(false); }}>+ Add NPC/Monster</button>
-        <button className="btn-secondary" onClick={() => { setRosterPickType(rosterPickType === "playerCharacter" ? null : "playerCharacter"); setAddingCustom(false); }}>+ Add PC from Roster</button>
-        <button className="btn-secondary" onClick={() => { setAddingCustom((v) => !v); setRosterPickType(null); }}>+ Add Custom</button>
+        <button className="btn-secondary" aria-expanded={rosterPickType === "character"} onClick={() => { setRosterPickType(rosterPickType === "character" ? null : "character"); setAddingCustom(false); }}>+ Add NPC/Monster</button>
+        <button className="btn-secondary" aria-expanded={rosterPickType === "playerCharacter"} onClick={() => { setRosterPickType(rosterPickType === "playerCharacter" ? null : "playerCharacter"); setAddingCustom(false); }}>+ Add PC from Roster</button>
+        <button className="btn-secondary" aria-expanded={addingCustom} onClick={() => { setAddingCustom((v) => !v); setRosterPickType(null); }}>+ Add Custom</button>
         {encounter.combatants.length > 0 && <button className="btn-secondary" onClick={nextTurn}>Next Turn</button>}
         {encounter.combatants.length > 0 && <button className="btn-danger" onClick={clearEncounter}>Clear Encounter</button>}
       </div>
@@ -228,7 +228,7 @@ export function InitiativeTracker() {
                   <button onClick={() => toggleCondition(c.id, cond)} aria-label={`Remove ${cond} from ${c.name}`}>×</button>
                 </span>
               ))}
-              <button className="btn-secondary condition-toggle" onClick={() => setOpenConditionsFor(openConditionsFor === c.id ? null : c.id)}>
+              <button className="btn-secondary condition-toggle" aria-expanded={openConditionsFor === c.id} onClick={() => setOpenConditionsFor(openConditionsFor === c.id ? null : c.id)}>
                 + Condition
               </button>
               {openConditionsFor === c.id && (

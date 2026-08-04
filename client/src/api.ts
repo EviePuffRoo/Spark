@@ -8,6 +8,7 @@ import type {
   SessionNote, SessionNoteInput,
   Adventure, GenerateAdventureRequest, GeneratedAdventure,
   PlayerCharacter, PlayerCharacterInput,
+  RollLogEntry, RollLogEntryInput,
   EntityType, EntityLink, SearchResult,
   AuthUser, SignupResult, RecoveryCodeResult,
 } from "@spark/shared";
@@ -175,6 +176,11 @@ export const api = {
   updatePlayerCharacter: (id: string, patch: Partial<PlayerCharacter>) =>
     request<PlayerCharacter>(`/player-characters/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   deletePlayerCharacter: (id: string) => request<void>(`/player-characters/${id}`, { method: "DELETE" }),
+
+  listRollLog: (worldId: string) => request<RollLogEntry[]>(`/roll-log?worldId=${worldId}`),
+  postRollLogEntry: (entry: RollLogEntryInput) =>
+    request<RollLogEntry>("/roll-log", { method: "POST", body: JSON.stringify(entry) }),
+  deleteRollLogEntry: (id: string) => request<void>(`/roll-log/${id}`, { method: "DELETE" }),
 
   listWorlds: () => request<WorldSummary[]>("/worlds"),
   getWorld: (id: string) => request<World>(`/worlds/${id}`),

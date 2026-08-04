@@ -45,7 +45,13 @@ function timeAgo(ms?: number): string | null {
   return new Date(ms).toLocaleDateString();
 }
 
-export function DiceRoller() {
+export function DiceRoller({
+  worlds, partyWorldId: selectedWorldId, setPartyWorldId: setSelectedWorldId,
+}: {
+  worlds: WorldSummary[];
+  partyWorldId: string;
+  setPartyWorldId: (id: string) => void;
+}) {
   const { user } = useAuth();
   const [history, setHistory] = useLocalStorage<RollRecord[]>("spark-dice-history", []);
   const [notation, setNotation] = useState("1d20");
@@ -53,18 +59,12 @@ export function DiceRoller() {
   const [error, setError] = useState<string | null>(null);
 
   const [mode, setMode] = useState<"personal" | "party">("personal");
-  const [worlds, setWorlds] = useState<WorldSummary[]>([]);
-  const [selectedWorldId, setSelectedWorldId] = useLocalStorage("spark-dice-world-id", "");
   const [rollerName, setRollerName] = useState(user?.username ?? "");
   const [secret, setSecret] = useState(false);
   const [partyLog, setPartyLog] = useState<RollLogEntry[]>([]);
   const [partyError, setPartyError] = useState<string | null>(null);
 
   const selectedWorld = worlds.find((w) => w.id === selectedWorldId) ?? null;
-
-  useEffect(() => {
-    api.listWorlds().then(setWorlds).catch(() => {});
-  }, []);
 
   useEffect(() => {
     if (mode !== "party" || !selectedWorldId) {

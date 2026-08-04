@@ -2,8 +2,12 @@ import type {
   Character as CharacterRow, Item as ItemRow, Location as LocationRow, QuestHook as QuestHookRow,
   Faction as FactionRow, EncounterTable as EncounterTableRow, SessionNote as SessionNoteRow,
   Adventure as AdventureRow, PlayerCharacter as PlayerCharacterRow, RollLogEntry as RollLogEntryRow,
+  Encounter as EncounterRow,
 } from "@prisma/client";
-import type { Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, PlayerCharacter, RollLogEntry } from "@spark/shared";
+import type {
+  Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, PlayerCharacter, RollLogEntry,
+  Encounter, LiveCombatant, HpStatus,
+} from "@spark/shared";
 
 export function toCharacterDTO(row: CharacterRow): Character {
   return {
@@ -170,6 +174,37 @@ export function toRollLogEntryDTO(row: RollLogEntryRow): RollLogEntry {
     label: row.label ?? undefined,
     hiddenFromParty: row.hiddenFromParty,
     createdAt: row.createdAt.toISOString(),
+  };
+}
+
+export function computeHpStatus(current?: number, max?: number): HpStatus {
+  if (current === undefined || max === undefined || max <= 0) return "healthy";
+  if (current <= 0) return "down";
+  const ratio = current / max;
+  if (ratio <= 0.25) return "nearDeath";
+  if (ratio <= 0.5) return "bloodied";
+  if (ratio < 1) return "injured";
+  return "healthy";
+}
+
+export function toEncounterDTO(row: EncounterRow, viewerId: string, worldOwnerId: string): Encounter {
+  const isOwner = viewerId === worldOwnerId;
+  const combatants: LiveCombatant[] = JSON.parse(row.combatants).map((c: LiveCombatant) => {
+    const hpStatus = computeHpStatus(c.currentHp, c.maxHp);
+    const showHp = isOwner || c.hpVisible;
+    return {
+      ...c,
+      hpStatus,
+      currentHp: showHp ? c.currentHp : undefined,
+      maxHp: showHp ? c.maxHp : undefined,
+    };
+  });
+  return {
+    worldId: row.worldId,
+    combatants,
+    round: row.round,
+    turnIndex: row.turnIndex,
+    updatedAt: row.updatedAt.toISOString(),
   };
 }
 

@@ -175,6 +175,21 @@ export function InitiativeTracker() {
     setEncounter(BLANK_ENCOUNTER);
   }
 
+  function restCombatant(id: string) {
+    setEncounter((e) => ({
+      ...e,
+      combatants: e.combatants.map((c) => (c.id === id ? { ...c, currentHp: c.maxHp, conditions: [] } : c)),
+    }));
+  }
+
+  function restAll() {
+    if (!confirm("Rest the whole party? Everyone's HP will be restored to max and all conditions cleared.")) return;
+    setEncounter((e) => ({
+      ...e,
+      combatants: e.combatants.map((c) => ({ ...c, currentHp: c.maxHp, conditions: [] })),
+    }));
+  }
+
   return (
     <div className="panel result-panel initiative-tracker">
       <div className="initiative-header">
@@ -188,6 +203,7 @@ export function InitiativeTracker() {
         <button className="btn-secondary" aria-expanded={addingCustom} onClick={() => { setAddingCustom((v) => !v); setRosterPickType(null); }}>+ Add Custom</button>
         <button className="btn-secondary" aria-expanded={showConditionRules} onClick={() => setShowConditionRules((v) => !v)}>Condition Rules</button>
         {encounter.combatants.length > 0 && <button className="btn-secondary" onClick={nextTurn}>Next Turn</button>}
+        {encounter.combatants.length > 0 && <button className="btn-secondary" onClick={restAll}>Rest All</button>}
         {encounter.combatants.length > 0 && <button className="btn-danger" onClick={clearEncounter}>Clear Encounter</button>}
       </div>
 
@@ -301,6 +317,7 @@ export function InitiativeTracker() {
               />
               <button className="btn-danger" onClick={() => applyDelta(c.id, -1)}>Damage</button>
               <button className="btn-secondary" onClick={() => applyDelta(c.id, 1)}>Heal</button>
+              <button className="btn-secondary" onClick={() => restCombatant(c.id)} aria-label={`Rest ${c.name}`}>Rest</button>
             </div>
           </li>
         ))}

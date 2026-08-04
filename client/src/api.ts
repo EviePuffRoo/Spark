@@ -187,6 +187,8 @@ export const api = {
   getEncounter: (worldId: string) => request<Encounter>(`/encounters/${worldId}`),
   saveEncounter: (worldId: string, state: EncounterStateInput) =>
     request<Encounter>(`/encounters/${worldId}`, { method: "PUT", body: JSON.stringify(state) }),
+  adjustEncounterHp: (worldId: string, combatantId: string, delta: number) =>
+    request<Encounter>(`/encounters/${worldId}/adjust-hp`, { method: "POST", body: JSON.stringify({ combatantId, delta }) }),
 
   getActivity: () => request<ActivitySummary>("/activity"),
 

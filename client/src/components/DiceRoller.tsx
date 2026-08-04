@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { RollLogEntry } from "@spark/shared";
+import type { RollLogEntry, LiveCombatant } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { useAuth } from "../AuthContext";
 import { useLocalStorage } from "../useLocalStorage";
@@ -64,11 +64,18 @@ export function DiceRoller({
   const [partyLog, setPartyLog] = useState<RollLogEntry[]>([]);
   const [partyError, setPartyError] = useState<string | null>(null);
 
+  const [applyOpenFor, setApplyOpenFor] = useState<string | null>(null);
+  const [applyCombatants, setApplyCombatants] = useState<LiveCombatant[] | null>(null);
+  const [applyTargetId, setApplyTargetId] = useState("");
+  const [applyMode, setApplyMode] = useState<"damage" | "heal">("damage");
+  const [applyError, setApplyError] = useState<string | null>(null);
+
   const selectedWorld = worlds.find((w) => w.id === selectedWorldId) ?? null;
 
   useEffect(() => {
     if (mode !== "party" || !selectedWorldId) {
       setPartyLog([]);
+      setApplyOpenFor(null);
       return;
     }
     let cancelled = false;
@@ -151,6 +158,35 @@ export function DiceRoller({
       setPartyLog((log) => log.filter((r) => r.id !== id));
     } catch (e) {
       setPartyError((e as Error).message);
+    }
+  }
+
+  async function toggleApplyPicker(rollId: string) {
+    if (applyOpenFor === rollId) {
+      setApplyOpenFor(null);
+      return;
+    }
+    setApplyOpenFor(rollId);
+    setApplyCombatants(null);
+    setApplyError(null);
+    if (!selectedWorldId) return;
+    try {
+      const encounter = await api.getEncounter(selectedWorldId);
+      setApplyCombatants(encounter.combatants);
+      setApplyTargetId(encounter.combatants[0]?.id ?? "");
+    } catch (e) {
+      setApplyError((e as Error).message);
+    }
+  }
+
+  async function applyRollToCombat(roll: RollLogEntry) {
+    if (!selectedWorldId || !applyTargetId) return;
+    setApplyError(null);
+    try {
+      await api.adjustEncounterHp(selectedWorldId, applyTargetId, applyMode === "damage" ? -roll.total : roll.total);
+      setApplyOpenFor(null);
+    } catch (e) {
+      setApplyError((e as Error).message);
     }
   }
 
@@ -276,6 +312,35 @@ export function DiceRoller({
                     [{r.results.join(", ")}]{r.modifier ? ` ${r.modifier > 0 ? "+" : ""}${r.modifier}` : ""} = <strong>{r.total}</strong>
                     <span className="dice-history-time"> · {timeAgo(new Date(r.createdAt).getTime())}</span>
                   </span>
+                  <div className="button-row">
+                    <button className="btn-secondary" aria-expanded={applyOpenFor === r.id} onClick={() => toggleApplyPicker(r.id)}>
+                      Apply to Combat
+                    </button>
+                  </div>
+                  {applyOpenFor === r.id && (
+                    <div className="save-panel apply-to-combat-panel">
+                      {applyError && <p className="error">{applyError}</p>}
+                      {!applyError && applyCombatants === null && <p className="hint">Loading combatants…</p>}
+                      {applyCombatants !== null && applyCombatants.length === 0 && <p className="hint">No active encounter for this world.</p>}
+                      {applyCombatants !== null && applyCombatants.length > 0 && (
+                        <>
+                          <label className="field">
+                            <span>Apply to</span>
+                            <select value={applyTargetId} onChange={(e) => setApplyTargetId(e.target.value)}>
+                              {applyCombatants.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                            </select>
+                          </label>
+                          <div className="tabs apply-mode-toggle" role="tablist">
+                            <button className={applyMode === "damage" ? "active" : ""} aria-current={applyMode === "damage" ? "true" : undefined} onClick={() => setApplyMode("damage")}>Damage</button>
+                            <button className={applyMode === "heal" ? "active" : ""} aria-current={applyMode === "heal" ? "true" : undefined} onClick={() => setApplyMode("heal")}>Heal</button>
+                          </div>
+                          <button className="btn-primary" onClick={() => applyRollToCombat(r)}>
+                            Apply {r.total} {applyMode === "damage" ? "Damage" : "Healing"}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </li>
               );
             })}

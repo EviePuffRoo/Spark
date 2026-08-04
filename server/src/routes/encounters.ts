@@ -70,3 +70,35 @@ encountersRouter.put("/:worldId", async (req, res) => {
   });
   res.json(toEncounterDTO(row, req.userId!, world.userId));
 });
+
+// Narrow write path open to any party member (not owner-only like PUT
+// above): can only nudge one combatant's currentHp by a caller-supplied
+// delta, nothing else about the encounter. This is what lets a player
+// apply their own roll's result to a monster's HP without granting them
+// general write access to turn order, conditions, or the roster.
+encountersRouter.post("/:worldId/adjust-hp", async (req, res) => {
+  const { worldId } = req.params;
+  const world = await findAccessibleWorld(req.userId!, worldId);
+  if (!world) return res.status(403).json({ error: "You don't have access to this world" });
+
+  const { combatantId, delta } = req.body ?? {};
+  if (typeof combatantId !== "string" || typeof delta !== "number") {
+    return res.status(400).json({ error: "combatantId and delta are required" });
+  }
+
+  const row = await prisma.encounter.findUnique({ where: { worldId } });
+  if (!row) return res.status(404).json({ error: "No active encounter for this world" });
+
+  const combatants: LiveCombatant[] = JSON.parse(row.combatants);
+  const target = combatants.find((c) => c.id === combatantId);
+  if (!target) return res.status(404).json({ error: "Combatant not found" });
+
+  const maxHp = target.maxHp ?? 0;
+  target.currentHp = Math.max(0, Math.min(maxHp, (target.currentHp ?? 0) + delta));
+
+  const updated = await prisma.encounter.update({
+    where: { worldId },
+    data: { combatants: JSON.stringify(combatants) },
+  });
+  res.json(toEncounterDTO(updated, req.userId!, world.userId));
+});

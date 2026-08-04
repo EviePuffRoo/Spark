@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { randomInt } from "node:crypto";
 import type { Request, Response, NextFunction } from "express";
+import { prisma } from "./db.js";
 
 const JWT_SECRET = process.env.JWT_SECRET ?? "dev-only-insecure-secret-change-me";
 const COOKIE_NAME = "spark_session";
@@ -82,4 +83,14 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!userId) return res.status(401).json({ error: "Not signed in" });
   req.userId = userId;
   next();
+}
+
+// Looks up the plan fresh from the DB (rather than trusting the JWT) so an
+// upgrade takes effect immediately, without forcing a re-login.
+export function requirePlan(plan: "pro") {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    const user = await prisma.user.findUnique({ where: { id: req.userId }, select: { plan: true } });
+    if (user?.plan !== plan) return res.status(403).json({ error: "This feature requires a Pro plan." });
+    next();
+  };
 }

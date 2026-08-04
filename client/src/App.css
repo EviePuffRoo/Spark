@@ -750,6 +750,30 @@ textarea {
   padding-top: 8px;
 }
 
+.upsell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.account-menu-plan {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+  padding: 4px 6px 10px;
+  font-size: 0.85rem;
+}
+
+.account-menu-dropdown .account-menu-plan button {
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  font-size: 0.78rem;
+}
+
 .link-button {
   background: none;
   border: none;

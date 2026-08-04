@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
-import { generateRecoveryCode, hashRecoveryCode, verifyRecoveryCode } from "../auth.js";
+import { generateRecoveryCode, hashRecoveryCode, verifyRecoveryCode, requirePlan } from "../auth.js";
 import { getMemberWorldIds } from "../worldAccess.js";
 
 export const worldsRouter = Router();
@@ -97,7 +97,7 @@ worldsRouter.delete("/:id", async (req, res) => {
 // Owner-only: (re)generate this world's join code. Returns the plaintext
 // code once, same as the account recovery code — only the bcrypt hash is
 // stored, and regenerating invalidates whatever code was issued before.
-worldsRouter.post("/:id/join-code", async (req, res) => {
+worldsRouter.post("/:id/join-code", requirePlan("pro"), async (req, res) => {
   const world = await prisma.world.findFirst({ where: { id: req.params.id, userId: req.userId } });
   if (!world) return res.status(404).json({ error: "World not found" });
   const code = generateRecoveryCode();

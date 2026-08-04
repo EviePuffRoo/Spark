@@ -12,6 +12,7 @@ interface AuthContextValue {
   resetPassword: (username: string, recoveryCode: string, newPassword: string) => Promise<void>;
   regenerateRecoveryCode: () => Promise<void>;
   acknowledgeRecoveryCode: () => void;
+  setPlan: (plan: "free" | "pro") => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -63,6 +64,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPendingRecoveryCode(null);
   }
 
+  async function setPlan(plan: "free" | "pro") {
+    const updatedUser = await api.setPlan(plan);
+    setUser(updatedUser);
+  }
+
   async function logout() {
     await api.logout();
     setUser(null);
@@ -71,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider value={{
       user, loading, pendingRecoveryCode, sessionMessage,
-      login, signup, resetPassword, regenerateRecoveryCode, acknowledgeRecoveryCode, logout,
+      login, signup, resetPassword, regenerateRecoveryCode, acknowledgeRecoveryCode, setPlan, logout,
     }}>
       {children}
     </AuthContext.Provider>

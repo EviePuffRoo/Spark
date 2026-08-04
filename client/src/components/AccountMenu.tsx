@@ -3,13 +3,14 @@ import { useAuth } from "../AuthContext";
 import { api } from "../api";
 
 export function AccountMenu() {
-  const { user, logout, regenerateRecoveryCode } = useAuth();
+  const { user, logout, regenerateRecoveryCode, setPlan } = useAuth();
   const [open, setOpen] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [planBusy, setPlanBusy] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -65,6 +66,18 @@ export function AccountMenu() {
     regenerateRecoveryCode();
   }
 
+  async function handleTogglePlan() {
+    setPlanBusy(true);
+    setError(null);
+    try {
+      await setPlan(user?.plan === "pro" ? "free" : "pro");
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setPlanBusy(false);
+    }
+  }
+
   if (!user) return null;
 
   return (
@@ -80,6 +93,12 @@ export function AccountMenu() {
       </button>
       {open && (
         <div className="account-menu-dropdown">
+          <div className="account-menu-plan">
+            <span>Plan: {user.plan === "pro" ? "Pro" : "Free"}</span>
+            <button onClick={handleTogglePlan} disabled={planBusy}>
+              {user.plan === "pro" ? "Back to Free (test)" : "Upgrade to Pro (test)"}
+            </button>
+          </div>
           <a href="https://github.com/EviePuffRoo/Spark/issues" target="_blank" rel="noreferrer">Send Feedback</a>
           <button onClick={() => setChangingPassword((c) => !c)}>Change Password</button>
           <button onClick={handleGetRecoveryCode}>Get Recovery Code</button>

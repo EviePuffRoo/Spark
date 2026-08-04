@@ -224,6 +224,7 @@ export const api = {
   changePassword: (currentPassword: string, newPassword: string) =>
     request<void>("/auth/change-password", { method: "POST", body: JSON.stringify({ currentPassword, newPassword }) }),
   regenerateRecoveryCode: () => request<RecoveryCodeResult>("/auth/recovery-code", { method: "POST" }),
+  setPlan: (plan: "free" | "pro") => request<AuthUser>("/auth/plan", { method: "POST", body: JSON.stringify({ plan }) }),
   resetPassword: (username: string, recoveryCode: string, newPassword: string) =>
     request<SignupResult>("/auth/reset-password", { method: "POST", body: JSON.stringify({ username, recoveryCode, newPassword }) }),
 };

@@ -371,6 +371,7 @@ export interface EntityLink {
 export interface AuthUser {
   id: string;
   username: string;
+  plan: "free" | "pro";
 }
 
 export interface SignupResult extends AuthUser {

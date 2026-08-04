@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api, type WorldSummary, type WorldMemberInfo } from "../api";
+import { useAuth } from "../AuthContext";
 
 function summarizeCounts(w: WorldSummary): string {
   const parts: [number, string][] = [
@@ -35,6 +36,7 @@ function downloadJson(filename: string, data: unknown) {
 }
 
 export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) => void }) {
+  const { user, setPlan } = useAuth();
   const [worlds, setWorlds] = useState<WorldSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
@@ -139,6 +141,14 @@ export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) =
     try {
       const { code } = await api.generateWorldJoinCode(worldId);
       setGeneratedCode(code);
+    } catch (e) {
+      setMemberError((e as Error).message);
+    }
+  }
+
+  async function handleUpgrade() {
+    try {
+      await setPlan("pro");
     } catch (e) {
       setMemberError((e as Error).message);
     }
@@ -251,13 +261,22 @@ export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) =
               {expandedWorldId === w.id && (
                 <div className="save-panel world-sharing-panel">
                   <h3 className="section-heading">Sharing</h3>
-                  <button className="btn-secondary" onClick={() => handleGenerateCode(w.id)}>
-                    {generatedCode ? "Regenerate Invite Code" : "Get Invite Code"}
-                  </button>
-                  {generatedCode && (
-                    <p className="hint">
-                      Share this code — it won't be shown again: <strong>{generatedCode}</strong>
-                    </p>
+                  {user?.plan === "pro" ? (
+                    <>
+                      <button className="btn-secondary" onClick={() => handleGenerateCode(w.id)}>
+                        {generatedCode ? "Regenerate Invite Code" : "Get Invite Code"}
+                      </button>
+                      {generatedCode && (
+                        <p className="hint">
+                          Share this code — it won't be shown again: <strong>{generatedCode}</strong>
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <div className="upsell">
+                      <p className="hint">Inviting your party is a Pro feature.</p>
+                      <button className="btn-primary" onClick={handleUpgrade}>Upgrade to Pro (test)</button>
+                    </div>
                   )}
                   {memberError && <p className="error">{memberError}</p>}
                   {members.length === 0 && <p className="hint">Nobody has joined this world yet.</p>}

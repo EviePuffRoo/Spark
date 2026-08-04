@@ -17,8 +17,8 @@ const authLimiter = rateLimit({
   message: { error: "Too many attempts — please wait a few minutes and try again." },
 });
 
-function toAuthUser(user: { id: string; username: string }): AuthUser {
-  return { id: user.id, username: user.username };
+function toAuthUser(user: { id: string; username: string; plan: string }): AuthUser {
+  return { id: user.id, username: user.username, plan: user.plan === "pro" ? "pro" : "free" };
 }
 
 authRouter.post("/signup", authLimiter, async (req, res) => {
@@ -63,6 +63,17 @@ authRouter.post("/logout", (_req, res) => {
 authRouter.get("/me", requireAuth, async (req, res) => {
   const user = await prisma.user.findUnique({ where: { id: req.userId } });
   if (!user) return res.status(401).json({ error: "Not signed in" });
+  res.json(toAuthUser(user));
+});
+
+// Placeholder self-serve plan toggle — no real payment yet. A Stripe webhook
+// can later call this exact update with zero changes to how gating works.
+authRouter.post("/plan", requireAuth, async (req, res) => {
+  const { plan } = req.body ?? {};
+  if (plan !== "free" && plan !== "pro") {
+    return res.status(400).json({ error: "Plan must be \"free\" or \"pro\"." });
+  }
+  const user = await prisma.user.update({ where: { id: req.userId }, data: { plan } });
   res.json(toAuthUser(user));
 });
 

@@ -113,6 +113,7 @@ export function RosterPage({
   const [loading, setLoading] = useState(true);
   const [tagFilter, setTagFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<QuestStatus | "">("");
+  const [searchFilter, setSearchFilter] = useState("");
   const [questStatus, setQuestStatus] = useState<QuestStatus>("active");
   const [showFactionWeb, setShowFactionWeb] = useState(false);
 
@@ -162,6 +163,7 @@ export function RosterPage({
     setSelectedId(null);
     setTagFilter("");
     setStatusFilter("");
+    setSearchFilter("");
     setShowFactionWeb(false);
   }
 
@@ -358,7 +360,10 @@ export function RosterPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, availableTags.join("|"), tagFilter]);
 
-  const activeList =
+  const unfiltered = activeEntities.length > 0;
+
+  const trimmedSearch = searchFilter.trim().toLowerCase();
+  const activeList = (
     mode === "characters" ? characters.filter((c) => !tagFilter || c.tags.includes(tagFilter)).map((c) => ({ id: c.id, name: c.name, meta: `${c.kind === "npc" ? c.race : c.templateName} · CR ${c.statBlock.challengeRating}`, hidden: c.hiddenFromParty })) :
     mode === "items" ? items.filter((i) => !tagFilter || i.tags.includes(tagFilter)).map((i) => ({ id: i.id, name: i.name, meta: `${i.category} · ${i.rarity}`, hidden: i.hiddenFromParty })) :
     mode === "locations" ? locations.filter((l) => !tagFilter || l.tags.includes(tagFilter)).map((l) => ({ id: l.id, name: l.name, meta: `${l.category} · ${l.locationType}`, hidden: l.hiddenFromParty })) :
@@ -367,7 +372,8 @@ export function RosterPage({
     mode === "encounters" ? encounters.filter((e) => !tagFilter || e.tags.includes(tagFilter)).map((e) => ({ id: e.id, name: e.name, meta: `${e.terrain} · d${e.entries.length}`, hidden: e.hiddenFromParty })) :
     mode === "notes" ? notes.filter((n) => !tagFilter || n.tags.includes(tagFilter)).map((n) => ({ id: n.id, name: n.title, meta: n.sessionLabel || new Date(n.createdAt).toLocaleDateString(), hidden: n.hiddenFromParty })) :
     mode === "adventures" ? adventures.filter((a) => !tagFilter || a.tags.includes(tagFilter)).map((a) => ({ id: a.id, name: a.title, meta: a.tier, hidden: a.hiddenFromParty })) :
-    playerCharacters.filter((p) => !tagFilter || p.tags.includes(tagFilter)).map((p) => ({ id: p.id, name: p.name, meta: `Level ${p.level} ${p.race} ${p.className}`, hidden: p.hiddenFromParty }));
+    playerCharacters.filter((p) => !tagFilter || p.tags.includes(tagFilter)).map((p) => ({ id: p.id, name: p.name, meta: `Level ${p.level} ${p.race} ${p.className}`, hidden: p.hiddenFromParty }))
+  ).filter((entry) => !trimmedSearch || entry.name.toLowerCase().includes(trimmedSearch));
 
   if (showFactionWeb) {
     return (
@@ -399,6 +405,16 @@ export function RosterPage({
         )}
 
         <label className="field">
+          <span>Search</span>
+          <input
+            type="text"
+            value={searchFilter}
+            onChange={(e) => setSearchFilter(e.target.value)}
+            placeholder={`Search ${MODE_LABELS[mode].toLowerCase()}…`}
+          />
+        </label>
+
+        <label className="field">
           <span>Filter by world</span>
           <select value={worldFilter} onChange={(e) => onWorldFilterChange(e.target.value)}>
             <option value="">All</option>
@@ -428,7 +444,11 @@ export function RosterPage({
         )}
 
         {loading && <p className="hint">Loading…</p>}
-        {!loading && activeList.length === 0 && <p className="hint">No saved {MODE_LABELS[mode].toLowerCase()} yet.</p>}
+        {!loading && activeList.length === 0 && (
+          <p className="hint">
+            {unfiltered ? "No matches for your filters." : `No saved ${MODE_LABELS[mode].toLowerCase()} yet.`}
+          </p>
+        )}
         <ul className="entity-list">
           {activeList.map((entry) => (
             <li key={entry.id}>

@@ -97,15 +97,17 @@ export function toEncounterTableDTO(row: EncounterTableRow): EncounterTable {
   };
 }
 
-export function toSessionNoteDTO(row: SessionNoteRow): SessionNote {
+export function toSessionNoteDTO(row: SessionNoteRow, viewerId: string): SessionNote {
+  const isOwner = row.userId === viewerId;
   return {
     id: row.id,
+    userId: row.userId,
     title: row.title,
     sessionLabel: row.sessionLabel ?? undefined,
     sessionDate: row.sessionDate ? row.sessionDate.toISOString().slice(0, 10) : undefined,
     summary: row.summary,
-    looseThreads: row.looseThreads ?? undefined,
-    nextSteps: row.nextSteps ?? undefined,
+    looseThreads: isOwner ? row.looseThreads ?? undefined : undefined,
+    nextSteps: isOwner ? row.nextSteps ?? undefined : undefined,
     worldId: row.worldId,
     hiddenFromParty: row.hiddenFromParty,
     tags: JSON.parse(row.tags),

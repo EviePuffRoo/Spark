@@ -14,14 +14,14 @@ sessionNotesRouter.get("/", async (req, res) => {
     ...(worldId === "unassigned" ? { worldId: null } : typeof worldId === "string" ? { worldId } : {}),
   };
   const rows = await prisma.sessionNote.findMany({ where, orderBy: { createdAt: "desc" } });
-  res.json(rows.map(toSessionNoteDTO));
+  res.json(rows.map((row) => toSessionNoteDTO(row, req.userId!)));
 });
 
 sessionNotesRouter.get("/:id", async (req, res) => {
   const memberWorldIds = await getMemberWorldIds(req.userId!);
   const row = await prisma.sessionNote.findFirst({ where: { id: req.params.id, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }] } });
   if (!row) return res.status(404).json({ error: "Session note not found" });
-  res.json(toSessionNoteDTO(row));
+  res.json(toSessionNoteDTO(row, req.userId!));
 });
 
 sessionNotesRouter.post("/", async (req, res) => {
@@ -45,7 +45,7 @@ sessionNotesRouter.post("/", async (req, res) => {
       userId: req.userId!,
     },
   });
-  res.status(201).json(toSessionNoteDTO(row));
+  res.status(201).json(toSessionNoteDTO(row, req.userId!));
 });
 
 sessionNotesRouter.patch("/:id", async (req, res) => {
@@ -62,7 +62,7 @@ sessionNotesRouter.patch("/:id", async (req, res) => {
   const result = await prisma.sessionNote.updateMany({ where: { id: req.params.id, userId: req.userId }, data });
   if (result.count === 0) return res.status(404).json({ error: "Session note not found" });
   const row = await prisma.sessionNote.findUnique({ where: { id: req.params.id } });
-  res.json(toSessionNoteDTO(row!));
+  res.json(toSessionNoteDTO(row!, req.userId!));
 });
 
 sessionNotesRouter.delete("/:id", async (req, res) => {

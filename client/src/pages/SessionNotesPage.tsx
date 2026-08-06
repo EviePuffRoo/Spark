@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import type { SessionNote } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { useAuth } from "../AuthContext";
+import { useLocalStorage } from "../useLocalStorage";
 import { SessionTimelineView } from "../components/SessionTimelineView";
+import { SessionPrepView } from "../components/SessionPrepView";
 
 const BLANK = {
   title: "",
@@ -24,7 +26,8 @@ export function SessionNotesPage() {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "saving">("idle");
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<"list" | "timeline">("list");
+  const [viewMode, setViewMode] = useState<"list" | "timeline" | "prep">("list");
+  const [prepWorldId, setPrepWorldId] = useLocalStorage("spark-prep-world-id", "");
 
   function refresh() {
     api.listSessionNotes().then(setNotes).catch((e) => setError(e.message)).finally(() => setLoading(false));
@@ -103,10 +106,15 @@ export function SessionNotesPage() {
       <div className="tabs forge-mode-tabs">
         <button className={viewMode === "list" ? "active" : ""} aria-current={viewMode === "list" ? "true" : undefined} onClick={() => setViewMode("list")}>List</button>
         <button className={viewMode === "timeline" ? "active" : ""} aria-current={viewMode === "timeline" ? "true" : undefined} onClick={() => setViewMode("timeline")}>Timeline</button>
+        <button className={viewMode === "prep" ? "active" : ""} aria-current={viewMode === "prep" ? "true" : undefined} onClick={() => setViewMode("prep")}>Prep</button>
       </div>
 
       {viewMode === "timeline" && (
         <SessionTimelineView notes={notes} worlds={worlds} onSelectNote={openInEditor} />
+      )}
+
+      {viewMode === "prep" && (
+        <SessionPrepView worldId={prepWorldId} setWorldId={setPrepWorldId} worlds={worlds} notes={notes} onSelectNote={openInEditor} />
       )}
 
       {viewMode === "list" && (

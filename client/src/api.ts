@@ -202,6 +202,8 @@ export const api = {
     request<Encounter>(`/encounters/${worldId}`, { method: "PUT", body: JSON.stringify(state) }),
   adjustEncounterHp: (worldId: string, combatantId: string, delta: number) =>
     request<Encounter>(`/encounters/${worldId}/adjust-hp`, { method: "POST", body: JSON.stringify({ combatantId, delta }) }),
+  moveCombatantZone: (worldId: string, combatantId: string, zoneId: string) =>
+    request<Encounter>(`/encounters/${worldId}/move-zone`, { method: "POST", body: JSON.stringify({ combatantId, zoneId }) }),
 
   getActivity: () => request<ActivitySummary>("/activity"),
 

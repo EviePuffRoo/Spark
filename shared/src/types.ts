@@ -350,12 +350,33 @@ export interface LiveCombatant {
   hpVisible: boolean;
   xp?: number;
   level?: number;
+  zoneId?: string;
+  hidden?: boolean;
+}
+
+export interface EncounterZone {
+  id: string;
+  name: string;
+  tags: string[];
+  x: number;
+  y: number;
+  connections: string[];
+  revealed: boolean;
+}
+
+export interface EncounterZoneEffect {
+  id: string;
+  zoneId: string;
+  label: string;
+  expiresAtRound: number;
 }
 
 export interface EncounterStateInput {
   combatants: LiveCombatant[];
   round: number;
   turnIndex: number;
+  zones: EncounterZone[];
+  zoneEffects: EncounterZoneEffect[];
 }
 
 export interface Encounter extends EncounterStateInput {

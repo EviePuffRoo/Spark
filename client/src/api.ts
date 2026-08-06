@@ -9,6 +9,7 @@ import type {
   Adventure, GenerateAdventureRequest, GeneratedAdventure,
   PlayerCharacter, PlayerCharacterInput,
   RollLogEntry, RollLogEntryInput,
+  CodexNote, CodexNoteInput,
   Encounter, EncounterStateInput,
   ActivitySummary,
   EntityType, EntityLink, SearchResult,
@@ -183,6 +184,12 @@ export const api = {
   postRollLogEntry: (entry: RollLogEntryInput) =>
     request<RollLogEntry>("/roll-log", { method: "POST", body: JSON.stringify(entry) }),
   deleteRollLogEntry: (id: string) => request<void>(`/roll-log/${id}`, { method: "DELETE" }),
+
+  getCodexNotes: (entityType: EntityType, entityId: string) =>
+    request<CodexNote[]>(`/codex-notes?entityType=${entityType}&entityId=${entityId}`),
+  postCodexNote: (note: CodexNoteInput) =>
+    request<CodexNote>("/codex-notes", { method: "POST", body: JSON.stringify(note) }),
+  deleteCodexNote: (id: string) => request<void>(`/codex-notes/${id}`, { method: "DELETE" }),
 
   getEncounter: (worldId: string) => request<Encounter>(`/encounters/${worldId}`),
   saveEncounter: (worldId: string, state: EncounterStateInput) =>

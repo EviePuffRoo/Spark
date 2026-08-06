@@ -338,6 +338,7 @@ export interface Encounter extends EncounterStateInput {
 export interface ActivitySummary {
   combatActivityAt: string | null;
   notesActivityAt: string | null;
+  codexActivityAt: string | null;
 }
 
 export interface AdventureCastNames {
@@ -410,6 +411,20 @@ export interface EntityLink {
   id: string;
   label?: string;
   other: EntityRef;
+}
+
+export interface CodexNoteInput {
+  worldId: string;
+  entityType: EntityType;
+  entityId: string;
+  authorName: string;
+  text: string;
+}
+
+export interface CodexNote extends CodexNoteInput {
+  id: string;
+  userId: string;
+  createdAt: string;
 }
 
 export interface AuthUser {

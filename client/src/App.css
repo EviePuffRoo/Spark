@@ -1224,6 +1224,31 @@ textarea {
   color: var(--text-muted);
 }
 
+.difficulty-readout {
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  display: inline-block;
+}
+
+.difficulty-readout.difficulty-trivial,
+.difficulty-readout.difficulty-easy {
+  background: color-mix(in srgb, var(--success) 14%, transparent);
+  color: var(--success);
+}
+
+.difficulty-readout.difficulty-medium {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+}
+
+.difficulty-readout.difficulty-hard,
+.difficulty-readout.difficulty-deadly {
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  color: var(--danger);
+}
+
 @media (max-width: 640px) {
   .initiative-tracker .button-row {
     display: grid;

@@ -313,6 +313,8 @@ export interface LiveCombatant {
   conditions: string[];
   notes: string;
   hpVisible: boolean;
+  xp?: number;
+  level?: number;
 }
 
 export interface EncounterStateInput {

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import type { SearchResult, LiveCombatant, EncounterStateInput, EncounterTable, HpStatus } from "@spark/shared";
+import type { SearchResult, LiveCombatant, EncounterStateInput, EncounterTable, EncounterZone, HpStatus } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { EntitySearchPicker } from "./EntitySearchPicker";
+import { ZoneMap } from "./ZoneMap";
 import { useLocalStorage } from "../useLocalStorage";
 import { rollTableIndex } from "../rollTable";
 import { computeDifficulty, type DifficultyRating } from "../encounterDifficulty";
@@ -38,7 +39,7 @@ const HP_STATUS_LABELS: Record<HpStatus, string> = {
   down: "Down",
 };
 
-const BLANK_ENCOUNTER: EncounterStateInput = { combatants: [], round: 1, turnIndex: 0 };
+const BLANK_ENCOUNTER: EncounterStateInput = { combatants: [], round: 1, turnIndex: 0, zones: [], zoneEffects: [] };
 const POLL_INTERVAL_MS = 5000;
 
 const DIFFICULTY_LABELS: Record<DifficultyRating, string> = {
@@ -78,6 +79,7 @@ export function InitiativeTracker({
   const [hpDelta, setHpDelta] = useState<Record<string, string>>({});
   const [openConditionsFor, setOpenConditionsFor] = useState<string | null>(null);
   const [showConditionRules, setShowConditionRules] = useState(false);
+  const [showZoneMap, setShowZoneMap] = useState(false);
 
   const partyMode = mode === "party";
   const selectedWorld = worlds.find((w) => w.id === partyWorldId) ?? null;
@@ -102,12 +104,14 @@ export function InitiativeTracker({
 
   const activeEncounter: EncounterStateInput = partyMode ? (liveEncounter ?? BLANK_ENCOUNTER) : encounter;
 
-  // Older saved encounters (before conditions/kind/hpVisible existed) won't have these fields.
+  // Older saved encounters (before conditions/kind/hpVisible/zones existed) won't have these fields.
   const sorted = [...activeEncounter.combatants]
     .map((c) => ({ ...c, conditions: c.conditions ?? [], kind: c.kind ?? "custom", hpVisible: c.hpVisible ?? false }))
     .sort((a, b) => b.initiative - a.initiative);
   const activeId = sorted.length > 0 ? sorted[activeEncounter.turnIndex % sorted.length]?.id : null;
   const difficulty = computeDifficulty(sorted);
+  const zones = activeEncounter.zones ?? [];
+  const zoneEffects = activeEncounter.zoneEffects ?? [];
 
   function applyEncounterUpdate(updater: (e: EncounterStateInput) => EncounterStateInput) {
     if (partyMode && isOwner && partyWorldId) {
@@ -281,6 +285,67 @@ export function InitiativeTracker({
     }));
   }
 
+  function addZone() {
+    applyEncounterUpdate((e) => {
+      const zones = e.zones ?? [];
+      const newZone: EncounterZone = {
+        id: crypto.randomUUID(),
+        name: `Zone ${zones.length + 1}`,
+        tags: [],
+        x: 100 + (zones.length % 4) * 140,
+        y: 100 + Math.floor(zones.length / 4) * 140,
+        connections: [],
+        revealed: true,
+      };
+      return { ...e, zones: [...zones, newZone] };
+    });
+  }
+
+  function updateZone(id: string, patch: Partial<EncounterZone>) {
+    applyEncounterUpdate((e) => ({ ...e, zones: (e.zones ?? []).map((z) => (z.id === id ? { ...z, ...patch } : z)) }));
+  }
+
+  function deleteZone(id: string) {
+    applyEncounterUpdate((e) => ({
+      ...e,
+      zones: (e.zones ?? []).filter((z) => z.id !== id).map((z) => ({ ...z, connections: z.connections.filter((c) => c !== id) })),
+      zoneEffects: (e.zoneEffects ?? []).filter((eff) => eff.zoneId !== id),
+      combatants: e.combatants.map((c) => (c.zoneId === id ? { ...c, zoneId: undefined } : c)),
+    }));
+  }
+
+  function toggleZoneConnection(aId: string, bId: string) {
+    applyEncounterUpdate((e) => ({
+      ...e,
+      zones: (e.zones ?? []).map((z) => {
+        if (z.id !== aId) return z;
+        const has = z.connections.includes(bId);
+        return { ...z, connections: has ? z.connections.filter((c) => c !== bId) : [...z.connections, bId] };
+      }),
+    }));
+  }
+
+  function addZoneEffect(zoneId: string, label: string, durationRounds: number) {
+    applyEncounterUpdate((e) => ({
+      ...e,
+      zoneEffects: [...(e.zoneEffects ?? []), { id: crypto.randomUUID(), zoneId, label, expiresAtRound: e.round + durationRounds }],
+    }));
+  }
+
+  function removeZoneEffect(id: string) {
+    applyEncounterUpdate((e) => ({ ...e, zoneEffects: (e.zoneEffects ?? []).filter((eff) => eff.id !== id) }));
+  }
+
+  function moveCombatantToZone(combatantId: string, zoneId: string) {
+    if (canEdit) {
+      applyEncounterUpdate((e) => ({ ...e, combatants: e.combatants.map((c) => (c.id === combatantId ? { ...c, zoneId } : c)) }));
+    } else if (partyMode && partyWorldId) {
+      api.moveCombatantZone(partyWorldId, combatantId, zoneId)
+        .then(setLiveEncounter)
+        .catch((err) => setLiveError((err as Error).message));
+    }
+  }
+
   return (
     <div className="panel result-panel initiative-tracker">
       <div className="initiative-header">
@@ -328,6 +393,7 @@ export function InitiativeTracker({
           <button className="btn-secondary" aria-expanded={addingCustom} onClick={() => { setAddingCustom((v) => !v); setRosterPickType(null); setPickedTable(null); }}>+ Add Custom</button>
         )}
         <button className="btn-secondary" aria-expanded={showConditionRules} onClick={() => setShowConditionRules((v) => !v)}>Condition Rules</button>
+        <button className="btn-secondary" aria-expanded={showZoneMap} onClick={() => setShowZoneMap((v) => !v)}>{showZoneMap ? "Hide Zone Map" : "Show Zone Map"}</button>
         {canEdit && sorted.length > 0 && <button className="btn-secondary" onClick={nextTurn}>Next Turn</button>}
         {canEdit && sorted.length > 0 && <button className="btn-secondary" onClick={restAll}>Rest All</button>}
         {canEdit && sorted.length > 0 && <button className="btn-danger" onClick={clearEncounter}>Clear Encounter</button>}
@@ -344,6 +410,23 @@ export function InitiativeTracker({
             ))}
           </ul>
         </div>
+      )}
+
+      {showZoneMap && (
+        <ZoneMap
+          zones={zones}
+          zoneEffects={zoneEffects}
+          combatants={sorted}
+          activeId={activeId}
+          canEdit={canEdit}
+          onAddZone={addZone}
+          onUpdateZone={updateZone}
+          onDeleteZone={deleteZone}
+          onToggleConnection={toggleZoneConnection}
+          onAddEffect={addZoneEffect}
+          onRemoveEffect={removeZoneEffect}
+          onMoveCombatant={moveCombatantToZone}
+        />
       )}
 
       {canEdit && rosterPickType && !pickedTable && (
@@ -479,6 +562,11 @@ export function InitiativeTracker({
               {partyMode && (
                 <button className="btn-secondary" onClick={() => updateCombatant(c.id, { hpVisible: !c.hpVisible })} aria-pressed={c.hpVisible}>
                   {c.hpVisible ? "Hide HP" : "Show HP"}
+                </button>
+              )}
+              {partyMode && (
+                <button className="btn-secondary" onClick={() => updateCombatant(c.id, { hidden: !c.hidden })} aria-pressed={!!c.hidden}>
+                  {c.hidden ? "Reveal on Map" : "Hide from Map"}
                 </button>
               )}
             </div>

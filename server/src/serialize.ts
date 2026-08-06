@@ -6,7 +6,7 @@ import type {
 } from "@prisma/client";
 import type {
   Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, PlayerCharacter, RollLogEntry,
-  Encounter, LiveCombatant, HpStatus, CodexNote, EntityType, LedgerEntry, LedgerEntryKind,
+  Encounter, LiveCombatant, HpStatus, CodexNote, EntityType, LedgerEntry, LedgerEntryKind, EncounterZone, EncounterZoneEffect,
 } from "@spark/shared";
 
 export function toCharacterDTO(row: CharacterRow): Character {
@@ -222,22 +222,46 @@ export function computeHpStatus(current?: number, max?: number): HpStatus {
 
 export function toEncounterDTO(row: EncounterRow, viewerId: string, worldOwnerId: string): Encounter {
   const isOwner = viewerId === worldOwnerId;
-  const combatants: LiveCombatant[] = JSON.parse(row.combatants).map((c: LiveCombatant) => {
-    const hpStatus = computeHpStatus(c.currentHp, c.maxHp);
-    const showHp = isOwner || c.hpVisible;
-    return {
-      ...c,
-      hpStatus,
-      currentHp: showHp ? c.currentHp : undefined,
-      maxHp: showHp ? c.maxHp : undefined,
-      xp: isOwner ? c.xp : undefined,
-    };
-  });
+
+  const allZones: EncounterZone[] = JSON.parse(row.zones);
+  const visibleZones = isOwner ? allZones : allZones.filter((z) => z.revealed);
+  const visibleZoneIds = new Set(visibleZones.map((z) => z.id));
+  const zones: EncounterZone[] = visibleZones.map((z) => ({
+    ...z,
+    connections: isOwner ? z.connections : z.connections.filter((id) => visibleZoneIds.has(id)),
+  }));
+
+  const allZoneEffects: EncounterZoneEffect[] = JSON.parse(row.zoneEffects);
+  const zoneEffects = allZoneEffects.filter(
+    (e) => e.expiresAtRound >= row.round && (isOwner || visibleZoneIds.has(e.zoneId)),
+  );
+
+  const combatants: LiveCombatant[] = JSON.parse(row.combatants)
+    .map((c: LiveCombatant) => {
+      const hpStatus = computeHpStatus(c.currentHp, c.maxHp);
+      const showHp = isOwner || c.hpVisible;
+      return {
+        ...c,
+        hpStatus,
+        currentHp: showHp ? c.currentHp : undefined,
+        maxHp: showHp ? c.maxHp : undefined,
+        xp: isOwner ? c.xp : undefined,
+      };
+    })
+    .filter((c: LiveCombatant) => {
+      if (isOwner) return true;
+      if (c.hidden) return false;
+      if (c.zoneId && !visibleZoneIds.has(c.zoneId)) return false;
+      return true;
+    });
+
   return {
     worldId: row.worldId,
     combatants,
     round: row.round,
     turnIndex: row.turnIndex,
+    zones,
+    zoneEffects,
     updatedAt: row.updatedAt.toISOString(),
   };
 }

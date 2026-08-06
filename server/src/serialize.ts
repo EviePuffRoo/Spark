@@ -197,6 +197,7 @@ export function toEncounterDTO(row: EncounterRow, viewerId: string, worldOwnerId
       hpStatus,
       currentHp: showHp ? c.currentHp : undefined,
       maxHp: showHp ? c.maxHp : undefined,
+      xp: isOwner ? c.xp : undefined,
     };
   });
   return {

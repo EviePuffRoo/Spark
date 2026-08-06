@@ -4,6 +4,7 @@ import { api, type WorldSummary } from "../api";
 import { EntitySearchPicker } from "./EntitySearchPicker";
 import { useLocalStorage } from "../useLocalStorage";
 import { rollTableIndex } from "../rollTable";
+import { computeDifficulty, type DifficultyRating } from "../encounterDifficulty";
 
 const CONDITIONS = [
   "Blinded", "Charmed", "Deafened", "Exhausted", "Frightened", "Grappled",
@@ -40,6 +41,10 @@ const HP_STATUS_LABELS: Record<HpStatus, string> = {
 const BLANK_ENCOUNTER: EncounterStateInput = { combatants: [], round: 1, turnIndex: 0 };
 const POLL_INTERVAL_MS = 5000;
 
+const DIFFICULTY_LABELS: Record<DifficultyRating, string> = {
+  trivial: "Trivial", easy: "Easy", medium: "Medium", hard: "Hard", deadly: "Deadly",
+};
+
 function abilityModifier(score: number): number {
   return Math.floor((score - 10) / 2);
 }
@@ -68,6 +73,8 @@ export function InitiativeTracker({
   const [customInitiative, setCustomInitiative] = useState(10);
   const [customMaxHp, setCustomMaxHp] = useState(10);
   const [customAc, setCustomAc] = useState<number | "">("");
+  const [customXp, setCustomXp] = useState<number | "">("");
+  const [customLevel, setCustomLevel] = useState<number | "">("");
   const [hpDelta, setHpDelta] = useState<Record<string, string>>({});
   const [openConditionsFor, setOpenConditionsFor] = useState<string | null>(null);
   const [showConditionRules, setShowConditionRules] = useState(false);
@@ -100,6 +107,7 @@ export function InitiativeTracker({
     .map((c) => ({ ...c, conditions: c.conditions ?? [], kind: c.kind ?? "custom", hpVisible: c.hpVisible ?? false }))
     .sort((a, b) => b.initiative - a.initiative);
   const activeId = sorted.length > 0 ? sorted[activeEncounter.turnIndex % sorted.length]?.id : null;
+  const difficulty = computeDifficulty(sorted);
 
   function applyEncounterUpdate(updater: (e: EncounterStateInput) => EncounterStateInput) {
     if (partyMode && isOwner && partyWorldId) {
@@ -140,6 +148,7 @@ export function InitiativeTracker({
         conditions: [],
         notes: "",
         hpVisible: false,
+        xp: character.statBlock.xp,
       });
     } else if (type === "playerCharacter") {
       const pc = await api.getPlayerCharacter(result.id);
@@ -155,6 +164,7 @@ export function InitiativeTracker({
         conditions: [],
         notes: "",
         hpVisible: true,
+        level: pc.level,
       });
     }
   }
@@ -195,11 +205,15 @@ export function InitiativeTracker({
       conditions: [],
       notes: "",
       hpVisible: false,
+      xp: customXp === "" ? undefined : Number(customXp),
+      level: customLevel === "" ? undefined : Number(customLevel),
     });
     setCustomName("");
     setCustomInitiative(10);
     setCustomMaxHp(10);
     setCustomAc("");
+    setCustomXp("");
+    setCustomLevel("");
     setAddingCustom(false);
   }
 
@@ -294,6 +308,12 @@ export function InitiativeTracker({
       )}
       {partyMode && liveError && <p className="error">{liveError}</p>}
 
+      {canEdit && difficulty && (
+        <p className={`difficulty-readout difficulty-${difficulty.rating}`}>
+          {DIFFICULTY_LABELS[difficulty.rating]} encounter — {difficulty.adjustedXp} XP (adjusted) vs. {difficulty.thresholds.easy}/{difficulty.thresholds.medium}/{difficulty.thresholds.hard}/{difficulty.thresholds.deadly} easy/medium/hard/deadly thresholds
+        </p>
+      )}
+
       <div className="button-row">
         {canEdit && (
           <button className="btn-secondary" aria-expanded={rosterPickType === "character"} onClick={() => { setRosterPickType(rosterPickType === "character" ? null : "character"); setAddingCustom(false); setPickedTable(null); }}>+ Add NPC/Monster</button>
@@ -373,6 +393,14 @@ export function InitiativeTracker({
           <label className="field">
             <span>AC (optional)</span>
             <input type="number" value={customAc} onChange={(e) => setCustomAc(e.target.value === "" ? "" : Number(e.target.value))} />
+          </label>
+          <label className="field">
+            <span>XP value (optional, for difficulty calc)</span>
+            <input type="number" value={customXp} onChange={(e) => setCustomXp(e.target.value === "" ? "" : Number(e.target.value))} placeholder="e.g. 450 for a CR 8 monster" />
+          </label>
+          <label className="field">
+            <span>Level (optional, if this is a PC)</span>
+            <input type="number" value={customLevel} onChange={(e) => setCustomLevel(e.target.value === "" ? "" : Number(e.target.value))} />
           </label>
           <button className="btn-primary" onClick={handleAddCustom}>Add Combatant</button>
         </div>

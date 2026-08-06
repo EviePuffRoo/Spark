@@ -28,6 +28,8 @@ function coerceCombatant(raw: unknown): LiveCombatant | null {
     conditions: Array.isArray(c.conditions) ? c.conditions.filter((x): x is string => typeof x === "string") : [],
     notes: typeof c.notes === "string" ? c.notes : "",
     hpVisible: c.hpVisible !== false,
+    xp: typeof c.xp === "number" ? c.xp : undefined,
+    level: typeof c.level === "number" ? c.level : undefined,
   };
 }
 

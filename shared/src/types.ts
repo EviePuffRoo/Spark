@@ -48,6 +48,7 @@ export type CharacterKind = "npc" | "monster";
 
 export interface Character {
   id: string;
+  userId: string;
   kind: CharacterKind;
   name: string;
   race?: string;
@@ -108,6 +109,7 @@ export interface GeneratedItem {
 
 export interface Item extends GeneratedItem {
   id: string;
+  userId: string;
   worldId?: string | null;
   hiddenFromParty: boolean;
   tags: string[];
@@ -135,6 +137,7 @@ export interface GeneratedLocation {
 
 export interface Location extends GeneratedLocation {
   id: string;
+  userId: string;
   worldId?: string | null;
   hiddenFromParty: boolean;
   tags: string[];
@@ -170,6 +173,7 @@ export const QUEST_STATUS_LABELS: Record<QuestStatus, string> = {
 
 export interface QuestHook extends GeneratedQuestHook {
   id: string;
+  userId: string;
   status: QuestStatus;
   worldId?: string | null;
   hiddenFromParty: boolean;
@@ -197,6 +201,7 @@ export interface GeneratedFaction {
 
 export interface Faction extends GeneratedFaction {
   id: string;
+  userId: string;
   worldId?: string | null;
   hiddenFromParty: boolean;
   tags: string[];
@@ -218,6 +223,7 @@ export interface PlayerCharacterInput {
 
 export interface PlayerCharacter extends PlayerCharacterInput {
   id: string;
+  userId: string;
   worldId?: string | null;
   hiddenFromParty: boolean;
   tags: string[];
@@ -245,6 +251,7 @@ export interface GeneratedEncounterTable {
 
 export interface EncounterTable extends GeneratedEncounterTable {
   id: string;
+  userId: string;
   worldId?: string | null;
   hiddenFromParty: boolean;
   tags: string[];
@@ -360,6 +367,7 @@ export interface GeneratedAdventure {
 
 export interface Adventure extends GeneratedAdventure {
   id: string;
+  userId: string;
   worldId?: string | null;
   hiddenFromParty: boolean;
   tags: string[];

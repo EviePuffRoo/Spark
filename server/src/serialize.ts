@@ -12,6 +12,7 @@ import type {
 export function toCharacterDTO(row: CharacterRow): Character {
   return {
     id: row.id,
+    userId: row.userId,
     kind: row.kind as Character["kind"],
     name: row.name,
     race: row.race ?? undefined,
@@ -33,6 +34,7 @@ export function toCharacterDTO(row: CharacterRow): Character {
 export function toItemDTO(row: ItemRow): Item {
   return {
     id: row.id,
+    userId: row.userId,
     name: row.name,
     itemType: row.itemType,
     category: row.category,
@@ -52,6 +54,7 @@ export function toItemDTO(row: ItemRow): Item {
 export function toLocationDTO(row: LocationRow): Location {
   return {
     id: row.id,
+    userId: row.userId,
     name: row.name,
     locationType: row.locationType,
     category: row.category,
@@ -71,6 +74,7 @@ export function toLocationDTO(row: LocationRow): Location {
 export function toFactionDTO(row: FactionRow): Faction {
   return {
     id: row.id,
+    userId: row.userId,
     name: row.name,
     factionType: row.factionType,
     agenda: row.agenda,
@@ -89,6 +93,7 @@ export function toFactionDTO(row: FactionRow): Faction {
 export function toEncounterTableDTO(row: EncounterTableRow): EncounterTable {
   return {
     id: row.id,
+    userId: row.userId,
     name: row.name,
     terrain: row.terrain,
     entries: JSON.parse(row.entries),
@@ -124,6 +129,7 @@ export function toSessionNoteDTO(row: SessionNoteRow, viewerId: string): Session
 export function toQuestHookDTO(row: QuestHookRow): QuestHook {
   return {
     id: row.id,
+    userId: row.userId,
     title: row.title,
     questType: row.questType,
     tier: row.tier,
@@ -144,6 +150,7 @@ export function toQuestHookDTO(row: QuestHookRow): QuestHook {
 export function toAdventureDTO(row: AdventureRow): Adventure {
   return {
     id: row.id,
+    userId: row.userId,
     title: row.title,
     tier: row.tier,
     premise: row.premise,
@@ -212,6 +219,7 @@ export function toEncounterDTO(row: EncounterRow, viewerId: string, worldOwnerId
 export function toPlayerCharacterDTO(row: PlayerCharacterRow): PlayerCharacter {
   return {
     id: row.id,
+    userId: row.userId,
     name: row.name,
     className: row.className,
     level: row.level,

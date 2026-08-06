@@ -27,6 +27,7 @@ model User {
   links           Link[]
   worldMemberships WorldMember[]
   rollLogEntries  RollLogEntry[]
+  codexNotes      CodexNote[]
   ledgerEntries   LedgerEntry[]
 }
 
@@ -50,6 +51,7 @@ model World {
   playerCharacters PlayerCharacter[]
   members         WorldMember[]
   rollLogEntries  RollLogEntry[]
+  codexNotes      CodexNote[]
   ledgerEntries   LedgerEntry[]
   encounter       Encounter?
 
@@ -290,6 +292,22 @@ model RollLogEntry {
   createdAt       DateTime @default(now())
 
   @@index([worldId])
+  @@index([userId])
+}
+
+model CodexNote {
+  id         String   @id @default(cuid())
+  worldId    String
+  world      World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entityType String
+  entityId   String
+  authorName String
+  text       String
+  createdAt  DateTime @default(now())
+
+  @@index([worldId, entityType, entityId])
   @@index([userId])
 }
 

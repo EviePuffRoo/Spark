@@ -13,15 +13,16 @@ import { RosterPage, type RosterSelection } from "./pages/RosterPage";
 import { WorldsPage } from "./pages/WorldsPage";
 import { CombatPage } from "./pages/CombatPage";
 import { MyCharacterPage } from "./pages/MyCharacterPage";
+import { CodexPage } from "./pages/CodexPage";
 import { InventoryPage } from "./pages/InventoryPage";
 import { GlobalSearch } from "./components/GlobalSearch";
 import { PrintPane, type PrintItem } from "./components/PrintPane";
 
-type Tab = "create" | "notes" | "roster" | "myCharacter" | "worlds" | "combat" | "inventory";
+type Tab = "create" | "notes" | "roster" | "myCharacter" | "worlds" | "combat" | "codex" | "inventory";
 
 function App() {
   const { user, loading, pendingRecoveryCode } = useAuth();
-  const { combatUnseen, notesUnseen, inventoryUnseen, markSeen } = useActivityBadges();
+  const { combatUnseen, notesUnseen, codexUnseen, inventoryUnseen, markSeen } = useActivityBadges();
   const [tab, setTab] = useState<Tab>("create");
   const [rosterWorldFilter, setRosterWorldFilter] = useState("");
   const [rosterSelection, setRosterSelection] = useState<RosterSelection | null>(null);
@@ -71,6 +72,9 @@ function App() {
           <button className={tab === "combat" ? "active" : ""} aria-current={tab === "combat" ? "true" : undefined} onClick={() => { setTab("combat"); markSeen("combat"); }}>
             Combat{combatUnseen && <span className="nav-badge" aria-label="New combat activity" />}
           </button>
+          <button className={tab === "codex" ? "active" : ""} aria-current={tab === "codex" ? "true" : undefined} onClick={() => { setTab("codex"); markSeen("codex"); }}>
+            Codex{codexUnseen && <span className="nav-badge" aria-label="New codex activity" />}
+          </button>
           <button className={tab === "inventory" ? "active" : ""} aria-current={tab === "inventory" ? "true" : undefined} onClick={() => { setTab("inventory"); markSeen("inventory"); }}>
             Inventory{inventoryUnseen && <span className="nav-badge" aria-label="New inventory activity" />}
           </button>
@@ -92,6 +96,7 @@ function App() {
         {tab === "myCharacter" && <MyCharacterPage onViewRoster={viewRosterForWorld} />}
         {tab === "worlds" && <WorldsPage onViewRoster={viewRosterForWorld} />}
         {tab === "combat" && <CombatPage />}
+        {tab === "codex" && <CodexPage />}
         {tab === "inventory" && <InventoryPage />}
       </main>
 

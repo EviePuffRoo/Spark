@@ -27,6 +27,7 @@ model User {
   links           Link[]
   worldMemberships WorldMember[]
   rollLogEntries  RollLogEntry[]
+  ledgerEntries   LedgerEntry[]
 }
 
 model World {
@@ -49,6 +50,7 @@ model World {
   playerCharacters PlayerCharacter[]
   members         WorldMember[]
   rollLogEntries  RollLogEntry[]
+  ledgerEntries   LedgerEntry[]
   encounter       Encounter?
 
   @@index([userId])
@@ -286,6 +288,22 @@ model RollLogEntry {
   label           String?
   hiddenFromParty Boolean  @default(false)
   createdAt       DateTime @default(now())
+
+  @@index([worldId])
+  @@index([userId])
+}
+
+model LedgerEntry {
+  id         String   @id @default(cuid())
+  worldId    String
+  world      World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind       String
+  label      String
+  amount     Int
+  authorName String
+  createdAt  DateTime @default(now())
 
   @@index([worldId])
   @@index([userId])

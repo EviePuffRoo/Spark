@@ -9,6 +9,7 @@ import type {
   Adventure, GenerateAdventureRequest, GeneratedAdventure,
   PlayerCharacter, PlayerCharacterInput,
   RollLogEntry, RollLogEntryInput,
+  LedgerEntry, LedgerEntryInput, LedgerSummary,
   Encounter, EncounterStateInput,
   ActivitySummary,
   EntityType, EntityLink, SearchResult,
@@ -183,6 +184,11 @@ export const api = {
   postRollLogEntry: (entry: RollLogEntryInput) =>
     request<RollLogEntry>("/roll-log", { method: "POST", body: JSON.stringify(entry) }),
   deleteRollLogEntry: (id: string) => request<void>(`/roll-log/${id}`, { method: "DELETE" }),
+
+  getLedger: (worldId: string) => request<LedgerSummary>(`/ledger?worldId=${worldId}`),
+  postLedgerEntry: (entry: LedgerEntryInput) =>
+    request<LedgerEntry>("/ledger", { method: "POST", body: JSON.stringify(entry) }),
+  deleteLedgerEntry: (id: string) => request<void>(`/ledger/${id}`, { method: "DELETE" }),
 
   getEncounter: (worldId: string) => request<Encounter>(`/encounters/${worldId}`),
   saveEncounter: (worldId: string, state: EncounterStateInput) =>

@@ -1011,6 +1011,13 @@ textarea {
   color: var(--accent);
 }
 
+.ledger-gold-total {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin: 4px 0 16px;
+}
+
 .dice-mode-toggle {
   justify-content: flex-start;
   margin-bottom: 16px;

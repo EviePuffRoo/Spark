@@ -2,11 +2,11 @@ import type {
   Character as CharacterRow, Item as ItemRow, Location as LocationRow, QuestHook as QuestHookRow,
   Faction as FactionRow, EncounterTable as EncounterTableRow, SessionNote as SessionNoteRow,
   Adventure as AdventureRow, PlayerCharacter as PlayerCharacterRow, RollLogEntry as RollLogEntryRow,
-  Encounter as EncounterRow, CodexNote as CodexNoteRow,
+  Encounter as EncounterRow, CodexNote as CodexNoteRow, LedgerEntry as LedgerEntryRow,
 } from "@prisma/client";
 import type {
   Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, PlayerCharacter, RollLogEntry,
-  Encounter, LiveCombatant, HpStatus, CodexNote, EntityType,
+  Encounter, LiveCombatant, HpStatus, CodexNote, EntityType, LedgerEntry, LedgerEntryKind,
 } from "@spark/shared";
 
 export function toCharacterDTO(row: CharacterRow): Character {
@@ -193,6 +193,19 @@ export function toCodexNoteDTO(row: CodexNoteRow): CodexNote {
     entityId: row.entityId,
     authorName: row.authorName,
     text: row.text,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+export function toLedgerEntryDTO(row: LedgerEntryRow): LedgerEntry {
+  return {
+    id: row.id,
+    worldId: row.worldId,
+    userId: row.userId,
+    kind: row.kind as LedgerEntryKind,
+    label: row.label,
+    amount: row.amount,
+    authorName: row.authorName,
     createdAt: row.createdAt.toISOString(),
   };
 }

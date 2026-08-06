@@ -28,6 +28,7 @@ model User {
   worldMemberships WorldMember[]
   rollLogEntries  RollLogEntry[]
   codexNotes      CodexNote[]
+  ledgerEntries   LedgerEntry[]
 }
 
 model World {
@@ -51,6 +52,7 @@ model World {
   members         WorldMember[]
   rollLogEntries  RollLogEntry[]
   codexNotes      CodexNote[]
+  ledgerEntries   LedgerEntry[]
   encounter       Encounter?
 
   @@index([userId])
@@ -306,6 +308,22 @@ model CodexNote {
   createdAt  DateTime @default(now())
 
   @@index([worldId, entityType, entityId])
+  @@index([userId])
+}
+
+model LedgerEntry {
+  id         String   @id @default(cuid())
+  worldId    String
+  world      World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind       String
+  label      String
+  amount     Int
+  authorName String
+  createdAt  DateTime @default(now())
+
+  @@index([worldId])
   @@index([userId])
 }
 

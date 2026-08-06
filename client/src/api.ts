@@ -10,6 +10,7 @@ import type {
   PlayerCharacter, PlayerCharacterInput,
   RollLogEntry, RollLogEntryInput,
   CodexNote, CodexNoteInput,
+  LedgerEntry, LedgerEntryInput, LedgerSummary,
   Encounter, EncounterStateInput,
   ActivitySummary,
   EntityType, EntityLink, SearchResult,
@@ -190,6 +191,11 @@ export const api = {
   postCodexNote: (note: CodexNoteInput) =>
     request<CodexNote>("/codex-notes", { method: "POST", body: JSON.stringify(note) }),
   deleteCodexNote: (id: string) => request<void>(`/codex-notes/${id}`, { method: "DELETE" }),
+
+  getLedger: (worldId: string) => request<LedgerSummary>(`/ledger?worldId=${worldId}`),
+  postLedgerEntry: (entry: LedgerEntryInput) =>
+    request<LedgerEntry>("/ledger", { method: "POST", body: JSON.stringify(entry) }),
+  deleteLedgerEntry: (id: string) => request<void>(`/ledger/${id}`, { method: "DELETE" }),
 
   getEncounter: (worldId: string) => request<Encounter>(`/encounters/${worldId}`),
   saveEncounter: (worldId: string, state: EncounterStateInput) =>

@@ -11,15 +11,16 @@ activityRouter.get("/", async (req, res) => {
   const worldIds = Array.from(new Set([...memberWorldIds, ...ownedWorlds.map((w) => w.id)]));
 
   if (worldIds.length === 0) {
-    const empty: ActivitySummary = { combatActivityAt: null, notesActivityAt: null, codexActivityAt: null };
+    const empty: ActivitySummary = { combatActivityAt: null, notesActivityAt: null, codexActivityAt: null, inventoryActivityAt: null };
     return res.json(empty);
   }
 
-  const [latestRoll, latestEncounter, latestNote, latestCodexNote] = await Promise.all([
+  const [latestRoll, latestEncounter, latestNote, latestCodexNote, latestLedgerEntry] = await Promise.all([
     prisma.rollLogEntry.findFirst({ where: { worldId: { in: worldIds } }, orderBy: { createdAt: "desc" } }),
     prisma.encounter.findFirst({ where: { worldId: { in: worldIds } }, orderBy: { updatedAt: "desc" } }),
     prisma.sessionNote.findFirst({ where: { worldId: { in: worldIds } }, orderBy: { createdAt: "desc" } }),
     prisma.codexNote.findFirst({ where: { worldId: { in: worldIds } }, orderBy: { createdAt: "desc" } }),
+    prisma.ledgerEntry.findFirst({ where: { worldId: { in: worldIds } }, orderBy: { createdAt: "desc" } }),
   ]);
 
   const combatTimestamps = [latestRoll?.createdAt, latestEncounter?.updatedAt].filter((d): d is Date => !!d);
@@ -31,6 +32,7 @@ activityRouter.get("/", async (req, res) => {
     combatActivityAt,
     notesActivityAt: latestNote ? latestNote.createdAt.toISOString() : null,
     codexActivityAt: latestCodexNote ? latestCodexNote.createdAt.toISOString() : null,
+    inventoryActivityAt: latestLedgerEntry ? latestLedgerEntry.createdAt.toISOString() : null,
   };
   res.json(summary);
 });

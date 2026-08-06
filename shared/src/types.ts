@@ -305,6 +305,34 @@ export interface RollLogEntry extends RollLogEntryInput {
   createdAt: string;
 }
 
+export type LedgerEntryKind = "gold" | "item";
+
+export interface LedgerEntryInput {
+  worldId: string;
+  kind: LedgerEntryKind;
+  label: string;
+  amount: number;
+  authorName: string;
+}
+
+export interface LedgerEntry extends LedgerEntryInput {
+  id: string;
+  userId: string;
+  createdAt: string;
+}
+
+export interface LedgerItemTotal {
+  label: string;
+  quantity: number;
+}
+
+export interface LedgerSummary {
+  worldId: string;
+  gold: number;
+  items: LedgerItemTotal[];
+  entries: LedgerEntry[];
+}
+
 export type CombatantKind = "monster" | "playerCharacter" | "custom";
 export type HpStatus = "healthy" | "injured" | "bloodied" | "nearDeath" | "down";
 
@@ -339,6 +367,7 @@ export interface ActivitySummary {
   combatActivityAt: string | null;
   notesActivityAt: string | null;
   codexActivityAt: string | null;
+  inventoryActivityAt: string | null;
 }
 
 export interface AdventureCastNames {

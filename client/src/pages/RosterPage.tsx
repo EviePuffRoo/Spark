@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, PlayerCharacter, EntityType, QuestStatus } from "@spark/shared";
 import { QUEST_STATUSES, QUEST_STATUS_LABELS } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
+import { useAuth } from "../AuthContext";
 import { StatBlockView } from "../components/StatBlockView";
 import { BackstoryView } from "../components/BackstoryView";
 import { ItemCardView } from "../components/ItemCardView";
@@ -91,6 +92,7 @@ export function RosterPage({
   onConsumeSelection?: () => void;
   onPrint?: (items: PrintItem[]) => void;
 }) {
+  const { user } = useAuth();
   const [mode, setMode] = useState<Mode>("characters");
   const [characters, setCharacters] = useState<Character[]>([]);
   const [items, setItems] = useState<Item[]>([]);
@@ -180,6 +182,7 @@ export function RosterPage({
   const selectedDisplayName =
     selectedCharacter?.name ?? selectedItem?.name ?? selectedLocation?.name ?? selectedQuest?.title ??
     selectedFaction?.name ?? selectedEncounter?.name ?? selectedNote?.title ?? selectedAdventure?.title ?? selectedPlayerCharacter?.name ?? "";
+  const canEditSelected = !selected || selected.userId === user?.id;
 
   useEffect(() => {
     if (selected) {
@@ -561,7 +564,7 @@ export function RosterPage({
           />
         )}
 
-        {selected && !editingContent && mode !== "notes" && (
+        {selected && !editingContent && mode !== "notes" && canEditSelected && (
           <button className="btn-secondary" onClick={() => setEditingContent(true)}>Edit Content</button>
         )}
 
@@ -579,44 +582,57 @@ export function RosterPage({
           <>
             <LinkedEntities type={MODE_TO_ENTITY_TYPE[mode]} id={selected.id} />
 
-            <div className="save-panel">
-              <h3 className="section-heading">Roster Details</h3>
-              <label className="field">
-                <span>World</span>
-                <select value={assignedWorld} onChange={(e) => setAssignedWorld(e.target.value)}>
-                  <option value="">Unassigned</option>
-                  {worlds.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
-                </select>
-              </label>
-              {mode === "quests" && (
+            {canEditSelected ? (
+              <div className="save-panel">
+                <h3 className="section-heading">Roster Details</h3>
                 <label className="field">
-                  <span>Status</span>
-                  <select value={questStatus} onChange={(e) => setQuestStatus(e.target.value as QuestStatus)}>
-                    {QUEST_STATUSES.map((s) => <option key={s} value={s}>{QUEST_STATUS_LABELS[s]}</option>)}
+                  <span>World</span>
+                  <select value={assignedWorld} onChange={(e) => setAssignedWorld(e.target.value)}>
+                    <option value="">Unassigned</option>
+                    {worlds.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
                   </select>
                 </label>
-              )}
-              <label className="field">
-                <input type="checkbox" checked={hiddenFromParty} onChange={(e) => setHiddenFromParty(e.target.checked)} />
-                {" "}Hidden from party
-              </label>
-              <label className="field">
-                <span>Tags</span>
-                <input type="text" value={tags} onChange={(e) => setTags(e.target.value)} />
-              </label>
-              <label className="field">
-                <span>Notes</span>
-                <textarea value={metaNotes} onChange={(e) => setMetaNotes(e.target.value)} rows={3} />
-              </label>
-              {actionError && <p className="error">{actionError}</p>}
-              <div className="button-row">
-                <button className="btn-primary" onClick={handleUpdate} disabled={status === "saving"}>
-                  {status === "saving" ? "Saving…" : "Save Changes"}
-                </button>
-                <button className="btn-secondary" onClick={handleDuplicate} disabled={status === "saving"}>Duplicate</button>
-                <button className="btn-danger" onClick={handleDelete}>Delete</button>
+                {mode === "quests" && (
+                  <label className="field">
+                    <span>Status</span>
+                    <select value={questStatus} onChange={(e) => setQuestStatus(e.target.value as QuestStatus)}>
+                      {QUEST_STATUSES.map((s) => <option key={s} value={s}>{QUEST_STATUS_LABELS[s]}</option>)}
+                    </select>
+                  </label>
+                )}
+                <label className="field">
+                  <input type="checkbox" checked={hiddenFromParty} onChange={(e) => setHiddenFromParty(e.target.checked)} />
+                  {" "}Hidden from party
+                </label>
+                <label className="field">
+                  <span>Tags</span>
+                  <input type="text" value={tags} onChange={(e) => setTags(e.target.value)} />
+                </label>
+                <label className="field">
+                  <span>Notes</span>
+                  <textarea value={metaNotes} onChange={(e) => setMetaNotes(e.target.value)} rows={3} />
+                </label>
+                {actionError && <p className="error">{actionError}</p>}
+                <div className="button-row">
+                  <button className="btn-primary" onClick={handleUpdate} disabled={status === "saving"}>
+                    {status === "saving" ? "Saving…" : "Save Changes"}
+                  </button>
+                  <button className="btn-secondary" onClick={handleDuplicate} disabled={status === "saving"}>Duplicate</button>
+                  <button className="btn-danger" onClick={handleDelete}>Delete</button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="save-panel">
+                <h3 className="section-heading">Roster Details</h3>
+                <p className="hint">Shared by the world's owner — you can view this, but only they can edit or delete it.</p>
+                {tags && <p><strong>Tags:</strong> {tags}</p>}
+                {metaNotes && <p><strong>Notes:</strong> {metaNotes}</p>}
+                {actionError && <p className="error">{actionError}</p>}
+                <div className="button-row">
+                  <button className="btn-secondary" onClick={handleDuplicate} disabled={status === "saving"}>Duplicate</button>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>

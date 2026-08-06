@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import type { SearchResult, LiveCombatant, EncounterStateInput, HpStatus } from "@spark/shared";
+import type { SearchResult, LiveCombatant, EncounterStateInput, EncounterTable, HpStatus } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { EntitySearchPicker } from "./EntitySearchPicker";
 import { useLocalStorage } from "../useLocalStorage";
+import { rollTableIndex } from "../rollTable";
 
 const CONDITIONS = [
   "Blinded", "Charmed", "Deafened", "Exhausted", "Frightened", "Grappled",
@@ -59,7 +60,9 @@ export function InitiativeTracker({
   const [liveEncounter, setLiveEncounter] = useState<EncounterStateInput | null>(null);
   const [liveError, setLiveError] = useState<string | null>(null);
 
-  const [rosterPickType, setRosterPickType] = useState<"character" | "playerCharacter" | null>(null);
+  const [rosterPickType, setRosterPickType] = useState<"character" | "playerCharacter" | "encounterTable" | null>(null);
+  const [pickedTable, setPickedTable] = useState<EncounterTable | null>(null);
+  const [rolledTableIndex, setRolledTableIndex] = useState<number | null>(null);
   const [addingCustom, setAddingCustom] = useState(false);
   const [customName, setCustomName] = useState("");
   const [customInitiative, setCustomInitiative] = useState(10);
@@ -116,6 +119,12 @@ export function InitiativeTracker({
 
   async function handlePickFromRoster(result: SearchResult) {
     const type = rosterPickType;
+    if (type === "encounterTable") {
+      const table = await api.getEncounterTable(result.id);
+      setPickedTable(table);
+      setRolledTableIndex(null);
+      return;
+    }
     setRosterPickType(null);
     if (type === "character") {
       const character = await api.getCharacter(result.id);
@@ -148,6 +157,28 @@ export function InitiativeTracker({
         hpVisible: true,
       });
     }
+  }
+
+  function rollOnPickedTable() {
+    if (!pickedTable) return;
+    setRolledTableIndex(rollTableIndex(pickedTable.entries));
+  }
+
+  function addRolledTableEntryToCombat() {
+    if (!pickedTable || rolledTableIndex === null) return;
+    const entry = pickedTable.entries[rolledTableIndex];
+    addCombatant({
+      id: crypto.randomUUID(),
+      name: entry.description,
+      kind: "custom",
+      initiative: 10,
+      maxHp: 10,
+      currentHp: 10,
+      hpStatus: "healthy",
+      conditions: [],
+      notes: "",
+      hpVisible: false,
+    });
   }
 
   function handleAddCustom() {
@@ -265,13 +296,16 @@ export function InitiativeTracker({
 
       <div className="button-row">
         {canEdit && (
-          <button className="btn-secondary" aria-expanded={rosterPickType === "character"} onClick={() => { setRosterPickType(rosterPickType === "character" ? null : "character"); setAddingCustom(false); }}>+ Add NPC/Monster</button>
+          <button className="btn-secondary" aria-expanded={rosterPickType === "character"} onClick={() => { setRosterPickType(rosterPickType === "character" ? null : "character"); setAddingCustom(false); setPickedTable(null); }}>+ Add NPC/Monster</button>
         )}
         {canEdit && (
-          <button className="btn-secondary" aria-expanded={rosterPickType === "playerCharacter"} onClick={() => { setRosterPickType(rosterPickType === "playerCharacter" ? null : "playerCharacter"); setAddingCustom(false); }}>+ Add PC from Roster</button>
+          <button className="btn-secondary" aria-expanded={rosterPickType === "playerCharacter"} onClick={() => { setRosterPickType(rosterPickType === "playerCharacter" ? null : "playerCharacter"); setAddingCustom(false); setPickedTable(null); }}>+ Add PC from Roster</button>
         )}
         {canEdit && (
-          <button className="btn-secondary" aria-expanded={addingCustom} onClick={() => { setAddingCustom((v) => !v); setRosterPickType(null); }}>+ Add Custom</button>
+          <button className="btn-secondary" aria-expanded={rosterPickType === "encounterTable"} onClick={() => { setRosterPickType(rosterPickType === "encounterTable" ? null : "encounterTable"); setAddingCustom(false); setPickedTable(null); }}>+ Add from Table</button>
+        )}
+        {canEdit && (
+          <button className="btn-secondary" aria-expanded={addingCustom} onClick={() => { setAddingCustom((v) => !v); setRosterPickType(null); setPickedTable(null); }}>+ Add Custom</button>
         )}
         <button className="btn-secondary" aria-expanded={showConditionRules} onClick={() => setShowConditionRules((v) => !v)}>Condition Rules</button>
         {canEdit && sorted.length > 0 && <button className="btn-secondary" onClick={nextTurn}>Next Turn</button>}
@@ -292,13 +326,33 @@ export function InitiativeTracker({
         </div>
       )}
 
-      {canEdit && rosterPickType && (
+      {canEdit && rosterPickType && !pickedTable && (
         <div className="save-panel">
           <EntitySearchPicker
             type={rosterPickType}
             onSelect={handlePickFromRoster}
-            placeholder={rosterPickType === "character" ? "Search NPCs & monsters…" : "Search player characters…"}
+            placeholder={
+              rosterPickType === "character" ? "Search NPCs & monsters…" :
+              rosterPickType === "playerCharacter" ? "Search player characters…" :
+              "Search encounter tables…"
+            }
           />
+        </div>
+      )}
+
+      {canEdit && rosterPickType === "encounterTable" && pickedTable && (
+        <div className="save-panel">
+          <h3 className="section-heading">{pickedTable.name}</h3>
+          <button className="btn-secondary" onClick={rollOnPickedTable}>Roll on this Table</button>
+          {rolledTableIndex !== null && (
+            <>
+              <p className="encounter-roll-result" role="status">
+                Rolled <strong>{pickedTable.entries[rolledTableIndex].roll}</strong>: {pickedTable.entries[rolledTableIndex].description}
+              </p>
+              <button className="btn-primary" onClick={addRolledTableEntryToCombat}>Add to Combat</button>
+            </>
+          )}
+          <button className="btn-secondary" onClick={() => { setPickedTable(null); setRolledTableIndex(null); }}>Choose a different table</button>
         </div>
       )}
 

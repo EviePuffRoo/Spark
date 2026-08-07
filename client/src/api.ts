@@ -13,6 +13,7 @@ import type {
   LedgerEntry, LedgerEntryInput, LedgerSummary,
   Encounter, EncounterStateInput,
   ZoneMapTemplate, ZoneMapTemplateInput,
+  Dungeon, DungeonInput,
   ActivitySummary,
   EntityType, EntityLink, SearchResult,
   AuthUser, SignupResult, RecoveryCodeResult,
@@ -214,6 +215,15 @@ export const api = {
   updateZoneMapTemplate: (id: string, patch: Partial<ZoneMapTemplate>) =>
     request<ZoneMapTemplate>(`/zone-map-templates/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   deleteZoneMapTemplate: (id: string) => request<void>(`/zone-map-templates/${id}`, { method: "DELETE" }),
+
+  listDungeons: (worldId?: string) =>
+    request<Dungeon[]>(`/dungeons${worldId ? `?worldId=${worldId}` : ""}`),
+  getDungeon: (id: string) => request<Dungeon>(`/dungeons/${id}`),
+  saveDungeon: (dungeon: DungeonInput & { worldId?: string | null; tags?: string[]; notes?: string }) =>
+    request<Dungeon>("/dungeons", { method: "POST", body: JSON.stringify(dungeon) }),
+  updateDungeon: (id: string, patch: Partial<Dungeon>) =>
+    request<Dungeon>(`/dungeons/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+  deleteDungeon: (id: string) => request<void>(`/dungeons/${id}`, { method: "DELETE" }),
 
   getActivity: () => request<ActivitySummary>("/activity"),
 

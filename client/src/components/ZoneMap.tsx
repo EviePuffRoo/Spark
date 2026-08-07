@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { EncounterZone, EncounterZoneEffect, LiveCombatant, Location, SearchResult } from "@spark/shared";
+import type { EncounterZone, EncounterZoneEffect, LiveCombatant, Location, SearchResult, Dungeon } from "@spark/shared";
 import { zoneDistances } from "../zoneGraph";
 import { api } from "../api";
 import { EntitySearchPicker } from "./EntitySearchPicker";
@@ -30,9 +30,9 @@ function tokensForZone(zone: EncounterZone, combatants: LiveCombatant[]): Token[
 }
 
 export function ZoneMap({
-  zones, zoneEffects, combatants, activeId, canEdit, worldId,
+  zones, zoneEffects, combatants, activeId, canEdit, worldId, activeDungeon, activeDungeonRoomId,
   onAddZone, onUpdateZone, onDeleteZone, onToggleConnection,
-  onAddEffect, onRemoveEffect, onMoveCombatant, onLoadTemplate,
+  onAddEffect, onRemoveEffect, onMoveCombatant, onLoadTemplate, onLoadDungeonRoom,
 }: {
   zones: EncounterZone[];
   zoneEffects: EncounterZoneEffect[];
@@ -40,6 +40,8 @@ export function ZoneMap({
   activeId: string | null;
   canEdit: boolean;
   worldId?: string;
+  activeDungeon?: Dungeon | null;
+  activeDungeonRoomId?: string;
   onAddZone: () => void;
   onUpdateZone: (id: string, patch: Partial<EncounterZone>) => void;
   onDeleteZone: (id: string) => void;
@@ -48,6 +50,7 @@ export function ZoneMap({
   onRemoveEffect: (id: string) => void;
   onMoveCombatant: (combatantId: string, zoneId: string) => void;
   onLoadTemplate: (zones: EncounterZone[]) => void;
+  onLoadDungeonRoom: (dungeonId: string, roomId: string) => void;
 }) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [transform, setTransform] = useState({ x: 0, y: 0, k: 1 });
@@ -62,6 +65,8 @@ export function ZoneMap({
   const [tagsDraft, setTagsDraft] = useState<Record<string, string>>({});
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   const [showLoadTemplate, setShowLoadTemplate] = useState(false);
+  const [showLoadDungeon, setShowLoadDungeon] = useState(false);
+  const [pickedDungeon, setPickedDungeon] = useState<Dungeon | null>(null);
   const [templateName, setTemplateName] = useState("");
   const [templateStatus, setTemplateStatus] = useState<"idle" | "saving">("idle");
   const [linkedLocation, setLinkedLocation] = useState<Location | null>(null);
@@ -205,6 +210,25 @@ export function ZoneMap({
     onLoadTemplate(template.zones);
   }
 
+  async function handleLoadDungeonSelect(result: SearchResult) {
+    const dungeon = await api.getDungeon(result.id);
+    if (dungeon.rooms.length <= 1 && dungeon.rooms[0]) {
+      setShowLoadDungeon(false);
+      onLoadDungeonRoom(dungeon.id, dungeon.rooms[0].id);
+    } else {
+      setPickedDungeon(dungeon);
+    }
+  }
+
+  function handlePickDungeonRoom(roomId: string) {
+    if (!pickedDungeon) return;
+    setShowLoadDungeon(false);
+    onLoadDungeonRoom(pickedDungeon.id, roomId);
+    setPickedDungeon(null);
+  }
+
+  const currentDungeonRoom = activeDungeon?.rooms.find((r) => r.id === activeDungeonRoomId) ?? null;
+
   return (
     <div className="zone-map">
       <div className="button-row">
@@ -226,6 +250,15 @@ export function ZoneMap({
         {canEdit && (
           <button className="btn-secondary" aria-expanded={showLoadTemplate} onClick={() => { setShowLoadTemplate((v) => !v); setShowSaveTemplate(false); }}>
             Load Template
+          </button>
+        )}
+        {canEdit && (
+          <button
+            className="btn-secondary"
+            aria-expanded={showLoadDungeon}
+            onClick={() => { setShowLoadDungeon((v) => !v); setPickedDungeon(null); setShowSaveTemplate(false); setShowLoadTemplate(false); }}
+          >
+            Load Dungeon
           </button>
         )}
       </div>
@@ -252,6 +285,28 @@ export function ZoneMap({
       {showLoadTemplate && (
         <div className="save-panel">
           <EntitySearchPicker type="zoneMapTemplate" onSelect={handleLoadTemplateSelect} placeholder="Search zone map templates…" />
+        </div>
+      )}
+
+      {showLoadDungeon && (
+        <div className="save-panel">
+          {!pickedDungeon ? (
+            <EntitySearchPicker type="dungeon" onSelect={handleLoadDungeonSelect} placeholder="Search dungeons…" />
+          ) : (
+            <>
+              <h4 className="section-heading">Start in which room?</h4>
+              <ul className="entity-list">
+                {pickedDungeon.rooms.map((room) => (
+                  <li key={room.id}>
+                    <button className="entity-item" onClick={() => handlePickDungeonRoom(room.id)}>
+                      <span className="entity-name">{room.name}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <button className="btn-secondary" onClick={() => setPickedDungeon(null)}>← Choose a different dungeon</button>
+            </>
+          )}
         </div>
       )}
 
@@ -378,6 +433,18 @@ export function ZoneMap({
                 <input type="checkbox" checked={selectedZone.revealed} onChange={(e) => onUpdateZone(selectedZone.id, { revealed: e.target.checked })} />
                 {" "}Revealed to party
               </label>
+
+              {(() => {
+                const exit = currentDungeonRoom?.exits.find((e) => e.zoneId === selectedZone.id);
+                if (!exit || !activeDungeon) return null;
+                const targetRoomName = activeDungeon.rooms.find((r) => r.id === exit.toRoomId)?.name ?? "another room";
+                return (
+                  <div className="button-row">
+                    <span>🚪 {exit.label || "Leads to"} {targetRoomName}</span>
+                    <button className="btn-secondary" onClick={() => onLoadDungeonRoom(activeDungeon.id, exit.toRoomId)}>Move Party</button>
+                  </div>
+                );
+              })()}
 
               <h4 className="section-heading">Location</h4>
               {selectedZone.locationId ? (

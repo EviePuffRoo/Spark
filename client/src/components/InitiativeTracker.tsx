@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { SearchResult, LiveCombatant, EncounterStateInput, EncounterTable, EncounterZone, HpStatus } from "@spark/shared";
+import type { SearchResult, LiveCombatant, EncounterStateInput, EncounterTable, EncounterZone, HpStatus, Dungeon } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { EntitySearchPicker } from "./EntitySearchPicker";
 import { ZoneMap } from "./ZoneMap";
@@ -80,6 +80,7 @@ export function InitiativeTracker({
   const [openConditionsFor, setOpenConditionsFor] = useState<string | null>(null);
   const [showConditionRules, setShowConditionRules] = useState(false);
   const [showZoneMap, setShowZoneMap] = useState(false);
+  const [activeDungeon, setActiveDungeon] = useState<Dungeon | null>(null);
 
   const partyMode = mode === "party";
   const selectedWorld = worlds.find((w) => w.id === partyWorldId) ?? null;
@@ -112,6 +113,19 @@ export function InitiativeTracker({
   const difficulty = computeDifficulty(sorted);
   const zones = activeEncounter.zones ?? [];
   const zoneEffects = activeEncounter.zoneEffects ?? [];
+
+  useEffect(() => {
+    const dungeonId = activeEncounter.activeDungeonId;
+    if (!canEdit || !dungeonId) {
+      setActiveDungeon(null);
+      return;
+    }
+    let cancelled = false;
+    api.getDungeon(dungeonId)
+      .then((d) => { if (!cancelled) setActiveDungeon(d); })
+      .catch(() => { if (!cancelled) setActiveDungeon(null); });
+    return () => { cancelled = true; };
+  }, [canEdit, activeEncounter.activeDungeonId]);
 
   function applyEncounterUpdate(updater: (e: EncounterStateInput) => EncounterStateInput) {
     if (partyMode && isOwner && partyWorldId) {
@@ -356,6 +370,26 @@ export function InitiativeTracker({
     applyEncounterUpdate((e) => ({ ...e, zones: [...(e.zones ?? []), ...remapped] }));
   }
 
+  async function loadDungeonRoom(dungeonId: string, roomId: string) {
+    const dungeon = await api.getDungeon(dungeonId);
+    const room = dungeon.rooms.find((r) => r.id === roomId);
+    if (!room) return;
+    const template = await api.getZoneMapTemplate(room.templateId);
+    applyEncounterUpdate((e) => ({
+      ...e,
+      zones: template.zones,
+      zoneEffects: [],
+      activeDungeonId: dungeonId,
+      activeDungeonRoomId: roomId,
+    }));
+    setActiveDungeon(dungeon);
+  }
+
+  function leaveDungeon() {
+    applyEncounterUpdate((e) => ({ ...e, activeDungeonId: undefined, activeDungeonRoomId: undefined }));
+    setActiveDungeon(null);
+  }
+
   return (
     <div className="panel result-panel initiative-tracker">
       <div className="initiative-header">
@@ -409,6 +443,15 @@ export function InitiativeTracker({
         {canEdit && sorted.length > 0 && <button className="btn-danger" onClick={clearEncounter}>Clear Encounter</button>}
       </div>
 
+      {canEdit && activeDungeon && (
+        <p className="hint">
+          Dungeon: {activeDungeon.name}
+          {activeEncounter.activeDungeonRoomId && ` — Room: ${activeDungeon.rooms.find((r) => r.id === activeEncounter.activeDungeonRoomId)?.name ?? ""}`}
+          {" "}
+          <button className="btn-secondary" onClick={leaveDungeon}>Leave Dungeon</button>
+        </p>
+      )}
+
       {showConditionRules && (
         <div className="save-panel condition-rules-panel">
           <h3 className="section-heading">Condition Rules</h3>
@@ -430,6 +473,8 @@ export function InitiativeTracker({
           activeId={activeId}
           canEdit={canEdit}
           worldId={partyMode ? partyWorldId : undefined}
+          activeDungeon={activeDungeon}
+          activeDungeonRoomId={activeEncounter.activeDungeonRoomId}
           onAddZone={addZone}
           onUpdateZone={updateZone}
           onDeleteZone={deleteZone}
@@ -438,6 +483,7 @@ export function InitiativeTracker({
           onRemoveEffect={removeZoneEffect}
           onMoveCombatant={moveCombatantToZone}
           onLoadTemplate={loadZoneMapTemplate}
+          onLoadDungeonRoom={loadDungeonRoom}
         />
       )}
 

@@ -1475,3 +1475,60 @@ textarea {
   font-size: 0.9rem;
   color: var(--text-muted);
 }
+
+.presentation-view {
+  min-height: 100vh;
+  padding: 2.5rem;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.presentation-header {
+  font-size: 2rem;
+}
+
+.presentation-header .round-banner {
+  font-size: 2rem;
+}
+
+.presentation-turn-order {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1rem;
+  max-width: 1100px;
+}
+
+.presentation-turn-order li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 1rem 1.5rem;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-panel);
+  font-size: 1.5rem;
+}
+
+.presentation-turn-order li.active-turn {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent);
+}
+
+.presentation-turn-order .combatant-hp-value,
+.presentation-turn-order .hp-status-badge {
+  font-size: 1.1rem;
+}
+
+.presentation-view .zone-map-svg {
+  width: 100%;
+  max-width: 1100px;
+  height: auto;
+}

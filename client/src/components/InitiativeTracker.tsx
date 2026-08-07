@@ -597,6 +597,20 @@ export function InitiativeTracker({
               />
             </div>
 
+            {(() => {
+              const zone = zones.find((z) => z.id === c.zoneId);
+              if (!zone?.hazard) return null;
+              const hazard = zone.hazard;
+              return (
+                <div className="button-row">
+                  <span>⚠ In hazard zone: {hazard.label}</span>
+                  <button className="btn-danger" onClick={() => adjustHp(c.id, -hazard.damage)}>
+                    Apply Hazard (-{hazard.damage} hp)
+                  </button>
+                </div>
+              );
+            })()}
+
             <div className="combatant-hp">
               <span className="combatant-hp-value">{c.currentHp ?? 0} / {c.maxHp ?? 0} HP</span>
               <input

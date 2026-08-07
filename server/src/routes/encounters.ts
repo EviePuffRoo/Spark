@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { toEncounterDTO } from "../serialize.js";
 import { getMemberWorldIds } from "../worldAccess.js";
-import type { LiveCombatant, CombatantKind, EncounterZone, EncounterZoneEffect } from "@spark/shared";
+import type { LiveCombatant, CombatantKind, EncounterZone, EncounterZoneEffect, ZoneHazard } from "@spark/shared";
 
 export const encountersRouter = Router();
 
@@ -35,6 +35,13 @@ function coerceCombatant(raw: unknown): LiveCombatant | null {
   };
 }
 
+function coerceHazard(raw: unknown): ZoneHazard | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const h = raw as Record<string, unknown>;
+  if (typeof h.label !== "string" || typeof h.damage !== "number") return undefined;
+  return { label: h.label, damage: h.damage };
+}
+
 export function coerceZone(raw: unknown): EncounterZone | null {
   if (!raw || typeof raw !== "object") return null;
   const z = raw as Record<string, unknown>;
@@ -48,6 +55,7 @@ export function coerceZone(raw: unknown): EncounterZone | null {
     connections: Array.isArray(z.connections) ? z.connections.filter((x): x is string => typeof x === "string") : [],
     revealed: z.revealed !== false,
     locationId: typeof z.locationId === "string" ? z.locationId : undefined,
+    hazard: coerceHazard(z.hazard),
   };
 }
 

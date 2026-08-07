@@ -354,6 +354,11 @@ export interface LiveCombatant {
   hidden?: boolean;
 }
 
+export interface ZoneHazard {
+  label: string;
+  damage: number;
+}
+
 export interface EncounterZone {
   id: string;
   name: string;
@@ -363,6 +368,7 @@ export interface EncounterZone {
   connections: string[];
   revealed: boolean;
   locationId?: string;
+  hazard?: ZoneHazard;
 }
 
 export interface ZoneMapTemplateInput {

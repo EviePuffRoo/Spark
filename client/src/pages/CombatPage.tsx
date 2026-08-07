@@ -1,21 +1,14 @@
-import { useEffect, useState } from "react";
-import { api, type WorldSummary } from "../api";
-import { useLocalStorage } from "../useLocalStorage";
+import { useActiveWorld } from "../ActiveWorldContext";
 import { DiceRoller } from "../components/DiceRoller";
 import { InitiativeTracker } from "../components/InitiativeTracker";
 
 export function CombatPage() {
-  const [worlds, setWorlds] = useState<WorldSummary[]>([]);
-  const [partyWorldId, setPartyWorldId] = useLocalStorage("spark-combat-world-id", "");
-
-  useEffect(() => {
-    api.listWorlds().then(setWorlds).catch(() => {});
-  }, []);
+  const { worlds, worldId, setWorldId } = useActiveWorld();
 
   return (
     <div className="page generator-layout">
-      <DiceRoller worlds={worlds} partyWorldId={partyWorldId} setPartyWorldId={setPartyWorldId} />
-      <InitiativeTracker worlds={worlds} partyWorldId={partyWorldId} setPartyWorldId={setPartyWorldId} />
+      <DiceRoller worlds={worlds} partyWorldId={worldId} setPartyWorldId={setWorldId} />
+      <InitiativeTracker worlds={worlds} partyWorldId={worldId} setPartyWorldId={setWorldId} />
     </div>
   );
 }

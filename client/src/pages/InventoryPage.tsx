@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import type { LedgerSummary } from "@spark/shared";
-import { api, type WorldSummary } from "../api";
+import { api } from "../api";
 import { useAuth } from "../AuthContext";
-import { useLocalStorage } from "../useLocalStorage";
+import { useActiveWorld } from "../ActiveWorldContext";
 
 const POLL_INTERVAL_MS = 5000;
 
@@ -19,8 +19,7 @@ function timeAgo(iso: string): string {
 
 export function InventoryPage() {
   const { user } = useAuth();
-  const [worlds, setWorlds] = useState<WorldSummary[]>([]);
-  const [worldId, setWorldId] = useLocalStorage("spark-inventory-world-id", "");
+  const { worlds, worldId, setWorldId } = useActiveWorld();
   const [summary, setSummary] = useState<LedgerSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,10 +28,6 @@ export function InventoryPage() {
   const [goldReason, setGoldReason] = useState("");
   const [itemName, setItemName] = useState("");
   const [itemQuantity, setItemQuantity] = useState("1");
-
-  useEffect(() => {
-    api.listWorlds().then(setWorlds).catch(() => {});
-  }, []);
 
   useEffect(() => {
     if (!worldId) {

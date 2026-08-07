@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Character, Location, Faction, QuestHook, EntityType } from "@spark/shared";
-import { api, type WorldSummary } from "../api";
+import { api } from "../api";
+import { useActiveWorld } from "../ActiveWorldContext";
 import { StatBlockView } from "../components/StatBlockView";
 import { BackstoryView } from "../components/BackstoryView";
 import { LocationCardView } from "../components/LocationCardView";
@@ -8,7 +9,6 @@ import { FactionCardView } from "../components/FactionCardView";
 import { QuestHookCardView } from "../components/QuestHookCardView";
 import { LinkedEntities } from "../components/LinkedEntities";
 import { CodexNotesPanel } from "../components/CodexNotesPanel";
-import { useLocalStorage } from "../useLocalStorage";
 
 type CodexMode = "npcs" | "locations" | "factions" | "quests";
 
@@ -27,8 +27,7 @@ const MODE_TO_ENTITY_TYPE: Record<CodexMode, EntityType> = {
 };
 
 export function CodexPage() {
-  const [worlds, setWorlds] = useState<WorldSummary[]>([]);
-  const [worldId, setWorldId] = useLocalStorage("spark-codex-world-id", "");
+  const { worlds, worldId, setWorldId } = useActiveWorld();
   const [mode, setMode] = useState<CodexMode>("npcs");
   const [characters, setCharacters] = useState<Character[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -36,10 +35,6 @@ export function CodexPage() {
   const [quests, setQuests] = useState<QuestHook[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    api.listWorlds().then(setWorlds).catch(() => {});
-  }, []);
 
   useEffect(() => {
     if (!worldId) return;

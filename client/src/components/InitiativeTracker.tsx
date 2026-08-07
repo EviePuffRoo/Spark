@@ -462,29 +462,34 @@ export function InitiativeTracker({
         </p>
       )}
 
+      {canEdit && (
+        <>
+          <h3 className="section-heading">Combatants</h3>
+          <div className="button-row">
+            <button className="btn-secondary" aria-expanded={rosterPickType === "character"} onClick={() => { setRosterPickType(rosterPickType === "character" ? null : "character"); setAddingCustom(false); setPickedTable(null); }}>+ Add NPC/Monster</button>
+            <button className="btn-secondary" aria-expanded={rosterPickType === "playerCharacter"} onClick={() => { setRosterPickType(rosterPickType === "playerCharacter" ? null : "playerCharacter"); setAddingCustom(false); setPickedTable(null); }}>+ Add PC from Roster</button>
+            <button className="btn-secondary" aria-expanded={rosterPickType === "encounterTable"} onClick={() => { setRosterPickType(rosterPickType === "encounterTable" ? null : "encounterTable"); setAddingCustom(false); setPickedTable(null); }}>+ Add from Table</button>
+            <button className="btn-secondary" aria-expanded={addingCustom} onClick={() => { setAddingCustom((v) => !v); setRosterPickType(null); setPickedTable(null); }}>+ Add Custom</button>
+          </div>
+        </>
+      )}
+
+      <h3 className="section-heading">Turn &amp; Party</h3>
       <div className="button-row">
-        {canEdit && (
-          <button className="btn-secondary" aria-expanded={rosterPickType === "character"} onClick={() => { setRosterPickType(rosterPickType === "character" ? null : "character"); setAddingCustom(false); setPickedTable(null); }}>+ Add NPC/Monster</button>
-        )}
-        {canEdit && (
-          <button className="btn-secondary" aria-expanded={rosterPickType === "playerCharacter"} onClick={() => { setRosterPickType(rosterPickType === "playerCharacter" ? null : "playerCharacter"); setAddingCustom(false); setPickedTable(null); }}>+ Add PC from Roster</button>
-        )}
-        {canEdit && (
-          <button className="btn-secondary" aria-expanded={rosterPickType === "encounterTable"} onClick={() => { setRosterPickType(rosterPickType === "encounterTable" ? null : "encounterTable"); setAddingCustom(false); setPickedTable(null); }}>+ Add from Table</button>
-        )}
-        {canEdit && (
-          <button className="btn-secondary" aria-expanded={addingCustom} onClick={() => { setAddingCustom((v) => !v); setRosterPickType(null); setPickedTable(null); }}>+ Add Custom</button>
-        )}
         <button className="btn-secondary" aria-expanded={showConditionRules} onClick={() => setShowConditionRules((v) => !v)}>Condition Rules</button>
+        {canEdit && sorted.length > 0 && <button className="btn-secondary" onClick={nextTurn}>Next Turn</button>}
+        {canEdit && sorted.length > 0 && <button className="btn-secondary" onClick={restAll}>Rest All</button>}
+        {canEdit && sorted.length > 0 && <button className="btn-danger" onClick={clearEncounter}>Clear Encounter</button>}
+      </div>
+
+      <h3 className="section-heading">Map &amp; Dungeon</h3>
+      <div className="button-row">
         <button className="btn-secondary" aria-expanded={showZoneMap} onClick={() => setShowZoneMap((v) => !v)}>{showZoneMap ? "Hide Zone Map" : "Show Zone Map"}</button>
         {isOwner && (
           <button className="btn-secondary" onClick={() => window.open(`${window.location.pathname}?present=${partyWorldId}`, "_blank")}>
             Cast to Table
           </button>
         )}
-        {canEdit && sorted.length > 0 && <button className="btn-secondary" onClick={nextTurn}>Next Turn</button>}
-        {canEdit && sorted.length > 0 && <button className="btn-secondary" onClick={restAll}>Rest All</button>}
-        {canEdit && sorted.length > 0 && <button className="btn-danger" onClick={clearEncounter}>Clear Encounter</button>}
       </div>
 
       {canEdit && activeDungeon && (

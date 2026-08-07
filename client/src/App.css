@@ -20,6 +20,10 @@
   margin-bottom: 8px;
 }
 
+.active-world-select {
+  max-width: 200px;
+}
+
 .app-header h1 {
   font-family: Georgia, "Times New Roman", serif;
   color: var(--accent);
@@ -141,6 +145,20 @@
   border-color: var(--accent);
   color: var(--accent-contrast);
   font-weight: 600;
+}
+
+.area-tabs button {
+  font-size: 1.05rem;
+  padding: 9px 26px;
+}
+
+.area-subtabs {
+  margin-top: 8px;
+}
+
+.area-subtabs button {
+  padding: 6px 14px;
+  font-size: 0.85rem;
 }
 
 .nav-badge {

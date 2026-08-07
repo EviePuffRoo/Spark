@@ -4,7 +4,7 @@ import { useLocalStorage } from "./useLocalStorage";
 
 const POLL_INTERVAL_MS = 20000;
 
-export function useActivityBadges() {
+export function useActivityBadges(enabled: boolean) {
   const [lastSeenCombat, setLastSeenCombat] = useLocalStorage<string>("spark-last-seen-combat", "");
   const [lastSeenNotes, setLastSeenNotes] = useLocalStorage<string>("spark-last-seen-notes", "");
   const [lastSeenCodex, setLastSeenCodex] = useLocalStorage<string>("spark-last-seen-codex", "");
@@ -15,6 +15,7 @@ export function useActivityBadges() {
   const [inventoryActivityAt, setInventoryActivityAt] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!enabled) return;
     function load() {
       api.getActivity().then((summary) => {
         setCombatActivityAt(summary.combatActivityAt);
@@ -26,7 +27,7 @@ export function useActivityBadges() {
     load();
     const interval = setInterval(load, POLL_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, []);
+  }, [enabled]);
 
   function markSeen(tab: "combat" | "notes" | "codex" | "inventory") {
     const now = new Date().toISOString();

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api, type WorldSummary, type WorldMemberInfo } from "../api";
+import { useActiveWorld } from "../ActiveWorldContext";
 
 function summarizeCounts(w: WorldSummary): string {
   const parts: [number, string][] = [
@@ -35,6 +36,7 @@ function downloadJson(filename: string, data: unknown) {
 }
 
 export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) => void }) {
+  const { refreshWorlds } = useActiveWorld();
   const [worlds, setWorlds] = useState<WorldSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
@@ -55,6 +57,7 @@ export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) =
 
   function refresh() {
     api.listWorlds().then(setWorlds).catch((e) => setError(e.message)).finally(() => setLoading(false));
+    refreshWorlds();
   }
 
   useEffect(refresh, []);

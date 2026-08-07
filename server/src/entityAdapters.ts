@@ -88,6 +88,13 @@ const adapters: Record<EntityType, EntityAdapter> = {
     getMeta: (row) => `${JSON.parse(row.zones).length} zones`,
     searchFields: ["name", "notes", "tags"],
   },
+  dungeon: {
+    findMany: (args) => prisma.dungeon.findMany(args),
+    findUnique: (id, userId, memberWorldIds) => prisma.dungeon.findFirst({ where: accessWhere(id, userId, memberWorldIds) }),
+    getName: (row) => row.name,
+    getMeta: (row) => `${JSON.parse(row.rooms).length} rooms`,
+    searchFields: ["name", "notes", "tags"],
+  },
 };
 
 export function getAdapter(type: string): EntityAdapter | null {

@@ -13,6 +13,7 @@ const TYPE_LABELS: Record<EntityType, string> = {
   adventure: "Adventure",
   playerCharacter: "Player Character",
   zoneMapTemplate: "Zone Map Template",
+  dungeon: "Dungeon",
 };
 
 const ALL_TYPES = Object.keys(TYPE_LABELS) as EntityType[];

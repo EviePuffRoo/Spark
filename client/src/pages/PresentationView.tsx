@@ -84,6 +84,7 @@ export function PresentationView({ worldId }: { worldId: string }) {
           onRemoveEffect={noop}
           onMoveCombatant={noop}
           onLoadTemplate={noop}
+          onLoadDungeonRoom={noop}
         />
       )}
     </div>

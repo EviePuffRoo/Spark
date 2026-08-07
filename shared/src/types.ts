@@ -394,12 +394,43 @@ export interface EncounterZoneEffect {
   expiresAtRound: number;
 }
 
+export interface DungeonExit {
+  zoneId: string;
+  toRoomId: string;
+  label?: string;
+}
+
+export interface DungeonRoom {
+  id: string;
+  name: string;
+  templateId: string;
+  exits: DungeonExit[];
+}
+
+export interface DungeonInput {
+  name: string;
+  rooms: DungeonRoom[];
+}
+
+export interface Dungeon extends DungeonInput {
+  id: string;
+  userId: string;
+  worldId?: string | null;
+  hiddenFromParty: boolean;
+  tags: string[];
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface EncounterStateInput {
   combatants: LiveCombatant[];
   round: number;
   turnIndex: number;
   zones: EncounterZone[];
   zoneEffects: EncounterZoneEffect[];
+  activeDungeonId?: string;
+  activeDungeonRoomId?: string;
 }
 
 export interface Encounter extends EncounterStateInput {
@@ -450,7 +481,7 @@ export interface Adventure extends GeneratedAdventure {
   updatedAt: string;
 }
 
-export type EntityType = "character" | "item" | "location" | "quest" | "faction" | "encounterTable" | "sessionNote" | "adventure" | "playerCharacter" | "zoneMapTemplate";
+export type EntityType = "character" | "item" | "location" | "quest" | "faction" | "encounterTable" | "sessionNote" | "adventure" | "playerCharacter" | "zoneMapTemplate" | "dungeon";
 
 export interface EntityTypeDef {
   type: EntityType;
@@ -468,6 +499,7 @@ export const ENTITY_TYPES: EntityTypeDef[] = [
   { type: "adventure", label: "Adventure" },
   { type: "playerCharacter", label: "Player Character" },
   { type: "zoneMapTemplate", label: "Zone Map Template" },
+  { type: "dungeon", label: "Dungeon" },
 ];
 
 export interface EntityRef {

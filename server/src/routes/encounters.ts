@@ -95,6 +95,8 @@ encountersRouter.put("/:worldId", async (req, res) => {
   const combatants = body.combatants.map(coerceCombatant).filter((c: LiveCombatant | null): c is LiveCombatant => c !== null);
   const zones = Array.isArray(body.zones) ? body.zones.map(coerceZone).filter((z: EncounterZone | null): z is EncounterZone => z !== null) : [];
   const zoneEffects = Array.isArray(body.zoneEffects) ? body.zoneEffects.map(coerceZoneEffect).filter((e: EncounterZoneEffect | null): e is EncounterZoneEffect => e !== null) : [];
+  const activeDungeonId = typeof body.activeDungeonId === "string" ? body.activeDungeonId : null;
+  const activeDungeonRoomId = typeof body.activeDungeonRoomId === "string" ? body.activeDungeonRoomId : null;
 
   const row = await prisma.encounter.upsert({
     where: { worldId },
@@ -105,6 +107,8 @@ encountersRouter.put("/:worldId", async (req, res) => {
       turnIndex: Number(body.turnIndex) || 0,
       zones: JSON.stringify(zones),
       zoneEffects: JSON.stringify(zoneEffects),
+      activeDungeonId,
+      activeDungeonRoomId,
     },
     update: {
       combatants: JSON.stringify(combatants),
@@ -112,6 +116,8 @@ encountersRouter.put("/:worldId", async (req, res) => {
       turnIndex: Number(body.turnIndex) || 0,
       zones: JSON.stringify(zones),
       zoneEffects: JSON.stringify(zoneEffects),
+      activeDungeonId,
+      activeDungeonRoomId,
     },
   });
   res.json(toEncounterDTO(row, req.userId!, world.userId));

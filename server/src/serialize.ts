@@ -3,10 +3,12 @@ import type {
   Faction as FactionRow, EncounterTable as EncounterTableRow, SessionNote as SessionNoteRow,
   Adventure as AdventureRow, PlayerCharacter as PlayerCharacterRow, RollLogEntry as RollLogEntryRow,
   Encounter as EncounterRow, CodexNote as CodexNoteRow, LedgerEntry as LedgerEntryRow,
+  ZoneMapTemplate as ZoneMapTemplateRow,
 } from "@prisma/client";
 import type {
   Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, PlayerCharacter, RollLogEntry,
   Encounter, LiveCombatant, HpStatus, CodexNote, EntityType, LedgerEntry, LedgerEntryKind, EncounterZone, EncounterZoneEffect,
+  ZoneMapTemplate,
 } from "@spark/shared";
 
 export function toCharacterDTO(row: CharacterRow): Character {
@@ -97,6 +99,21 @@ export function toEncounterTableDTO(row: EncounterTableRow): EncounterTable {
     name: row.name,
     terrain: row.terrain,
     entries: JSON.parse(row.entries),
+    worldId: row.worldId,
+    hiddenFromParty: row.hiddenFromParty,
+    tags: JSON.parse(row.tags),
+    notes: row.notes ?? undefined,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+export function toZoneMapTemplateDTO(row: ZoneMapTemplateRow): ZoneMapTemplate {
+  return {
+    id: row.id,
+    userId: row.userId,
+    name: row.name,
+    zones: JSON.parse(row.zones),
     worldId: row.worldId,
     hiddenFromParty: row.hiddenFromParty,
     tags: JSON.parse(row.tags),

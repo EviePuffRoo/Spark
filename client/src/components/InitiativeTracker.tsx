@@ -346,6 +346,16 @@ export function InitiativeTracker({
     }
   }
 
+  function loadZoneMapTemplate(templateZones: EncounterZone[]) {
+    const idMap = new Map<string, string>(templateZones.map((z) => [z.id, crypto.randomUUID()]));
+    const remapped: EncounterZone[] = templateZones.map((z) => ({
+      ...z,
+      id: idMap.get(z.id)!,
+      connections: z.connections.map((c) => idMap.get(c)).filter((c): c is string => !!c),
+    }));
+    applyEncounterUpdate((e) => ({ ...e, zones: [...(e.zones ?? []), ...remapped] }));
+  }
+
   return (
     <div className="panel result-panel initiative-tracker">
       <div className="initiative-header">
@@ -419,6 +429,7 @@ export function InitiativeTracker({
           combatants={sorted}
           activeId={activeId}
           canEdit={canEdit}
+          worldId={partyMode ? partyWorldId : undefined}
           onAddZone={addZone}
           onUpdateZone={updateZone}
           onDeleteZone={deleteZone}
@@ -426,6 +437,7 @@ export function InitiativeTracker({
           onAddEffect={addZoneEffect}
           onRemoveEffect={removeZoneEffect}
           onMoveCombatant={moveCombatantToZone}
+          onLoadTemplate={loadZoneMapTemplate}
         />
       )}
 

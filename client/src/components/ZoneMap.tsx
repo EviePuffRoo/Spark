@@ -1,6 +1,9 @@
-import { useRef, useState } from "react";
-import type { EncounterZone, EncounterZoneEffect, LiveCombatant } from "@spark/shared";
+import { useEffect, useRef, useState } from "react";
+import type { EncounterZone, EncounterZoneEffect, LiveCombatant, Location, SearchResult } from "@spark/shared";
 import { zoneDistances } from "../zoneGraph";
+import { api } from "../api";
+import { EntitySearchPicker } from "./EntitySearchPicker";
+import { LocationCardView } from "./LocationCardView";
 
 const WIDTH = 720;
 const HEIGHT = 480;
@@ -27,15 +30,16 @@ function tokensForZone(zone: EncounterZone, combatants: LiveCombatant[]): Token[
 }
 
 export function ZoneMap({
-  zones, zoneEffects, combatants, activeId, canEdit,
+  zones, zoneEffects, combatants, activeId, canEdit, worldId,
   onAddZone, onUpdateZone, onDeleteZone, onToggleConnection,
-  onAddEffect, onRemoveEffect, onMoveCombatant,
+  onAddEffect, onRemoveEffect, onMoveCombatant, onLoadTemplate,
 }: {
   zones: EncounterZone[];
   zoneEffects: EncounterZoneEffect[];
   combatants: LiveCombatant[];
   activeId: string | null;
   canEdit: boolean;
+  worldId?: string;
   onAddZone: () => void;
   onUpdateZone: (id: string, patch: Partial<EncounterZone>) => void;
   onDeleteZone: (id: string) => void;
@@ -43,6 +47,7 @@ export function ZoneMap({
   onAddEffect: (zoneId: string, label: string, durationRounds: number) => void;
   onRemoveEffect: (id: string) => void;
   onMoveCombatant: (combatantId: string, zoneId: string) => void;
+  onLoadTemplate: (zones: EncounterZone[]) => void;
 }) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [transform, setTransform] = useState({ x: 0, y: 0, k: 1 });
@@ -55,6 +60,11 @@ export function ZoneMap({
   const [effectLabel, setEffectLabel] = useState("");
   const [effectDuration, setEffectDuration] = useState(1);
   const [tagsDraft, setTagsDraft] = useState<Record<string, string>>({});
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false);
+  const [showLoadTemplate, setShowLoadTemplate] = useState(false);
+  const [templateName, setTemplateName] = useState("");
+  const [templateStatus, setTemplateStatus] = useState<"idle" | "saving">("idle");
+  const [linkedLocation, setLinkedLocation] = useState<Location | null>(null);
 
   const zoneDragRef = useRef<{ id: string; startX: number; startY: number; moved: boolean } | null>(null);
   const tokenDragRef = useRef<{ id: string; startX: number; startY: number; moved: boolean } | null>(null);
@@ -73,13 +83,16 @@ export function ZoneMap({
   }
 
   function handleZonePointerDown(e: React.PointerEvent<SVGGElement>, zone: EncounterZone) {
-    if (!canEdit) return;
+    // Non-owners can't drag zones, but pointer capture still needs to start
+    // here so pointerup below can detect a plain (non-dragged) click and
+    // open the read-only zone detail panel.
     e.stopPropagation();
     e.currentTarget.setPointerCapture(e.pointerId);
     zoneDragRef.current = { id: zone.id, startX: e.clientX, startY: e.clientY, moved: false };
   }
 
   function handleZonePointerMove(e: React.PointerEvent<SVGGElement>, zone: EncounterZone) {
+    if (!canEdit) return;
     const drag = zoneDragRef.current;
     if (!drag || drag.id !== zone.id) return;
     if (Math.abs(e.clientX - drag.startX) > 4 || Math.abs(e.clientY - drag.startY) > 4) drag.moved = true;
@@ -160,6 +173,37 @@ export function ZoneMap({
   const reachable = activeCombatant?.zoneId ? zoneDistances(zones, activeCombatant.zoneId) : null;
   const unplaced = combatants.filter((c) => !c.zoneId || !zones.some((z) => z.id === c.zoneId));
   const selectedZone = zones.find((z) => z.id === selectedZoneId) ?? null;
+  const selectedZoneLocationId = selectedZone?.locationId;
+
+  useEffect(() => {
+    if (!selectedZoneLocationId) {
+      setLinkedLocation(null);
+      return;
+    }
+    let cancelled = false;
+    api.getLocation(selectedZoneLocationId)
+      .then((loc) => { if (!cancelled) setLinkedLocation(loc); })
+      .catch(() => { if (!cancelled) setLinkedLocation(null); });
+    return () => { cancelled = true; };
+  }, [selectedZoneLocationId]);
+
+  async function handleSaveTemplate() {
+    if (!templateName.trim() || zones.length === 0) return;
+    setTemplateStatus("saving");
+    try {
+      await api.saveZoneMapTemplate({ name: templateName.trim(), zones, worldId: worldId ?? null });
+      setTemplateName("");
+      setShowSaveTemplate(false);
+    } finally {
+      setTemplateStatus("idle");
+    }
+  }
+
+  async function handleLoadTemplateSelect(result: SearchResult) {
+    setShowLoadTemplate(false);
+    const template = await api.getZoneMapTemplate(result.id);
+    onLoadTemplate(template.zones);
+  }
 
   return (
     <div className="zone-map">
@@ -174,9 +218,41 @@ export function ZoneMap({
             {connectMode ? "Done Connecting" : "Connect Zones"}
           </button>
         )}
+        {canEdit && (
+          <button className="btn-secondary" aria-expanded={showSaveTemplate} onClick={() => { setShowSaveTemplate((v) => !v); setShowLoadTemplate(false); }}>
+            Save as Template
+          </button>
+        )}
+        {canEdit && (
+          <button className="btn-secondary" aria-expanded={showLoadTemplate} onClick={() => { setShowLoadTemplate((v) => !v); setShowSaveTemplate(false); }}>
+            Load Template
+          </button>
+        )}
       </div>
       {connectMode && (
         <p className="hint">Click a zone, then click another to connect or disconnect them.</p>
+      )}
+
+      {showSaveTemplate && (
+        <div className="save-panel">
+          <label className="field">
+            <span>Template name</span>
+            <input type="text" value={templateName} onChange={(e) => setTemplateName(e.target.value)} placeholder="Bridge Ambush" />
+          </label>
+          {zones.length === 0 ? (
+            <p className="hint">Add at least one zone before saving a template.</p>
+          ) : (
+            <button className="btn-primary" onClick={handleSaveTemplate} disabled={templateStatus === "saving" || !templateName.trim()}>
+              {templateStatus === "saving" ? "Saving…" : "Save"}
+            </button>
+          )}
+        </div>
+      )}
+
+      {showLoadTemplate && (
+        <div className="save-panel">
+          <EntitySearchPicker type="zoneMapTemplate" onSelect={handleLoadTemplateSelect} placeholder="Search zone map templates…" />
+        </div>
       )}
 
       <svg
@@ -303,6 +379,16 @@ export function ZoneMap({
                 {" "}Revealed to party
               </label>
 
+              <h4 className="section-heading">Location</h4>
+              {selectedZone.locationId ? (
+                <>
+                  {linkedLocation && <LocationCardView location={linkedLocation} />}
+                  <button className="btn-secondary" onClick={() => onUpdateZone(selectedZone.id, { locationId: undefined })}>Clear Location Link</button>
+                </>
+              ) : (
+                <EntitySearchPicker type="location" onSelect={(r) => onUpdateZone(selectedZone.id, { locationId: r.id })} placeholder="Link a location…" />
+              )}
+
               <h4 className="section-heading">Effects</h4>
               {zoneEffects.filter((e) => e.zoneId === selectedZone.id).map((effect) => (
                 <div key={effect.id} className="button-row">
@@ -338,6 +424,7 @@ export function ZoneMap({
           ) : (
             <>
               {selectedZone.tags.length > 0 && <p>{selectedZone.tags.join(" · ")}</p>}
+              {linkedLocation && <LocationCardView location={linkedLocation} />}
               {zoneEffects.filter((e) => e.zoneId === selectedZone.id).map((effect) => (
                 <p key={effect.id}>{effect.label} (through round {effect.expiresAtRound})</p>
               ))}

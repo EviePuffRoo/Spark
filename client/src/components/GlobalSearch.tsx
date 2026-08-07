@@ -12,6 +12,7 @@ const TYPE_LABELS: Record<EntityType, string> = {
   sessionNote: "Session Note",
   adventure: "Adventure",
   playerCharacter: "Player Character",
+  zoneMapTemplate: "Zone Map Template",
 };
 
 export function GlobalSearch({ onSelect }: { onSelect: (type: EntityType, id: string) => void }) {

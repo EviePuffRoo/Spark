@@ -1012,6 +1012,22 @@ textarea {
   user-select: none;
 }
 
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.5rem 0;
+}
+
+.chip {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-panel);
+  font-size: 0.85rem;
+}
+
 .zone-token circle {
   stroke-width: 2px;
 }

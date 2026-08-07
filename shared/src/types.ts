@@ -362,6 +362,23 @@ export interface EncounterZone {
   y: number;
   connections: string[];
   revealed: boolean;
+  locationId?: string;
+}
+
+export interface ZoneMapTemplateInput {
+  name: string;
+  zones: EncounterZone[];
+}
+
+export interface ZoneMapTemplate extends ZoneMapTemplateInput {
+  id: string;
+  userId: string;
+  worldId?: string | null;
+  hiddenFromParty: boolean;
+  tags: string[];
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface EncounterZoneEffect {
@@ -427,7 +444,7 @@ export interface Adventure extends GeneratedAdventure {
   updatedAt: string;
 }
 
-export type EntityType = "character" | "item" | "location" | "quest" | "faction" | "encounterTable" | "sessionNote" | "adventure" | "playerCharacter";
+export type EntityType = "character" | "item" | "location" | "quest" | "faction" | "encounterTable" | "sessionNote" | "adventure" | "playerCharacter" | "zoneMapTemplate";
 
 export interface EntityTypeDef {
   type: EntityType;
@@ -444,6 +461,7 @@ export const ENTITY_TYPES: EntityTypeDef[] = [
   { type: "sessionNote", label: "Session Note" },
   { type: "adventure", label: "Adventure" },
   { type: "playerCharacter", label: "Player Character" },
+  { type: "zoneMapTemplate", label: "Zone Map Template" },
 ];
 
 export interface EntityRef {

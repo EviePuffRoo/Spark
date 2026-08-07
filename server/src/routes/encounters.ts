@@ -35,7 +35,7 @@ function coerceCombatant(raw: unknown): LiveCombatant | null {
   };
 }
 
-function coerceZone(raw: unknown): EncounterZone | null {
+export function coerceZone(raw: unknown): EncounterZone | null {
   if (!raw || typeof raw !== "object") return null;
   const z = raw as Record<string, unknown>;
   if (typeof z.id !== "string" || typeof z.name !== "string") return null;
@@ -47,6 +47,7 @@ function coerceZone(raw: unknown): EncounterZone | null {
     y: typeof z.y === "number" ? z.y : 0,
     connections: Array.isArray(z.connections) ? z.connections.filter((x): x is string => typeof x === "string") : [],
     revealed: z.revealed !== false,
+    locationId: typeof z.locationId === "string" ? z.locationId : undefined,
   };
 }
 

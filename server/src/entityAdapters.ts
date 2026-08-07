@@ -81,6 +81,13 @@ const adapters: Record<EntityType, EntityAdapter> = {
     getMeta: (row) => `${row.className} ${row.level}`,
     searchFields: ["name", "className", "race", "playerName", "notes", "tags"],
   },
+  zoneMapTemplate: {
+    findMany: (args) => prisma.zoneMapTemplate.findMany(args),
+    findUnique: (id, userId, memberWorldIds) => prisma.zoneMapTemplate.findFirst({ where: accessWhere(id, userId, memberWorldIds) }),
+    getName: (row) => row.name,
+    getMeta: (row) => `${JSON.parse(row.zones).length} zones`,
+    searchFields: ["name", "notes", "tags"],
+  },
 };
 
 export function getAdapter(type: string): EntityAdapter | null {

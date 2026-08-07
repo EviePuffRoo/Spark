@@ -29,6 +29,7 @@ model User {
   rollLogEntries  RollLogEntry[]
   codexNotes      CodexNote[]
   ledgerEntries   LedgerEntry[]
+  zoneMapTemplates ZoneMapTemplate[]
 }
 
 model World {
@@ -53,6 +54,7 @@ model World {
   rollLogEntries  RollLogEntry[]
   codexNotes      CodexNote[]
   ledgerEntries   LedgerEntry[]
+  zoneMapTemplates ZoneMapTemplate[]
   encounter       Encounter?
 
   @@index([userId])
@@ -216,6 +218,24 @@ model EncounterTable {
   name      String
   terrain   String
   entries   String
+  tags      String   @default("[]")
+  notes     String?
+  worldId   String?
+  hiddenFromParty Boolean @default(false)
+  world     World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([worldId])
+  @@index([userId])
+}
+
+model ZoneMapTemplate {
+  id        String   @id @default(cuid())
+  name      String
+  zones     String
   tags      String   @default("[]")
   notes     String?
   worldId   String?

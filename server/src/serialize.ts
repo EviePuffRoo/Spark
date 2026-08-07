@@ -85,6 +85,7 @@ export function toFactionDTO(row: FactionRow): Faction {
     hook: row.hook,
     worldId: row.worldId,
     hiddenFromParty: row.hiddenFromParty,
+    reputation: row.reputation,
     tags: JSON.parse(row.tags),
     notes: row.notes ?? undefined,
     createdAt: row.createdAt.toISOString(),

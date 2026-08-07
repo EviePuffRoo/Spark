@@ -560,7 +560,16 @@ export function RosterPage({
           />
         )}
 
-        {selectedFaction && !editingContent && <FactionCardView faction={selectedFaction} />}
+        {selectedFaction && !editingContent && (
+          <FactionCardView
+            faction={selectedFaction}
+            canEdit={canEditSelected}
+            onAdjustReputation={async (delta) => {
+              await api.updateFaction(selectedFaction.id, { reputation: selectedFaction.reputation + delta });
+              refresh();
+            }}
+          />
+        )}
         {selectedFaction && editingContent && (
           <FactionEditor
             value={selectedFaction}

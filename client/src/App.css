@@ -1494,6 +1494,29 @@ textarea {
   color: var(--text-muted);
 }
 
+.timeline-kind-chip {
+  padding: 1px 8px;
+  margin-right: 4px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.timeline-kind-chip.timeline-kind-note {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+
+.timeline-kind-chip.timeline-kind-quest {
+  background: color-mix(in srgb, var(--success) 16%, transparent);
+  color: var(--success);
+}
+
+.timeline-kind-chip.timeline-kind-adventure {
+  background: color-mix(in srgb, var(--danger) 16%, transparent);
+  color: var(--danger);
+}
+
 .presentation-view {
   min-height: 100vh;
   padding: 2.5rem;

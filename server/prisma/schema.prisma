@@ -27,6 +27,7 @@ model User {
   links           Link[]
   worldMemberships WorldMember[]
   rollLogEntries  RollLogEntry[]
+  downtimeActivities DowntimeActivity[]
   codexNotes      CodexNote[]
   ledgerEntries   LedgerEntry[]
   zoneMapTemplates ZoneMapTemplate[]
@@ -53,6 +54,7 @@ model World {
   playerCharacters PlayerCharacter[]
   members         WorldMember[]
   rollLogEntries  RollLogEntry[]
+  downtimeActivities DowntimeActivity[]
   codexNotes      CodexNote[]
   ledgerEntries   LedgerEntry[]
   zoneMapTemplates ZoneMapTemplate[]
@@ -330,6 +332,24 @@ model RollLogEntry {
   label           String?
   hiddenFromParty Boolean  @default(false)
   createdAt       DateTime @default(now())
+
+  @@index([worldId])
+  @@index([userId])
+}
+
+model DowntimeActivity {
+  id                String   @id @default(cuid())
+  worldId           String
+  world             World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  playerCharacterId String?
+  characterName     String
+  activityType      String
+  description       String
+  daysSpent         Int
+  outcome           String?
+  createdAt         DateTime @default(now())
 
   @@index([worldId])
   @@index([userId])

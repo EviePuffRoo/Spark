@@ -11,6 +11,7 @@ import type {
   RollLogEntry, RollLogEntryInput,
   CodexNote, CodexNoteInput,
   LedgerEntry, LedgerEntryInput, LedgerSummary,
+  DowntimeActivity, DowntimeActivityInput,
   Encounter, EncounterStateInput,
   ZoneMapTemplate, ZoneMapTemplateInput,
   Dungeon, DungeonInput,
@@ -198,6 +199,11 @@ export const api = {
   postLedgerEntry: (entry: LedgerEntryInput) =>
     request<LedgerEntry>("/ledger", { method: "POST", body: JSON.stringify(entry) }),
   deleteLedgerEntry: (id: string) => request<void>(`/ledger/${id}`, { method: "DELETE" }),
+
+  listDowntimeActivities: (worldId: string) => request<DowntimeActivity[]>(`/downtime?worldId=${worldId}`),
+  postDowntimeActivity: (entry: DowntimeActivityInput) =>
+    request<DowntimeActivity>("/downtime", { method: "POST", body: JSON.stringify(entry) }),
+  deleteDowntimeActivity: (id: string) => request<void>(`/downtime/${id}`, { method: "DELETE" }),
 
   getEncounter: (worldId: string) => request<Encounter>(`/encounters/${worldId}`),
   saveEncounter: (worldId: string, state: EncounterStateInput) =>

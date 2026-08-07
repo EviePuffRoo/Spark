@@ -48,7 +48,7 @@ factionsRouter.patch("/:id", async (req, res) => {
   const body = req.body ?? {};
   const data: Record<string, unknown> = {};
 
-  for (const field of ["name", "factionType", "agenda", "methods", "publicFace", "hook", "notes", "hiddenFromParty"] as const) {
+  for (const field of ["name", "factionType", "agenda", "methods", "publicFace", "hook", "notes", "hiddenFromParty", "reputation"] as const) {
     if (field in body) data[field] = body[field];
   }
   if ("worldId" in body) data.worldId = body.worldId ?? null;

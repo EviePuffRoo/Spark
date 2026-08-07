@@ -204,6 +204,7 @@ export interface Faction extends GeneratedFaction {
   userId: string;
   worldId?: string | null;
   hiddenFromParty: boolean;
+  reputation: number;
   tags: string[];
   notes?: string;
   createdAt: string;

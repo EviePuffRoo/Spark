@@ -205,6 +205,7 @@ model Faction {
   notes       String?
   worldId     String?
   hiddenFromParty Boolean @default(false)
+  reputation  Int      @default(0)
   world       World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)

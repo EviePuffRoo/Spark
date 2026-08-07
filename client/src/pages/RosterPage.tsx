@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, PlayerCharacter, EntityType, QuestStatus } from "@spark/shared";
+import type { Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, PlayerCharacter, ZoneMapTemplate, EntityType, QuestStatus } from "@spark/shared";
 import { QUEST_STATUSES, QUEST_STATUS_LABELS } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { useAuth } from "../AuthContext";
@@ -10,6 +10,7 @@ import { LocationCardView } from "../components/LocationCardView";
 import { QuestHookCardView } from "../components/QuestHookCardView";
 import { FactionCardView } from "../components/FactionCardView";
 import { EncounterTableCardView } from "../components/EncounterTableCardView";
+import { ZoneMapTemplateCardView } from "../components/ZoneMapTemplateCardView";
 import { LinkedEntities } from "../components/LinkedEntities";
 import { FactionWebView } from "../components/FactionWebView";
 import { SessionNoteCardView } from "../components/SessionNoteCardView";
@@ -25,7 +26,7 @@ import { EncounterTableEditor } from "../components/EncounterTableEditor";
 import { AdventureEditor } from "../components/AdventureEditor";
 import { PlayerCharacterEditor } from "../components/PlayerCharacterEditor";
 
-export type Mode = "characters" | "items" | "locations" | "quests" | "factions" | "encounters" | "notes" | "adventures" | "playerCharacters";
+export type Mode = "characters" | "items" | "locations" | "quests" | "factions" | "encounters" | "notes" | "adventures" | "playerCharacters" | "zoneMapTemplates";
 
 const MODE_LABELS: Record<Mode, string> = {
   characters: "Characters",
@@ -37,6 +38,7 @@ const MODE_LABELS: Record<Mode, string> = {
   notes: "Notes",
   adventures: "Adventures",
   playerCharacters: "Player Characters",
+  zoneMapTemplates: "Zone Map Templates",
 };
 
 export const ENTITY_TYPE_TO_MODE: Record<EntityType, Mode> = {
@@ -49,6 +51,7 @@ export const ENTITY_TYPE_TO_MODE: Record<EntityType, Mode> = {
   sessionNote: "notes",
   adventure: "adventures",
   playerCharacter: "playerCharacters",
+  zoneMapTemplate: "zoneMapTemplates",
 };
 
 const MODE_TO_ENTITY_TYPE: Record<Mode, EntityType> = {
@@ -61,6 +64,7 @@ const MODE_TO_ENTITY_TYPE: Record<Mode, EntityType> = {
   notes: "sessionNote",
   adventures: "adventure",
   playerCharacters: "playerCharacter",
+  zoneMapTemplates: "zoneMapTemplate",
 };
 
 export interface RosterSelection {
@@ -103,6 +107,7 @@ export function RosterPage({
   const [notes, setNotes] = useState<SessionNote[]>([]);
   const [adventures, setAdventures] = useState<Adventure[]>([]);
   const [playerCharacters, setPlayerCharacters] = useState<PlayerCharacter[]>([]);
+  const [zoneMapTemplates, setZoneMapTemplates] = useState<ZoneMapTemplate[]>([]);
   const [worlds, setWorlds] = useState<WorldSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [metaNotes, setMetaNotes] = useState("");
@@ -132,6 +137,7 @@ export function RosterPage({
       api.listSessionNotes(w).then(setNotes).catch(() => {}),
       api.listAdventures(w).then(setAdventures).catch(() => {}),
       api.listPlayerCharacters(w).then(setPlayerCharacters).catch(() => {}),
+      api.listZoneMapTemplates(w).then(setZoneMapTemplates).catch(() => {}),
       api.listWorlds().then(setWorlds).catch(() => {}),
     ]).finally(() => setLoading(false));
   }
@@ -178,10 +184,11 @@ export function RosterPage({
   const selectedNote = mode === "notes" ? notes.find((n) => n.id === selectedId) ?? null : null;
   const selectedAdventure = mode === "adventures" ? adventures.find((a) => a.id === selectedId) ?? null : null;
   const selectedPlayerCharacter = mode === "playerCharacters" ? playerCharacters.find((p) => p.id === selectedId) ?? null : null;
-  const selected = selectedCharacter ?? selectedItem ?? selectedLocation ?? selectedQuest ?? selectedFaction ?? selectedEncounter ?? selectedNote ?? selectedAdventure ?? selectedPlayerCharacter;
+  const selectedZoneMapTemplate = mode === "zoneMapTemplates" ? zoneMapTemplates.find((z) => z.id === selectedId) ?? null : null;
+  const selected = selectedCharacter ?? selectedItem ?? selectedLocation ?? selectedQuest ?? selectedFaction ?? selectedEncounter ?? selectedNote ?? selectedAdventure ?? selectedPlayerCharacter ?? selectedZoneMapTemplate;
   const selectedDisplayName =
     selectedCharacter?.name ?? selectedItem?.name ?? selectedLocation?.name ?? selectedQuest?.title ??
-    selectedFaction?.name ?? selectedEncounter?.name ?? selectedNote?.title ?? selectedAdventure?.title ?? selectedPlayerCharacter?.name ?? "";
+    selectedFaction?.name ?? selectedEncounter?.name ?? selectedNote?.title ?? selectedAdventure?.title ?? selectedPlayerCharacter?.name ?? selectedZoneMapTemplate?.name ?? "";
   const canEditSelected = !selected || selected.userId === user?.id;
 
   useEffect(() => {
@@ -214,7 +221,8 @@ export function RosterPage({
       else if (mode === "encounters") await api.updateEncounterTable(selected.id, patch);
       else if (mode === "notes") await api.updateSessionNote(selected.id, patch);
       else if (mode === "adventures") await api.updateAdventure(selected.id, patch);
-      else await api.updatePlayerCharacter(selected.id, patch);
+      else if (mode === "playerCharacters") await api.updatePlayerCharacter(selected.id, patch);
+      else await api.updateZoneMapTemplate(selected.id, patch);
       refresh();
     } catch (e) {
       setActionError((e as Error).message);
@@ -285,6 +293,11 @@ export function RosterPage({
         abilityScores: selectedPlayerCharacter.abilityScores, playerName: selectedPlayerCharacter.playerName,
         worldId, tags: tagsCopy, notes: notesCopy,
       });
+    } else if (selectedZoneMapTemplate) {
+      created = await api.saveZoneMapTemplate({
+        name: `${selectedZoneMapTemplate.name} (Copy)`, zones: selectedZoneMapTemplate.zones,
+        worldId, tags: tagsCopy, notes: notesCopy,
+      });
     }
     setStatus("idle");
     refresh();
@@ -334,7 +347,8 @@ export function RosterPage({
       else if (mode === "encounters") await api.deleteEncounterTable(selected.id);
       else if (mode === "notes") await api.deleteSessionNote(selected.id);
       else if (mode === "adventures") await api.deleteAdventure(selected.id);
-      else await api.deletePlayerCharacter(selected.id);
+      else if (mode === "playerCharacters") await api.deletePlayerCharacter(selected.id);
+      else await api.deleteZoneMapTemplate(selected.id);
     } catch (e) {
       setActionError((e as Error).message);
       return;
@@ -352,7 +366,8 @@ export function RosterPage({
     mode === "encounters" ? encounters :
     mode === "notes" ? notes :
     mode === "adventures" ? adventures :
-    playerCharacters;
+    mode === "playerCharacters" ? playerCharacters :
+    zoneMapTemplates;
 
   const availableTags = Array.from(new Set(activeEntities.flatMap((e) => e.tags))).sort();
 
@@ -375,7 +390,8 @@ export function RosterPage({
     mode === "encounters" ? encounters.filter((e) => !tagFilter || e.tags.includes(tagFilter)).map((e) => ({ id: e.id, name: e.name, meta: `${e.terrain} · d${e.entries.length}`, hidden: e.hiddenFromParty })) :
     mode === "notes" ? notes.filter((n) => !tagFilter || n.tags.includes(tagFilter)).map((n) => ({ id: n.id, name: n.title, meta: n.sessionLabel || new Date(n.createdAt).toLocaleDateString(), hidden: n.hiddenFromParty })) :
     mode === "adventures" ? adventures.filter((a) => !tagFilter || a.tags.includes(tagFilter)).map((a) => ({ id: a.id, name: a.title, meta: a.tier, hidden: a.hiddenFromParty })) :
-    playerCharacters.filter((p) => !tagFilter || p.tags.includes(tagFilter)).map((p) => ({ id: p.id, name: p.name, meta: `Level ${p.level} ${p.race} ${p.className}`, hidden: p.hiddenFromParty }))
+    mode === "playerCharacters" ? playerCharacters.filter((p) => !tagFilter || p.tags.includes(tagFilter)).map((p) => ({ id: p.id, name: p.name, meta: `Level ${p.level} ${p.race} ${p.className}`, hidden: p.hiddenFromParty })) :
+    zoneMapTemplates.filter((z) => !tagFilter || z.tags.includes(tagFilter)).map((z) => ({ id: z.id, name: z.name, meta: `${z.zones.length} zones`, hidden: z.hiddenFromParty }))
   ).filter((entry) => !trimmedSearch || entry.name.toLowerCase().includes(trimmedSearch));
 
   if (showFactionWeb) {
@@ -564,11 +580,18 @@ export function RosterPage({
           />
         )}
 
-        {selected && !editingContent && mode !== "notes" && canEditSelected && (
+        {selectedZoneMapTemplate && (
+          <>
+            <ZoneMapTemplateCardView template={selectedZoneMapTemplate} />
+            <p className="hint">Edit this template by loading it into a Zone Map in Combat and saving over it.</p>
+          </>
+        )}
+
+        {selected && !editingContent && mode !== "notes" && mode !== "zoneMapTemplates" && canEditSelected && (
           <button className="btn-secondary" onClick={() => setEditingContent(true)}>Edit Content</button>
         )}
 
-        {selected && !editingContent && onPrint && (
+        {selected && !editingContent && onPrint && mode !== "zoneMapTemplates" && (
           <button className="btn-secondary" onClick={handlePrint}>Print</button>
         )}
         {selected && !editingContent && onPrint && mode === "notes" && (

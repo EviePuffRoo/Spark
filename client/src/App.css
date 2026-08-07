@@ -1338,6 +1338,33 @@ textarea {
   width: 80px;
 }
 
+.shop-stock-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+.shop-stock-field {
+  width: 120px;
+  margin-bottom: 0;
+}
+
+.shop-stock-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.shop-quantity-input {
+  width: 70px;
+}
+
 .combatant-initiative-readonly {
   width: 56px;
   text-align: center;

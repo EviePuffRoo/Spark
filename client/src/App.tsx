@@ -164,7 +164,7 @@ function AppShell() {
           />
         )}
         {subTab === "codex" && <CodexPage />}
-        {subTab === "notes" && <SessionNotesPage />}
+        {subTab === "notes" && <SessionNotesPage onOpenInRoster={openInRoster} />}
         {subTab === "combat" && <CombatPage />}
         {subTab === "inventory" && <InventoryPage />}
       </main>

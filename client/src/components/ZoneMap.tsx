@@ -60,6 +60,8 @@ export function ZoneMap({
   const [effectLabel, setEffectLabel] = useState("");
   const [effectDuration, setEffectDuration] = useState(1);
   const [tagsDraft, setTagsDraft] = useState<Record<string, string>>({});
+  const [hazardLabelDraft, setHazardLabelDraft] = useState<Record<string, string>>({});
+  const [hazardDamageDraft, setHazardDamageDraft] = useState<Record<string, string>>({});
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   const [showLoadTemplate, setShowLoadTemplate] = useState(false);
   const [templateName, setTemplateName] = useState("");
@@ -389,6 +391,48 @@ export function ZoneMap({
                 <EntitySearchPicker type="location" onSelect={(r) => onUpdateZone(selectedZone.id, { locationId: r.id })} placeholder="Link a location…" />
               )}
 
+              <h4 className="section-heading">Hazard</h4>
+              {selectedZone.hazard ? (
+                <>
+                  <p>⚠ {selectedZone.hazard.label} ({selectedZone.hazard.damage} damage)</p>
+                  <button className="btn-secondary" onClick={() => onUpdateZone(selectedZone.id, { hazard: undefined })}>Clear Hazard</button>
+                </>
+              ) : (
+                <>
+                  <label className="field">
+                    <span>Hazard label</span>
+                    <input
+                      type="text"
+                      value={hazardLabelDraft[selectedZone.id] ?? ""}
+                      onChange={(e) => setHazardLabelDraft((d) => ({ ...d, [selectedZone.id]: e.target.value }))}
+                      placeholder="Spike trap, Collapsing floor…"
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Damage</span>
+                    <input
+                      type="number"
+                      min={1}
+                      value={hazardDamageDraft[selectedZone.id] ?? ""}
+                      onChange={(e) => setHazardDamageDraft((d) => ({ ...d, [selectedZone.id]: e.target.value }))}
+                    />
+                  </label>
+                  <button
+                    className="btn-secondary"
+                    onClick={() => {
+                      const label = (hazardLabelDraft[selectedZone.id] ?? "").trim();
+                      const damage = Math.trunc(Number(hazardDamageDraft[selectedZone.id]));
+                      if (!label || !damage || damage <= 0) return;
+                      onUpdateZone(selectedZone.id, { hazard: { label, damage } });
+                      setHazardLabelDraft((d) => ({ ...d, [selectedZone.id]: "" }));
+                      setHazardDamageDraft((d) => ({ ...d, [selectedZone.id]: "" }));
+                    }}
+                  >
+                    Set Hazard
+                  </button>
+                </>
+              )}
+
               <h4 className="section-heading">Effects</h4>
               {zoneEffects.filter((e) => e.zoneId === selectedZone.id).map((effect) => (
                 <div key={effect.id} className="button-row">
@@ -425,6 +469,7 @@ export function ZoneMap({
             <>
               {selectedZone.tags.length > 0 && <p>{selectedZone.tags.join(" · ")}</p>}
               {linkedLocation && <LocationCardView location={linkedLocation} />}
+              {selectedZone.hazard && <p>⚠ {selectedZone.hazard.label} ({selectedZone.hazard.damage} damage)</p>}
               {zoneEffects.filter((e) => e.zoneId === selectedZone.id).map((effect) => (
                 <p key={effect.id}>{effect.label} (through round {effect.expiresAtRound})</p>
               ))}

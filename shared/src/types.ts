@@ -423,6 +423,31 @@ export interface Dungeon extends DungeonInput {
   updatedAt: string;
 }
 
+export interface ShopStockEntry {
+  id: string;
+  itemId: string;
+  itemName: string;
+  price: number;
+  quantity: number; // -1 = unlimited
+}
+
+export interface ShopInput {
+  name: string;
+  description?: string;
+  stock: ShopStockEntry[];
+}
+
+export interface Shop extends ShopInput {
+  id: string;
+  userId: string;
+  worldId?: string | null;
+  hiddenFromParty: boolean;
+  tags: string[];
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface EncounterStateInput {
   combatants: LiveCombatant[];
   round: number;
@@ -481,7 +506,7 @@ export interface Adventure extends GeneratedAdventure {
   updatedAt: string;
 }
 
-export type EntityType = "character" | "item" | "location" | "quest" | "faction" | "encounterTable" | "sessionNote" | "adventure" | "playerCharacter" | "zoneMapTemplate" | "dungeon";
+export type EntityType = "character" | "item" | "location" | "quest" | "faction" | "encounterTable" | "sessionNote" | "adventure" | "playerCharacter" | "zoneMapTemplate" | "dungeon" | "shop";
 
 export interface EntityTypeDef {
   type: EntityType;
@@ -500,6 +525,7 @@ export const ENTITY_TYPES: EntityTypeDef[] = [
   { type: "playerCharacter", label: "Player Character" },
   { type: "zoneMapTemplate", label: "Zone Map Template" },
   { type: "dungeon", label: "Dungeon" },
+  { type: "shop", label: "Shop" },
 ];
 
 export interface EntityRef {

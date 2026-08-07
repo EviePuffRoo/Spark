@@ -1,0 +1,161 @@
+import { useEffect, useState } from "react";
+import type { Shop } from "@spark/shared";
+import { api } from "../api";
+import { useAuth } from "../AuthContext";
+import { useActiveWorld } from "../ActiveWorldContext";
+
+const SELL_RATE = 0.5;
+
+export function ShopPage() {
+  const { user } = useAuth();
+  const { worlds, worldId } = useActiveWorld();
+  const [shops, setShops] = useState<Shop[]>([]);
+  const [selectedShopId, setSelectedShopId] = useState("");
+  const [authorName, setAuthorName] = useState(user?.username ?? "");
+  const [quantities, setQuantities] = useState<Record<string, string>>({});
+  const [error, setError] = useState<string | null>(null);
+  const [busyStockId, setBusyStockId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!worldId) {
+      setShops([]);
+      setSelectedShopId("");
+      return;
+    }
+    api.listShops(worldId).then((rows) => {
+      setShops(rows);
+      setSelectedShopId((current) => (rows.some((s) => s.id === current) ? current : rows[0]?.id ?? ""));
+    }).catch(() => {});
+  }, [worldId]);
+
+  const selectedShop = shops.find((s) => s.id === selectedShopId) ?? null;
+
+  function refresh() {
+    if (!worldId) return;
+    api.listShops(worldId).then(setShops).catch(() => {});
+  }
+
+  function quantityFor(stockId: string): number {
+    const raw = Number(quantities[stockId]);
+    return raw > 0 && Number.isFinite(raw) ? Math.trunc(raw) : 1;
+  }
+
+  async function buy(shop: Shop, stockId: string) {
+    const entry = shop.stock.find((s) => s.id === stockId);
+    if (!entry || !worldId) return;
+    const qty = quantityFor(stockId);
+    if (entry.quantity !== -1 && qty > entry.quantity) {
+      setError(`Only ${entry.quantity} ${entry.itemName} in stock.`);
+      return;
+    }
+    setBusyStockId(stockId);
+    setError(null);
+    try {
+      const name = authorName.trim() || user!.username;
+      await api.postLedgerEntry({ worldId, kind: "gold", amount: -entry.price * qty, label: `Bought ${entry.itemName} from ${shop.name}`, authorName: name });
+      await api.postLedgerEntry({ worldId, kind: "item", amount: qty, label: entry.itemName, authorName: name });
+      if (entry.quantity !== -1) {
+        const nextStock = shop.stock.map((s) => (s.id === stockId ? { ...s, quantity: s.quantity - qty } : s));
+        await api.updateShop(shop.id, { stock: nextStock });
+      }
+      refresh();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusyStockId(null);
+    }
+  }
+
+  async function sell(shop: Shop, stockId: string) {
+    const entry = shop.stock.find((s) => s.id === stockId);
+    if (!entry || !worldId) return;
+    const qty = quantityFor(stockId);
+    setBusyStockId(stockId);
+    setError(null);
+    try {
+      const name = authorName.trim() || user!.username;
+      const sellPrice = Math.floor(entry.price * SELL_RATE);
+      await api.postLedgerEntry({ worldId, kind: "gold", amount: sellPrice * qty, label: `Sold ${entry.itemName} to ${shop.name}`, authorName: name });
+      await api.postLedgerEntry({ worldId, kind: "item", amount: -qty, label: entry.itemName, authorName: name });
+      if (entry.quantity !== -1) {
+        const nextStock = shop.stock.map((s) => (s.id === stockId ? { ...s, quantity: s.quantity + qty } : s));
+        await api.updateShop(shop.id, { stock: nextStock });
+      }
+      refresh();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusyStockId(null);
+    }
+  }
+
+  return (
+    <div className="page generator-layout">
+      <div className="panel">
+        <h2>Shop</h2>
+        <p className="hint">Buy and sell against the party's shared ledger — selling pays half the listed price.</p>
+
+        {worlds.length === 0 ? (
+          <p className="hint">Create or join a world to shop.</p>
+        ) : !worldId ? (
+          <p className="hint">Select a world from the header to browse its shops.</p>
+        ) : shops.length === 0 ? (
+          <p className="hint">No shops in this world yet — create one from Prep &gt; Create &gt; Shops.</p>
+        ) : (
+          <>
+            <label className="field">
+              <span>Shop</span>
+              <select value={selectedShopId} onChange={(e) => setSelectedShopId(e.target.value)}>
+                {shops.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </label>
+            <label className="field">
+              <span>Your name</span>
+              <input type="text" value={authorName} onChange={(e) => setAuthorName(e.target.value)} placeholder={user?.username} />
+            </label>
+          </>
+        )}
+
+        {error && <p className="error">{error}</p>}
+      </div>
+
+      <div className="panel result-panel">
+        {!selectedShop && <p className="hint">Select a shop to browse its stock.</p>}
+
+        {selectedShop && (
+          <>
+            <h3 className="section-heading">{selectedShop.name}</h3>
+            {selectedShop.description && <p className="hint">{selectedShop.description}</p>}
+            {selectedShop.stock.length === 0 && <p className="hint">This shop has nothing stocked.</p>}
+            <ul className="entity-list shop-stock-list">
+              {selectedShop.stock.map((entry) => (
+                <li key={entry.id} className="shop-stock-row">
+                  <div className="shop-stock-info">
+                    <span className="entity-name">{entry.itemName}</span>
+                    <span className="entity-meta">
+                      {entry.price} gp · {entry.quantity === -1 ? "unlimited" : `${entry.quantity} in stock`}
+                    </span>
+                  </div>
+                  <input
+                    type="number"
+                    min={1}
+                    className="shop-quantity-input"
+                    value={quantities[entry.id] ?? "1"}
+                    onChange={(e) => setQuantities((q) => ({ ...q, [entry.id]: e.target.value }))}
+                    aria-label={`Quantity for ${entry.itemName}`}
+                  />
+                  <button className="btn-primary" disabled={busyStockId === entry.id || entry.quantity === 0} onClick={() => buy(selectedShop, entry.id)}>
+                    Buy
+                  </button>
+                  <button className="btn-secondary" disabled={busyStockId === entry.id} onClick={() => sell(selectedShop, entry.id)}>
+                    Sell ({Math.floor(entry.price * SELL_RATE)} gp)
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -3,12 +3,12 @@ import type {
   Faction as FactionRow, EncounterTable as EncounterTableRow, SessionNote as SessionNoteRow,
   Adventure as AdventureRow, PlayerCharacter as PlayerCharacterRow, RollLogEntry as RollLogEntryRow,
   Encounter as EncounterRow, CodexNote as CodexNoteRow, LedgerEntry as LedgerEntryRow,
-  ZoneMapTemplate as ZoneMapTemplateRow, Dungeon as DungeonRow,
+  ZoneMapTemplate as ZoneMapTemplateRow, Dungeon as DungeonRow, Shop as ShopRow,
 } from "@prisma/client";
 import type {
   Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, PlayerCharacter, RollLogEntry,
   Encounter, LiveCombatant, HpStatus, CodexNote, EntityType, LedgerEntry, LedgerEntryKind, EncounterZone, EncounterZoneEffect,
-  ZoneMapTemplate, Dungeon,
+  ZoneMapTemplate, Dungeon, Shop, ShopStockEntry,
 } from "@spark/shared";
 
 export function toCharacterDTO(row: CharacterRow): Character {
@@ -129,6 +129,22 @@ export function toDungeonDTO(row: DungeonRow): Dungeon {
     userId: row.userId,
     name: row.name,
     rooms: JSON.parse(row.rooms),
+    worldId: row.worldId,
+    hiddenFromParty: row.hiddenFromParty,
+    tags: JSON.parse(row.tags),
+    notes: row.notes ?? undefined,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+export function toShopDTO(row: ShopRow): Shop {
+  return {
+    id: row.id,
+    userId: row.userId,
+    name: row.name,
+    description: row.description ?? undefined,
+    stock: JSON.parse(row.stock) as ShopStockEntry[],
     worldId: row.worldId,
     hiddenFromParty: row.hiddenFromParty,
     tags: JSON.parse(row.tags),

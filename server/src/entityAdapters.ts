@@ -95,6 +95,13 @@ const adapters: Record<EntityType, EntityAdapter> = {
     getMeta: (row) => `${JSON.parse(row.rooms).length} rooms`,
     searchFields: ["name", "notes", "tags"],
   },
+  shop: {
+    findMany: (args) => prisma.shop.findMany(args),
+    findUnique: (id, userId, memberWorldIds) => prisma.shop.findFirst({ where: accessWhere(id, userId, memberWorldIds) }),
+    getName: (row) => row.name,
+    getMeta: (row) => `${JSON.parse(row.stock).length} items in stock`,
+    searchFields: ["name", "description", "notes", "tags"],
+  },
 };
 
 export function getAdapter(type: string): EntityAdapter | null {

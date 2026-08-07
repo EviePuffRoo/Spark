@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, PlayerCharacter, ZoneMapTemplate, Dungeon, EntityType, QuestStatus } from "@spark/shared";
+import type { Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, PlayerCharacter, ZoneMapTemplate, Dungeon, Shop, EntityType, QuestStatus } from "@spark/shared";
 import { QUEST_STATUSES, QUEST_STATUS_LABELS } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { useAuth } from "../AuthContext";
@@ -13,6 +13,8 @@ import { EncounterTableCardView } from "../components/EncounterTableCardView";
 import { ZoneMapTemplateCardView } from "../components/ZoneMapTemplateCardView";
 import { DungeonCardView } from "../components/DungeonCardView";
 import { DungeonEditor } from "../components/DungeonEditor";
+import { ShopCardView } from "../components/ShopCardView";
+import { ShopEditor } from "../components/ShopEditor";
 import { LinkedEntities } from "../components/LinkedEntities";
 import { FactionWebView } from "../components/FactionWebView";
 import { SessionNoteCardView } from "../components/SessionNoteCardView";
@@ -28,7 +30,7 @@ import { EncounterTableEditor } from "../components/EncounterTableEditor";
 import { AdventureEditor } from "../components/AdventureEditor";
 import { PlayerCharacterEditor } from "../components/PlayerCharacterEditor";
 
-export type Mode = "characters" | "items" | "locations" | "quests" | "factions" | "encounters" | "notes" | "adventures" | "playerCharacters" | "zoneMapTemplates" | "dungeons";
+export type Mode = "characters" | "items" | "locations" | "quests" | "factions" | "encounters" | "notes" | "adventures" | "playerCharacters" | "zoneMapTemplates" | "dungeons" | "shops";
 
 const MODE_LABELS: Record<Mode, string> = {
   characters: "Characters",
@@ -42,6 +44,7 @@ const MODE_LABELS: Record<Mode, string> = {
   playerCharacters: "Player Characters",
   zoneMapTemplates: "Zone Map Templates",
   dungeons: "Dungeons",
+  shops: "Shops",
 };
 
 export const ENTITY_TYPE_TO_MODE: Record<EntityType, Mode> = {
@@ -56,6 +59,7 @@ export const ENTITY_TYPE_TO_MODE: Record<EntityType, Mode> = {
   playerCharacter: "playerCharacters",
   zoneMapTemplate: "zoneMapTemplates",
   dungeon: "dungeons",
+  shop: "shops",
 };
 
 const MODE_TO_ENTITY_TYPE: Record<Mode, EntityType> = {
@@ -70,6 +74,7 @@ const MODE_TO_ENTITY_TYPE: Record<Mode, EntityType> = {
   playerCharacters: "playerCharacter",
   zoneMapTemplates: "zoneMapTemplate",
   dungeons: "dungeon",
+  shops: "shop",
 };
 
 export interface RosterSelection {
@@ -114,6 +119,7 @@ export function RosterPage({
   const [playerCharacters, setPlayerCharacters] = useState<PlayerCharacter[]>([]);
   const [zoneMapTemplates, setZoneMapTemplates] = useState<ZoneMapTemplate[]>([]);
   const [dungeons, setDungeons] = useState<Dungeon[]>([]);
+  const [shops, setShops] = useState<Shop[]>([]);
   const [worlds, setWorlds] = useState<WorldSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [metaNotes, setMetaNotes] = useState("");
@@ -145,6 +151,7 @@ export function RosterPage({
       api.listPlayerCharacters(w).then(setPlayerCharacters).catch(() => {}),
       api.listZoneMapTemplates(w).then(setZoneMapTemplates).catch(() => {}),
       api.listDungeons(w).then(setDungeons).catch(() => {}),
+      api.listShops(w).then(setShops).catch(() => {}),
       api.listWorlds().then(setWorlds).catch(() => {}),
     ]).finally(() => setLoading(false));
   }
@@ -193,10 +200,11 @@ export function RosterPage({
   const selectedPlayerCharacter = mode === "playerCharacters" ? playerCharacters.find((p) => p.id === selectedId) ?? null : null;
   const selectedZoneMapTemplate = mode === "zoneMapTemplates" ? zoneMapTemplates.find((z) => z.id === selectedId) ?? null : null;
   const selectedDungeon = mode === "dungeons" ? dungeons.find((d) => d.id === selectedId) ?? null : null;
-  const selected = selectedCharacter ?? selectedItem ?? selectedLocation ?? selectedQuest ?? selectedFaction ?? selectedEncounter ?? selectedNote ?? selectedAdventure ?? selectedPlayerCharacter ?? selectedZoneMapTemplate ?? selectedDungeon;
+  const selectedShop = mode === "shops" ? shops.find((s) => s.id === selectedId) ?? null : null;
+  const selected = selectedCharacter ?? selectedItem ?? selectedLocation ?? selectedQuest ?? selectedFaction ?? selectedEncounter ?? selectedNote ?? selectedAdventure ?? selectedPlayerCharacter ?? selectedZoneMapTemplate ?? selectedDungeon ?? selectedShop;
   const selectedDisplayName =
     selectedCharacter?.name ?? selectedItem?.name ?? selectedLocation?.name ?? selectedQuest?.title ??
-    selectedFaction?.name ?? selectedEncounter?.name ?? selectedNote?.title ?? selectedAdventure?.title ?? selectedPlayerCharacter?.name ?? selectedZoneMapTemplate?.name ?? selectedDungeon?.name ?? "";
+    selectedFaction?.name ?? selectedEncounter?.name ?? selectedNote?.title ?? selectedAdventure?.title ?? selectedPlayerCharacter?.name ?? selectedZoneMapTemplate?.name ?? selectedDungeon?.name ?? selectedShop?.name ?? "";
   const canEditSelected = !selected || selected.userId === user?.id;
 
   useEffect(() => {
@@ -231,7 +239,8 @@ export function RosterPage({
       else if (mode === "adventures") await api.updateAdventure(selected.id, patch);
       else if (mode === "playerCharacters") await api.updatePlayerCharacter(selected.id, patch);
       else if (mode === "zoneMapTemplates") await api.updateZoneMapTemplate(selected.id, patch);
-      else await api.updateDungeon(selected.id, patch);
+      else if (mode === "dungeons") await api.updateDungeon(selected.id, patch);
+      else await api.updateShop(selected.id, patch);
       refresh();
     } catch (e) {
       setActionError((e as Error).message);
@@ -318,6 +327,12 @@ export function RosterPage({
         name: `${selectedDungeon.name} (Copy)`, rooms,
         worldId, tags: tagsCopy, notes: notesCopy,
       });
+    } else if (selectedShop) {
+      created = await api.saveShop({
+        name: `${selectedShop.name} (Copy)`, description: selectedShop.description,
+        stock: selectedShop.stock.map((s) => ({ ...s, id: crypto.randomUUID() })),
+        worldId, tags: tagsCopy, notes: notesCopy,
+      });
     }
     setStatus("idle");
     refresh();
@@ -369,7 +384,8 @@ export function RosterPage({
       else if (mode === "adventures") await api.deleteAdventure(selected.id);
       else if (mode === "playerCharacters") await api.deletePlayerCharacter(selected.id);
       else if (mode === "zoneMapTemplates") await api.deleteZoneMapTemplate(selected.id);
-      else await api.deleteDungeon(selected.id);
+      else if (mode === "dungeons") await api.deleteDungeon(selected.id);
+      else await api.deleteShop(selected.id);
     } catch (e) {
       setActionError((e as Error).message);
       return;
@@ -389,7 +405,8 @@ export function RosterPage({
     mode === "adventures" ? adventures :
     mode === "playerCharacters" ? playerCharacters :
     mode === "zoneMapTemplates" ? zoneMapTemplates :
-    dungeons;
+    mode === "dungeons" ? dungeons :
+    shops;
 
   const availableTags = Array.from(new Set(activeEntities.flatMap((e) => e.tags))).sort();
 
@@ -414,7 +431,8 @@ export function RosterPage({
     mode === "adventures" ? adventures.filter((a) => !tagFilter || a.tags.includes(tagFilter)).map((a) => ({ id: a.id, name: a.title, meta: a.tier, hidden: a.hiddenFromParty })) :
     mode === "playerCharacters" ? playerCharacters.filter((p) => !tagFilter || p.tags.includes(tagFilter)).map((p) => ({ id: p.id, name: p.name, meta: `Level ${p.level} ${p.race} ${p.className}`, hidden: p.hiddenFromParty })) :
     mode === "zoneMapTemplates" ? zoneMapTemplates.filter((z) => !tagFilter || z.tags.includes(tagFilter)).map((z) => ({ id: z.id, name: z.name, meta: `${z.zones.length} zones`, hidden: z.hiddenFromParty })) :
-    dungeons.filter((d) => !tagFilter || d.tags.includes(tagFilter)).map((d) => ({ id: d.id, name: d.name, meta: `${d.rooms.length} rooms`, hidden: d.hiddenFromParty }))
+    mode === "dungeons" ? dungeons.filter((d) => !tagFilter || d.tags.includes(tagFilter)).map((d) => ({ id: d.id, name: d.name, meta: `${d.rooms.length} rooms`, hidden: d.hiddenFromParty })) :
+    shops.filter((s) => !tagFilter || s.tags.includes(tagFilter)).map((s) => ({ id: s.id, name: s.name, meta: `${s.stock.length} items in stock`, hidden: s.hiddenFromParty }))
   ).filter((entry) => !trimmedSearch || entry.name.toLowerCase().includes(trimmedSearch));
 
   if (showFactionWeb) {
@@ -620,14 +638,27 @@ export function RosterPage({
           />
         )}
 
-        {selected && !editingContent && mode !== "notes" && mode !== "zoneMapTemplates" && mode !== "dungeons" && canEditSelected && (
+        {selectedShop && !editingContent && <ShopCardView shop={selectedShop} />}
+        {selectedShop && editingContent && (
+          <ShopEditor
+            value={selectedShop}
+            onSave={async (patch) => { await api.updateShop(selectedShop.id, patch); setEditingContent(false); refresh(); }}
+            onCancel={() => setEditingContent(false)}
+            saveLabel="Save Changes"
+          />
+        )}
+
+        {selected && !editingContent && mode !== "notes" && mode !== "zoneMapTemplates" && mode !== "dungeons" && mode !== "shops" && canEditSelected && (
           <button className="btn-secondary" onClick={() => setEditingContent(true)}>Edit Content</button>
         )}
         {selectedDungeon && !editingContent && canEditSelected && (
           <button className="btn-secondary" onClick={() => setEditingContent(true)}>Edit Rooms & Exits</button>
         )}
+        {selectedShop && !editingContent && canEditSelected && (
+          <button className="btn-secondary" onClick={() => setEditingContent(true)}>Edit Stock</button>
+        )}
 
-        {selected && !editingContent && onPrint && mode !== "zoneMapTemplates" && mode !== "dungeons" && (
+        {selected && !editingContent && onPrint && mode !== "zoneMapTemplates" && mode !== "dungeons" && mode !== "shops" && (
           <button className="btn-secondary" onClick={handlePrint}>Print</button>
         )}
         {selected && !editingContent && onPrint && mode === "notes" && (

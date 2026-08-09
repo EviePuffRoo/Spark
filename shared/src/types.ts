@@ -62,6 +62,8 @@ export interface Character {
   hiddenFromParty: boolean;
   tags: string[];
   notes?: string;
+  equippedItems: string[];
+  attunedItems: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -244,6 +246,8 @@ export interface PlayerCharacter extends PlayerCharacterInput {
   hiddenFromParty: boolean;
   tags: string[];
   notes?: string;
+  equippedItems: string[];
+  attunedItems: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -395,6 +399,7 @@ export interface LiveCombatant {
   level?: number;
   zoneId?: string;
   hidden?: boolean;
+  equipmentAcBonus?: number;
 }
 
 export interface ZoneHazard {

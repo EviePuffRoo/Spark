@@ -20,6 +20,7 @@ import { FactionWebView } from "../components/FactionWebView";
 import { SessionNoteCardView } from "../components/SessionNoteCardView";
 import { RosterIcon } from "../components/icons";
 import { EmptyState } from "../components/EmptyState";
+import { EquipmentPanel } from "../components/EquipmentPanel";
 import { AdventureCardView } from "../components/AdventureCardView";
 import { PlayerCharacterCardView } from "../components/PlayerCharacterCardView";
 import type { PrintItem } from "../components/PrintPane";
@@ -551,6 +552,11 @@ export function RosterPage({
               statBlock={selectedCharacter.statBlock}
             />
             <BackstoryView backstory={selectedCharacter.backstory} />
+            <EquipmentPanel
+              equippedItems={selectedCharacter.equippedItems}
+              attunedItems={selectedCharacter.attunedItems}
+              baseArmorClass={selectedCharacter.statBlock.armorClass}
+            />
           </>
         )}
         {selectedCharacter && editingContent && (
@@ -631,10 +637,21 @@ export function RosterPage({
           />
         )}
 
-        {selectedPlayerCharacter && !editingContent && <PlayerCharacterCardView pc={selectedPlayerCharacter} />}
+        {selectedPlayerCharacter && !editingContent && (
+          <>
+            <PlayerCharacterCardView pc={selectedPlayerCharacter} />
+            <EquipmentPanel
+              equippedItems={selectedPlayerCharacter.equippedItems}
+              attunedItems={selectedPlayerCharacter.attunedItems}
+              baseArmorClass={selectedPlayerCharacter.armorClass}
+            />
+          </>
+        )}
         {selectedPlayerCharacter && editingContent && (
           <PlayerCharacterEditor
             value={selectedPlayerCharacter}
+            equippedItems={selectedPlayerCharacter.equippedItems}
+            attunedItems={selectedPlayerCharacter.attunedItems}
             onSave={async (patch) => { await api.updatePlayerCharacter(selectedPlayerCharacter.id, patch); setEditingContent(false); refresh(); }}
             onCancel={() => setEditingContent(false)}
           />

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import type { SearchResult, LiveCombatant, EncounterStateInput, EncounterTable, EncounterZone, HpStatus, Dungeon } from "@spark/shared";
+import type { SearchResult, LiveCombatant, EncounterStateInput, EncounterTable, EncounterZone, HpStatus, Dungeon, Item } from "@spark/shared";
+import { computeEquipmentBonuses } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { useAuth } from "../AuthContext";
 import { EntitySearchPicker } from "./EntitySearchPicker";
@@ -55,6 +56,13 @@ function abilityModifier(score: number): number {
 
 function rollD20(): number {
   return Math.floor(Math.random() * 20) + 1;
+}
+
+async function equipmentAcBonusFor(equippedIds: string[], attunedIds: string[]): Promise<number> {
+  if (equippedIds.length === 0) return 0;
+  const items = await Promise.all(equippedIds.map((id) => api.getItem(id).catch(() => null)));
+  const resolved = items.filter((i): i is Item => !!i);
+  return computeEquipmentBonuses(resolved, equippedIds, attunedIds).armorClass;
 }
 
 export function InitiativeTracker({
@@ -165,6 +173,7 @@ export function InitiativeTracker({
     setRosterPickType(null);
     if (type === "character") {
       const character = await api.getCharacter(result.id);
+      const acBonus = await equipmentAcBonusFor(character.equippedItems, character.attunedItems);
       addCombatant({
         id: crypto.randomUUID(),
         name: character.name,
@@ -173,14 +182,16 @@ export function InitiativeTracker({
         maxHp: character.statBlock.hitPointsAverage,
         currentHp: character.statBlock.hitPointsAverage,
         hpStatus: "healthy",
-        armorClass: character.statBlock.armorClass,
+        armorClass: character.statBlock.armorClass + acBonus,
         conditions: [],
         notes: "",
         hpVisible: false,
         xp: character.statBlock.xp,
+        equipmentAcBonus: acBonus > 0 ? acBonus : undefined,
       });
     } else if (type === "playerCharacter") {
       const pc = await api.getPlayerCharacter(result.id);
+      const acBonus = await equipmentAcBonusFor(pc.equippedItems, pc.attunedItems);
       addCombatant({
         id: crypto.randomUUID(),
         name: pc.name,
@@ -189,11 +200,12 @@ export function InitiativeTracker({
         maxHp: pc.maxHp,
         currentHp: pc.maxHp,
         hpStatus: "healthy",
-        armorClass: pc.armorClass,
+        armorClass: pc.armorClass + acBonus,
         conditions: [],
         notes: "",
         hpVisible: true,
         level: pc.level,
+        equipmentAcBonus: acBonus > 0 ? acBonus : undefined,
       });
     }
   }
@@ -621,7 +633,12 @@ export function InitiativeTracker({
                 aria-label={`${c.name} initiative`}
               />
               <span className="combatant-name">{c.name}</span>
-              {c.armorClass !== undefined && <span className="entity-meta">AC {c.armorClass}</span>}
+              {c.armorClass !== undefined && (
+                <span className="entity-meta">
+                  AC {c.armorClass}
+                  {!!c.equipmentAcBonus && <span className="item-stat-badge" title={`Includes +${c.equipmentAcBonus} from equipped items`}>+{c.equipmentAcBonus} equipped</span>}
+                </span>
+              )}
               <button className="btn-danger" onClick={() => removeCombatant(c.id)} aria-label={`Remove ${c.name}`}>Remove</button>
             </div>
 
@@ -738,7 +755,12 @@ export function InitiativeTracker({
             <div className="combatant-main">
               <span className="combatant-initiative-readonly">{c.initiative}</span>
               <span className="combatant-name">{c.name}</span>
-              {c.armorClass !== undefined && <span className="entity-meta">AC {c.armorClass}</span>}
+              {c.armorClass !== undefined && (
+                <span className="entity-meta">
+                  AC {c.armorClass}
+                  {!!c.equipmentAcBonus && <span className="item-stat-badge" title={`Includes +${c.equipmentAcBonus} from equipped items`}>+{c.equipmentAcBonus} equipped</span>}
+                </span>
+              )}
             </div>
 
             {c.conditions.length > 0 && (

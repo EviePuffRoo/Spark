@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Character, StatBlock, Backstory } from "@spark/shared";
 import { StatBlockEditor } from "./StatBlockEditor";
 import { BackstoryEditor } from "./BackstoryEditor";
+import { EquipmentPanel } from "./EquipmentPanel";
 
 export interface CharacterContentPatch {
   name: string;
@@ -10,6 +11,8 @@ export interface CharacterContentPatch {
   alignment: string;
   statBlock: StatBlock;
   backstory: Backstory;
+  equippedItems: string[];
+  attunedItems: string[];
 }
 
 export function CharacterEditor({
@@ -25,6 +28,8 @@ export function CharacterEditor({
   const [alignment, setAlignment] = useState(character.alignment);
   const [statBlock, setStatBlock] = useState(character.statBlock);
   const [backstory, setBackstory] = useState(character.backstory);
+  const [equippedItems, setEquippedItems] = useState(character.equippedItems);
+  const [attunedItems, setAttunedItems] = useState(character.attunedItems);
   const [saving, setSaving] = useState(false);
 
   async function handleSave() {
@@ -37,6 +42,8 @@ export function CharacterEditor({
         alignment,
         statBlock: { ...statBlock, alignment },
         backstory,
+        equippedItems,
+        attunedItems,
       });
     } finally {
       setSaving(false);
@@ -69,6 +76,13 @@ export function CharacterEditor({
 
       <h3 className="section-heading">Backstory</h3>
       <BackstoryEditor value={backstory} onChange={setBackstory} />
+
+      <EquipmentPanel
+        equippedItems={equippedItems}
+        attunedItems={attunedItems}
+        baseArmorClass={statBlock.armorClass}
+        onChange={(equipped, attuned) => { setEquippedItems(equipped); setAttunedItems(attuned); }}
+      />
 
       <div className="button-row editor-actions">
         <button className="btn-primary" onClick={handleSave} disabled={saving}>

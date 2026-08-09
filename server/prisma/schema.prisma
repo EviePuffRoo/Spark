@@ -133,9 +133,16 @@ model Item {
   itemType    String
   category    String
   rarity      String
+  rarityTier  Int      @default(0)
   description String
   property    String
   history     String
+  bonusType   String   @default("none")
+  bonusValue  Int      @default(0)
+  requiresAttunement Boolean @default(false)
+  charges     Int?
+  rechargeRule String?
+  value       Int      @default(0)
   tags        String   @default("[]")
   notes       String?
   worldId     String?

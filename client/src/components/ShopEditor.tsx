@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { ShopInput, ShopStockEntry, SearchResult } from "@spark/shared";
 import { EntitySearchPicker } from "./EntitySearchPicker";
+import { api } from "../api";
 
 export function ShopEditor({
   value, onSave, onCancel, saveLabel = "Save",
@@ -16,9 +17,10 @@ export function ShopEditor({
   const [addingStock, setAddingStock] = useState(false);
   const [status, setStatus] = useState<"idle" | "saving">("idle");
 
-  function handleAddStock(result: SearchResult) {
+  async function handleAddStock(result: SearchResult) {
     setAddingStock(false);
-    setStock((s) => [...s, { id: crypto.randomUUID(), itemId: result.id, itemName: result.name, price: 1, quantity: -1 }]);
+    const price = await api.getItem(result.id).then((item) => item.value || 1).catch(() => 1);
+    setStock((s) => [...s, { id: crypto.randomUUID(), itemId: result.id, itemName: result.name, price, quantity: -1 }]);
   }
 
   function updateStock(id: string, patch: Partial<ShopStockEntry>) {

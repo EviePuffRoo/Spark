@@ -1,11 +1,17 @@
 import { useEffect, useState } from "react";
 import type { GenerateItemRequest, GeneratedItem } from "@spark/shared";
+import { ITEM_RARITY_TIER_INFO } from "@spark/shared";
 import { api, type ReferenceData } from "../api";
 import { useActiveWorld } from "../ActiveWorldContext";
 import { ItemCardView } from "../components/ItemCardView";
 import { ItemEditor } from "../components/ItemEditor";
 
-const BLANK_ITEM: GeneratedItem = { name: "", itemType: "", category: "", rarity: "", description: "", property: "", history: "" };
+const TIER_0 = ITEM_RARITY_TIER_INFO[0];
+const BLANK_ITEM: GeneratedItem = {
+  name: "", itemType: "", category: "", rarity: TIER_0.label, rarityTier: 0, description: "", property: "", history: "",
+  bonusType: "none", bonusValue: 0, requiresAttunement: false, charges: null, rechargeRule: null,
+  value: Math.round((TIER_0.valueRange[0] + TIER_0.valueRange[1]) / 2),
+};
 
 export function ItemForgePage() {
   const [reference, setReference] = useState<ReferenceData | null>(null);

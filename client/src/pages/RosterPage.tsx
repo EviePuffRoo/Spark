@@ -269,8 +269,10 @@ export function RosterPage({
     } else if (selectedItem) {
       created = await api.saveItem({
         name: `${selectedItem.name} (Copy)`, itemType: selectedItem.itemType, category: selectedItem.category,
-        rarity: selectedItem.rarity, description: selectedItem.description, property: selectedItem.property,
-        history: selectedItem.history, worldId, tags: tagsCopy, notes: notesCopy,
+        rarity: selectedItem.rarity, rarityTier: selectedItem.rarityTier, description: selectedItem.description, property: selectedItem.property,
+        history: selectedItem.history, bonusType: selectedItem.bonusType, bonusValue: selectedItem.bonusValue,
+        requiresAttunement: selectedItem.requiresAttunement, charges: selectedItem.charges, rechargeRule: selectedItem.rechargeRule,
+        value: selectedItem.value, worldId, tags: tagsCopy, notes: notesCopy,
       });
     } else if (selectedLocation) {
       created = await api.saveLocation({

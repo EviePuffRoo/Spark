@@ -97,6 +97,8 @@ export async function applyImport(userId: string, bundle: ExportBundle): Promise
         data: {
           name: i.name, itemType: i.itemType, category: i.category, rarity: i.rarity, description: i.description,
           property: i.property, history: i.history, tags: i.tags, notes: i.notes, worldId: remapWorldId(i.worldId), hiddenFromParty: i.hiddenFromParty, userId,
+          rarityTier: i.rarityTier, bonusType: i.bonusType, bonusValue: i.bonusValue, requiresAttunement: i.requiresAttunement,
+          charges: i.charges, rechargeRule: i.rechargeRule, value: i.value,
         },
       });
       entityIdMap.set(i.id, created.id);

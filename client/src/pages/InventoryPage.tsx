@@ -3,6 +3,7 @@ import type { LedgerSummary } from "@spark/shared";
 import { api } from "../api";
 import { useAuth } from "../AuthContext";
 import { useActiveWorld } from "../ActiveWorldContext";
+import { InventoryIcon } from "../components/icons";
 
 const POLL_INTERVAL_MS = 5000;
 
@@ -105,7 +106,10 @@ export function InventoryPage() {
   return (
     <div className="page generator-layout">
       <div className="panel">
-        <h2>Party Inventory</h2>
+        <div className="page-title">
+          <InventoryIcon className="page-title-icon" aria-hidden="true" />
+          <h2>Party Inventory</h2>
+        </div>
         <p className="hint">Shared gold and items for the whole party — anyone can add to it or take from it.</p>
 
         {worlds.length === 0 ? (

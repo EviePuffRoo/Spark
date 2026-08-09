@@ -7,6 +7,8 @@ import { ZoneMap } from "./ZoneMap";
 import { useLocalStorage } from "../useLocalStorage";
 import { rollTableIndex } from "../rollTable";
 import { computeDifficulty, type DifficultyRating } from "../encounterDifficulty";
+import { CombatIcon } from "./icons";
+import { EmptyState } from "./EmptyState";
 
 const CONDITIONS = [
   "Blinded", "Charmed", "Deafened", "Exhausted", "Frightened", "Grappled",
@@ -432,7 +434,10 @@ export function InitiativeTracker({
   return (
     <div className="panel result-panel initiative-tracker">
       <div className="initiative-header">
-        <h2>Initiative Tracker</h2>
+        <div className="page-title">
+          <CombatIcon className="page-title-icon" aria-hidden="true" />
+          <h2>Initiative Tracker</h2>
+        </div>
         <span className="round-banner">Round {activeEncounter.round}</span>
       </div>
 
@@ -597,9 +602,11 @@ export function InitiativeTracker({
       )}
 
       {sorted.length === 0 && (
-        <p className="hint">
-          {canEdit ? "No combatants yet. Add from the roster or add a custom entry (e.g. a PC)." : "No combat happening right now."}
-        </p>
+        <EmptyState
+          icon={<CombatIcon />}
+          heading="No combatants yet"
+          hint={canEdit ? "Add from the roster or add a custom entry (e.g. a PC)." : "No combat happening right now."}
+        />
       )}
 
       <ul className="combatant-list">

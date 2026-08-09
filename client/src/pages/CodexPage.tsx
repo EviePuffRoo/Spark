@@ -9,6 +9,8 @@ import { FactionCardView } from "../components/FactionCardView";
 import { QuestHookCardView } from "../components/QuestHookCardView";
 import { LinkedEntities } from "../components/LinkedEntities";
 import { CodexNotesPanel } from "../components/CodexNotesPanel";
+import { CodexIcon } from "../components/icons";
+import { EmptyState } from "../components/EmptyState";
 
 type CodexMode = "npcs" | "locations" | "factions" | "quests";
 
@@ -76,7 +78,10 @@ export function CodexPage() {
   return (
     <div className="page roster-layout">
       <div className="panel roster-list">
-        <h2>Codex</h2>
+        <div className="page-title">
+          <CodexIcon className="page-title-icon" aria-hidden="true" />
+          <h2>Codex</h2>
+        </div>
         <p className="hint">What the party has learned so far — plus your own shared theories and notes.</p>
 
         {worlds.length === 0 ? (
@@ -120,7 +125,13 @@ export function CodexPage() {
       </div>
 
       <div className="panel result-panel">
-        {!selectedId && <p className="hint">Select an entry to view details.</p>}
+        {!selectedId && (
+          <EmptyState
+            icon={<CodexIcon />}
+            heading={worldId ? "No entry selected" : "No world selected"}
+            hint={worldId ? "Select an entry from the list to view its details." : "Select a world from the list to browse its codex."}
+          />
+        )}
 
         {selectedCharacter && (
           <>

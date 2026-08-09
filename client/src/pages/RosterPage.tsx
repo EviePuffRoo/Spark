@@ -18,6 +18,8 @@ import { ShopEditor } from "../components/ShopEditor";
 import { LinkedEntities } from "../components/LinkedEntities";
 import { FactionWebView } from "../components/FactionWebView";
 import { SessionNoteCardView } from "../components/SessionNoteCardView";
+import { RosterIcon } from "../components/icons";
+import { EmptyState } from "../components/EmptyState";
 import { AdventureCardView } from "../components/AdventureCardView";
 import { PlayerCharacterCardView } from "../components/PlayerCharacterCardView";
 import type { PrintItem } from "../components/PrintPane";
@@ -529,7 +531,13 @@ export function RosterPage({
       </div>
 
       <div className="panel result-panel">
-        {!selected && <p className="hint">Select an entry to view details.</p>}
+        {!selected && (
+          <EmptyState
+            icon={<RosterIcon />}
+            heading="No entry selected"
+            hint="Select an entry from the list to view its details."
+          />
+        )}
 
         {selected && editingContent && <h2>Editing {selectedDisplayName}</h2>}
 

@@ -20,11 +20,13 @@ import { DowntimePage } from "./pages/DowntimePage";
 import { ShopPage } from "./pages/ShopPage";
 import { GlobalSearch } from "./components/GlobalSearch";
 import { PrintPane, type PrintItem } from "./components/PrintPane";
+import { PrepIcon, WorldIcon, PlayIcon } from "./components/icons";
 
 type Area = "prep" | "world" | "play";
 type SubTab = "create" | "myCharacter" | "worlds" | "roster" | "codex" | "notes" | "downtime" | "combat" | "shop" | "inventory";
 
 const AREA_LABELS: Record<Area, string> = { prep: "Prep", world: "World", play: "Play" };
+const AREA_ICONS: Record<Area, typeof PrepIcon> = { prep: PrepIcon, world: WorldIcon, play: PlayIcon };
 const AREA_DEFAULT_SUBTAB: Record<Area, SubTab> = { prep: "create", world: "worlds", play: "combat" };
 
 function App() {
@@ -111,13 +113,17 @@ function AppShell() {
         <GlobalSearch onSelect={openInRoster} />
 
         <nav className="tabs area-tabs">
-          {(Object.keys(AREA_LABELS) as Area[]).map((a) => (
-            <button key={a} className={area === a ? "active" : ""} aria-current={area === a ? "true" : undefined} onClick={() => selectArea(a)}>
-              {AREA_LABELS[a]}
-              {a === "world" && worldAreaUnseen && <span className="nav-badge" aria-label="New world activity" />}
-              {a === "play" && playAreaUnseen && <span className="nav-badge" aria-label="New play activity" />}
-            </button>
-          ))}
+          {(Object.keys(AREA_LABELS) as Area[]).map((a) => {
+            const Icon = AREA_ICONS[a];
+            return (
+              <button key={a} className={area === a ? "active" : ""} aria-current={area === a ? "true" : undefined} onClick={() => selectArea(a)}>
+                <Icon className="nav-icon" aria-hidden="true" />
+                {AREA_LABELS[a]}
+                {a === "world" && worldAreaUnseen && <span className="nav-badge" aria-label="New world activity" />}
+                {a === "play" && playAreaUnseen && <span className="nav-badge" aria-label="New play activity" />}
+              </button>
+            );
+          })}
         </nav>
 
         <nav className="tabs area-subtabs">

@@ -12,6 +12,7 @@ import { CreatePage } from "./pages/CreatePage";
 import { SessionNotesPage } from "./pages/SessionNotesPage";
 import { RosterPage, type RosterSelection } from "./pages/RosterPage";
 import { WorldsPage } from "./pages/WorldsPage";
+import { WorldOverviewPage, type OverviewNavTarget } from "./pages/WorldOverviewPage";
 import { CombatPage } from "./pages/CombatPage";
 import { MyCharacterPage } from "./pages/MyCharacterPage";
 import { CodexPage } from "./pages/CodexPage";
@@ -22,10 +23,10 @@ import { GlobalSearch } from "./components/GlobalSearch";
 import { PrintPane, type PrintItem } from "./components/PrintPane";
 
 type Area = "prep" | "world" | "play";
-type SubTab = "create" | "myCharacter" | "worlds" | "roster" | "codex" | "notes" | "downtime" | "combat" | "shop" | "inventory";
+type SubTab = "create" | "myCharacter" | "overview" | "worlds" | "roster" | "codex" | "notes" | "downtime" | "combat" | "shop" | "inventory";
 
 const AREA_LABELS: Record<Area, string> = { prep: "Prep", world: "World", play: "Play" };
-const AREA_DEFAULT_SUBTAB: Record<Area, SubTab> = { prep: "create", world: "worlds", play: "combat" };
+const AREA_DEFAULT_SUBTAB: Record<Area, SubTab> = { prep: "create", world: "overview", play: "combat" };
 
 function App() {
   const { user, loading, pendingRecoveryCode } = useAuth();
@@ -85,6 +86,11 @@ function AppShell() {
     setSubTab("roster");
   }
 
+  function navigateFromOverview(target: OverviewNavTarget) {
+    setArea(target === "shop" ? "play" : "world");
+    selectSubTab(target);
+  }
+
   const worldAreaUnseen = notesUnseen || codexUnseen;
   const playAreaUnseen = combatUnseen || inventoryUnseen;
 
@@ -129,6 +135,7 @@ function AppShell() {
           )}
           {area === "world" && (
             <>
+              <button className={subTab === "overview" ? "active" : ""} aria-current={subTab === "overview" ? "true" : undefined} onClick={() => selectSubTab("overview")}>Overview</button>
               <button className={subTab === "worlds" ? "active" : ""} aria-current={subTab === "worlds" ? "true" : undefined} onClick={() => selectSubTab("worlds")}>Worlds</button>
               <button className={subTab === "roster" ? "active" : ""} aria-current={subTab === "roster" ? "true" : undefined} onClick={() => selectSubTab("roster")}>Roster</button>
               <button className={subTab === "codex" ? "active" : ""} aria-current={subTab === "codex" ? "true" : undefined} onClick={() => selectSubTab("codex")}>
@@ -157,6 +164,7 @@ function AppShell() {
       <main>
         {subTab === "create" && <CreatePage />}
         {subTab === "myCharacter" && <MyCharacterPage onViewRoster={viewRosterForWorld} />}
+        {subTab === "overview" && <WorldOverviewPage onNavigate={navigateFromOverview} />}
         {subTab === "worlds" && <WorldsPage onViewRoster={viewRosterForWorld} />}
         {subTab === "roster" && (
           <RosterPage

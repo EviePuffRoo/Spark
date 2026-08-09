@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { PlayerCharacterInput } from "@spark/shared";
-import { api, type WorldSummary } from "../api";
+import { api } from "../api";
+import { useActiveWorld } from "../ActiveWorldContext";
 import { PlayerCharacterCardView } from "../components/PlayerCharacterCardView";
 import { PlayerCharacterEditor } from "../components/PlayerCharacterEditor";
 
@@ -10,20 +11,16 @@ const BLANK_PC: PlayerCharacterInput = {
 };
 
 export function PlayerCharacterCreatePage() {
-  const [worlds, setWorlds] = useState<WorldSummary[]>([]);
+  const { worlds, worldId } = useActiveWorld();
   const [resetKey, setResetKey] = useState(0);
   const [manualResult, setManualResult] = useState<PlayerCharacterInput | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [saveOpen, setSaveOpen] = useState(false);
-  const [saveWorldId, setSaveWorldId] = useState("");
+  const [saveWorldId, setSaveWorldId] = useState(worldId);
   const [saveTags, setSaveTags] = useState("");
   const [saveNotes, setSaveNotes] = useState("");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
-
-  useEffect(() => {
-    api.listWorlds().then(setWorlds).catch(() => {});
-  }, []);
 
   function startOver() {
     setManualResult(null);

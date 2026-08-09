@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { PlayerCharacterInput, AbilityKey } from "@spark/shared";
+import { EquipmentPanel } from "./EquipmentPanel";
 
 const ABILITY_ORDER: { key: AbilityKey; label: string }[] = [
   { key: "str", label: "STR" },
@@ -11,14 +12,18 @@ const ABILITY_ORDER: { key: AbilityKey; label: string }[] = [
 ];
 
 export function PlayerCharacterEditor({
-  value, onSave, onCancel, saveLabel = "Save Content",
+  value, equippedItems, attunedItems, onSave, onCancel, saveLabel = "Save Content",
 }: {
   value: PlayerCharacterInput;
-  onSave: (patch: PlayerCharacterInput) => Promise<void>;
+  equippedItems?: string[];
+  attunedItems?: string[];
+  onSave: (patch: PlayerCharacterInput & { equippedItems?: string[]; attunedItems?: string[] }) => Promise<void>;
   onCancel: () => void;
   saveLabel?: string;
 }) {
   const [draft, setDraft] = useState(value);
+  const [equipped, setEquipped] = useState(equippedItems ?? []);
+  const [attuned, setAttuned] = useState(attunedItems ?? []);
   const [saving, setSaving] = useState(false);
 
   function set<K extends keyof PlayerCharacterInput>(key: K, val: PlayerCharacterInput[K]) {
@@ -28,7 +33,7 @@ export function PlayerCharacterEditor({
   async function handleSave() {
     setSaving(true);
     try {
-      await onSave(draft);
+      await onSave(equippedItems !== undefined ? { ...draft, equippedItems: equipped, attunedItems: attuned } : draft);
     } finally {
       setSaving(false);
     }
@@ -78,6 +83,15 @@ export function PlayerCharacterEditor({
           </label>
         ))}
       </div>
+
+      {equippedItems !== undefined && (
+        <EquipmentPanel
+          equippedItems={equipped}
+          attunedItems={attuned}
+          baseArmorClass={draft.armorClass}
+          onChange={(eq, at) => { setEquipped(eq); setAttuned(at); }}
+        />
+      )}
 
       <div className="button-row editor-actions">
         <button className="btn-primary" onClick={handleSave} disabled={saving}>{saving ? "Saving…" : saveLabel}</button>

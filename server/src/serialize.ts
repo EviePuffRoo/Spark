@@ -28,6 +28,8 @@ export function toCharacterDTO(row: CharacterRow): Character {
     hiddenFromParty: row.hiddenFromParty,
     tags: JSON.parse(row.tags),
     notes: row.notes ?? undefined,
+    equippedItems: JSON.parse(row.equippedItems),
+    attunedItems: JSON.parse(row.attunedItems),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -355,6 +357,8 @@ export function toPlayerCharacterDTO(row: PlayerCharacterRow): PlayerCharacter {
     hiddenFromParty: row.hiddenFromParty,
     tags: JSON.parse(row.tags),
     notes: row.notes ?? undefined,
+    equippedItems: JSON.parse(row.equippedItems),
+    attunedItems: JSON.parse(row.attunedItems),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };

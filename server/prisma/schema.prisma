@@ -90,6 +90,8 @@ model PlayerCharacter {
   playerName    String?
   tags          String   @default("[]")
   notes         String?
+  equippedItems String   @default("[]")
+  attunedItems  String   @default("[]")
   worldId       String?
   hiddenFromParty Boolean @default(false)
   world         World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
@@ -115,6 +117,8 @@ model Character {
   backstory    String
   tags         String   @default("[]")
   notes        String?
+  equippedItems String  @default("[]")
+  attunedItems  String  @default("[]")
   worldId      String?
   hiddenFromParty Boolean @default(false)
   world        World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)

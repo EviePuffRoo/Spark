@@ -1,5 +1,6 @@
 export * from "./types.js";
 export * from "./reputation.js";
+export * from "./equipmentStats.js";
 export * from "./data/races.js";
 export * from "./data/backgrounds.js";
 export * from "./data/alignments.js";

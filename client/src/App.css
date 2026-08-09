@@ -727,6 +727,12 @@ textarea {
   flex-wrap: wrap;
 }
 
+.equipment-panel {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
 /* Print */
 #print-root {
   display: none;

@@ -66,6 +66,16 @@ playerCharactersRouter.patch("/:id", async (req, res) => {
   if ("worldId" in body) data.worldId = body.worldId ?? null;
   if ("tags" in body) data.tags = JSON.stringify(Array.isArray(body.tags) ? body.tags : []);
 
+  if ("equippedItems" in body || "attunedItems" in body) {
+    const equipped: string[] = Array.isArray(body.equippedItems) ? body.equippedItems : [];
+    const attuned: string[] = Array.isArray(body.attunedItems) ? body.attunedItems : [];
+    if (attuned.length > 3 || attuned.some((id) => !equipped.includes(id))) {
+      return res.status(400).json({ error: "Attunement is limited to 3 items, and only equipped items can be attuned" });
+    }
+    data.equippedItems = JSON.stringify(equipped);
+    data.attunedItems = JSON.stringify(attuned);
+  }
+
   const result = await prisma.playerCharacter.updateMany({ where: { id: req.params.id, userId: req.userId }, data });
   if (result.count === 0) return res.status(404).json({ error: "Player character not found" });
   const row = await prisma.playerCharacter.findUnique({ where: { id: req.params.id } });

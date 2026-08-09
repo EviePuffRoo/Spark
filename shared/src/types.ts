@@ -334,6 +334,33 @@ export interface LedgerSummary {
   entries: LedgerEntry[];
 }
 
+export const DOWNTIME_ACTIVITY_TYPES = ["training", "crafting", "carousing", "research", "recovery", "custom"] as const;
+export type DowntimeActivityType = typeof DOWNTIME_ACTIVITY_TYPES[number];
+export const DOWNTIME_ACTIVITY_TYPE_LABELS: Record<DowntimeActivityType, string> = {
+  training: "Training",
+  crafting: "Crafting",
+  carousing: "Carousing",
+  research: "Research",
+  recovery: "Recovery",
+  custom: "Custom",
+};
+
+export interface DowntimeActivityInput {
+  worldId: string;
+  playerCharacterId?: string;
+  characterName: string;
+  activityType: DowntimeActivityType;
+  description: string;
+  daysSpent: number;
+  outcome?: string;
+}
+
+export interface DowntimeActivity extends DowntimeActivityInput {
+  id: string;
+  userId: string;
+  createdAt: string;
+}
+
 export type CombatantKind = "monster" | "playerCharacter" | "custom";
 export type HpStatus = "healthy" | "injured" | "bloodied" | "nearDeath" | "down";
 

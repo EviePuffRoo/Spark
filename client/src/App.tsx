@@ -16,12 +16,13 @@ import { CombatPage } from "./pages/CombatPage";
 import { MyCharacterPage } from "./pages/MyCharacterPage";
 import { CodexPage } from "./pages/CodexPage";
 import { InventoryPage } from "./pages/InventoryPage";
+import { DowntimePage } from "./pages/DowntimePage";
 import { ShopPage } from "./pages/ShopPage";
 import { GlobalSearch } from "./components/GlobalSearch";
 import { PrintPane, type PrintItem } from "./components/PrintPane";
 
 type Area = "prep" | "world" | "play";
-type SubTab = "create" | "myCharacter" | "worlds" | "roster" | "codex" | "notes" | "combat" | "shop" | "inventory";
+type SubTab = "create" | "myCharacter" | "worlds" | "roster" | "codex" | "notes" | "downtime" | "combat" | "shop" | "inventory";
 
 const AREA_LABELS: Record<Area, string> = { prep: "Prep", world: "World", play: "Play" };
 const AREA_DEFAULT_SUBTAB: Record<Area, SubTab> = { prep: "create", world: "worlds", play: "combat" };
@@ -136,6 +137,7 @@ function AppShell() {
               <button className={subTab === "notes" ? "active" : ""} aria-current={subTab === "notes" ? "true" : undefined} onClick={() => selectSubTab("notes")}>
                 Notes{notesUnseen && <span className="nav-badge" aria-label="New notes activity" />}
               </button>
+              <button className={subTab === "downtime" ? "active" : ""} aria-current={subTab === "downtime" ? "true" : undefined} onClick={() => selectSubTab("downtime")}>Downtime</button>
             </>
           )}
           {area === "play" && (
@@ -167,6 +169,7 @@ function AppShell() {
         )}
         {subTab === "codex" && <CodexPage />}
         {subTab === "notes" && <SessionNotesPage onOpenInRoster={openInRoster} />}
+        {subTab === "downtime" && <DowntimePage />}
         {subTab === "combat" && <CombatPage />}
         {subTab === "shop" && <ShopPage />}
         {subTab === "inventory" && <InventoryPage />}

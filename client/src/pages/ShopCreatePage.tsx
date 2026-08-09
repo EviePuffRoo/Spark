@@ -1,26 +1,23 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { ShopInput } from "@spark/shared";
-import { api, type WorldSummary } from "../api";
+import { api } from "../api";
+import { useActiveWorld } from "../ActiveWorldContext";
 import { ShopCardView } from "../components/ShopCardView";
 import { ShopEditor } from "../components/ShopEditor";
 
 const BLANK_SHOP: ShopInput = { name: "", stock: [] };
 
 export function ShopCreatePage() {
-  const [worlds, setWorlds] = useState<WorldSummary[]>([]);
+  const { worlds, worldId } = useActiveWorld();
   const [resetKey, setResetKey] = useState(0);
   const [manualResult, setManualResult] = useState<ShopInput | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [saveOpen, setSaveOpen] = useState(false);
-  const [saveWorldId, setSaveWorldId] = useState("");
+  const [saveWorldId, setSaveWorldId] = useState(worldId);
   const [saveTags, setSaveTags] = useState("");
   const [saveNotes, setSaveNotes] = useState("");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
-
-  useEffect(() => {
-    api.listWorlds().then(setWorlds).catch(() => {});
-  }, []);
 
   function startOver() {
     setManualResult(null);

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { GenerateRequest, GeneratedCharacter } from "@spark/shared";
-import { api, type ReferenceData, type WorldSummary } from "../api";
+import { api, type ReferenceData } from "../api";
+import { useActiveWorld } from "../ActiveWorldContext";
 import { StatBlockView } from "../components/StatBlockView";
 import { BackstoryView } from "../components/BackstoryView";
 
@@ -8,7 +9,7 @@ const CR_OPTIONS = ["0", "1/8", "1/4", "1/2", "1", "2", "3", "5", "6", "8"];
 
 export function GeneratorPage() {
   const [reference, setReference] = useState<ReferenceData | null>(null);
-  const [worlds, setWorlds] = useState<WorldSummary[]>([]);
+  const { worlds, worldId } = useActiveWorld();
   const [form, setForm] = useState<GenerateRequest>({ kind: "npc" });
   const [quantity, setQuantity] = useState<number | "">(1);
   const [results, setResults] = useState<GeneratedCharacter[]>([]);
@@ -16,14 +17,13 @@ export function GeneratorPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [saveOpen, setSaveOpen] = useState(false);
-  const [saveWorldId, setSaveWorldId] = useState("");
+  const [saveWorldId, setSaveWorldId] = useState(worldId);
   const [saveTags, setSaveTags] = useState("");
   const [saveNotes, setSaveNotes] = useState("");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
 
   useEffect(() => {
     api.getReference().then(setReference).catch((e) => setError(e.message));
-    api.listWorlds().then(setWorlds).catch(() => {});
   }, []);
 
   async function handleGenerate() {

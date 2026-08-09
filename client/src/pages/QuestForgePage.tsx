@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { GenerateQuestHookRequest, GeneratedQuestHook } from "@spark/shared";
-import { api, type ReferenceData, type WorldSummary } from "../api";
+import { api, type ReferenceData } from "../api";
+import { useActiveWorld } from "../ActiveWorldContext";
 import { QuestHookCardView } from "../components/QuestHookCardView";
 import { QuestEditor } from "../components/QuestEditor";
 
@@ -8,7 +9,7 @@ const BLANK_QUEST: GeneratedQuestHook = { title: "", questType: "", tier: "", ho
 
 export function QuestForgePage() {
   const [reference, setReference] = useState<ReferenceData | null>(null);
-  const [worlds, setWorlds] = useState<WorldSummary[]>([]);
+  const { worlds, worldId } = useActiveWorld();
   const [creationMode, setCreationMode] = useState<"generate" | "manual">("generate");
   const [form, setForm] = useState<GenerateQuestHookRequest>({});
   const [quantity, setQuantity] = useState<number | "">(1);
@@ -18,14 +19,13 @@ export function QuestForgePage() {
   const [error, setError] = useState<string | null>(null);
 
   const [saveOpen, setSaveOpen] = useState(false);
-  const [saveWorldId, setSaveWorldId] = useState("");
+  const [saveWorldId, setSaveWorldId] = useState(worldId);
   const [saveTags, setSaveTags] = useState("");
   const [saveNotes, setSaveNotes] = useState("");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
 
   useEffect(() => {
     api.getReference().then(setReference).catch((e) => setError(e.message));
-    api.listWorlds().then(setWorlds).catch(() => {});
   }, []);
 
   function switchMode(next: "generate" | "manual") {

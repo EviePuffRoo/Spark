@@ -3,6 +3,8 @@ import type { Shop } from "@spark/shared";
 import { api } from "../api";
 import { useAuth } from "../AuthContext";
 import { useActiveWorld } from "../ActiveWorldContext";
+import { ShopIcon } from "../components/icons";
+import { EmptyState } from "../components/EmptyState";
 
 const SELL_RATE = 0.5;
 
@@ -92,7 +94,10 @@ export function ShopPage() {
   return (
     <div className="page generator-layout">
       <div className="panel">
-        <h2>Shop</h2>
+        <div className="page-title">
+          <ShopIcon className="page-title-icon" aria-hidden="true" />
+          <h2>Shop</h2>
+        </div>
         <p className="hint">Buy and sell against the party's shared ledger — selling pays half the listed price.</p>
 
         {worlds.length === 0 ? (
@@ -120,7 +125,13 @@ export function ShopPage() {
       </div>
 
       <div className="panel result-panel">
-        {!selectedShop && <p className="hint">Select a shop to browse its stock.</p>}
+        {!selectedShop && (
+          <EmptyState
+            icon={<ShopIcon />}
+            heading={shops.length === 0 ? "No shops yet" : "No shop selected"}
+            hint={shops.length === 0 ? "Create one from Prep > Create > Shops to start stocking it." : "Select a shop from the list to browse its stock."}
+          />
+        )}
 
         {selectedShop && (
           <>

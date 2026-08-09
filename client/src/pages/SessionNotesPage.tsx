@@ -6,6 +6,8 @@ import { useLocalStorage } from "../useLocalStorage";
 import { SessionTimelineView } from "../components/SessionTimelineView";
 import { SessionPrepView } from "../components/SessionPrepView";
 import { buildTimelineEntries } from "../campaignTimeline";
+import { NotesIcon } from "../components/icons";
+import { EmptyState } from "../components/EmptyState";
 
 const BLANK = {
   title: "",
@@ -148,7 +150,10 @@ export function SessionNotesPage({ onOpenInRoster }: { onOpenInRoster: (type: En
       {viewMode === "list" && (
         <div className="generator-layout">
           <div className="panel">
-            <h2>{editingId ? "Edit Session Note" : "New Session Note"}</h2>
+            <div className="page-title">
+              <NotesIcon className="page-title-icon" aria-hidden="true" />
+              <h2>{editingId ? "Edit Session Note" : "New Session Note"}</h2>
+            </div>
             <p className="hint">A quick recap so you never open a session unsure what happened last time.</p>
 
             <label className="field">
@@ -199,7 +204,9 @@ export function SessionNotesPage({ onOpenInRoster }: { onOpenInRoster: (type: En
           <div className="panel result-panel">
             <h3 className="section-heading">Recent Session Notes</h3>
             {loading && <p className="hint">Loading…</p>}
-            {!loading && ownNotes.length === 0 && <p className="hint">No session notes yet.</p>}
+            {!loading && ownNotes.length === 0 && (
+              <EmptyState icon={<NotesIcon />} heading="No session notes yet" hint="Save your first recap above so you never open a session unsure what happened last time." />
+            )}
             <ul className="entity-list">
               {ownNotes.map((n) => (
                 <li key={n.id} className="world-row">

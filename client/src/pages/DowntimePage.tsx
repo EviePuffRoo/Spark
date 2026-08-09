@@ -6,6 +6,8 @@ import { useAuth } from "../AuthContext";
 import { useActiveWorld } from "../ActiveWorldContext";
 import { EntitySearchPicker } from "../components/EntitySearchPicker";
 import { rollTableIndex } from "../rollTable";
+import { DowntimeIcon } from "../components/icons";
+import { EmptyState } from "../components/EmptyState";
 
 interface TravelCheck {
   id: string;
@@ -136,7 +138,10 @@ export function DowntimePage() {
       {worldId && viewMode === "log" && (
         <div className="generator-layout">
           <div className="panel">
-            <h2>Log a Downtime Activity</h2>
+            <div className="page-title">
+              <DowntimeIcon className="page-title-icon" aria-hidden="true" />
+              <h2>Log a Downtime Activity</h2>
+            </div>
             <p className="hint">A quick record of what each PC did between sessions.</p>
 
             <label className="field">
@@ -170,7 +175,9 @@ export function DowntimePage() {
 
           <div className="panel result-panel">
             <h3 className="section-heading">Recent Activity</h3>
-            {activities.length === 0 && <p className="hint">No downtime logged yet.</p>}
+            {activities.length === 0 && (
+              <EmptyState icon={<DowntimeIcon />} heading="No downtime logged yet" hint="Log what each PC did between sessions using the form on the left." />
+            )}
             <ul className="entity-list">
               {activities.map((a) => (
                 <li key={a.id} className="world-row">
@@ -191,7 +198,10 @@ export function DowntimePage() {
       {worldId && viewMode === "travel" && (
         <div className="generator-layout">
           <div className="panel">
-            <h2>Travel</h2>
+            <div className="page-title">
+              <DowntimeIcon className="page-title-icon" aria-hidden="true" />
+              <h2>Travel</h2>
+            </div>
             <p className="hint">Pick an encounter table and roll a check for each leg of the journey. Not saved — jot anything worth keeping into Session Notes.</p>
 
             {!pickedTable && !pickingTable && (

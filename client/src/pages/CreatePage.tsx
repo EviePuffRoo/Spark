@@ -9,8 +9,9 @@ import { EncounterForgePage } from "./EncounterForgePage";
 import { AdventureForgePage } from "./AdventureForgePage";
 import { PlayerCharacterCreatePage } from "./PlayerCharacterCreatePage";
 import { DungeonCreatePage } from "./DungeonCreatePage";
+import { ShopCreatePage } from "./ShopCreatePage";
 
-type CreateType = "npc" | "item" | "location" | "quest" | "faction" | "encounter" | "adventure" | "playerCharacter" | "dungeon";
+type CreateType = "npc" | "item" | "location" | "quest" | "faction" | "encounter" | "adventure" | "playerCharacter" | "dungeon" | "shop";
 
 const CREATE_TYPE_LABELS: Record<CreateType, string> = {
   npc: "NPCs & Monsters",
@@ -22,6 +23,7 @@ const CREATE_TYPE_LABELS: Record<CreateType, string> = {
   adventure: "Adventures",
   playerCharacter: "Player Characters",
   dungeon: "Dungeons",
+  shop: "Shops",
 };
 
 export function CreatePage() {
@@ -47,6 +49,7 @@ export function CreatePage() {
       {createType === "adventure" && <AdventureForgePage />}
       {createType === "playerCharacter" && <PlayerCharacterCreatePage />}
       {createType === "dungeon" && <DungeonCreatePage />}
+      {createType === "shop" && <ShopCreatePage />}
     </div>
   );
 }

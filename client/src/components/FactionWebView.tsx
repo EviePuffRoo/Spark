@@ -4,12 +4,14 @@ import {
   type Simulation, type SimulationNodeDatum, type SimulationLinkDatum,
 } from "d3-force";
 import type { Faction, EntityType } from "@spark/shared";
+import { computeReputationTier } from "@spark/shared";
 import { api } from "../api";
 
 interface WebNode extends SimulationNodeDatum {
   id: string;
   entityType: "faction" | "character" | "playerCharacter";
   name: string;
+  reputationTier?: ReturnType<typeof computeReputationTier>;
 }
 
 interface WebEdge extends SimulationLinkDatum<WebNode> {
@@ -60,7 +62,7 @@ export function FactionWebView({
 
       const nodeById = new Map<string, WebNode>();
       for (const f of factions) {
-        nodeById.set(f.id, { id: f.id, entityType: "faction", name: f.name, ...jitteredCenter() });
+        nodeById.set(f.id, { id: f.id, entityType: "faction", name: f.name, reputationTier: computeReputationTier(f.reputation), ...jitteredCenter() });
       }
 
       const edgeById = new Map<string, WebEdge>();
@@ -208,7 +210,7 @@ export function FactionWebView({
                   <g
                     key={node.id}
                     transform={`translate(${node.x ?? 0} ${node.y ?? 0})`}
-                    className={`faction-web-node ${node.entityType}${dimmed ? " dimmed" : ""}`}
+                    className={`faction-web-node ${node.entityType}${node.reputationTier ? ` rep-${node.reputationTier}` : ""}${dimmed ? " dimmed" : ""}`}
                     onPointerDown={(e) => handleNodePointerDown(e, node)}
                     onPointerMove={(e) => handleNodePointerMove(e, node)}
                     onPointerUp={(e) => handleNodePointerUp(e, node)}
@@ -227,6 +229,14 @@ export function FactionWebView({
             <span><i className="faction-web-swatch faction" />Faction</span>
             <span><i className="faction-web-swatch character" />NPC/Monster</span>
             <span><i className="faction-web-swatch playerCharacter" />Player Character</span>
+          </div>
+          <div className="faction-web-legend faction-web-reputation-legend">
+            <span>Reputation:</span>
+            <span><i className="faction-web-swatch rep-hostile" />Hostile</span>
+            <span><i className="faction-web-swatch rep-unfriendly" />Unfriendly</span>
+            <span><i className="faction-web-swatch rep-neutral" />Neutral</span>
+            <span><i className="faction-web-swatch rep-friendly" />Friendly</span>
+            <span><i className="faction-web-swatch rep-allied" />Allied</span>
           </div>
 
           {hoveredEdge && (

@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import type { SessionNote } from "@spark/shared";
+import type { SessionNote, QuestHook, Adventure, EntityType } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { useAuth } from "../AuthContext";
 import { useLocalStorage } from "../useLocalStorage";
 import { SessionTimelineView } from "../components/SessionTimelineView";
 import { SessionPrepView } from "../components/SessionPrepView";
+import { buildTimelineEntries } from "../campaignTimeline";
 
 const BLANK = {
   title: "",
@@ -17,7 +18,7 @@ const BLANK = {
   tags: "",
 };
 
-export function SessionNotesPage() {
+export function SessionNotesPage({ onOpenInRoster }: { onOpenInRoster: (type: EntityType, id: string) => void }) {
   const { user } = useAuth();
   const [notes, setNotes] = useState<SessionNote[]>([]);
   const [worlds, setWorlds] = useState<WorldSummary[]>([]);
@@ -28,6 +29,9 @@ export function SessionNotesPage() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"list" | "timeline" | "prep">("list");
   const [prepWorldId, setPrepWorldId] = useLocalStorage("spark-prep-world-id", "");
+  const [timelineWorldFilter, setTimelineWorldFilter] = useState("");
+  const [timelineQuests, setTimelineQuests] = useState<QuestHook[]>([]);
+  const [timelineAdventures, setTimelineAdventures] = useState<Adventure[]>([]);
 
   function refresh() {
     api.listSessionNotes().then(setNotes).catch((e) => setError(e.message)).finally(() => setLoading(false));
@@ -35,6 +39,16 @@ export function SessionNotesPage() {
   }
 
   useEffect(refresh, []);
+
+  useEffect(() => {
+    if (viewMode !== "timeline" || !timelineWorldFilter) {
+      setTimelineQuests([]);
+      setTimelineAdventures([]);
+      return;
+    }
+    api.listQuests(timelineWorldFilter).then(setTimelineQuests).catch(() => {});
+    api.listAdventures(timelineWorldFilter).then(setTimelineAdventures).catch(() => {});
+  }, [viewMode, timelineWorldFilter]);
 
   function startNew() {
     setEditingId(null);
@@ -110,7 +124,21 @@ export function SessionNotesPage() {
       </div>
 
       {viewMode === "timeline" && (
-        <SessionTimelineView notes={notes} worlds={worlds} onSelectNote={openInEditor} />
+        <SessionTimelineView
+          entries={buildTimelineEntries(
+            timelineWorldFilter ? notes.filter((n) => n.worldId === timelineWorldFilter) : notes,
+            timelineQuests,
+            timelineAdventures,
+          )}
+          worlds={worlds}
+          worldFilter={timelineWorldFilter}
+          onWorldFilterChange={setTimelineWorldFilter}
+          onSelectEntry={(entry) => {
+            const note = notes.find((n) => n.id === entry.entityId);
+            if (note) openInEditor(note);
+          }}
+          onOpenInRoster={onOpenInRoster}
+        />
       )}
 
       {viewMode === "prep" && (

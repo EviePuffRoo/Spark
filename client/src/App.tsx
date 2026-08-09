@@ -17,11 +17,12 @@ import { MyCharacterPage } from "./pages/MyCharacterPage";
 import { CodexPage } from "./pages/CodexPage";
 import { InventoryPage } from "./pages/InventoryPage";
 import { DowntimePage } from "./pages/DowntimePage";
+import { ShopPage } from "./pages/ShopPage";
 import { GlobalSearch } from "./components/GlobalSearch";
 import { PrintPane, type PrintItem } from "./components/PrintPane";
 
 type Area = "prep" | "world" | "play";
-type SubTab = "create" | "myCharacter" | "worlds" | "roster" | "codex" | "notes" | "downtime" | "combat" | "inventory";
+type SubTab = "create" | "myCharacter" | "worlds" | "roster" | "codex" | "notes" | "downtime" | "combat" | "shop" | "inventory";
 
 const AREA_LABELS: Record<Area, string> = { prep: "Prep", world: "World", play: "Play" };
 const AREA_DEFAULT_SUBTAB: Record<Area, SubTab> = { prep: "create", world: "worlds", play: "combat" };
@@ -144,6 +145,7 @@ function AppShell() {
               <button className={subTab === "combat" ? "active" : ""} aria-current={subTab === "combat" ? "true" : undefined} onClick={() => selectSubTab("combat")}>
                 Combat{combatUnseen && <span className="nav-badge" aria-label="New combat activity" />}
               </button>
+              <button className={subTab === "shop" ? "active" : ""} aria-current={subTab === "shop" ? "true" : undefined} onClick={() => selectSubTab("shop")}>Shop</button>
               <button className={subTab === "inventory" ? "active" : ""} aria-current={subTab === "inventory" ? "true" : undefined} onClick={() => selectSubTab("inventory")}>
                 Inventory{inventoryUnseen && <span className="nav-badge" aria-label="New inventory activity" />}
               </button>
@@ -166,9 +168,10 @@ function AppShell() {
           />
         )}
         {subTab === "codex" && <CodexPage />}
-        {subTab === "notes" && <SessionNotesPage />}
+        {subTab === "notes" && <SessionNotesPage onOpenInRoster={openInRoster} />}
         {subTab === "downtime" && <DowntimePage />}
         {subTab === "combat" && <CombatPage />}
+        {subTab === "shop" && <ShopPage />}
         {subTab === "inventory" && <InventoryPage />}
       </main>
 

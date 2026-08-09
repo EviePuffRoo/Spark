@@ -15,6 +15,7 @@ import type {
   Encounter, EncounterStateInput,
   ZoneMapTemplate, ZoneMapTemplateInput,
   Dungeon, DungeonInput,
+  Shop, ShopInput,
   ActivitySummary,
   EntityType, EntityLink, SearchResult,
   AuthUser, SignupResult, RecoveryCodeResult,
@@ -230,6 +231,15 @@ export const api = {
   updateDungeon: (id: string, patch: Partial<Dungeon>) =>
     request<Dungeon>(`/dungeons/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   deleteDungeon: (id: string) => request<void>(`/dungeons/${id}`, { method: "DELETE" }),
+
+  listShops: (worldId?: string) =>
+    request<Shop[]>(`/shops${worldId ? `?worldId=${worldId}` : ""}`),
+  getShop: (id: string) => request<Shop>(`/shops/${id}`),
+  saveShop: (shop: ShopInput & { worldId?: string | null; tags?: string[]; notes?: string }) =>
+    request<Shop>("/shops", { method: "POST", body: JSON.stringify(shop) }),
+  updateShop: (id: string, patch: Partial<Shop>) =>
+    request<Shop>(`/shops/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+  deleteShop: (id: string) => request<void>(`/shops/${id}`, { method: "DELETE" }),
 
   getActivity: () => request<ActivitySummary>("/activity"),
 

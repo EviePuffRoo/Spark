@@ -893,6 +893,30 @@ textarea {
   stroke: var(--success);
 }
 
+.faction-web-node.faction.rep-hostile circle {
+  stroke: var(--danger);
+  stroke-width: 3px;
+}
+
+.faction-web-node.faction.rep-unfriendly circle {
+  stroke: var(--accent);
+  stroke-width: 3px;
+}
+
+.faction-web-node.faction.rep-neutral circle {
+  stroke: var(--text-muted);
+}
+
+.faction-web-node.faction.rep-friendly circle {
+  stroke: color-mix(in srgb, var(--success) 60%, var(--accent) 40%);
+  stroke-width: 3px;
+}
+
+.faction-web-node.faction.rep-allied circle {
+  stroke: var(--success);
+  stroke-width: 3px;
+}
+
 .faction-web-node text {
   fill: var(--text);
   font-size: 13px;
@@ -935,6 +959,36 @@ textarea {
 
 .faction-web-swatch.playerCharacter {
   background: var(--bg-panel);
+  border: 2px solid var(--success);
+}
+
+.faction-web-reputation-legend {
+  top: 56px;
+  flex-wrap: wrap;
+}
+
+.faction-web-swatch.rep-hostile {
+  background: transparent;
+  border: 2px solid var(--danger);
+}
+
+.faction-web-swatch.rep-unfriendly {
+  background: transparent;
+  border: 2px solid var(--accent);
+}
+
+.faction-web-swatch.rep-neutral {
+  background: transparent;
+  border: 2px solid var(--text-muted);
+}
+
+.faction-web-swatch.rep-friendly {
+  background: transparent;
+  border: 2px solid color-mix(in srgb, var(--success) 60%, var(--accent) 40%);
+}
+
+.faction-web-swatch.rep-allied {
+  background: transparent;
   border: 2px solid var(--success);
 }
 
@@ -1338,6 +1392,33 @@ textarea {
   width: 80px;
 }
 
+.shop-stock-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+.shop-stock-field {
+  width: 120px;
+  margin-bottom: 0;
+}
+
+.shop-stock-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.shop-quantity-input {
+  width: 70px;
+}
+
 .combatant-initiative-readonly {
   width: 56px;
   text-align: center;
@@ -1397,6 +1478,42 @@ textarea {
 .difficulty-readout.difficulty-deadly {
   background: color-mix(in srgb, var(--danger) 14%, transparent);
   color: var(--danger);
+}
+
+.reputation-readout {
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.reputation-readout.reputation-hostile {
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  color: var(--danger);
+}
+
+.reputation-readout.reputation-unfriendly {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+}
+
+.reputation-readout.reputation-neutral {
+  background: color-mix(in srgb, var(--text-muted) 14%, transparent);
+  color: var(--text-muted);
+}
+
+.reputation-readout.reputation-friendly {
+  background: color-mix(in srgb, var(--success) 10%, var(--accent) 4%);
+  color: color-mix(in srgb, var(--success) 60%, var(--accent) 40%);
+}
+
+.reputation-readout.reputation-allied {
+  background: color-mix(in srgb, var(--success) 14%, transparent);
+  color: var(--success);
+}
+
+.reputation-delta-input {
+  width: 80px;
 }
 
 @media (max-width: 640px) {
@@ -1492,6 +1609,29 @@ textarea {
 .timeline-summary {
   font-size: 0.9rem;
   color: var(--text-muted);
+}
+
+.timeline-kind-chip {
+  padding: 1px 8px;
+  margin-right: 4px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.timeline-kind-chip.timeline-kind-note {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+
+.timeline-kind-chip.timeline-kind-quest {
+  background: color-mix(in srgb, var(--success) 16%, transparent);
+  color: var(--success);
+}
+
+.timeline-kind-chip.timeline-kind-adventure {
+  background: color-mix(in srgb, var(--danger) 16%, transparent);
+  color: var(--danger);
 }
 
 .presentation-view {

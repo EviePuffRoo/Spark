@@ -14,6 +14,7 @@ const TYPE_LABELS: Record<EntityType, string> = {
   playerCharacter: "Player Character",
   zoneMapTemplate: "Zone Map Template",
   dungeon: "Dungeon",
+  shop: "Shop",
 };
 
 const ALL_TYPES = Object.keys(TYPE_LABELS) as EntityType[];

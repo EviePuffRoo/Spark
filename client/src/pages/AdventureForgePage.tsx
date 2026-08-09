@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type {
   EntityType, AdventureCastNames, GeneratedAdventure,
   GeneratedCharacter, GeneratedLocation, GeneratedItem, GeneratedEncounterTable,
 } from "@spark/shared";
-import { api, type WorldSummary } from "../api";
+import { api } from "../api";
+import { useActiveWorld } from "../ActiveWorldContext";
 import { AdventureCardView } from "../components/AdventureCardView";
 import { EntitySearchPicker } from "../components/EntitySearchPicker";
 
@@ -97,7 +98,7 @@ function RoleSlotPicker<T extends { name: string }>({
 }
 
 export function AdventureForgePage() {
-  const [worlds, setWorlds] = useState<WorldSummary[]>([]);
+  const { worlds, worldId } = useActiveWorld();
 
   const [questGiver, setQuestGiver] = useState<RoleSlot<GeneratedCharacter> | null>(null);
   const [antagonist, setAntagonist] = useState<RoleSlot<GeneratedCharacter> | null>(null);
@@ -111,14 +112,10 @@ export function AdventureForgePage() {
   const [error, setError] = useState<string | null>(null);
 
   const [saveOpen, setSaveOpen] = useState(false);
-  const [saveWorldId, setSaveWorldId] = useState("");
+  const [saveWorldId, setSaveWorldId] = useState(worldId);
   const [saveTags, setSaveTags] = useState("");
   const [saveNotes, setSaveNotes] = useState("");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
-
-  useEffect(() => {
-    api.listWorlds().then(setWorlds).catch(() => {});
-  }, []);
 
   const allCoreFilled = !!(questGiver && antagonist && startLocation && climaxLocation && reward);
 

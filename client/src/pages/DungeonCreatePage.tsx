@@ -1,26 +1,23 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { DungeonInput } from "@spark/shared";
-import { api, type WorldSummary } from "../api";
+import { api } from "../api";
+import { useActiveWorld } from "../ActiveWorldContext";
 import { DungeonCardView } from "../components/DungeonCardView";
 import { DungeonEditor } from "../components/DungeonEditor";
 
 const BLANK_DUNGEON: DungeonInput = { name: "", rooms: [] };
 
 export function DungeonCreatePage() {
-  const [worlds, setWorlds] = useState<WorldSummary[]>([]);
+  const { worlds, worldId } = useActiveWorld();
   const [resetKey, setResetKey] = useState(0);
   const [manualResult, setManualResult] = useState<DungeonInput | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [saveOpen, setSaveOpen] = useState(false);
-  const [saveWorldId, setSaveWorldId] = useState("");
+  const [saveWorldId, setSaveWorldId] = useState(worldId);
   const [saveTags, setSaveTags] = useState("");
   const [saveNotes, setSaveNotes] = useState("");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
-
-  useEffect(() => {
-    api.listWorlds().then(setWorlds).catch(() => {});
-  }, []);
 
   function startOver() {
     setManualResult(null);

@@ -97,14 +97,29 @@ export interface GeneratedCharacter {
   backstory: Backstory;
 }
 
+export type ItemBonusType =
+  | "none"
+  | "attackAndDamage"
+  | "armorClass"
+  | "savingThrows"
+  | "abilityChecks"
+  | "spellSaveDc";
+
 export interface GeneratedItem {
   name: string;
   itemType: string;
   category: string;
   rarity: string;
+  rarityTier: number;
   description: string;
   property: string;
   history: string;
+  bonusType: ItemBonusType;
+  bonusValue: number;
+  requiresAttunement: boolean;
+  charges: number | null;
+  rechargeRule: string | null;
+  value: number;
 }
 
 export interface Item extends GeneratedItem {

@@ -26,7 +26,10 @@ itemsRouter.get("/:id", async (req, res) => {
 
 itemsRouter.post("/", async (req, res) => {
   const body = req.body ?? {};
-  const { name, itemType, category, rarity, description, property, history, worldId, tags, notes } = body;
+  const {
+    name, itemType, category, rarity, description, property, history, worldId, tags, notes,
+    rarityTier, bonusType, bonusValue, requiresAttunement, charges, rechargeRule, value,
+  } = body;
 
   if (!name || !itemType || !category || !rarity || !description || !property || !history) {
     return res.status(400).json({ error: "Missing required item fields" });
@@ -35,6 +38,13 @@ itemsRouter.post("/", async (req, res) => {
   const row = await prisma.item.create({
     data: {
       name, itemType, category, rarity, description, property, history,
+      rarityTier: typeof rarityTier === "number" ? rarityTier : 0,
+      bonusType: bonusType ?? "none",
+      bonusValue: typeof bonusValue === "number" ? bonusValue : 0,
+      requiresAttunement: !!requiresAttunement,
+      charges: typeof charges === "number" ? charges : null,
+      rechargeRule: rechargeRule ?? null,
+      value: typeof value === "number" ? value : 0,
       worldId: worldId ?? null,
       tags: JSON.stringify(Array.isArray(tags) ? tags : []),
       notes: notes ?? null,
@@ -48,7 +58,10 @@ itemsRouter.patch("/:id", async (req, res) => {
   const body = req.body ?? {};
   const data: Record<string, unknown> = {};
 
-  for (const field of ["name", "itemType", "category", "rarity", "description", "property", "history", "notes", "hiddenFromParty"] as const) {
+  for (const field of [
+    "name", "itemType", "category", "rarity", "description", "property", "history", "notes", "hiddenFromParty",
+    "rarityTier", "bonusType", "bonusValue", "requiresAttunement", "charges", "rechargeRule", "value",
+  ] as const) {
     if (field in body) data[field] = body[field];
   }
   if ("worldId" in body) data.worldId = body.worldId ?? null;

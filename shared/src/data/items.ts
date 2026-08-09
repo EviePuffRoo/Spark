@@ -1,7 +1,18 @@
+import type { ItemBonusType } from "../types.js";
+
 export interface ItemCategoryDef {
   id: string;
   name: string;
 }
+
+export const ITEM_BONUS_TYPE_LABELS: Record<ItemBonusType, string> = {
+  none: "None",
+  attackAndDamage: "Attack & Damage Rolls",
+  armorClass: "Armor Class",
+  savingThrows: "Saving Throws",
+  abilityChecks: "Ability Checks",
+  spellSaveDc: "Spell Save DC",
+};
 
 export const ITEM_CATEGORIES: ItemCategoryDef[] = [
   { id: "weapon", name: "Weapon" },
@@ -77,6 +88,32 @@ export const ITEM_RARITY_TIERS: string[] = [
   "Uncommon Treasure",
   "Rare Relic",
   "Legendary Heirloom",
+];
+
+export interface ItemRarityTierInfo {
+  label: string;
+  tier: number;
+  typicalBonus: number;
+  attunementLikely: boolean;
+  valueRange: [number, number];
+}
+
+// This app's own numeric power-value scale for item rarity — not a rules
+// reprint, same convention as encounterDifficulty.ts's XP thresholds.
+export const ITEM_RARITY_TIER_INFO: ItemRarityTierInfo[] = [
+  { label: "Everyday Curiosity", tier: 0, typicalBonus: 0, attunementLikely: false, valueRange: [5, 50] },
+  { label: "Minor Wonder", tier: 1, typicalBonus: 1, attunementLikely: false, valueRange: [101, 500] },
+  { label: "Uncommon Treasure", tier: 2, typicalBonus: 1, attunementLikely: true, valueRange: [501, 5000] },
+  { label: "Rare Relic", tier: 3, typicalBonus: 2, attunementLikely: true, valueRange: [5001, 50000] },
+  { label: "Legendary Heirloom", tier: 4, typicalBonus: 3, attunementLikely: true, valueRange: [50001, 200000] },
+];
+
+export const ITEM_RECHARGE_RULES: string[] = [
+  "Regains 1d4 charges daily at dawn.",
+  "Regains all charges after a long rest.",
+  "Regains 1 charge when exposed to moonlight.",
+  "Regains 1d6+1 charges at midnight.",
+  "Regains all charges the first time it's used each week.",
 ];
 
 export const ITEM_EPITHETS: string[] = [

@@ -7,7 +7,7 @@ import type {
   EncounterTable, GenerateEncounterTableRequest, GeneratedEncounterTable,
   SessionNote, SessionNoteInput,
   Adventure, GenerateAdventureRequest, GeneratedAdventure,
-  PlayerCharacter, PlayerCharacterInput, GeneratePlayerCharacterRequest,
+  PlayerCharacter, PlayerCharacterInput, GeneratePlayerCharacterRequest, GeneratedPlayerCharacter,
   RollLogEntry, RollLogEntryInput,
   CodexNote, CodexNoteInput,
   LedgerEntry, LedgerEntryInput, LedgerSummary,
@@ -21,6 +21,7 @@ import type {
   ActivitySummary,
   EntityType, EntityLink, SearchResult,
   AuthUser, SignupResult, RecoveryCodeResult,
+  SpellDef, ConditionDef, RuleDef,
 } from "@spark/shared";
 
 let onSessionExpired: (() => void) | null = null;
@@ -67,6 +68,12 @@ export interface ReferenceData {
   settlementTypes: { id: string; name: string }[];
 }
 
+export interface CompendiumData {
+  spells: SpellDef[];
+  conditions: ConditionDef[];
+  rules: RuleDef[];
+}
+
 export interface ImportResult {
   worldsImported: number;
   entitiesImported: number;
@@ -94,6 +101,7 @@ export interface WorldMemberInfo {
 
 export const api = {
   getReference: () => request<ReferenceData>("/reference"),
+  getCompendium: () => request<CompendiumData>("/compendium"),
   generate: (body: GenerateRequest) =>
     request<GeneratedCharacter>("/generate", { method: "POST", body: JSON.stringify(body) }),
   generateItem: (body: GenerateItemRequest) =>
@@ -182,7 +190,9 @@ export const api = {
   deleteAdventure: (id: string) => request<void>(`/adventures/${id}`, { method: "DELETE" }),
 
   generatePlayerCharacter: (body: GeneratePlayerCharacterRequest) =>
-    request<PlayerCharacterInput>("/generate-player-character", { method: "POST", body: JSON.stringify(body) }),
+    request<GeneratedPlayerCharacter>("/generate-player-character", { method: "POST", body: JSON.stringify(body) }),
+  restPlayerCharacter: (id: string, kind: "short" | "long") =>
+    request<PlayerCharacter>(`/player-characters/${id}/rest`, { method: "POST", body: JSON.stringify({ kind }) }),
   listPlayerCharacters: (worldId?: string) =>
     request<PlayerCharacter[]>(`/player-characters${worldId ? `?worldId=${worldId}` : ""}`),
   listMyPlayerCharacters: () => request<PlayerCharacter[]>("/player-characters?mine=true"),

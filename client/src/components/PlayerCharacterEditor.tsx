@@ -1,6 +1,11 @@
 import { useState } from "react";
-import type { PlayerCharacterInput, AbilityKey } from "@spark/shared";
+import type { PlayerCharacterInput, AbilityKey, DeathSaves, SpellSlotLevel, ClassResource } from "@spark/shared";
 import { EquipmentPanel } from "./EquipmentPanel";
+import { HpTrackerPanel } from "./HpTrackerPanel";
+import { DeathSavesPanel } from "./DeathSavesPanel";
+import { SpellSlotsPanel } from "./SpellSlotsPanel";
+import { PreparedSpellsPanel } from "./PreparedSpellsPanel";
+import { ClassResourcePanel } from "./ClassResourcePanel";
 
 const ABILITY_ORDER: { key: AbilityKey; label: string }[] = [
   { key: "str", label: "STR" },
@@ -11,19 +16,40 @@ const ABILITY_ORDER: { key: AbilityKey; label: string }[] = [
   { key: "cha", label: "CHA" },
 ];
 
+export interface PlayerCharacterLivingStatePatch {
+  equippedItems?: string[];
+  attunedItems?: string[];
+  currentHp?: number;
+  deathSaves?: DeathSaves;
+  spellSlots?: SpellSlotLevel[];
+  preparedSpells?: string[];
+  classResources?: ClassResource[];
+}
+
 export function PlayerCharacterEditor({
-  value, equippedItems, attunedItems, onSave, onCancel, saveLabel = "Save Content",
+  value, equippedItems, attunedItems, currentHp, deathSaves, spellSlots, preparedSpells, classResources,
+  onSave, onCancel, saveLabel = "Save Content",
 }: {
   value: PlayerCharacterInput;
   equippedItems?: string[];
   attunedItems?: string[];
-  onSave: (patch: PlayerCharacterInput & { equippedItems?: string[]; attunedItems?: string[] }) => Promise<void>;
+  currentHp?: number;
+  deathSaves?: DeathSaves;
+  spellSlots?: SpellSlotLevel[];
+  preparedSpells?: string[];
+  classResources?: ClassResource[];
+  onSave: (patch: PlayerCharacterInput & PlayerCharacterLivingStatePatch) => Promise<void>;
   onCancel: () => void;
   saveLabel?: string;
 }) {
   const [draft, setDraft] = useState(value);
   const [equipped, setEquipped] = useState(equippedItems ?? []);
   const [attuned, setAttuned] = useState(attunedItems ?? []);
+  const [hp, setHp] = useState(currentHp ?? 0);
+  const [saves, setSaves] = useState(deathSaves ?? { successes: 0, failures: 0 });
+  const [slots, setSlots] = useState(spellSlots ?? []);
+  const [prepared, setPrepared] = useState(preparedSpells ?? []);
+  const [resources, setResources] = useState(classResources ?? []);
   const [saving, setSaving] = useState(false);
 
   function set<K extends keyof PlayerCharacterInput>(key: K, val: PlayerCharacterInput[K]) {
@@ -33,7 +59,14 @@ export function PlayerCharacterEditor({
   async function handleSave() {
     setSaving(true);
     try {
-      await onSave(equippedItems !== undefined ? { ...draft, equippedItems: equipped, attunedItems: attuned } : draft);
+      const patch: PlayerCharacterInput & PlayerCharacterLivingStatePatch = { ...draft };
+      if (equippedItems !== undefined) { patch.equippedItems = equipped; patch.attunedItems = attuned; }
+      if (currentHp !== undefined) patch.currentHp = hp;
+      if (deathSaves !== undefined) patch.deathSaves = saves;
+      if (spellSlots !== undefined) patch.spellSlots = slots;
+      if (preparedSpells !== undefined) patch.preparedSpells = prepared;
+      if (classResources !== undefined) patch.classResources = resources;
+      await onSave(patch);
     } finally {
       setSaving(false);
     }
@@ -91,6 +124,26 @@ export function PlayerCharacterEditor({
           baseArmorClass={draft.armorClass}
           onChange={(eq, at) => { setEquipped(eq); setAttuned(at); }}
         />
+      )}
+
+      {currentHp !== undefined && (
+        <HpTrackerPanel currentHp={hp} maxHp={draft.maxHp} onChange={setHp} />
+      )}
+
+      {deathSaves !== undefined && (
+        <DeathSavesPanel deathSaves={saves} onChange={setSaves} />
+      )}
+
+      {spellSlots !== undefined && (
+        <SpellSlotsPanel spellSlots={slots} onChange={setSlots} />
+      )}
+
+      {preparedSpells !== undefined && (
+        <PreparedSpellsPanel preparedSpells={prepared} className={draft.className} onChange={setPrepared} />
+      )}
+
+      {classResources !== undefined && (
+        <ClassResourcePanel resource={resources[0]} onChange={(r) => setResources([r])} />
       )}
 
       <div className="button-row editor-actions">

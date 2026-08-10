@@ -291,6 +291,29 @@ export interface PlayerCharacterInput {
   playerName?: string;
 }
 
+export interface DeathSaves {
+  successes: number;
+  failures: number;
+}
+
+export interface SpellSlotLevel {
+  level: number;
+  max: number;
+  current: number;
+}
+
+export interface ClassResource {
+  name: string;
+  max: number;
+  current: number;
+  rechargeOn: "short" | "long";
+}
+
+export interface GeneratedPlayerCharacter extends PlayerCharacterInput {
+  spellSlots: SpellSlotLevel[];
+  classResources: ClassResource[];
+}
+
 export interface PlayerCharacter extends PlayerCharacterInput {
   id: string;
   userId: string;
@@ -300,6 +323,12 @@ export interface PlayerCharacter extends PlayerCharacterInput {
   notes?: string;
   equippedItems: string[];
   attunedItems: string[];
+  currentHp: number;
+  deathSaves: DeathSaves;
+  spellSlots: SpellSlotLevel[];
+  preparedSpells: string[];
+  classResources: ClassResource[];
+  conditions: string[];
   createdAt: string;
   updatedAt: string;
 }

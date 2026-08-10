@@ -704,6 +704,11 @@ export function RosterPage({
             value={selectedPlayerCharacter}
             equippedItems={selectedPlayerCharacter.equippedItems}
             attunedItems={selectedPlayerCharacter.attunedItems}
+            currentHp={selectedPlayerCharacter.currentHp}
+            deathSaves={selectedPlayerCharacter.deathSaves}
+            spellSlots={selectedPlayerCharacter.spellSlots}
+            preparedSpells={selectedPlayerCharacter.preparedSpells}
+            classResources={selectedPlayerCharacter.classResources}
             onSave={async (patch) => { await api.updatePlayerCharacter(selectedPlayerCharacter.id, patch); setEditingContent(false); refresh(); }}
             onCancel={() => setEditingContent(false)}
           />

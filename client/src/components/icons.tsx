@@ -91,6 +91,16 @@ export function DowntimeIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function CompendiumIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...BASE} {...props}>
+      <path d="M12 6c-1.5-1.2-3.5-1.8-6-1.8v13.6c2.5 0 4.5.6 6 1.8" />
+      <path d="M12 6c1.5-1.2 3.5-1.8 6-1.8v13.6c-2.5 0-4.5.6-6 1.8" />
+      <path d="M12 6v13.6" />
+    </svg>
+  );
+}
+
 export function RosterIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...BASE} {...props}>

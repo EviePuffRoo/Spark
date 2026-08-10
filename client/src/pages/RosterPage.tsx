@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import type { Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, PlayerCharacter, ZoneMapTemplate, Dungeon, Shop, Region, Settlement, EntityType, QuestStatus } from "@spark/shared";
-import { QUEST_STATUSES, QUEST_STATUS_LABELS } from "@spark/shared";
+import type { Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, PlayerCharacter, ZoneMapTemplate, Dungeon, DungeonRoomRect, Shop, Region, Settlement, EntityType, QuestStatus } from "@spark/shared";
+import { QUEST_STATUSES, QUEST_STATUS_LABELS, layoutDungeonRooms } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { useAuth } from "../AuthContext";
 import { StatBlockView } from "../components/StatBlockView";
@@ -13,6 +13,7 @@ import { EncounterTableCardView } from "../components/EncounterTableCardView";
 import { ZoneMapTemplateCardView } from "../components/ZoneMapTemplateCardView";
 import { DungeonCardView } from "../components/DungeonCardView";
 import { DungeonEditor } from "../components/DungeonEditor";
+import { DungeonMapView } from "../components/DungeonMapView";
 import { ShopCardView } from "../components/ShopCardView";
 import { ShopEditor } from "../components/ShopEditor";
 import { LinkedEntities } from "../components/LinkedEntities";
@@ -151,6 +152,7 @@ export function RosterPage({
   const [searchFilter, setSearchFilter] = useState("");
   const [questStatus, setQuestStatus] = useState<QuestStatus>("active");
   const [showFactionWeb, setShowFactionWeb] = useState(false);
+  const [showDungeonMap, setShowDungeonMap] = useState(false);
 
   function refresh() {
     const w = worldFilter || undefined;
@@ -249,8 +251,29 @@ export function RosterPage({
     }
     setPickingSettlement(false);
     setEditingContent(false);
+    setShowDungeonMap(false);
     setActionError(null);
-  }, [selected, selectedQuest, selectedLocation]);
+    // Keyed on id, not the object itself: `selected`/`selectedQuest`/
+    // `selectedLocation` are recomputed (new reference) on every list
+    // refresh, including the optimistic per-pointermove updates from
+    // dragging a room on the Dungeon Map — this should only reset local
+    // edit state when the user actually switches to a different entity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.id, selectedQuest?.id, selectedLocation?.id]);
+
+  async function updateDungeonRoomRect(roomId: string, rect: DungeonRoomRect) {
+    if (!selectedDungeon) return;
+    const updatedRooms = selectedDungeon.rooms.map((r) => (r.id === roomId ? { ...r, rect } : r));
+    setDungeons((ds) => ds.map((d) => (d.id === selectedDungeon.id ? { ...d, rooms: updatedRooms } : d)));
+    await api.updateDungeon(selectedDungeon.id, { rooms: updatedRooms });
+  }
+
+  async function autoArrangeDungeon() {
+    if (!selectedDungeon) return;
+    const laidOutRooms = layoutDungeonRooms(selectedDungeon.rooms);
+    setDungeons((ds) => ds.map((d) => (d.id === selectedDungeon.id ? { ...d, rooms: laidOutRooms } : d)));
+    await api.updateDungeon(selectedDungeon.id, { rooms: laidOutRooms });
+  }
 
   async function handleUpdate() {
     if (!selected) return;
@@ -722,6 +745,14 @@ export function RosterPage({
         )}
 
         {selectedDungeon && !editingContent && <DungeonCardView dungeon={selectedDungeon} />}
+        {selectedDungeon && !editingContent && showDungeonMap && (
+          <DungeonMapView
+            dungeon={selectedDungeon}
+            canEdit={canEditSelected}
+            onUpdateRoomRect={updateDungeonRoomRect}
+            onAutoArrange={canEditSelected ? autoArrangeDungeon : undefined}
+          />
+        )}
         {selectedDungeon && editingContent && (
           <DungeonEditor
             value={selectedDungeon}
@@ -763,6 +794,11 @@ export function RosterPage({
 
         {selected && !editingContent && mode !== "notes" && mode !== "zoneMapTemplates" && mode !== "dungeons" && mode !== "shops" && canEditSelected && (
           <button className="btn-secondary" onClick={() => setEditingContent(true)}>Edit Content</button>
+        )}
+        {selectedDungeon && !editingContent && (
+          <button className="btn-secondary" aria-pressed={showDungeonMap} onClick={() => setShowDungeonMap((v) => !v)}>
+            {showDungeonMap ? "Hide Dungeon Map" : "View Dungeon Map"}
+          </button>
         )}
         {selectedDungeon && !editingContent && canEditSelected && (
           <button className="btn-secondary" onClick={() => setEditingContent(true)}>Edit Rooms & Exits</button>

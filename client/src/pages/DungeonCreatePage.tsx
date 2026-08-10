@@ -1,16 +1,19 @@
-import { useState } from "react";
-import type { DungeonInput, DungeonRoom, GenerateDungeonRequest, GeneratedDungeonOutline } from "@spark/shared";
+import { useMemo, useState } from "react";
+import type { DungeonInput, DungeonRoom, DungeonRoomRect, GenerateDungeonRequest, GeneratedDungeonOutline } from "@spark/shared";
+import { layoutDungeonRooms } from "@spark/shared";
 import { api } from "../api";
 import { useActiveWorld } from "../ActiveWorldContext";
 import { DungeonCardView } from "../components/DungeonCardView";
 import { DungeonEditor } from "../components/DungeonEditor";
+import { DungeonMapView } from "../components/DungeonMapView";
 
 const BLANK_DUNGEON: DungeonInput = { name: "", rooms: [] };
+const noopUpdateRoomRect = () => {};
 
-function outlineToPreview(outline: GeneratedDungeonOutline): DungeonInput {
+function outlineToPreview(outline: GeneratedDungeonOutline, rectByRoomId: Map<string, DungeonRoomRect>): DungeonInput {
   return {
     name: outline.name,
-    rooms: outline.rooms.map((r) => ({ id: r.roomId, name: r.name, templateId: "", exits: r.exits })),
+    rooms: outline.rooms.map((r) => ({ id: r.roomId, name: r.name, templateId: "", exits: r.exits, rect: rectByRoomId.get(r.roomId) })),
   };
 }
 
@@ -29,6 +32,14 @@ export function DungeonCreatePage() {
   const [saveTags, setSaveTags] = useState("");
   const [saveNotes, setSaveNotes] = useState("");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+
+  // Computed once per generation (it uses Math.random() internally) so the
+  // pre-save preview and the actual save payload always show the same map.
+  const rectByRoomId = useMemo(() => {
+    if (!generated) return new Map<string, DungeonRoomRect>();
+    const laidOut = layoutDungeonRooms(generated.rooms.map((r) => ({ id: r.roomId, exits: r.exits })));
+    return new Map(laidOut.map((r) => [r.id, r.rect]));
+  }, [generated]);
 
   function switchMode(next: "generate" | "manual") {
     setCreationMode(next);
@@ -74,7 +85,7 @@ export function DungeonCreatePage() {
         }],
         worldId: resolvedWorldId,
       });
-      rooms.push({ id: room.roomId, name: room.name, templateId: template.id, exits: room.exits });
+      rooms.push({ id: room.roomId, name: room.name, templateId: template.id, exits: room.exits, rect: rectByRoomId.get(room.roomId) });
     }
     await api.saveDungeon({ name: outline.name, rooms, worldId: resolvedWorldId, tags, notes });
   }
@@ -187,7 +198,12 @@ export function DungeonCreatePage() {
             <button className="btn-secondary" onClick={startOver}>← Generate Again</button>
           </div>
           <div className="panel result-panel">
-            <DungeonCardView dungeon={{ ...outlineToPreview(generated), id: "", userId: "", worldId: null, hiddenFromParty: false, tags: [], createdAt: "", updatedAt: "" }} />
+            <DungeonCardView dungeon={{ ...outlineToPreview(generated, rectByRoomId), id: "", userId: "", worldId: null, hiddenFromParty: false, tags: [], createdAt: "", updatedAt: "" }} />
+            <DungeonMapView
+              dungeon={{ ...outlineToPreview(generated, rectByRoomId), id: "", userId: "", worldId: null, hiddenFromParty: false, tags: [], createdAt: "", updatedAt: "" }}
+              canEdit={false}
+              onUpdateRoomRect={noopUpdateRoomRect}
+            />
             {savePanel}
           </div>
         </div>
@@ -216,6 +232,11 @@ export function DungeonCreatePage() {
           </div>
           <div className="panel result-panel">
             <DungeonCardView dungeon={{ ...manualResult, id: "", userId: "", worldId: null, hiddenFromParty: false, tags: [], createdAt: "", updatedAt: "" }} />
+            <DungeonMapView
+              dungeon={{ ...manualResult, id: "", userId: "", worldId: null, hiddenFromParty: false, tags: [], createdAt: "", updatedAt: "" }}
+              canEdit={false}
+              onUpdateRoomRect={noopUpdateRoomRect}
+            />
             {savePanel}
           </div>
         </div>

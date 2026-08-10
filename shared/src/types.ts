@@ -536,11 +536,19 @@ export interface DungeonExit {
   label?: string;
 }
 
+export interface DungeonRoomRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface DungeonRoom {
   id: string;
   name: string;
   templateId: string;
   exits: DungeonExit[];
+  rect?: DungeonRoomRect;
 }
 
 export interface DungeonInput {

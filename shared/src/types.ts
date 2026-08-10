@@ -252,6 +252,13 @@ export interface PlayerCharacter extends PlayerCharacterInput {
   updatedAt: string;
 }
 
+export interface GeneratePlayerCharacterRequest {
+  className?: string;
+  race?: string;
+  level?: number;
+  fullyRandom?: boolean;
+}
+
 export interface GenerateFactionRequest {
   factionType?: string;
   name?: string;

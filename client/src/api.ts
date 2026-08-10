@@ -7,7 +7,7 @@ import type {
   EncounterTable, GenerateEncounterTableRequest, GeneratedEncounterTable,
   SessionNote, SessionNoteInput,
   Adventure, GenerateAdventureRequest, GeneratedAdventure,
-  PlayerCharacter, PlayerCharacterInput,
+  PlayerCharacter, PlayerCharacterInput, GeneratePlayerCharacterRequest,
   RollLogEntry, RollLogEntryInput,
   CodexNote, CodexNoteInput,
   LedgerEntry, LedgerEntryInput, LedgerSummary,
@@ -59,6 +59,7 @@ export interface ReferenceData {
   questTiers: string[];
   factionTypes: string[];
   encounterTerrains: { id: string; name: string }[];
+  classes: { id: string; name: string }[];
 }
 
 export interface ImportResult {
@@ -175,6 +176,8 @@ export const api = {
     request<Adventure>(`/adventures/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   deleteAdventure: (id: string) => request<void>(`/adventures/${id}`, { method: "DELETE" }),
 
+  generatePlayerCharacter: (body: GeneratePlayerCharacterRequest) =>
+    request<PlayerCharacterInput>("/generate-player-character", { method: "POST", body: JSON.stringify(body) }),
   listPlayerCharacters: (worldId?: string) =>
     request<PlayerCharacter[]>(`/player-characters${worldId ? `?worldId=${worldId}` : ""}`),
   listMyPlayerCharacters: () => request<PlayerCharacter[]>("/player-characters?mine=true"),

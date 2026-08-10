@@ -1,8 +1,13 @@
-import type { EncounterZone } from "@spark/shared";
+interface ConnectedNode {
+  id: string;
+  connections: string[];
+}
 
 // Connections are stored per-zone but treated as symmetric everywhere —
-// a link listed from either side counts as adjacency both ways.
-export function zoneDistances(zones: EncounterZone[], fromZoneId: string): Map<string, number> {
+// a link listed from either side counts as adjacency both ways. Generic
+// over any {id, connections} shape so it also works for Region.connections
+// on the World Map, not just EncounterZone.
+export function zoneDistances(zones: ConnectedNode[], fromZoneId: string): Map<string, number> {
   const adjacency = new Map<string, Set<string>>();
   for (const zone of zones) {
     for (const otherId of zone.connections) {

@@ -33,6 +33,8 @@ model User {
   zoneMapTemplates ZoneMapTemplate[]
   dungeons        Dungeon[]
   shops           Shop[]
+  regions         Region[]
+  settlements     Settlement[]
 }
 
 model World {
@@ -61,6 +63,8 @@ model World {
   zoneMapTemplates ZoneMapTemplate[]
   dungeons        Dungeon[]
   shops           Shop[]
+  regions         Region[]
+  settlements     Settlement[]
   encounter       Encounter?
 
   @@index([userId])
@@ -181,6 +185,8 @@ model Location {
   worldId        String?
   hiddenFromParty Boolean @default(false)
   world          World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
+  settlementId   String?
+  settlement     Settlement? @relation(fields: [settlementId], references: [id], onDelete: SetNull)
   userId         String
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt      DateTime @default(now())
@@ -188,6 +194,56 @@ model Location {
 
   @@index([worldId])
   @@index([userId])
+  @@index([settlementId])
+}
+
+model Region {
+  id             String   @id @default(cuid())
+  name           String
+  terrainCategory String
+  dangerLevel    String?
+  description    String
+  x              Float    @default(0)
+  y              Float    @default(0)
+  connections    String   @default("[]")
+  tags           String   @default("[]")
+  notes          String?
+  worldId        String?
+  hiddenFromParty Boolean @default(false)
+  world          World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  settlements    Settlement[]
+
+  @@index([worldId])
+  @@index([userId])
+}
+
+model Settlement {
+  id             String   @id @default(cuid())
+  name           String
+  settlementType String
+  population     String?
+  government     String?
+  description    String
+  regionId       String?
+  region         Region?  @relation(fields: [regionId], references: [id], onDelete: SetNull)
+  tags           String   @default("[]")
+  notes          String?
+  worldId        String?
+  hiddenFromParty Boolean @default(false)
+  world          World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  locations      Location[]
+
+  @@index([worldId])
+  @@index([userId])
+  @@index([regionId])
 }
 
 model QuestHook {

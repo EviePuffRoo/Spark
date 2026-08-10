@@ -2,7 +2,7 @@ import { Router } from "express";
 import {
   RACES, BACKGROUNDS, ALIGNMENTS, NPC_TEMPLATES, MONSTER_TEMPLATES,
   ITEM_CATEGORIES, ITEM_RARITY_TIERS, LOCATION_CATEGORIES, QUEST_TYPES, QUEST_TIERS,
-  FACTION_TYPES, ENCOUNTER_TERRAINS, PC_CLASSES, SHOP_ARCHETYPES,
+  FACTION_TYPES, ENCOUNTER_TERRAINS, PC_CLASSES, SHOP_ARCHETYPES, TERRAIN_CATEGORIES, SETTLEMENT_TYPES,
 } from "@spark/shared";
 
 export const referenceRouter = Router();
@@ -23,5 +23,7 @@ referenceRouter.get("/", (_req, res) => {
     encounterTerrains: ENCOUNTER_TERRAINS,
     classes: PC_CLASSES.map(({ id, name }) => ({ id, name })),
     shopArchetypes: SHOP_ARCHETYPES.map(({ id, name }) => ({ id, name })),
+    terrainCategories: TERRAIN_CATEGORIES,
+    settlementTypes: SETTLEMENT_TYPES,
   });
 });

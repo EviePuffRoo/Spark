@@ -25,5 +25,6 @@ export * from "./generator/factions.js";
 export * from "./generator/encounters.js";
 export * from "./generator/adventures.js";
 export * from "./generator/dungeons.js";
+export * from "./generator/dungeonLayout.js";
 export * from "./generator/playerCharacters.js";
 export * from "./generator/shops.js";

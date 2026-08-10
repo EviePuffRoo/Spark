@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import type { Encounter, HpStatus } from "@spark/shared";
+import type { Dungeon, Encounter, HpStatus } from "@spark/shared";
 import { api } from "../api";
 import { ZoneMap } from "../components/ZoneMap";
+import { DungeonMapView } from "../components/DungeonMapView";
 import { filterEncounterForDisplay } from "../encounterRedaction";
 
 const POLL_INTERVAL_MS = 5000;
@@ -18,6 +19,8 @@ const HP_STATUS_LABELS: Record<HpStatus, string> = {
 export function PresentationView({ worldId }: { worldId: string }) {
   const [encounter, setEncounter] = useState<Encounter | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [activeDungeon, setActiveDungeon] = useState<Dungeon | null>(null);
+  const [mapView, setMapView] = useState<"room" | "dungeon">("room");
 
   useEffect(() => {
     let cancelled = false;
@@ -30,6 +33,19 @@ export function PresentationView({ worldId }: { worldId: string }) {
     const interval = setInterval(load, POLL_INTERVAL_MS);
     return () => { cancelled = true; clearInterval(interval); };
   }, [worldId]);
+
+  useEffect(() => {
+    const dungeonId = encounter?.activeDungeonId;
+    if (!dungeonId) {
+      setActiveDungeon(null);
+      return;
+    }
+    let cancelled = false;
+    api.getDungeon(dungeonId)
+      .then((d) => { if (!cancelled) setActiveDungeon(d); })
+      .catch(() => { if (!cancelled) setActiveDungeon(null); });
+    return () => { cancelled = true; };
+  }, [encounter?.activeDungeonId]);
 
   if (error) {
     return (
@@ -69,7 +85,18 @@ export function PresentationView({ worldId }: { worldId: string }) {
         ))}
       </ol>
 
-      {display.zones.length > 0 && (
+      {activeDungeon && (
+        <div className="button-row">
+          <button className={mapView === "room" ? "active" : ""} aria-current={mapView === "room" ? "true" : undefined} onClick={() => setMapView("room")}>Room View</button>
+          <button className={mapView === "dungeon" ? "active" : ""} aria-current={mapView === "dungeon" ? "true" : undefined} onClick={() => setMapView("dungeon")}>Dungeon Map</button>
+        </div>
+      )}
+
+      {mapView === "dungeon" && activeDungeon && (
+        <DungeonMapView dungeon={activeDungeon} canEdit={false} onUpdateRoomRect={noop} />
+      )}
+
+      {mapView === "room" && display.zones.length > 0 && (
         <ZoneMap
           zones={display.zones}
           zoneEffects={display.zoneEffects}

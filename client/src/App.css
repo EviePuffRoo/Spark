@@ -1174,6 +1174,76 @@ textarea {
   user-select: none;
 }
 
+/* Dungeon Map */
+.dungeon-map {
+  margin: 16px 0;
+}
+
+.dungeon-unplaced-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  background: color-mix(in srgb, var(--warning, var(--accent)) 12%, var(--bg-panel));
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.dungeon-map-svg {
+  display: block;
+  width: 100%;
+  height: 55vh;
+  min-height: 340px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  touch-action: none;
+}
+
+.dungeon-corridor-outer {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 14px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.dungeon-corridor-inner {
+  fill: none;
+  stroke: var(--bg-panel);
+  stroke-width: 8px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.dungeon-room {
+  cursor: grab;
+  user-select: none;
+}
+
+.dungeon-room rect {
+  fill: color-mix(in srgb, var(--accent) 8%, var(--bg-panel));
+  stroke: var(--accent);
+  stroke-width: 2px;
+}
+
+.dungeon-room.dungeon-room-selected rect {
+  stroke: var(--success);
+  stroke-width: 3px;
+}
+
+.dungeon-room text {
+  fill: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+}
+
 .chip-row {
   display: flex;
   flex-wrap: wrap;

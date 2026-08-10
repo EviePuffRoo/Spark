@@ -12,9 +12,9 @@ export const LOCATION_CATEGORIES: LocationCategoryDef[] = [
 
 export const LOCATION_TYPES_BY_CATEGORY: Record<string, string[]> = {
   settlement: ["Tavern", "Inn", "Temple", "Marketplace", "Blacksmith's Forge", "Apothecary", "Manor House", "Prison", "Library", "Bathhouse"],
-  wilderness: ["Hidden Grove", "Campsite", "Standing Stones", "Ferry Crossing", "Hunting Lodge", "Abandoned Farmstead"],
-  dungeon: ["Ruined Keep", "Cave Entrance", "Abandoned Mine", "Sewer Junction", "Collapsed Temple", "Forgotten Crypt"],
-  landmark: ["Lighthouse", "Windmill", "Watchtower", "Old Stone Bridge", "Graveyard", "Bell Tower"],
+  wilderness: ["Hidden Grove", "Campsite", "Standing Stones", "Ferry Crossing", "Hunting Lodge", "Abandoned Farmstead", "Overgrown Orchard", "Sunken Bog", "Windswept Bluff", "Forgotten Shrine", "Hermit's Clearing", "Old Quarry"],
+  dungeon: ["Ruined Keep", "Cave Entrance", "Abandoned Mine", "Sewer Junction", "Collapsed Temple", "Forgotten Crypt", "Sunken Cistern", "Old Catacombs", "Buried Vault", "Cracked Cellar", "Overrun Barracks", "Flooded Tunnel"],
+  landmark: ["Lighthouse", "Windmill", "Watchtower", "Old Stone Bridge", "Graveyard", "Bell Tower", "Ancient Obelisk", "Ruined Aqueduct", "Sundial Plaza", "Toppled Statue", "Weathered Monument", "Abandoned Mill"],
 };
 
 export const LOCATION_DESCRIPTORS: string[] = [

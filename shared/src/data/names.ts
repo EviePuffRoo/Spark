@@ -5,39 +5,39 @@ export const NAME_LISTS: Record<string, { first: string[]; last: string[] }> = {
   },
   "hill-dwarf": {
     first: ["Balin", "Dagna", "Eldeth", "Fargrim", "Gunnloda", "Harbek", "Ilde", "Kildrak", "Morgran", "Nala", "Orsik", "Rurik", "Sannl", "Thorek", "Vondal"],
-    last: ["Battlehammer", "Fireforge", "Ironfist", "Ironhelm", "Rockseeker", "Stonebreaker", "Stoutale", "Thunderhand", "Ungart"],
+    last: ["Battlehammer", "Fireforge", "Ironfist", "Ironhelm", "Rockseeker", "Stonebreaker", "Stoutale", "Thunderhand", "Ungart", "Coppervein", "Emberforge", "Goldbeard", "Grimstone", "Hammerfall", "Oakenshield"],
   },
   "high-elf": {
     first: ["Aelar", "Berrian", "Caelynn", "Dael", "Erevan", "Fenren", "Galinndan", "Ivellios", "Keyleth", "Laucian", "Mindartis", "Naivara", "Quarion", "Sariel", "Theriatis"],
-    last: ["Amakiir (Gemflower)", "Galanodel (Moonwhisper)", "Holimion (Diamonddew)", "Liadon (Silverfrond)", "Meliamne (Oakenheel)", "Siannodel (Moonbrook)", "Xiloscient (Goldpetal)"],
+    last: ["Amakiir (Gemflower)", "Galanodel (Moonwhisper)", "Holimion (Diamonddew)", "Liadon (Silverfrond)", "Meliamne (Oakenheel)", "Siannodel (Moonbrook)", "Xiloscient (Goldpetal)", "Nailo (Starweave)", "Sylvaris (Dawnleaf)", "Thranodel (Silverthorn)", "Elassiel (Windsong)", "Caelethil (Moonshadow)", "Varendil (Sunspire)", "Aerendyl (Skyward)", "Ithrandil (Frostpetal)"],
   },
   "wood-elf": {
     first: ["Adran", "Bereris", "Carric", "Dara", "Elorfindar", "Immeral", "Lucan", "Peren", "Rolen", "Silvyr", "Vanuath"],
-    last: ["Greycastle", "Greenbough", "Nightbreeze", "Swiftarrow", "Thistledown", "Wildmane"],
+    last: ["Greycastle", "Greenbough", "Nightbreeze", "Swiftarrow", "Thistledown", "Wildmane", "Fernwalker", "Moonshade", "Oakenheart", "Ravensong", "Stormleaf", "Suncrest", "Willowmere", "Duskrunner", "Hollowbrook"],
   },
   "lightfoot-halfling": {
     first: ["Alton", "Beau", "Cora", "Della", "Eldon", "Finnan", "Gwen", "Lidda", "Merric", "Paela", "Roscoe", "Wella"],
-    last: ["Brushgather", "Goodbarrel", "Greenbottle", "High-hill", "Leagallow", "Tealeaf", "Underbough"],
+    last: ["Brushgather", "Goodbarrel", "Greenbottle", "High-hill", "Leagallow", "Tealeaf", "Underbough", "Appleblossom", "Cobblestone", "Fairweather", "Honeypot", "Millbrook", "Nettlewood", "Puddlefoot", "Thistlewood"],
   },
   dragonborn: {
     first: ["Arjhan", "Balasar", "Bharash", "Donaar", "Ghesh", "Kava", "Medrash", "Nadarr", "Pandjed", "Rhogar", "Shamash", "Tarhun"],
-    last: ["Clethtinthiallor", "Daardendrian", "Fenkenkabradon", "Kepeshkmolik", "Nemmonis", "Turnuroth", "Verthisathurgiesh"],
+    last: ["Clethtinthiallor", "Daardendrian", "Fenkenkabradon", "Kepeshkmolik", "Nemmonis", "Turnuroth", "Verthisathurgiesh", "Akandrossos", "Baazrivvin", "Drakonarr", "Ghaelithuun", "Muzharantis", "Ophinshtalajir", "Skalithrax", "Yarjerit"],
   },
   "forest-gnome": {
     first: ["Alston", "Boddynock", "Dimble", "Fonkin", "Glim", "Namfoodle", "Roondar", "Seebo", "Warryn", "Zook"],
-    last: ["Beren", "Daergel", "Folkor", "Garrick", "Nackle", "Raulnor", "Turen"],
+    last: ["Beren", "Daergel", "Folkor", "Garrick", "Nackle", "Raulnor", "Turen", "Bimblewick", "Coggletop", "Fizzlebang", "Glimmerdew", "Pockletin", "Sprocketty", "Tinkerhollow", "Whistlecap"],
   },
   "half-elf": {
     first: ["Aris", "Bryn", "Corwin", "Delara", "Elwin", "Faye", "Halden", "Isolde", "Marlow", "Wrenna"],
-    last: ["Amberlight", "Duskwalker", "Fairwind", "Halfmoon", "Riverstone", "Wildwood"],
+    last: ["Amberlight", "Duskwalker", "Fairwind", "Halfmoon", "Riverstone", "Wildwood", "Brighthollow", "Emberlyn", "Farsight", "Moonvale", "Silverleaf", "Starcross", "Thornwood", "Windmere", "Wolfsbane"],
   },
   "half-orc": {
     first: ["Dench", "Feng", "Gell", "Grumbar", "Krusk", "Mhurren", "Ront", "Shump", "Thokk", "Yevelda"],
-    last: ["Bloodfang", "Ironjaw", "Skullcrusher", "Stonefist", "the Grim", "of the Broken Tusk"],
+    last: ["Bloodfang", "Ironjaw", "Skullcrusher", "Stonefist", "the Grim", "of the Broken Tusk", "Bonecrusher", "Direfang", "Gorehide", "Grimtusk", "Ragefist", "Scarhide", "the Unbroken", "of the Iron Horde", "the Bloodied"],
   },
   tiefling: {
     first: ["Akmenos", "Damaia", "Kairon", "Leucis", "Melech", "Mordai", "Nemeia", "Orianna", "Rieta", "Zephyr"],
-    last: ["Ashenveil", "Duskblood", "Emberfall", "Nightsorrow", "Shadowbrand", "Vaelthorn"],
+    last: ["Ashenveil", "Duskblood", "Emberfall", "Nightsorrow", "Shadowbrand", "Vaelthorn", "Blackthorn", "Cindermoor", "Direshade", "Grimhollow", "Hellwrought", "Morvain", "Soulrend", "Wraithmark", "Zaleth"],
   },
 };
 

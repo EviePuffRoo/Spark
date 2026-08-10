@@ -28,10 +28,10 @@ export const ITEM_TYPES_BY_CATEGORY: Record<string, string[]> = {
   weapon: ["Dagger", "Shortsword", "Longsword", "Handaxe", "Warhammer", "Spear", "Rapier", "Shortbow", "Sling", "Mace", "Quarterstaff"],
   armor: ["Cloak", "Leather Jerkin", "Chainmail Shirt", "Buckler", "Helm", "Gauntlets", "Boots", "Bracers", "Sash", "Traveling Coat"],
   wondrous: ["Ring", "Amulet", "Circlet", "Brooch", "Pendant", "Mask", "Lantern", "Mirror", "Music Box", "Compass", "Hourglass", "Key", "Locket"],
-  potion: ["Vial of Shimmering Liquid", "Sealed Potion Bottle", "Tin of Salve", "Waxed Tonic Flask", "Corked Elixir", "Paper Sachet of Powder"],
+  potion: ["Vial of Shimmering Liquid", "Sealed Potion Bottle", "Tin of Salve", "Waxed Tonic Flask", "Corked Elixir", "Paper Sachet of Powder", "Clay Jar of Ointment", "Stoppered Flask of Mist", "Wax-Sealed Tincture", "Bundle of Dried Herbs", "Small Ceramic Jug", "Glass Ampoule"],
   trinket: ["Old Coin", "Glass Marble", "Deck of Cards", "Set of Dice", "Carved Pipe", "Brass Quill", "Pocket Watch", "Snuffbox", "Tin Whistle", "Small Bell", "Thimble"],
-  tool: ["Lockpick Set", "Stonemason's Chisel", "Collapsible Fishing Rod", "Brass Compass", "Whetstone", "Tinderbox", "Folding Spyglass", "Surveyor's Kit"],
-  instrument: ["Lute", "Wooden Flute", "Hand Drum", "Fiddle", "Small Harp", "Hunting Horn"],
+  tool: ["Lockpick Set", "Stonemason's Chisel", "Collapsible Fishing Rod", "Brass Compass", "Whetstone", "Tinderbox", "Folding Spyglass", "Surveyor's Kit", "Alchemist's Kit", "Forger's Tools", "Climber's Kit", "Mason's Trowel"],
+  instrument: ["Lute", "Wooden Flute", "Hand Drum", "Fiddle", "Small Harp", "Hunting Horn", "Pan Flute", "Hand Bells", "Bagpipes", "Bone Whistle", "Tambourine", "Lyre"],
 };
 
 export const ITEM_ADJECTIVES: string[] = [

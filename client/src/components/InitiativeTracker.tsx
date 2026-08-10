@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { SearchResult, LiveCombatant, EncounterStateInput, EncounterTable, EncounterZone, HpStatus, Dungeon, Item } from "@spark/shared";
-import { computeEquipmentBonuses } from "@spark/shared";
+import { computeEquipmentBonuses, CONDITIONS_COMPENDIUM } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { useAuth } from "../AuthContext";
 import { EntitySearchPicker } from "./EntitySearchPicker";
@@ -11,29 +11,10 @@ import { computeDifficulty, type DifficultyRating } from "../encounterDifficulty
 import { CombatIcon } from "./icons";
 import { EmptyState } from "./EmptyState";
 
-const CONDITIONS = [
-  "Blinded", "Charmed", "Deafened", "Exhausted", "Frightened", "Grappled",
-  "Incapacitated", "Invisible", "Paralyzed", "Petrified", "Poisoned",
-  "Prone", "Restrained", "Stunned", "Unconscious",
-];
-
-const CONDITION_RULES: Record<string, string> = {
-  Blinded: "Can't see, and automatically fails any check that requires sight. Attack rolls against the creature have advantage, and its own attack rolls have disadvantage.",
-  Charmed: "Can't attack the charmer or target them with harmful abilities. The charmer has advantage on social ability checks against the creature.",
-  Deafened: "Can't hear, and automatically fails any check that requires hearing.",
-  Exhausted: "Cumulative levels (1–6) each add a penalty: disadvantage on ability checks, halved speed, disadvantage on attacks and saves, halved max HP, speed reduced to 0, then death.",
-  Frightened: "Disadvantage on ability checks and attack rolls while the source of fear is in sight, and can't willingly move closer to it.",
-  Grappled: "Speed becomes 0. Ends if the grappler is incapacitated or the creature is moved out of the grappler's reach.",
-  Incapacitated: "Can't take actions or reactions.",
-  Invisible: "Can't be seen without special senses or magic. Attack rolls against the creature have disadvantage, and its own attack rolls have advantage.",
-  Paralyzed: "Incapacitated, can't move or speak. Automatically fails Strength and Dexterity saves. Attacks against it have advantage, and hits from within 5 feet are automatic critical hits.",
-  Petrified: "Transformed to stone, incapacitated, can't move or speak, unaware of surroundings. Resistant to all damage, and immune to poison and disease.",
-  Poisoned: "Disadvantage on attack rolls and ability checks.",
-  Prone: "Can only crawl unless it stands up (costing half its speed). Disadvantage on attack rolls. Attacks against it have advantage from within 5 feet, disadvantage otherwise.",
-  Restrained: "Speed becomes 0. Disadvantage on attack rolls and Dexterity saves. Attacks against it have advantage.",
-  Stunned: "Incapacitated, can't move, and can speak only falteringly. Automatically fails Strength and Dexterity saves. Attacks against it have advantage.",
-  Unconscious: "Incapacitated, can't move or speak, unaware of surroundings, drops what it's holding, and falls prone. Automatically fails Strength and Dexterity saves. Attacks against it have advantage, and hits from within 5 feet are automatic critical hits.",
-};
+const CONDITIONS = CONDITIONS_COMPENDIUM.map((c) => c.name);
+const CONDITION_RULES: Record<string, string> = Object.fromEntries(
+  CONDITIONS_COMPENDIUM.map((c) => [c.name, c.description]),
+);
 
 const HP_STATUS_LABELS: Record<HpStatus, string> = {
   healthy: "Healthy",

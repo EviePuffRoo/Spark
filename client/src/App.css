@@ -517,6 +517,16 @@ textarea {
   margin: 4px 0;
 }
 
+.spell-meta-list {
+  list-style: none;
+  margin: 8px 0;
+  padding: 0;
+}
+
+.spell-meta-list li {
+  margin: 2px 0;
+}
+
 .ability-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);

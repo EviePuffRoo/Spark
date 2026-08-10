@@ -19,6 +19,7 @@ import type {
   ActivitySummary,
   EntityType, EntityLink, SearchResult,
   AuthUser, SignupResult, RecoveryCodeResult,
+  SpellDef, ConditionDef, RuleDef,
 } from "@spark/shared";
 
 let onSessionExpired: (() => void) | null = null;
@@ -63,6 +64,12 @@ export interface ReferenceData {
   shopArchetypes: { id: string; name: string }[];
 }
 
+export interface CompendiumData {
+  spells: SpellDef[];
+  conditions: ConditionDef[];
+  rules: RuleDef[];
+}
+
 export interface ImportResult {
   worldsImported: number;
   entitiesImported: number;
@@ -90,6 +97,7 @@ export interface WorldMemberInfo {
 
 export const api = {
   getReference: () => request<ReferenceData>("/reference"),
+  getCompendium: () => request<CompendiumData>("/compendium"),
   generate: (body: GenerateRequest) =>
     request<GeneratedCharacter>("/generate", { method: "POST", body: JSON.stringify(body) }),
   generateItem: (body: GenerateItemRequest) =>

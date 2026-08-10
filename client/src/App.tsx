@@ -15,6 +15,7 @@ import { WorldsPage } from "./pages/WorldsPage";
 import { WorldOverviewPage, type OverviewNavTarget } from "./pages/WorldOverviewPage";
 import { CombatPage } from "./pages/CombatPage";
 import { MyCharacterPage } from "./pages/MyCharacterPage";
+import { CompendiumPage } from "./pages/CompendiumPage";
 import { CodexPage } from "./pages/CodexPage";
 import { InventoryPage } from "./pages/InventoryPage";
 import { DowntimePage } from "./pages/DowntimePage";
@@ -24,7 +25,7 @@ import { PrintPane, type PrintItem } from "./components/PrintPane";
 import { PrepIcon, WorldIcon, PlayIcon } from "./components/icons";
 
 type Area = "prep" | "world" | "play";
-type SubTab = "create" | "myCharacter" | "overview" | "worlds" | "roster" | "codex" | "notes" | "downtime" | "combat" | "shop" | "inventory";
+type SubTab = "create" | "myCharacter" | "compendium" | "overview" | "worlds" | "roster" | "codex" | "notes" | "downtime" | "combat" | "shop" | "inventory";
 
 const AREA_LABELS: Record<Area, string> = { prep: "Prep", world: "World", play: "Play" };
 const AREA_ICONS: Record<Area, typeof PrepIcon> = { prep: PrepIcon, world: WorldIcon, play: PlayIcon };
@@ -137,6 +138,7 @@ function AppShell() {
             <>
               <button className={subTab === "create" ? "active" : ""} aria-current={subTab === "create" ? "true" : undefined} onClick={() => selectSubTab("create")}>Create</button>
               <button className={subTab === "myCharacter" ? "active" : ""} aria-current={subTab === "myCharacter" ? "true" : undefined} onClick={() => selectSubTab("myCharacter")}>My Character</button>
+              <button className={subTab === "compendium" ? "active" : ""} aria-current={subTab === "compendium" ? "true" : undefined} onClick={() => selectSubTab("compendium")}>Compendium</button>
             </>
           )}
           {area === "world" && (
@@ -170,6 +172,7 @@ function AppShell() {
       <main>
         {subTab === "create" && <CreatePage />}
         {subTab === "myCharacter" && <MyCharacterPage onViewRoster={viewRosterForWorld} />}
+        {subTab === "compendium" && <CompendiumPage />}
         {subTab === "overview" && <WorldOverviewPage onNavigate={navigateFromOverview} />}
         {subTab === "worlds" && <WorldsPage onViewRoster={viewRosterForWorld} />}
         {subTab === "roster" && (

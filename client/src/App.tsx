@@ -15,6 +15,7 @@ import { WorldsPage } from "./pages/WorldsPage";
 import { WorldOverviewPage, type OverviewNavTarget } from "./pages/WorldOverviewPage";
 import { CombatPage } from "./pages/CombatPage";
 import { MyCharacterPage } from "./pages/MyCharacterPage";
+import { PlayerCompanionView } from "./pages/PlayerCompanionView";
 import { CompendiumPage } from "./pages/CompendiumPage";
 import { CodexPage } from "./pages/CodexPage";
 import { InventoryPage } from "./pages/InventoryPage";
@@ -46,6 +47,20 @@ function App() {
   }
   if (!user) return <AuthPage />;
   if (pendingRecoveryCode) return <RecoveryCodeDisplay code={pendingRecoveryCode} />;
+
+  // ?play=1 is the mobile player-companion entry point (shared/QR-coded to
+  // players separately from the full desktop app). Unlike ?present=<worldId>
+  // (main.tsx), which intentionally skips auth for the DM's read-only
+  // cast-to-TV view, this still requires a normal login — it just swaps the
+  // desktop tabbed shell for a mobile-first view once signed in.
+  const isPlayMode = new URLSearchParams(window.location.search).get("play") === "1";
+  if (isPlayMode) {
+    return (
+      <ActiveWorldProvider>
+        <PlayerCompanionView />
+      </ActiveWorldProvider>
+    );
+  }
 
   return (
     <ActiveWorldProvider>
@@ -112,6 +127,7 @@ function AppShell() {
               {worlds.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
             </select>
           )}
+          <a className="btn-secondary" href="?play=1">Player View</a>
           <ThemeToggle />
           <AccountMenu />
         </div>

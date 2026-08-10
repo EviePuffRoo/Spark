@@ -1902,3 +1902,99 @@ textarea {
   max-width: 1100px;
   height: auto;
 }
+
+/* Player Companion (mobile) */
+/* Written mobile-first: base rules target narrow phone viewports directly,
+   this view never nests inside .app's max-width:1100px desktop shell (it's
+   a separate render branch in App.tsx), so it owns its own container width
+   and touch-target sizing rather than retrofitting the desktop CSS. */
+
+.player-companion {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 12px 12px 32px;
+}
+
+.player-companion .panel {
+  padding: 14px;
+}
+
+.player-companion-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.player-companion-header h1 {
+  font-size: 1.4rem;
+  margin: 0;
+}
+
+.player-companion-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.player-companion select,
+.player-companion input,
+.player-companion textarea {
+  font-size: 16px; /* prevents iOS Safari zoom-on-focus */
+}
+
+.player-companion button,
+.player-companion select,
+.player-companion .entity-item,
+.player-companion a.btn-secondary,
+.player-companion a.btn-primary {
+  min-height: 44px;
+}
+
+.player-companion-turn-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.player-companion-combatant {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-panel);
+}
+
+.player-companion-combatant.active-turn {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.player-companion-character {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.player-companion-back-link {
+  display: block;
+  text-align: center;
+  padding: 12px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+@media (min-width: 641px) {
+  .player-companion {
+    max-width: 900px;
+  }
+}

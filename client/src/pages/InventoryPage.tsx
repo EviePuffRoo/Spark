@@ -3,9 +3,8 @@ import type { LedgerSummary } from "@spark/shared";
 import { api } from "../api";
 import { useAuth } from "../AuthContext";
 import { useActiveWorld } from "../ActiveWorldContext";
+import { useWorldLiveChannel } from "../useWorldLiveChannel";
 import { InventoryIcon } from "../components/icons";
-
-const POLL_INTERVAL_MS = 5000;
 
 function timeAgo(iso: string): string {
   const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
@@ -30,21 +29,10 @@ export function InventoryPage() {
   const [itemName, setItemName] = useState("");
   const [itemQuantity, setItemQuantity] = useState("1");
 
-  useEffect(() => {
-    if (!worldId) {
-      setSummary(null);
-      return;
-    }
-    let cancelled = false;
-    function load() {
-      api.getLedger(worldId)
-        .then((s) => { if (!cancelled) setSummary(s); })
-        .catch((e) => { if (!cancelled) setError((e as Error).message); });
-    }
-    load();
-    const interval = setInterval(load, POLL_INTERVAL_MS);
-    return () => { cancelled = true; clearInterval(interval); };
-  }, [worldId]);
+  useEffect(() => { if (!worldId) setSummary(null); }, [worldId]);
+
+  const { error: liveError } = useWorldLiveChannel(worldId || null, { onLedger: setSummary });
+  useEffect(() => { if (liveError) setError(liveError); }, [liveError]);
 
   const selectedWorld = worlds.find((w) => w.id === worldId) ?? null;
   const isOwner = !!selectedWorld?.isOwner;

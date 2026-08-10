@@ -1,15 +1,11 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
 import { toLedgerEntryDTO } from "../serialize.js";
-import { getMemberWorldIds } from "../worldAccess.js";
+import { findAccessibleWorld } from "../worldAccess.js";
+import { publishWorldChange } from "../worldEvents.js";
 import type { LedgerSummary } from "@spark/shared";
 
 export const ledgerRouter = Router();
-
-async function findAccessibleWorld(userId: string, worldId: string) {
-  const memberWorldIds = await getMemberWorldIds(userId);
-  return prisma.world.findFirst({ where: { id: worldId, OR: [{ userId }, { id: { in: memberWorldIds } }] } });
-}
 
 ledgerRouter.get("/", async (req, res) => {
   const { worldId } = req.query;
@@ -65,6 +61,7 @@ ledgerRouter.post("/", async (req, res) => {
       userId: req.userId!,
     },
   });
+  publishWorldChange(worldId, "ledger");
   res.status(201).json(toLedgerEntryDTO(row));
 });
 
@@ -77,5 +74,6 @@ ledgerRouter.delete("/:id", async (req, res) => {
   if (!canDelete) return res.status(403).json({ error: "You can't delete this ledger entry" });
 
   await prisma.ledgerEntry.delete({ where: { id: req.params.id } });
+  publishWorldChange(row.worldId, "ledger");
   res.status(204).end();
 });

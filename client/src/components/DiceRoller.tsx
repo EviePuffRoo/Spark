@@ -3,6 +3,7 @@ import type { RollLogEntry, LiveCombatant } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { useAuth } from "../AuthContext";
 import { useLocalStorage } from "../useLocalStorage";
+import { useWorldLiveChannel } from "../useWorldLiveChannel";
 
 interface RollRecord {
   id: string;
@@ -17,7 +18,6 @@ interface RollRecord {
 
 const PRESETS = [4, 6, 8, 10, 12, 20, 100];
 const HISTORY_LIMIT = 50;
-const POLL_INTERVAL_MS = 5000;
 
 function parseNotation(input: string): { count: number; sides: number; modifier: number } | null {
   const match = input.trim().match(/^(\d*)d(\d+)([+-]\d+)?$/i);
@@ -46,11 +46,12 @@ function timeAgo(ms?: number): string | null {
 }
 
 export function DiceRoller({
-  worlds, partyWorldId: selectedWorldId, setPartyWorldId: setSelectedWorldId,
+  worlds, partyWorldId: selectedWorldId, setPartyWorldId: setSelectedWorldId, initialMode = "personal",
 }: {
   worlds: WorldSummary[];
   partyWorldId: string;
   setPartyWorldId: (id: string) => void;
+  initialMode?: "personal" | "party";
 }) {
   const { user } = useAuth();
   const [history, setHistory] = useLocalStorage<RollRecord[]>("spark-dice-history", []);
@@ -58,7 +59,7 @@ export function DiceRoller({
   const [label, setLabel] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const [mode, setMode] = useState<"personal" | "party">("personal");
+  const [mode, setMode] = useState<"personal" | "party">(initialMode);
   const [rollerName, setRollerName] = useState(user?.username ?? "");
   const [secret, setSecret] = useState(false);
   const [partyLog, setPartyLog] = useState<RollLogEntry[]>([]);
@@ -76,18 +77,11 @@ export function DiceRoller({
     if (mode !== "party" || !selectedWorldId) {
       setPartyLog([]);
       setApplyOpenFor(null);
-      return;
     }
-    let cancelled = false;
-    function load() {
-      api.listRollLog(selectedWorldId)
-        .then((rows) => { if (!cancelled) setPartyLog(rows); })
-        .catch((e) => { if (!cancelled) setPartyError((e as Error).message); });
-    }
-    load();
-    const interval = setInterval(load, POLL_INTERVAL_MS);
-    return () => { cancelled = true; clearInterval(interval); };
   }, [mode, selectedWorldId]);
+
+  const { error: liveError } = useWorldLiveChannel(mode === "party" ? selectedWorldId : null, { onRollLog: setPartyLog });
+  useEffect(() => { if (liveError) setPartyError(liveError); }, [liveError]);
 
   function pushLocalRecord(record: RollRecord) {
     setHistory((h) => [record, ...h].slice(0, HISTORY_LIMIT));

@@ -4,8 +4,8 @@ import { api } from "../api";
 import { ZoneMap } from "../components/ZoneMap";
 import { DungeonMapView } from "../components/DungeonMapView";
 import { filterEncounterForDisplay } from "../encounterRedaction";
+import { useWorldLiveChannel } from "../useWorldLiveChannel";
 
-const POLL_INTERVAL_MS = 5000;
 const noop = () => {};
 
 const HP_STATUS_LABELS: Record<HpStatus, string> = {
@@ -22,17 +22,8 @@ export function PresentationView({ worldId }: { worldId: string }) {
   const [activeDungeon, setActiveDungeon] = useState<Dungeon | null>(null);
   const [mapView, setMapView] = useState<"room" | "dungeon">("room");
 
-  useEffect(() => {
-    let cancelled = false;
-    function load() {
-      api.getEncounter(worldId)
-        .then((row) => { if (!cancelled) setEncounter(row); })
-        .catch((e) => { if (!cancelled) setError((e as Error).message); });
-    }
-    load();
-    const interval = setInterval(load, POLL_INTERVAL_MS);
-    return () => { cancelled = true; clearInterval(interval); };
-  }, [worldId]);
+  const { error: liveError } = useWorldLiveChannel(worldId, { onEncounter: setEncounter });
+  useEffect(() => { if (liveError) setError(liveError); }, [liveError]);
 
   useEffect(() => {
     const dungeonId = encounter?.activeDungeonId;

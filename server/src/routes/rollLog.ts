@@ -1,14 +1,10 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
 import { toRollLogEntryDTO } from "../serialize.js";
-import { getMemberWorldIds } from "../worldAccess.js";
+import { findAccessibleWorld } from "../worldAccess.js";
+import { publishWorldChange } from "../worldEvents.js";
 
 export const rollLogRouter = Router();
-
-async function findAccessibleWorld(userId: string, worldId: string) {
-  const memberWorldIds = await getMemberWorldIds(userId);
-  return prisma.world.findFirst({ where: { id: worldId, OR: [{ userId }, { id: { in: memberWorldIds } }] } });
-}
 
 rollLogRouter.get("/", async (req, res) => {
   const { worldId } = req.query;
@@ -52,6 +48,7 @@ rollLogRouter.post("/", async (req, res) => {
       userId: req.userId!,
     },
   });
+  publishWorldChange(worldId, "rollLog");
   res.status(201).json(toRollLogEntryDTO(row));
 });
 
@@ -64,5 +61,6 @@ rollLogRouter.delete("/:id", async (req, res) => {
   if (!canDelete) return res.status(403).json({ error: "You can't delete this roll" });
 
   await prisma.rollLogEntry.delete({ where: { id: req.params.id } });
+  publishWorldChange(row.worldId, "rollLog");
   res.status(204).end();
 });

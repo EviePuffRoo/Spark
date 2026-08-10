@@ -252,6 +252,13 @@ export interface PlayerCharacter extends PlayerCharacterInput {
   updatedAt: string;
 }
 
+export interface GeneratePlayerCharacterRequest {
+  className?: string;
+  race?: string;
+  level?: number;
+  fullyRandom?: boolean;
+}
+
 export interface GenerateFactionRequest {
   factionType?: string;
   name?: string;
@@ -517,6 +524,18 @@ export interface Shop extends ShopInput {
   notes?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface GenerateShopRequest {
+  archetype?: string;
+  stockSize?: number;
+  fullyRandom?: boolean;
+}
+
+export interface GeneratedShop {
+  name: string;
+  description: string;
+  stock: ShopStockEntry[];
 }
 
 export interface EncounterStateInput {

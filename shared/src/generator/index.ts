@@ -67,14 +67,14 @@ function buildNpcBackstory(templateName: string, backgroundName: string | undefi
 function buildMonsterBackstory(templateName: string): Backstory {
   return {
     occupationOrRole: templateName,
-    personalityTrait: "",
-    ideal: "",
-    bond: "",
-    flaw: "",
+    personalityTrait: pick(PERSONALITY_TRAITS),
+    ideal: pick(IDEALS),
+    bond: pick(BONDS),
+    flaw: pick(FLAWS),
     appearance: pick(MONSTER_DISTINGUISHING_FEATURES),
-    mannerism: "",
+    mannerism: pick(MANNERISMS),
     motivation: pick(MONSTER_MOTIVATIONS),
-    secret: "",
+    secret: pick(SECRETS),
   };
 }
 

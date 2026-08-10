@@ -7,7 +7,7 @@ import type {
   EncounterTable, GenerateEncounterTableRequest, GeneratedEncounterTable,
   SessionNote, SessionNoteInput,
   Adventure, GenerateAdventureRequest, GeneratedAdventure,
-  PlayerCharacter, PlayerCharacterInput, GeneratePlayerCharacterRequest,
+  PlayerCharacter, PlayerCharacterInput, GeneratePlayerCharacterRequest, GeneratedPlayerCharacter,
   RollLogEntry, RollLogEntryInput,
   CodexNote, CodexNoteInput,
   LedgerEntry, LedgerEntryInput, LedgerSummary,
@@ -186,7 +186,9 @@ export const api = {
   deleteAdventure: (id: string) => request<void>(`/adventures/${id}`, { method: "DELETE" }),
 
   generatePlayerCharacter: (body: GeneratePlayerCharacterRequest) =>
-    request<PlayerCharacterInput>("/generate-player-character", { method: "POST", body: JSON.stringify(body) }),
+    request<GeneratedPlayerCharacter>("/generate-player-character", { method: "POST", body: JSON.stringify(body) }),
+  restPlayerCharacter: (id: string, kind: "short" | "long") =>
+    request<PlayerCharacter>(`/player-characters/${id}/rest`, { method: "POST", body: JSON.stringify({ kind }) }),
   listPlayerCharacters: (worldId?: string) =>
     request<PlayerCharacter[]>(`/player-characters${worldId ? `?worldId=${worldId}` : ""}`),
   listMyPlayerCharacters: () => request<PlayerCharacter[]>("/player-characters?mine=true"),

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { PlayerCharacter, PlayerCharacterInput } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { PlayerCharacterCardView } from "../components/PlayerCharacterCardView";
-import { PlayerCharacterEditor } from "../components/PlayerCharacterEditor";
+import { PlayerCharacterEditor, type PlayerCharacterLivingStatePatch } from "../components/PlayerCharacterEditor";
 
 export function MyCharacterPage({ onViewRoster }: { onViewRoster: (worldId: string) => void }) {
   const [characters, setCharacters] = useState<PlayerCharacter[]>([]);
@@ -26,7 +26,7 @@ export function MyCharacterPage({ onViewRoster }: { onViewRoster: (worldId: stri
     return pc.worldId ? worlds.find((w) => w.id === pc.worldId) : undefined;
   }
 
-  async function handleSave(id: string, patch: PlayerCharacterInput) {
+  async function handleSave(id: string, patch: PlayerCharacterInput & PlayerCharacterLivingStatePatch) {
     setStatus("saving");
     setError(null);
     try {
@@ -44,6 +44,19 @@ export function MyCharacterPage({ onViewRoster }: { onViewRoster: (worldId: stri
     if (!confirm(`Delete ${name}? This cannot be undone.`)) return;
     await api.deletePlayerCharacter(id);
     refresh();
+  }
+
+  async function handleRest(id: string, kind: "short" | "long") {
+    setStatus("saving");
+    setError(null);
+    try {
+      await api.restPlayerCharacter(id, kind);
+      refresh();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setStatus("idle");
+    }
   }
 
   return (
@@ -65,6 +78,11 @@ export function MyCharacterPage({ onViewRoster }: { onViewRoster: (worldId: stri
               {editingId === pc.id ? (
                 <PlayerCharacterEditor
                   value={pc}
+                  currentHp={pc.currentHp}
+                  deathSaves={pc.deathSaves}
+                  spellSlots={pc.spellSlots}
+                  preparedSpells={pc.preparedSpells}
+                  classResources={pc.classResources}
                   onSave={(patch) => handleSave(pc.id, patch)}
                   onCancel={() => setEditingId(null)}
                 />
@@ -73,6 +91,8 @@ export function MyCharacterPage({ onViewRoster }: { onViewRoster: (worldId: stri
                   <PlayerCharacterCardView pc={pc} />
                   <div className="button-row">
                     <button className="btn-secondary" onClick={() => setEditingId(pc.id)} disabled={status === "saving"}>Edit</button>
+                    <button className="btn-secondary" onClick={() => handleRest(pc.id, "short")} disabled={status === "saving"}>Short Rest</button>
+                    <button className="btn-secondary" onClick={() => handleRest(pc.id, "long")} disabled={status === "saving"}>Long Rest</button>
                     {world && <button className="btn-secondary" onClick={() => onViewRoster(world.id)}>View {world.name}</button>}
                     <button className="btn-danger" onClick={() => handleDelete(pc.id, pc.name)}>Delete</button>
                   </div>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { PlayerCharacterInput, GeneratePlayerCharacterRequest } from "@spark/shared";
+import type { PlayerCharacterInput, GeneratePlayerCharacterRequest, GeneratedPlayerCharacter } from "@spark/shared";
 import { api, type ReferenceData } from "../api";
 import { useActiveWorld } from "../ActiveWorldContext";
 import { PlayerCharacterCardView } from "../components/PlayerCharacterCardView";
@@ -15,7 +15,7 @@ export function PlayerCharacterCreatePage() {
   const { worlds, worldId } = useActiveWorld();
   const [creationMode, setCreationMode] = useState<"generate" | "manual">("generate");
   const [form, setForm] = useState<GeneratePlayerCharacterRequest>({});
-  const [generated, setGenerated] = useState<PlayerCharacterInput | null>(null);
+  const [generated, setGenerated] = useState<GeneratedPlayerCharacter | null>(null);
   const [loading, setLoading] = useState(false);
   const [resetKey, setResetKey] = useState(0);
   const [manualResult, setManualResult] = useState<PlayerCharacterInput | null>(null);

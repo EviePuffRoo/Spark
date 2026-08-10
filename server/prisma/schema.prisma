@@ -86,12 +86,18 @@ model PlayerCharacter {
   race          String
   armorClass    Int
   maxHp         Int
+  currentHp     Int      @default(0)
   abilityScores String   @default("{}")
   playerName    String?
   tags          String   @default("[]")
   notes         String?
   equippedItems String   @default("[]")
   attunedItems  String   @default("[]")
+  deathSaves    String   @default("{\"successes\":0,\"failures\":0}")
+  spellSlots    String   @default("[]")
+  preparedSpells String  @default("[]")
+  classResources String  @default("[]")
+  conditions    String   @default("[]")
   worldId       String?
   hiddenFromParty Boolean @default(false)
   world         World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)

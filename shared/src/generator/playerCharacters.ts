@@ -1,8 +1,11 @@
-import { PC_CLASSES, PC_STANDARD_ARRAY, type ArmorTier } from "../data/classes.js";
+import {
+  PC_CLASSES, PC_STANDARD_ARRAY, FULL_CASTER_SLOTS, HALF_CASTER_SLOTS, PACT_MAGIC_SLOTS,
+  type ArmorTier, type PcClassDef,
+} from "../data/classes.js";
 import { RACES } from "../data/races.js";
 import { nameListFor } from "../data/names.js";
 import { pick } from "./random.js";
-import type { GeneratePlayerCharacterRequest, PlayerCharacterInput, AbilityScores } from "../types.js";
+import type { GeneratePlayerCharacterRequest, GeneratedPlayerCharacter, AbilityScores, SpellSlotLevel, ClassResource } from "../types.js";
 
 function abilityModifier(score: number): number {
   return Math.floor((score - 10) / 2);
@@ -30,7 +33,28 @@ function computeArmorClass(typicalArmor: ArmorTier, typicalShield: boolean, dexM
   return typicalShield ? ac + 2 : ac;
 }
 
-export function generatePlayerCharacter(request: GeneratePlayerCharacterRequest = {}): PlayerCharacterInput {
+export function computeSpellSlots(pcClass: PcClassDef, level: number): SpellSlotLevel[] {
+  if (!pcClass.casterType) return [];
+  const idx = Math.min(19, Math.max(0, Math.trunc(level) - 1));
+  if (pcClass.casterType === "pact") {
+    const p = PACT_MAGIC_SLOTS[idx];
+    return p.count > 0 ? [{ level: p.slotLevel, max: p.count, current: p.count }] : [];
+  }
+  const table = pcClass.casterType === "full" ? FULL_CASTER_SLOTS : HALF_CASTER_SLOTS;
+  return table[idx]
+    .map((count, i) => ({ level: i + 1, max: count, current: count }))
+    .filter((s) => s.max > 0);
+}
+
+export function computeClassResource(pcClass: PcClassDef, level: number): ClassResource | undefined {
+  if (!pcClass.resource) return undefined;
+  const idx = Math.min(19, Math.max(0, Math.trunc(level) - 1));
+  const max = pcClass.resource.countByLevel[idx];
+  if (max <= 0) return undefined;
+  return { name: pcClass.resource.name, max, current: max, rechargeOn: pcClass.resource.rechargeOn };
+}
+
+export function generatePlayerCharacter(request: GeneratePlayerCharacterRequest = {}): GeneratedPlayerCharacter {
   const pcClass =
     !request.fullyRandom && request.className
       ? PC_CLASSES.find((c) => c.id === request.className) ?? pick(PC_CLASSES)
@@ -50,6 +74,8 @@ export function generatePlayerCharacter(request: GeneratePlayerCharacterRequest 
   const { first, last } = nameListFor(race.id);
   const name = `${pick(first)} ${pick(last)}`;
 
+  const resource = computeClassResource(pcClass, level);
+
   return {
     name,
     className: pcClass.name,
@@ -58,5 +84,7 @@ export function generatePlayerCharacter(request: GeneratePlayerCharacterRequest 
     armorClass: computeArmorClass(pcClass.typicalArmor, pcClass.typicalShield, dexMod),
     maxHp: computeHp(pcClass.hitDie, level, conMod),
     abilityScores,
+    spellSlots: computeSpellSlots(pcClass, level),
+    classResources: resource ? [resource] : [],
   };
 }

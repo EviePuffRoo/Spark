@@ -6,6 +6,7 @@ import { useAuth } from "../AuthContext";
 import { EntitySearchPicker } from "./EntitySearchPicker";
 import { ZoneMap } from "./ZoneMap";
 import { useLocalStorage } from "../useLocalStorage";
+import { useWorldLiveChannel } from "../useWorldLiveChannel";
 import { rollTableIndex } from "../rollTable";
 import { computeDifficulty, type DifficultyRating } from "../encounterDifficulty";
 import { CombatIcon } from "./icons";
@@ -25,7 +26,6 @@ const HP_STATUS_LABELS: Record<HpStatus, string> = {
 };
 
 const BLANK_ENCOUNTER: EncounterStateInput = { combatants: [], round: 1, turnIndex: 0, zones: [], zoneEffects: [] };
-const POLL_INTERVAL_MS = 5000;
 
 const DIFFICULTY_LABELS: Record<DifficultyRating, string> = {
   trivial: "Trivial", easy: "Easy", medium: "Medium", hard: "Hard", deadly: "Deadly",
@@ -88,20 +88,11 @@ export function InitiativeTracker({
   const canEdit = !partyMode || isOwner;
 
   useEffect(() => {
-    if (!partyMode || !partyWorldId) {
-      setLiveEncounter(null);
-      return;
-    }
-    let cancelled = false;
-    function load() {
-      api.getEncounter(partyWorldId)
-        .then((row) => { if (!cancelled) setLiveEncounter(row); })
-        .catch((e) => { if (!cancelled) setLiveError((e as Error).message); });
-    }
-    load();
-    const interval = setInterval(load, POLL_INTERVAL_MS);
-    return () => { cancelled = true; clearInterval(interval); };
+    if (!partyMode || !partyWorldId) setLiveEncounter(null);
   }, [partyMode, partyWorldId]);
+
+  const { error: liveConnError } = useWorldLiveChannel(partyMode ? partyWorldId : null, { onEncounter: setLiveEncounter });
+  useEffect(() => { if (liveConnError) setLiveError(liveConnError); }, [liveConnError]);
 
   const activeEncounter: EncounterStateInput = partyMode ? (liveEncounter ?? BLANK_ENCOUNTER) : encounter;
 

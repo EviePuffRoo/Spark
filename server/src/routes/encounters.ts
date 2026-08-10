@@ -1,15 +1,11 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
 import { toEncounterDTO } from "../serialize.js";
-import { getMemberWorldIds } from "../worldAccess.js";
+import { findAccessibleWorld } from "../worldAccess.js";
+import { publishWorldChange } from "../worldEvents.js";
 import type { LiveCombatant, CombatantKind, EncounterZone, EncounterZoneEffect, ZoneHazard } from "@spark/shared";
 
 export const encountersRouter = Router();
-
-async function findAccessibleWorld(userId: string, worldId: string) {
-  const memberWorldIds = await getMemberWorldIds(userId);
-  return prisma.world.findFirst({ where: { id: worldId, OR: [{ userId }, { id: { in: memberWorldIds } }] } });
-}
 
 function coerceCombatant(raw: unknown): LiveCombatant | null {
   if (!raw || typeof raw !== "object") return null;
@@ -120,6 +116,7 @@ encountersRouter.put("/:worldId", async (req, res) => {
       activeDungeonRoomId,
     },
   });
+  publishWorldChange(worldId, "encounter");
   res.json(toEncounterDTO(row, req.userId!, world.userId));
 });
 
@@ -152,6 +149,7 @@ encountersRouter.post("/:worldId/adjust-hp", async (req, res) => {
     where: { worldId },
     data: { combatants: JSON.stringify(combatants) },
   });
+  publishWorldChange(worldId, "encounter");
   res.json(toEncounterDTO(updated, req.userId!, world.userId));
 });
 
@@ -198,5 +196,6 @@ encountersRouter.post("/:worldId/move-zone", async (req, res) => {
     where: { worldId },
     data: { combatants: JSON.stringify(combatants) },
   });
+  publishWorldChange(worldId, "encounter");
   res.json(toEncounterDTO(updated, req.userId!, world.userId));
 });

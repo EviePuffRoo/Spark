@@ -496,6 +496,18 @@ export interface Shop extends ShopInput {
   updatedAt: string;
 }
 
+export interface GenerateShopRequest {
+  archetype?: string;
+  stockSize?: number;
+  fullyRandom?: boolean;
+}
+
+export interface GeneratedShop {
+  name: string;
+  description: string;
+  stock: ShopStockEntry[];
+}
+
 export interface EncounterStateInput {
   combatants: LiveCombatant[];
   round: number;

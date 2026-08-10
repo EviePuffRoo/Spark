@@ -15,7 +15,7 @@ import type {
   Encounter, EncounterStateInput,
   ZoneMapTemplate, ZoneMapTemplateInput,
   Dungeon, DungeonInput,
-  Shop, ShopInput,
+  Shop, ShopInput, GenerateShopRequest, GeneratedShop,
   ActivitySummary,
   EntityType, EntityLink, SearchResult,
   AuthUser, SignupResult, RecoveryCodeResult,
@@ -59,6 +59,7 @@ export interface ReferenceData {
   questTiers: string[];
   factionTypes: string[];
   encounterTerrains: { id: string; name: string }[];
+  shopArchetypes: { id: string; name: string }[];
 }
 
 export interface ImportResult {
@@ -232,6 +233,8 @@ export const api = {
     request<Dungeon>(`/dungeons/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   deleteDungeon: (id: string) => request<void>(`/dungeons/${id}`, { method: "DELETE" }),
 
+  generateShop: (body: GenerateShopRequest) =>
+    request<GeneratedShop>("/generate-shop", { method: "POST", body: JSON.stringify(body) }),
   listShops: (worldId?: string) =>
     request<Shop[]>(`/shops${worldId ? `?worldId=${worldId}` : ""}`),
   getShop: (id: string) => request<Shop>(`/shops/${id}`),

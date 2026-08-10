@@ -4,11 +4,12 @@ import type {
   Adventure as AdventureRow, PlayerCharacter as PlayerCharacterRow, RollLogEntry as RollLogEntryRow,
   Encounter as EncounterRow, CodexNote as CodexNoteRow, LedgerEntry as LedgerEntryRow,
   ZoneMapTemplate as ZoneMapTemplateRow, Dungeon as DungeonRow, DowntimeActivity as DowntimeActivityRow, Shop as ShopRow,
+  Region as RegionRow, Settlement as SettlementRow,
 } from "@prisma/client";
 import type {
   Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, PlayerCharacter, RollLogEntry,
   Encounter, LiveCombatant, HpStatus, CodexNote, EntityType, LedgerEntry, LedgerEntryKind, EncounterZone, EncounterZoneEffect,
-  ZoneMapTemplate, Dungeon, DowntimeActivity, DowntimeActivityType, Shop, ShopStockEntry,
+  ZoneMapTemplate, Dungeon, DowntimeActivity, DowntimeActivityType, Shop, ShopStockEntry, Region, Settlement,
 } from "@spark/shared";
 
 export function toCharacterDTO(row: CharacterRow): Character {
@@ -73,6 +74,46 @@ export function toLocationDTO(row: LocationRow): Location {
     notableFeature: row.notableFeature,
     keeper: row.keeper,
     rumor: row.rumor,
+    worldId: row.worldId,
+    hiddenFromParty: row.hiddenFromParty,
+    settlementId: row.settlementId,
+    tags: JSON.parse(row.tags),
+    notes: row.notes ?? undefined,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+export function toRegionDTO(row: RegionRow): Region {
+  return {
+    id: row.id,
+    userId: row.userId,
+    name: row.name,
+    terrainCategory: row.terrainCategory,
+    dangerLevel: row.dangerLevel ?? undefined,
+    description: row.description,
+    worldId: row.worldId,
+    hiddenFromParty: row.hiddenFromParty,
+    x: row.x,
+    y: row.y,
+    connections: JSON.parse(row.connections),
+    tags: JSON.parse(row.tags),
+    notes: row.notes ?? undefined,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+export function toSettlementDTO(row: SettlementRow): Settlement {
+  return {
+    id: row.id,
+    userId: row.userId,
+    name: row.name,
+    settlementType: row.settlementType,
+    population: row.population ?? undefined,
+    government: row.government ?? undefined,
+    description: row.description,
+    regionId: row.regionId,
     worldId: row.worldId,
     hiddenFromParty: row.hiddenFromParty,
     tags: JSON.parse(row.tags),
@@ -359,6 +400,12 @@ export function toPlayerCharacterDTO(row: PlayerCharacterRow): PlayerCharacter {
     notes: row.notes ?? undefined,
     equippedItems: JSON.parse(row.equippedItems),
     attunedItems: JSON.parse(row.attunedItems),
+    currentHp: row.currentHp,
+    deathSaves: JSON.parse(row.deathSaves),
+    spellSlots: JSON.parse(row.spellSlots),
+    preparedSpells: JSON.parse(row.preparedSpells),
+    classResources: JSON.parse(row.classResources),
+    conditions: JSON.parse(row.conditions),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };

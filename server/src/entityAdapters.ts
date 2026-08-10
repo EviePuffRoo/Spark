@@ -102,6 +102,20 @@ const adapters: Record<EntityType, EntityAdapter> = {
     getMeta: (row) => `${JSON.parse(row.stock).length} items in stock`,
     searchFields: ["name", "description", "notes", "tags"],
   },
+  region: {
+    findMany: (args) => prisma.region.findMany(args),
+    findUnique: (id, userId, memberWorldIds) => prisma.region.findFirst({ where: accessWhere(id, userId, memberWorldIds) }),
+    getName: (row) => row.name,
+    getMeta: (row) => `${row.terrainCategory}${row.dangerLevel ? ` · ${row.dangerLevel}` : ""}`,
+    searchFields: ["name", "terrainCategory", "dangerLevel", "description", "notes", "tags"],
+  },
+  settlement: {
+    findMany: (args) => prisma.settlement.findMany(args),
+    findUnique: (id, userId, memberWorldIds) => prisma.settlement.findFirst({ where: accessWhere(id, userId, memberWorldIds) }),
+    getName: (row) => row.name,
+    getMeta: (row) => row.settlementType,
+    searchFields: ["name", "settlementType", "government", "description", "notes", "tags"],
+  },
 };
 
 export function getAdapter(type: string): EntityAdapter | null {

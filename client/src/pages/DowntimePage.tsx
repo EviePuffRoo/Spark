@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import type { DowntimeActivity, DowntimeActivityType, EncounterTable, LiveCombatant, EncounterStateInput, SearchResult } from "@spark/shared";
+import type { DowntimeActivity, DowntimeActivityType, EncounterTable, LiveCombatant, EncounterStateInput, SearchResult, Region } from "@spark/shared";
 import { DOWNTIME_ACTIVITY_TYPES, DOWNTIME_ACTIVITY_TYPE_LABELS } from "@spark/shared";
 import { api } from "../api";
 import { useAuth } from "../AuthContext";
 import { useActiveWorld } from "../ActiveWorldContext";
 import { EntitySearchPicker } from "../components/EntitySearchPicker";
 import { rollTableIndex } from "../rollTable";
+import { zoneDistances } from "../zoneGraph";
 import { DowntimeIcon } from "../components/icons";
 import { EmptyState } from "../components/EmptyState";
 
@@ -36,15 +37,39 @@ export function DowntimePage() {
   const [dayCount, setDayCount] = useState(1);
   const [checks, setChecks] = useState<TravelCheck[]>([]);
 
+  const [regions, setRegions] = useState<Region[]>([]);
+  const [originRegion, setOriginRegion] = useState<Region | null>(null);
+  const [destinationRegion, setDestinationRegion] = useState<Region | null>(null);
+  const [pickingOrigin, setPickingOrigin] = useState(false);
+  const [pickingDestination, setPickingDestination] = useState(false);
+
   function refresh() {
     if (!worldId) {
       setActivities([]);
+      setRegions([]);
       return;
     }
     api.listDowntimeActivities(worldId).then(setActivities).catch(() => {});
+    api.listRegions(worldId).then(setRegions).catch(() => {});
   }
 
   useEffect(refresh, [worldId]);
+
+  const suggestedDays = (() => {
+    if (!originRegion || !destinationRegion) return null;
+    const distances = zoneDistances(regions, originRegion.id);
+    return distances.get(destinationRegion.id) ?? null;
+  })();
+
+  async function pickOriginRegion(result: SearchResult) {
+    setPickingOrigin(false);
+    setOriginRegion(await api.getRegion(result.id));
+  }
+
+  async function pickDestinationRegion(result: SearchResult) {
+    setPickingDestination(false);
+    setDestinationRegion(await api.getRegion(result.id));
+  }
 
   async function logActivity() {
     if (!worldId || !characterName.trim() || !description.trim()) return;
@@ -203,6 +228,46 @@ export function DowntimePage() {
               <h2>Travel</h2>
             </div>
             <p className="hint">Pick an encounter table and roll a check for each leg of the journey. Not saved — jot anything worth keeping into Session Notes.</p>
+
+            <label className="field">
+              <span>From region (optional)</span>
+              {originRegion ? (
+                <div className="role-slot-filled">
+                  <span className="role-slot-value">{originRegion.name}</span>
+                  <button className="btn-secondary" onClick={() => setOriginRegion(null)}>Clear</button>
+                </div>
+              ) : pickingOrigin ? (
+                <EntitySearchPicker type="region" onSelect={pickOriginRegion} placeholder="Search regions…" />
+              ) : (
+                <button className="btn-secondary" onClick={() => setPickingOrigin(true)}>Choose Origin Region</button>
+              )}
+            </label>
+            <label className="field">
+              <span>To region (optional)</span>
+              {destinationRegion ? (
+                <div className="role-slot-filled">
+                  <span className="role-slot-value">{destinationRegion.name}</span>
+                  <button className="btn-secondary" onClick={() => setDestinationRegion(null)}>Clear</button>
+                </div>
+              ) : pickingDestination ? (
+                <EntitySearchPicker type="region" onSelect={pickDestinationRegion} placeholder="Search regions…" />
+              ) : (
+                <button className="btn-secondary" onClick={() => setPickingDestination(true)}>Choose Destination Region</button>
+              )}
+            </label>
+            {originRegion && destinationRegion && (
+              <p className="hint">
+                {suggestedDays === null
+                  ? "No known travel route between these regions — connect them on the World Map first."
+                  : `Suggested: ${suggestedDays} day${suggestedDays === 1 ? "" : "s"} (${suggestedDays} region hop${suggestedDays === 1 ? "" : "s"} on the World Map).`}
+                {suggestedDays !== null && (
+                  <>
+                    {" "}
+                    <button className="btn-secondary" onClick={() => setDayCount(suggestedDays)}>Use suggestion</button>
+                  </>
+                )}
+              </p>
+            )}
 
             {!pickedTable && !pickingTable && (
               <button className="btn-secondary" onClick={() => setPickingTable(true)}>Choose an Encounter Table</button>

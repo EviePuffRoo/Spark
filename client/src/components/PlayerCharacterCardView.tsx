@@ -1,4 +1,4 @@
-import type { PlayerCharacterInput, AbilityKey } from "@spark/shared";
+import type { PlayerCharacterInput, PlayerCharacter, AbilityKey } from "@spark/shared";
 
 const ABILITY_ORDER: { key: AbilityKey; label: string }[] = [
   { key: "str", label: "STR" },
@@ -14,7 +14,9 @@ function modifier(score: number): string {
   return mod >= 0 ? `+${mod}` : `${mod}`;
 }
 
-export function PlayerCharacterCardView({ pc }: { pc: PlayerCharacterInput }) {
+type LivingStateProps = Partial<Pick<PlayerCharacter, "currentHp" | "deathSaves" | "spellSlots" | "preparedSpells" | "classResources">>;
+
+export function PlayerCharacterCardView({ pc }: { pc: PlayerCharacterInput & LivingStateProps }) {
   return (
     <div className="statblock item-card">
       <h2 className="statblock-name">{pc.name}</h2>
@@ -24,7 +26,10 @@ export function PlayerCharacterCardView({ pc }: { pc: PlayerCharacterInput }) {
       </p>
       <hr className="rule gold" />
       <p><strong>Armor Class</strong> {pc.armorClass}</p>
-      <p><strong>Max HP</strong> {pc.maxHp}</p>
+      <p><strong>Hit Points</strong> {pc.currentHp !== undefined ? `${pc.currentHp} / ${pc.maxHp}` : pc.maxHp}</p>
+      {pc.deathSaves && (pc.deathSaves.successes > 0 || pc.deathSaves.failures > 0) && (
+        <p><strong>Death Saves</strong> {pc.deathSaves.successes} successes, {pc.deathSaves.failures} failures</p>
+      )}
       <hr className="rule" />
       <div className="ability-grid">
         {ABILITY_ORDER.map(({ key, label }) => (
@@ -34,6 +39,18 @@ export function PlayerCharacterCardView({ pc }: { pc: PlayerCharacterInput }) {
           </div>
         ))}
       </div>
+      {pc.spellSlots && pc.spellSlots.length > 0 && (
+        <>
+          <hr className="rule" />
+          <p><strong>Spell Slots</strong> {pc.spellSlots.map((s) => `${s.current}/${s.max} (L${s.level})`).join(", ")}</p>
+        </>
+      )}
+      {pc.classResources && pc.classResources.length > 0 && (
+        <p><strong>{pc.classResources[0].name}</strong> {pc.classResources[0].current} / {pc.classResources[0].max}</p>
+      )}
+      {pc.preparedSpells && pc.preparedSpells.length > 0 && (
+        <p><strong>Prepared Spells</strong> {pc.preparedSpells.length}</p>
+      )}
     </div>
   );
 }

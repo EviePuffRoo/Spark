@@ -1,30 +1,30 @@
 import { useEffect, useState } from "react";
-import type { PlayerCharacterInput, GeneratePlayerCharacterRequest, GeneratedPlayerCharacter } from "@spark/shared";
+import type { GenerateSettlementRequest, GeneratedSettlement, SearchResult } from "@spark/shared";
 import { api, type ReferenceData } from "../api";
 import { useActiveWorld } from "../ActiveWorldContext";
-import { PlayerCharacterCardView } from "../components/PlayerCharacterCardView";
-import { PlayerCharacterEditor } from "../components/PlayerCharacterEditor";
+import { SettlementCardView } from "../components/SettlementCardView";
+import { SettlementEditor } from "../components/SettlementEditor";
+import { EntitySearchPicker } from "../components/EntitySearchPicker";
 
-const BLANK_PC: PlayerCharacterInput = {
-  name: "", className: "", level: 1, race: "", armorClass: 10, maxHp: 10,
-  abilityScores: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 },
-};
+const BLANK_SETTLEMENT: GeneratedSettlement = { name: "", settlementType: "", description: "" };
 
-export function PlayerCharacterCreatePage() {
+export function SettlementForgePage() {
   const [reference, setReference] = useState<ReferenceData | null>(null);
   const { worlds, worldId } = useActiveWorld();
   const [creationMode, setCreationMode] = useState<"generate" | "manual">("generate");
-  const [form, setForm] = useState<GeneratePlayerCharacterRequest>({});
-  const [generated, setGenerated] = useState<GeneratedPlayerCharacter | null>(null);
+  const [form, setForm] = useState<GenerateSettlementRequest>({});
+  const [generated, setGenerated] = useState<GeneratedSettlement | null>(null);
   const [loading, setLoading] = useState(false);
   const [resetKey, setResetKey] = useState(0);
-  const [manualResult, setManualResult] = useState<PlayerCharacterInput | null>(null);
+  const [manualResult, setManualResult] = useState<GeneratedSettlement | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [saveOpen, setSaveOpen] = useState(false);
   const [saveWorldId, setSaveWorldId] = useState(worldId);
   const [saveTags, setSaveTags] = useState("");
   const [saveNotes, setSaveNotes] = useState("");
+  const [saveRegion, setSaveRegion] = useState<SearchResult | null>(null);
+  const [pickingRegion, setPickingRegion] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
 
   useEffect(() => {
@@ -44,6 +44,8 @@ export function PlayerCharacterCreatePage() {
     setSaveStatus("idle");
     setSaveTags("");
     setSaveNotes("");
+    setSaveRegion(null);
+    setPickingRegion(false);
     setError(null);
   }
 
@@ -53,7 +55,7 @@ export function PlayerCharacterCreatePage() {
     setSaveOpen(false);
     setSaveStatus("idle");
     try {
-      setGenerated(await api.generatePlayerCharacter(form));
+      setGenerated(await api.generateSettlement(form));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -68,9 +70,10 @@ export function PlayerCharacterCreatePage() {
     setSaveStatus("saving");
     setError(null);
     try {
-      await api.savePlayerCharacter({
+      await api.saveSettlement({
         ...result,
         worldId: saveWorldId || null,
+        regionId: saveRegion?.id ?? null,
         tags: saveTags.split(",").map((t) => t.trim()).filter(Boolean),
         notes: saveNotes || undefined,
       });
@@ -99,8 +102,21 @@ export function PlayerCharacterCreatePage() {
             </select>
           </label>
           <label className="field">
+            <span>Region (optional)</span>
+            {saveRegion ? (
+              <div className="role-slot-filled">
+                <span className="role-slot-value">{saveRegion.name}</span>
+                <button className="btn-secondary" onClick={() => setSaveRegion(null)}>Clear</button>
+              </div>
+            ) : pickingRegion ? (
+              <EntitySearchPicker type="region" onSelect={(r) => { setSaveRegion(r); setPickingRegion(false); }} placeholder="Search regions…" />
+            ) : (
+              <button className="btn-secondary" onClick={() => setPickingRegion(true)}>+ Anchor to a Region</button>
+            )}
+          </label>
+          <label className="field">
             <span>Tags (comma separated)</span>
-            <input type="text" value={saveTags} onChange={(e) => setSaveTags(e.target.value)} placeholder="party, act-1" />
+            <input type="text" value={saveTags} onChange={(e) => setSaveTags(e.target.value)} placeholder="capital, act-1" />
           </label>
           <label className="field">
             <span>Notes</span>
@@ -119,14 +135,14 @@ export function PlayerCharacterCreatePage() {
     <div className="page">
       <div className="tabs forge-mode-tabs">
         <button className={creationMode === "generate" ? "active" : ""} aria-current={creationMode === "generate" ? "true" : undefined} onClick={() => switchMode("generate")}>Generate</button>
-        <button className={creationMode === "manual" ? "active" : ""} aria-current={creationMode === "manual" ? "true" : undefined} onClick={() => switchMode("manual")}>Enter Your Own</button>
+        <button className={creationMode === "manual" ? "active" : ""} aria-current={creationMode === "manual" ? "true" : undefined} onClick={() => switchMode("manual")}>Build Your Own</button>
       </div>
 
       {creationMode === "generate" && !generated && (
         <div className="generator-layout">
           <div className="panel">
-            <h2>Generate a Player Character</h2>
-            <p className="hint">A quick pre-gen — a hireling, a one-shot pick-up, or a starting point to hand a new player.</p>
+            <h2>Generate a Settlement</h2>
+            <p className="hint">A town, city, or outpost with a population, a government, and a character of its own.</p>
 
             <label className="field">
               <input
@@ -139,37 +155,22 @@ export function PlayerCharacterCreatePage() {
 
             <fieldset disabled={fullyRandom} className="fieldset">
               <label className="field">
-                <span>Class</span>
-                <select value={form.className ?? ""} onChange={(e) => setForm({ ...form, className: e.target.value || undefined })}>
+                <span>Settlement type</span>
+                <select value={form.settlementType ?? ""} onChange={(e) => setForm({ ...form, settlementType: e.target.value || undefined })}>
                   <option value="">Random</option>
-                  {reference?.classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {reference?.settlementTypes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
-              </label>
-              <label className="field">
-                <span>Race</span>
-                <select value={form.race ?? ""} onChange={(e) => setForm({ ...form, race: e.target.value || undefined })}>
-                  <option value="">Random</option>
-                  {reference?.races.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-                </select>
-              </label>
-              <label className="field">
-                <span>Level</span>
-                <input
-                  type="number" min={1} max={20}
-                  value={form.level ?? 1}
-                  onChange={(e) => setForm({ ...form, level: Number(e.target.value) })}
-                />
               </label>
             </fieldset>
 
             <button className="btn-primary" onClick={handleGenerate} disabled={loading}>
-              {loading ? "Rolling…" : "Generate"}
+              {loading ? "Founding…" : "Generate Settlement"}
             </button>
             {error && <p className="error">{error}</p>}
           </div>
 
           <div className="panel result-panel">
-            <p className="hint">Generate a character to see it here.</p>
+            <p className="hint">Generate a settlement to see it here.</p>
           </div>
         </div>
       )}
@@ -177,12 +178,12 @@ export function PlayerCharacterCreatePage() {
       {creationMode === "generate" && generated && (
         <div className="generator-layout">
           <div className="panel">
-            <h2>Generate a Player Character</h2>
-            <p className="hint">Review it, then save it to your roster.</p>
+            <h2>Generate a Settlement</h2>
+            <p className="hint">Review it, then save it to your roster — optionally anchored to a Region.</p>
             <button className="btn-secondary" onClick={startOver}>← Generate Again</button>
           </div>
           <div className="panel result-panel">
-            <PlayerCharacterCardView pc={generated} />
+            <SettlementCardView settlement={generated} />
             {savePanel}
           </div>
         </div>
@@ -190,11 +191,11 @@ export function PlayerCharacterCreatePage() {
 
       {creationMode === "manual" && !manualResult && (
         <div className="panel">
-          <h2>Add a Player Character</h2>
-          <p className="hint">Enter the character exactly as your player built them.</p>
-          <PlayerCharacterEditor
+          <h2>Build a Settlement</h2>
+          <p className="hint">Write it exactly how you want it — nothing generated, all yours.</p>
+          <SettlementEditor
             key={resetKey}
-            value={BLANK_PC}
+            value={BLANK_SETTLEMENT}
             onSave={async (draft) => setManualResult(draft)}
             onCancel={() => setResetKey((k) => k + 1)}
             saveLabel="Continue"
@@ -205,12 +206,12 @@ export function PlayerCharacterCreatePage() {
       {creationMode === "manual" && manualResult && (
         <div className="generator-layout">
           <div className="panel">
-            <h2>Add a Player Character</h2>
+            <h2>Build a Settlement</h2>
             <p className="hint">Review it, then save it to your roster.</p>
             <button className="btn-secondary" onClick={startOver}>← Edit Again</button>
           </div>
           <div className="panel result-panel">
-            <PlayerCharacterCardView pc={manualResult} />
+            <SettlementCardView settlement={manualResult} />
             {savePanel}
           </div>
         </div>

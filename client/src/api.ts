@@ -7,7 +7,7 @@ import type {
   EncounterTable, GenerateEncounterTableRequest, GeneratedEncounterTable,
   SessionNote, SessionNoteInput,
   Adventure, GenerateAdventureRequest, GeneratedAdventure,
-  PlayerCharacter, PlayerCharacterInput, GeneratePlayerCharacterRequest,
+  PlayerCharacter, PlayerCharacterInput, GeneratePlayerCharacterRequest, GeneratedPlayerCharacter,
   RollLogEntry, RollLogEntryInput,
   CodexNote, CodexNoteInput,
   LedgerEntry, LedgerEntryInput, LedgerSummary,
@@ -16,9 +16,12 @@ import type {
   ZoneMapTemplate, ZoneMapTemplateInput,
   Dungeon, DungeonInput, GenerateDungeonRequest, GeneratedDungeonOutline,
   Shop, ShopInput, GenerateShopRequest, GeneratedShop,
+  Region, GenerateRegionRequest, GeneratedRegion,
+  Settlement, GenerateSettlementRequest, GeneratedSettlement,
   ActivitySummary,
   EntityType, EntityLink, SearchResult,
   AuthUser, SignupResult, RecoveryCodeResult,
+  SpellDef, ConditionDef, RuleDef,
 } from "@spark/shared";
 
 let onSessionExpired: (() => void) | null = null;
@@ -61,6 +64,14 @@ export interface ReferenceData {
   encounterTerrains: { id: string; name: string }[];
   classes: { id: string; name: string }[];
   shopArchetypes: { id: string; name: string }[];
+  terrainCategories: { id: string; name: string }[];
+  settlementTypes: { id: string; name: string }[];
+}
+
+export interface CompendiumData {
+  spells: SpellDef[];
+  conditions: ConditionDef[];
+  rules: RuleDef[];
 }
 
 export interface ImportResult {
@@ -90,6 +101,7 @@ export interface WorldMemberInfo {
 
 export const api = {
   getReference: () => request<ReferenceData>("/reference"),
+  getCompendium: () => request<CompendiumData>("/compendium"),
   generate: (body: GenerateRequest) =>
     request<GeneratedCharacter>("/generate", { method: "POST", body: JSON.stringify(body) }),
   generateItem: (body: GenerateItemRequest) =>
@@ -178,7 +190,9 @@ export const api = {
   deleteAdventure: (id: string) => request<void>(`/adventures/${id}`, { method: "DELETE" }),
 
   generatePlayerCharacter: (body: GeneratePlayerCharacterRequest) =>
-    request<PlayerCharacterInput>("/generate-player-character", { method: "POST", body: JSON.stringify(body) }),
+    request<GeneratedPlayerCharacter>("/generate-player-character", { method: "POST", body: JSON.stringify(body) }),
+  restPlayerCharacter: (id: string, kind: "short" | "long") =>
+    request<PlayerCharacter>(`/player-characters/${id}/rest`, { method: "POST", body: JSON.stringify({ kind }) }),
   listPlayerCharacters: (worldId?: string) =>
     request<PlayerCharacter[]>(`/player-characters${worldId ? `?worldId=${worldId}` : ""}`),
   listMyPlayerCharacters: () => request<PlayerCharacter[]>("/player-characters?mine=true"),
@@ -248,6 +262,28 @@ export const api = {
   updateShop: (id: string, patch: Partial<Shop>) =>
     request<Shop>(`/shops/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   deleteShop: (id: string) => request<void>(`/shops/${id}`, { method: "DELETE" }),
+
+  generateRegion: (body: GenerateRegionRequest) =>
+    request<GeneratedRegion>("/generate-region", { method: "POST", body: JSON.stringify(body) }),
+  listRegions: (worldId?: string) =>
+    request<Region[]>(`/regions${worldId ? `?worldId=${worldId}` : ""}`),
+  getRegion: (id: string) => request<Region>(`/regions/${id}`),
+  saveRegion: (region: GeneratedRegion & { worldId?: string | null; tags?: string[]; notes?: string; x?: number; y?: number }) =>
+    request<Region>("/regions", { method: "POST", body: JSON.stringify(region) }),
+  updateRegion: (id: string, patch: Partial<Region>) =>
+    request<Region>(`/regions/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+  deleteRegion: (id: string) => request<void>(`/regions/${id}`, { method: "DELETE" }),
+
+  generateSettlement: (body: GenerateSettlementRequest) =>
+    request<GeneratedSettlement>("/generate-settlement", { method: "POST", body: JSON.stringify(body) }),
+  listSettlements: (worldId?: string) =>
+    request<Settlement[]>(`/settlements${worldId ? `?worldId=${worldId}` : ""}`),
+  getSettlement: (id: string) => request<Settlement>(`/settlements/${id}`),
+  saveSettlement: (settlement: GeneratedSettlement & { worldId?: string | null; tags?: string[]; notes?: string; regionId?: string | null }) =>
+    request<Settlement>("/settlements", { method: "POST", body: JSON.stringify(settlement) }),
+  updateSettlement: (id: string, patch: Partial<Settlement>) =>
+    request<Settlement>(`/settlements/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+  deleteSettlement: (id: string) => request<void>(`/settlements/${id}`, { method: "DELETE" }),
 
   getActivity: () => request<ActivitySummary>("/activity"),
 

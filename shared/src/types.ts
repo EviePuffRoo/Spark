@@ -157,10 +157,62 @@ export interface Location extends GeneratedLocation {
   userId: string;
   worldId?: string | null;
   hiddenFromParty: boolean;
+  settlementId?: string | null;
   tags: string[];
   notes?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface GeneratedRegion {
+  name: string;
+  terrainCategory: string;
+  dangerLevel?: string;
+  description: string;
+}
+
+export interface Region extends GeneratedRegion {
+  id: string;
+  userId: string;
+  worldId?: string | null;
+  hiddenFromParty: boolean;
+  x: number;
+  y: number;
+  connections: string[];
+  tags: string[];
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GenerateRegionRequest {
+  terrainCategory?: string;
+  fullyRandom?: boolean;
+}
+
+export interface GeneratedSettlement {
+  name: string;
+  settlementType: string;
+  population?: string;
+  government?: string;
+  description: string;
+}
+
+export interface Settlement extends GeneratedSettlement {
+  id: string;
+  userId: string;
+  worldId?: string | null;
+  hiddenFromParty: boolean;
+  regionId?: string | null;
+  tags: string[];
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GenerateSettlementRequest {
+  settlementType?: string;
+  fullyRandom?: boolean;
 }
 
 export interface GenerateLocationRequest {
@@ -239,6 +291,29 @@ export interface PlayerCharacterInput {
   playerName?: string;
 }
 
+export interface DeathSaves {
+  successes: number;
+  failures: number;
+}
+
+export interface SpellSlotLevel {
+  level: number;
+  max: number;
+  current: number;
+}
+
+export interface ClassResource {
+  name: string;
+  max: number;
+  current: number;
+  rechargeOn: "short" | "long";
+}
+
+export interface GeneratedPlayerCharacter extends PlayerCharacterInput {
+  spellSlots: SpellSlotLevel[];
+  classResources: ClassResource[];
+}
+
 export interface PlayerCharacter extends PlayerCharacterInput {
   id: string;
   userId: string;
@@ -248,6 +323,12 @@ export interface PlayerCharacter extends PlayerCharacterInput {
   notes?: string;
   equippedItems: string[];
   attunedItems: string[];
+  currentHp: number;
+  deathSaves: DeathSaves;
+  spellSlots: SpellSlotLevel[];
+  preparedSpells: string[];
+  classResources: ClassResource[];
+  conditions: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -604,7 +685,7 @@ export interface Adventure extends GeneratedAdventure {
   updatedAt: string;
 }
 
-export type EntityType = "character" | "item" | "location" | "quest" | "faction" | "encounterTable" | "sessionNote" | "adventure" | "playerCharacter" | "zoneMapTemplate" | "dungeon" | "shop";
+export type EntityType = "character" | "item" | "location" | "quest" | "faction" | "encounterTable" | "sessionNote" | "adventure" | "playerCharacter" | "zoneMapTemplate" | "dungeon" | "shop" | "region" | "settlement";
 
 export interface EntityTypeDef {
   type: EntityType;
@@ -624,6 +705,8 @@ export const ENTITY_TYPES: EntityTypeDef[] = [
   { type: "zoneMapTemplate", label: "Zone Map Template" },
   { type: "dungeon", label: "Dungeon" },
   { type: "shop", label: "Shop" },
+  { type: "region", label: "Region" },
+  { type: "settlement", label: "Settlement" },
 ];
 
 export interface EntityRef {

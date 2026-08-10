@@ -26,7 +26,7 @@ locationsRouter.get("/:id", async (req, res) => {
 
 locationsRouter.post("/", async (req, res) => {
   const body = req.body ?? {};
-  const { name, locationType, category, description, notableFeature, keeper, rumor, worldId, tags, notes } = body;
+  const { name, locationType, category, description, notableFeature, keeper, rumor, worldId, tags, notes, settlementId } = body;
 
   if (!name || !locationType || !category || !description || !notableFeature || !keeper || !rumor) {
     return res.status(400).json({ error: "Missing required location fields" });
@@ -36,6 +36,7 @@ locationsRouter.post("/", async (req, res) => {
     data: {
       name, locationType, category, description, notableFeature, keeper, rumor,
       worldId: worldId ?? null,
+      settlementId: settlementId ?? null,
       tags: JSON.stringify(Array.isArray(tags) ? tags : []),
       notes: notes ?? null,
       userId: req.userId!,
@@ -52,6 +53,7 @@ locationsRouter.patch("/:id", async (req, res) => {
     if (field in body) data[field] = body[field];
   }
   if ("worldId" in body) data.worldId = body.worldId ?? null;
+  if ("settlementId" in body) data.settlementId = body.settlementId ?? null;
   if ("tags" in body) data.tags = JSON.stringify(Array.isArray(body.tags) ? body.tags : []);
 
   const result = await prisma.location.updateMany({ where: { id: req.params.id, userId: req.userId }, data });

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, PlayerCharacter, ZoneMapTemplate, Dungeon, Shop, EntityType, QuestStatus } from "@spark/shared";
+import type { Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, PlayerCharacter, ZoneMapTemplate, Dungeon, Shop, Region, Settlement, EntityType, QuestStatus } from "@spark/shared";
 import { QUEST_STATUSES, QUEST_STATUS_LABELS } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { useAuth } from "../AuthContext";
@@ -32,8 +32,13 @@ import { FactionEditor } from "../components/FactionEditor";
 import { EncounterTableEditor } from "../components/EncounterTableEditor";
 import { AdventureEditor } from "../components/AdventureEditor";
 import { PlayerCharacterEditor } from "../components/PlayerCharacterEditor";
+import { RegionCardView } from "../components/RegionCardView";
+import { RegionEditor } from "../components/RegionEditor";
+import { SettlementCardView } from "../components/SettlementCardView";
+import { SettlementEditor } from "../components/SettlementEditor";
+import { EntitySearchPicker } from "../components/EntitySearchPicker";
 
-export type Mode = "characters" | "items" | "locations" | "quests" | "factions" | "encounters" | "notes" | "adventures" | "playerCharacters" | "zoneMapTemplates" | "dungeons" | "shops";
+export type Mode = "characters" | "items" | "locations" | "quests" | "factions" | "encounters" | "notes" | "adventures" | "playerCharacters" | "zoneMapTemplates" | "dungeons" | "shops" | "regions" | "settlements";
 
 const MODE_LABELS: Record<Mode, string> = {
   characters: "Characters",
@@ -48,6 +53,8 @@ const MODE_LABELS: Record<Mode, string> = {
   zoneMapTemplates: "Zone Map Templates",
   dungeons: "Dungeons",
   shops: "Shops",
+  regions: "Regions",
+  settlements: "Settlements",
 };
 
 export const ENTITY_TYPE_TO_MODE: Record<EntityType, Mode> = {
@@ -63,6 +70,8 @@ export const ENTITY_TYPE_TO_MODE: Record<EntityType, Mode> = {
   zoneMapTemplate: "zoneMapTemplates",
   dungeon: "dungeons",
   shop: "shops",
+  region: "regions",
+  settlement: "settlements",
 };
 
 const MODE_TO_ENTITY_TYPE: Record<Mode, EntityType> = {
@@ -78,6 +87,8 @@ const MODE_TO_ENTITY_TYPE: Record<Mode, EntityType> = {
   zoneMapTemplates: "zoneMapTemplate",
   dungeons: "dungeon",
   shops: "shop",
+  regions: "region",
+  settlements: "settlement",
 };
 
 export interface RosterSelection {
@@ -123,6 +134,8 @@ export function RosterPage({
   const [zoneMapTemplates, setZoneMapTemplates] = useState<ZoneMapTemplate[]>([]);
   const [dungeons, setDungeons] = useState<Dungeon[]>([]);
   const [shops, setShops] = useState<Shop[]>([]);
+  const [regions, setRegions] = useState<Region[]>([]);
+  const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [worlds, setWorlds] = useState<WorldSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [metaNotes, setMetaNotes] = useState("");
@@ -155,6 +168,8 @@ export function RosterPage({
       api.listZoneMapTemplates(w).then(setZoneMapTemplates).catch(() => {}),
       api.listDungeons(w).then(setDungeons).catch(() => {}),
       api.listShops(w).then(setShops).catch(() => {}),
+      api.listRegions(w).then(setRegions).catch(() => {}),
+      api.listSettlements(w).then(setSettlements).catch(() => {}),
       api.listWorlds().then(setWorlds).catch(() => {}),
     ]).finally(() => setLoading(false));
   }
@@ -204,11 +219,17 @@ export function RosterPage({
   const selectedZoneMapTemplate = mode === "zoneMapTemplates" ? zoneMapTemplates.find((z) => z.id === selectedId) ?? null : null;
   const selectedDungeon = mode === "dungeons" ? dungeons.find((d) => d.id === selectedId) ?? null : null;
   const selectedShop = mode === "shops" ? shops.find((s) => s.id === selectedId) ?? null : null;
-  const selected = selectedCharacter ?? selectedItem ?? selectedLocation ?? selectedQuest ?? selectedFaction ?? selectedEncounter ?? selectedNote ?? selectedAdventure ?? selectedPlayerCharacter ?? selectedZoneMapTemplate ?? selectedDungeon ?? selectedShop;
+  const selectedRegion = mode === "regions" ? regions.find((r) => r.id === selectedId) ?? null : null;
+  const selectedSettlement = mode === "settlements" ? settlements.find((s) => s.id === selectedId) ?? null : null;
+  const selected = selectedCharacter ?? selectedItem ?? selectedLocation ?? selectedQuest ?? selectedFaction ?? selectedEncounter ?? selectedNote ?? selectedAdventure ?? selectedPlayerCharacter ?? selectedZoneMapTemplate ?? selectedDungeon ?? selectedShop ?? selectedRegion ?? selectedSettlement;
   const selectedDisplayName =
     selectedCharacter?.name ?? selectedItem?.name ?? selectedLocation?.name ?? selectedQuest?.title ??
-    selectedFaction?.name ?? selectedEncounter?.name ?? selectedNote?.title ?? selectedAdventure?.title ?? selectedPlayerCharacter?.name ?? selectedZoneMapTemplate?.name ?? selectedDungeon?.name ?? selectedShop?.name ?? "";
+    selectedFaction?.name ?? selectedEncounter?.name ?? selectedNote?.title ?? selectedAdventure?.title ?? selectedPlayerCharacter?.name ?? selectedZoneMapTemplate?.name ?? selectedDungeon?.name ?? selectedShop?.name ?? selectedRegion?.name ?? selectedSettlement?.name ?? "";
   const canEditSelected = !selected || selected.userId === user?.id;
+
+  const [locationSettlementId, setLocationSettlementId] = useState<string | null>(null);
+  const [locationSettlementName, setLocationSettlementName] = useState<string>("");
+  const [pickingSettlement, setPickingSettlement] = useState(false);
 
   useEffect(() => {
     if (selected) {
@@ -218,9 +239,18 @@ export function RosterPage({
       setHiddenFromParty(selected.hiddenFromParty);
     }
     if (selectedQuest) setQuestStatus(selectedQuest.status);
+    if (selectedLocation) {
+      setLocationSettlementId(selectedLocation.settlementId ?? null);
+      if (selectedLocation.settlementId) {
+        api.getSettlement(selectedLocation.settlementId).then((s) => setLocationSettlementName(s.name)).catch(() => setLocationSettlementName(""));
+      } else {
+        setLocationSettlementName("");
+      }
+    }
+    setPickingSettlement(false);
     setEditingContent(false);
     setActionError(null);
-  }, [selected, selectedQuest]);
+  }, [selected, selectedQuest, selectedLocation]);
 
   async function handleUpdate() {
     if (!selected) return;
@@ -230,6 +260,7 @@ export function RosterPage({
       notes: metaNotes, tags: tags.split(",").map((t) => t.trim()).filter(Boolean), worldId: assignedWorld || null,
       hiddenFromParty,
       ...(mode === "quests" ? { status: questStatus } : {}),
+      ...(mode === "locations" ? { settlementId: locationSettlementId } : {}),
     };
     try {
       if (mode === "characters") await api.updateCharacter(selected.id, patch);
@@ -243,7 +274,9 @@ export function RosterPage({
       else if (mode === "playerCharacters") await api.updatePlayerCharacter(selected.id, patch);
       else if (mode === "zoneMapTemplates") await api.updateZoneMapTemplate(selected.id, patch);
       else if (mode === "dungeons") await api.updateDungeon(selected.id, patch);
-      else await api.updateShop(selected.id, patch);
+      else if (mode === "shops") await api.updateShop(selected.id, patch);
+      else if (mode === "regions") await api.updateRegion(selected.id, patch);
+      else await api.updateSettlement(selected.id, patch);
       refresh();
     } catch (e) {
       setActionError((e as Error).message);
@@ -338,6 +371,19 @@ export function RosterPage({
         stock: selectedShop.stock.map((s) => ({ ...s, id: crypto.randomUUID() })),
         worldId, tags: tagsCopy, notes: notesCopy,
       });
+    } else if (selectedRegion) {
+      created = await api.saveRegion({
+        name: `${selectedRegion.name} (Copy)`, terrainCategory: selectedRegion.terrainCategory,
+        dangerLevel: selectedRegion.dangerLevel, description: selectedRegion.description,
+        worldId, tags: tagsCopy, notes: notesCopy,
+      });
+    } else if (selectedSettlement) {
+      created = await api.saveSettlement({
+        name: `${selectedSettlement.name} (Copy)`, settlementType: selectedSettlement.settlementType,
+        population: selectedSettlement.population, government: selectedSettlement.government,
+        description: selectedSettlement.description, regionId: selectedSettlement.regionId,
+        worldId, tags: tagsCopy, notes: notesCopy,
+      });
     }
     setStatus("idle");
     refresh();
@@ -390,7 +436,9 @@ export function RosterPage({
       else if (mode === "playerCharacters") await api.deletePlayerCharacter(selected.id);
       else if (mode === "zoneMapTemplates") await api.deleteZoneMapTemplate(selected.id);
       else if (mode === "dungeons") await api.deleteDungeon(selected.id);
-      else await api.deleteShop(selected.id);
+      else if (mode === "shops") await api.deleteShop(selected.id);
+      else if (mode === "regions") await api.deleteRegion(selected.id);
+      else await api.deleteSettlement(selected.id);
     } catch (e) {
       setActionError((e as Error).message);
       return;
@@ -411,7 +459,9 @@ export function RosterPage({
     mode === "playerCharacters" ? playerCharacters :
     mode === "zoneMapTemplates" ? zoneMapTemplates :
     mode === "dungeons" ? dungeons :
-    shops;
+    mode === "shops" ? shops :
+    mode === "regions" ? regions :
+    settlements;
 
   const availableTags = Array.from(new Set(activeEntities.flatMap((e) => e.tags))).sort();
 
@@ -437,7 +487,9 @@ export function RosterPage({
     mode === "playerCharacters" ? playerCharacters.filter((p) => !tagFilter || p.tags.includes(tagFilter)).map((p) => ({ id: p.id, name: p.name, meta: `Level ${p.level} ${p.race} ${p.className}`, hidden: p.hiddenFromParty })) :
     mode === "zoneMapTemplates" ? zoneMapTemplates.filter((z) => !tagFilter || z.tags.includes(tagFilter)).map((z) => ({ id: z.id, name: z.name, meta: `${z.zones.length} zones`, hidden: z.hiddenFromParty })) :
     mode === "dungeons" ? dungeons.filter((d) => !tagFilter || d.tags.includes(tagFilter)).map((d) => ({ id: d.id, name: d.name, meta: `${d.rooms.length} rooms`, hidden: d.hiddenFromParty })) :
-    shops.filter((s) => !tagFilter || s.tags.includes(tagFilter)).map((s) => ({ id: s.id, name: s.name, meta: `${s.stock.length} items in stock`, hidden: s.hiddenFromParty }))
+    mode === "shops" ? shops.filter((s) => !tagFilter || s.tags.includes(tagFilter)).map((s) => ({ id: s.id, name: s.name, meta: `${s.stock.length} items in stock`, hidden: s.hiddenFromParty })) :
+    mode === "regions" ? regions.filter((r) => !tagFilter || r.tags.includes(tagFilter)).map((r) => ({ id: r.id, name: r.name, meta: `${r.terrainCategory}${r.dangerLevel ? ` · ${r.dangerLevel}` : ""}`, hidden: r.hiddenFromParty })) :
+    settlements.filter((s) => !tagFilter || s.tags.includes(tagFilter)).map((s) => ({ id: s.id, name: s.name, meta: s.settlementType, hidden: s.hiddenFromParty }))
   ).filter((entry) => !trimmedSearch || entry.name.toLowerCase().includes(trimmedSearch));
 
   if (showFactionWeb) {
@@ -684,6 +736,26 @@ export function RosterPage({
           />
         )}
 
+        {selectedRegion && !editingContent && <RegionCardView region={selectedRegion} />}
+        {selectedRegion && editingContent && (
+          <RegionEditor
+            value={selectedRegion}
+            onSave={async (patch) => { await api.updateRegion(selectedRegion.id, patch); setEditingContent(false); refresh(); }}
+            onCancel={() => setEditingContent(false)}
+            saveLabel="Save Changes"
+          />
+        )}
+
+        {selectedSettlement && !editingContent && <SettlementCardView settlement={selectedSettlement} />}
+        {selectedSettlement && editingContent && (
+          <SettlementEditor
+            value={selectedSettlement}
+            onSave={async (patch) => { await api.updateSettlement(selectedSettlement.id, patch); setEditingContent(false); refresh(); }}
+            onCancel={() => setEditingContent(false)}
+            saveLabel="Save Changes"
+          />
+        )}
+
         {selected && !editingContent && mode !== "notes" && mode !== "zoneMapTemplates" && mode !== "dungeons" && mode !== "shops" && canEditSelected && (
           <button className="btn-secondary" onClick={() => setEditingContent(true)}>Edit Content</button>
         )}
@@ -694,7 +766,7 @@ export function RosterPage({
           <button className="btn-secondary" onClick={() => setEditingContent(true)}>Edit Stock</button>
         )}
 
-        {selected && !editingContent && onPrint && mode !== "zoneMapTemplates" && mode !== "dungeons" && mode !== "shops" && (
+        {selected && !editingContent && onPrint && mode !== "zoneMapTemplates" && mode !== "dungeons" && mode !== "shops" && mode !== "regions" && mode !== "settlements" && (
           <button className="btn-secondary" onClick={handlePrint}>Print</button>
         )}
         {selected && !editingContent && onPrint && mode === "notes" && (
@@ -724,6 +796,21 @@ export function RosterPage({
                     <select value={questStatus} onChange={(e) => setQuestStatus(e.target.value as QuestStatus)}>
                       {QUEST_STATUSES.map((s) => <option key={s} value={s}>{QUEST_STATUS_LABELS[s]}</option>)}
                     </select>
+                  </label>
+                )}
+                {mode === "locations" && (
+                  <label className="field">
+                    <span>Settlement (optional)</span>
+                    {locationSettlementId ? (
+                      <div className="role-slot-filled">
+                        <span className="role-slot-value">{locationSettlementName || "…"}</span>
+                        <button className="btn-secondary" onClick={() => { setLocationSettlementId(null); setLocationSettlementName(""); }}>Clear</button>
+                      </div>
+                    ) : pickingSettlement ? (
+                      <EntitySearchPicker type="settlement" onSelect={(r) => { setLocationSettlementId(r.id); setLocationSettlementName(r.name); setPickingSettlement(false); }} placeholder="Search settlements…" />
+                    ) : (
+                      <button className="btn-secondary" onClick={() => setPickingSettlement(true)}>+ Anchor to a Settlement</button>
+                    )}
                   </label>
                 )}
                 <label className="field">

@@ -1,18 +1,30 @@
 import { useEffect, useState } from "react";
-import type { QuestHook, SessionNote, LedgerSummary } from "@spark/shared";
+import type { QuestHook, SessionNote, LedgerSummary, Region, Settlement } from "@spark/shared";
 import { api } from "../api";
 import { useActiveWorld } from "../ActiveWorldContext";
+import { useAuth } from "../AuthContext";
+import { WorldMapView } from "../components/WorldMapView";
 
 export type OverviewNavTarget = "worlds" | "roster" | "codex" | "notes" | "downtime" | "shop";
 
 export function WorldOverviewPage({ onNavigate }: { onNavigate: (subTab: OverviewNavTarget) => void }) {
   const { worlds, worldId, refreshWorlds } = useActiveWorld();
+  const { user } = useAuth();
   const [quests, setQuests] = useState<QuestHook[]>([]);
   const [notes, setNotes] = useState<SessionNote[]>([]);
   const [ledger, setLedger] = useState<LedgerSummary | null>(null);
+  const [regions, setRegions] = useState<Region[]>([]);
+  const [settlements, setSettlements] = useState<Settlement[]>([]);
+  const [showMap, setShowMap] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const world = worlds.find((w) => w.id === worldId) ?? null;
+
+  function refreshMap() {
+    if (!worldId) return;
+    api.listRegions(worldId).then(setRegions).catch(() => {});
+    api.listSettlements(worldId).then(setSettlements).catch(() => {});
+  }
 
   useEffect(() => {
     refreshWorlds();
@@ -20,6 +32,8 @@ export function WorldOverviewPage({ onNavigate }: { onNavigate: (subTab: Overvie
       setQuests([]);
       setNotes([]);
       setLedger(null);
+      setRegions([]);
+      setSettlements([]);
       return;
     }
     setLoading(true);
@@ -32,7 +46,26 @@ export function WorldOverviewPage({ onNavigate }: { onNavigate: (subTab: Overvie
       setNotes(n);
       setLedger(l);
     }).catch(() => {}).finally(() => setLoading(false));
+    refreshMap();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [worldId]);
+
+  async function toggleRegionConnection(aId: string, bId: string) {
+    const a = regions.find((r) => r.id === aId);
+    const b = regions.find((r) => r.id === bId);
+    if (!a || !b) return;
+    const connected = a.connections.includes(bId);
+    await Promise.all([
+      api.updateRegion(aId, { connections: connected ? a.connections.filter((c) => c !== bId) : [...a.connections, bId] }),
+      api.updateRegion(bId, { connections: connected ? b.connections.filter((c) => c !== aId) : [...b.connections, aId] }),
+    ]);
+    refreshMap();
+  }
+
+  async function updateRegionPosition(id: string, patch: Partial<Region>) {
+    setRegions((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+    await api.updateRegion(id, patch);
+  }
 
   if (worlds.length === 0) {
     return (
@@ -92,8 +125,28 @@ export function WorldOverviewPage({ onNavigate }: { onNavigate: (subTab: Overvie
           <button className="btn-secondary" onClick={() => onNavigate("notes")}>Notes</button>
           <button className="btn-secondary" onClick={() => onNavigate("downtime")}>Downtime</button>
           <button className="btn-secondary" onClick={() => onNavigate("shop")}>Shop</button>
+          <button className="btn-secondary" aria-expanded={showMap} onClick={() => { setShowMap((v) => !v); if (!showMap) refreshMap(); }}>
+            {showMap ? "Hide World Map" : "World Map"}
+          </button>
         </div>
       </div>
+
+      {showMap && (
+        <div className="panel">
+          <h3 className="section-heading">World Map</h3>
+          {regions.length === 0 ? (
+            <p className="hint">No regions yet — generate one from Create → Regions to start mapping your world.</p>
+          ) : (
+            <WorldMapView
+              regions={regions}
+              settlements={settlements}
+              canEdit={!!user}
+              onUpdateRegion={updateRegionPosition}
+              onToggleConnection={toggleRegionConnection}
+            />
+          )}
+        </div>
+      )}
 
       <div className="generator-layout">
         <div className="panel">

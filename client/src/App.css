@@ -563,6 +563,48 @@ textarea {
   gap: 0 16px;
 }
 
+.hp-tracker-panel,
+.death-saves-panel,
+.spell-slots-panel,
+.prepared-spells-panel,
+.class-resource-panel {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--border);
+}
+
+.hp-tracker-value {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin: 0 0 8px;
+}
+
+.death-saves-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.death-saves-row input[type="checkbox"] {
+  width: auto;
+}
+
+.spell-slots-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.spell-slot-field {
+  margin-bottom: 0;
+  min-width: 60px;
+}
+
+.spell-slot-field input {
+  text-align: center;
+}
+
 .dynamic-list-editor {
   margin-bottom: 16px;
 }

@@ -359,6 +359,12 @@ export function toPlayerCharacterDTO(row: PlayerCharacterRow): PlayerCharacter {
     notes: row.notes ?? undefined,
     equippedItems: JSON.parse(row.equippedItems),
     attunedItems: JSON.parse(row.attunedItems),
+    currentHp: row.currentHp,
+    deathSaves: JSON.parse(row.deathSaves),
+    spellSlots: JSON.parse(row.spellSlots),
+    preparedSpells: JSON.parse(row.preparedSpells),
+    classResources: JSON.parse(row.classResources),
+    conditions: JSON.parse(row.conditions),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };

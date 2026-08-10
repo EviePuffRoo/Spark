@@ -14,7 +14,7 @@ import type {
   DowntimeActivity, DowntimeActivityInput,
   Encounter, EncounterStateInput,
   ZoneMapTemplate, ZoneMapTemplateInput,
-  Dungeon, DungeonInput,
+  Dungeon, DungeonInput, GenerateDungeonRequest, GeneratedDungeonOutline,
   Shop, ShopInput, GenerateShopRequest, GeneratedShop,
   ActivitySummary,
   EntityType, EntityLink, SearchResult,
@@ -227,6 +227,8 @@ export const api = {
     request<ZoneMapTemplate>(`/zone-map-templates/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   deleteZoneMapTemplate: (id: string) => request<void>(`/zone-map-templates/${id}`, { method: "DELETE" }),
 
+  generateDungeon: (body: GenerateDungeonRequest) =>
+    request<GeneratedDungeonOutline>("/generate-dungeon", { method: "POST", body: JSON.stringify(body) }),
   listDungeons: (worldId?: string) =>
     request<Dungeon[]>(`/dungeons${worldId ? `?worldId=${worldId}` : ""}`),
   getDungeon: (id: string) => request<Dungeon>(`/dungeons/${id}`),

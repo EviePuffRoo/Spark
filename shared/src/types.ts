@@ -478,6 +478,29 @@ export interface Dungeon extends DungeonInput {
   updatedAt: string;
 }
 
+export interface GenerateDungeonRequest {
+  roomCount?: number;
+  fullyRandom?: boolean;
+}
+
+// A pure, unpersisted outline — roomId/zoneId and every exit are already
+// final (client-generated ids are honored verbatim on save, same as
+// everywhere else in this app), but each room still needs a real
+// ZoneMapTemplate created for it before a Dungeon record referencing it
+// can be saved, so `templateId` is filled in afterward at save time.
+export interface GeneratedDungeonRoomOutline {
+  roomId: string;
+  zoneId: string;
+  name: string;
+  hazard?: ZoneHazard;
+  exits: DungeonExit[];
+}
+
+export interface GeneratedDungeonOutline {
+  name: string;
+  rooms: GeneratedDungeonRoomOutline[];
+}
+
 export interface ShopStockEntry {
   id: string;
   itemId: string;

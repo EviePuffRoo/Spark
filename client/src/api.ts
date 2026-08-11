@@ -293,6 +293,7 @@ export const api = {
   getWorld: (id: string) => request<World>(`/worlds/${id}`),
   createWorld: (name: string, description?: string) =>
     request<World>("/worlds", { method: "POST", body: JSON.stringify({ name, description }) }),
+  createStarterWorld: () => request<{ worldId: string }>("/worlds/starter", { method: "POST" }),
   updateWorld: (id: string, patch: Partial<World>) =>
     request<World>(`/worlds/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   deleteWorld: (id: string) => request<void>(`/worlds/${id}`, { method: "DELETE" }),
@@ -333,4 +334,7 @@ export const api = {
   regenerateRecoveryCode: () => request<RecoveryCodeResult>("/auth/recovery-code", { method: "POST" }),
   resetPassword: (username: string, recoveryCode: string, newPassword: string) =>
     request<SignupResult>("/auth/reset-password", { method: "POST", body: JSON.stringify({ username, recoveryCode, newPassword }) }),
+
+  createCheckoutSession: () => request<{ url: string | null }>("/billing/checkout", { method: "POST" }),
+  createPortalSession: () => request<{ url: string | null }>("/billing/portal", { method: "POST" }),
 };

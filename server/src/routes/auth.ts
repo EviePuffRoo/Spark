@@ -17,8 +17,8 @@ const authLimiter = rateLimit({
   message: { error: "Too many attempts — please wait a few minutes and try again." },
 });
 
-function toAuthUser(user: { id: string; username: string }): AuthUser {
-  return { id: user.id, username: user.username };
+function toAuthUser(user: { id: string; username: string; tier: string }): AuthUser {
+  return { id: user.id, username: user.username, tier: user.tier };
 }
 
 authRouter.post("/signup", authLimiter, async (req, res) => {

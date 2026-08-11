@@ -488,6 +488,7 @@ export interface LiveCombatant {
   zoneId?: string;
   hidden?: boolean;
   equipmentAcBonus?: number;
+  playerCharacterId?: string;
 }
 
 export interface ZoneHazard {
@@ -743,6 +744,7 @@ export interface CodexNote extends CodexNoteInput {
 export interface AuthUser {
   id: string;
   username: string;
+  tier: string;
 }
 
 export interface SignupResult extends AuthUser {

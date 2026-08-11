@@ -28,6 +28,7 @@ function coerceCombatant(raw: unknown): LiveCombatant | null {
     level: typeof c.level === "number" ? c.level : undefined,
     zoneId: typeof c.zoneId === "string" ? c.zoneId : undefined,
     hidden: c.hidden === true,
+    playerCharacterId: typeof c.playerCharacterId === "string" ? c.playerCharacterId : undefined,
   };
 }
 

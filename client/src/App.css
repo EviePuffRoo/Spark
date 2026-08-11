@@ -1954,6 +1954,18 @@ textarea {
   min-height: 44px;
 }
 
+.section-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.section-heading-row .section-heading {
+  margin: 0;
+}
+
 .player-companion-turn-strip {
   display: flex;
   flex-direction: column;

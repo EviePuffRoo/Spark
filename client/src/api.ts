@@ -121,6 +121,7 @@ export const api = {
   listCharacters: (worldId?: string) =>
     request<Character[]>(`/characters${worldId ? `?worldId=${worldId}` : ""}`),
   getCharacter: (id: string) => request<Character>(`/characters/${id}`),
+  exportCharacterForFoundry: (id: string) => request<Record<string, unknown>>(`/characters/${id}/export/foundry`),
   saveCharacter: (character: GeneratedCharacter & { worldId?: string | null; tags?: string[]; notes?: string }) =>
     request<Character>("/characters", { method: "POST", body: JSON.stringify(character) }),
   updateCharacter: (id: string, patch: Partial<Character>) =>
@@ -198,6 +199,7 @@ export const api = {
     request<PlayerCharacter[]>(`/player-characters${worldId ? `?worldId=${worldId}` : ""}`),
   listMyPlayerCharacters: () => request<PlayerCharacter[]>("/player-characters?mine=true"),
   getPlayerCharacter: (id: string) => request<PlayerCharacter>(`/player-characters/${id}`),
+  exportPlayerCharacterForFoundry: (id: string) => request<Record<string, unknown>>(`/player-characters/${id}/export/foundry`),
   savePlayerCharacter: (pc: PlayerCharacterInput & { worldId?: string | null; tags?: string[]; notes?: string }) =>
     request<PlayerCharacter>("/player-characters", { method: "POST", body: JSON.stringify(pc) }),
   updatePlayerCharacter: (id: string, patch: Partial<PlayerCharacter>) =>
@@ -292,6 +294,7 @@ export const api = {
   getWorld: (id: string) => request<World>(`/worlds/${id}`),
   createWorld: (name: string, description?: string) =>
     request<World>("/worlds", { method: "POST", body: JSON.stringify({ name, description }) }),
+  createStarterWorld: () => request<{ worldId: string }>("/worlds/starter", { method: "POST" }),
   updateWorld: (id: string, patch: Partial<World>) =>
     request<World>(`/worlds/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   deleteWorld: (id: string) => request<void>(`/worlds/${id}`, { method: "DELETE" }),
@@ -349,4 +352,7 @@ export const api = {
   regenerateRecoveryCode: () => request<RecoveryCodeResult>("/auth/recovery-code", { method: "POST" }),
   resetPassword: (username: string, recoveryCode: string, newPassword: string) =>
     request<SignupResult>("/auth/reset-password", { method: "POST", body: JSON.stringify({ username, recoveryCode, newPassword }) }),
+
+  createCheckoutSession: () => request<{ url: string | null }>("/billing/checkout", { method: "POST" }),
+  createPortalSession: () => request<{ url: string | null }>("/billing/portal", { method: "POST" }),
 };

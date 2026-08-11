@@ -17,6 +17,7 @@ import { CombatPage } from "./pages/CombatPage";
 import { MyCharacterPage } from "./pages/MyCharacterPage";
 import { PlayerCompanionView } from "./pages/PlayerCompanionView";
 import { CompendiumPage } from "./pages/CompendiumPage";
+import { BillingPage } from "./pages/BillingPage";
 import { CodexPage } from "./pages/CodexPage";
 import { GalleryPage } from "./pages/GalleryPage";
 import { InventoryPage } from "./pages/InventoryPage";
@@ -27,7 +28,7 @@ import { PrintPane, type PrintItem } from "./components/PrintPane";
 import { PrepIcon, WorldIcon, PlayIcon } from "./components/icons";
 
 type Area = "prep" | "world" | "play";
-type SubTab = "create" | "myCharacter" | "compendium" | "overview" | "worlds" | "roster" | "codex" | "notes" | "downtime" | "combat" | "shop" | "inventory" | "gallery";
+type SubTab = "create" | "myCharacter" | "compendium" | "billing" | "overview" | "worlds" | "roster" | "codex" | "notes" | "downtime" | "combat" | "shop" | "inventory" | "gallery";
 
 const AREA_LABELS: Record<Area, string> = { prep: "Prep", world: "World", play: "Play" };
 const AREA_ICONS: Record<Area, typeof PrepIcon> = { prep: PrepIcon, world: WorldIcon, play: PlayIcon };
@@ -74,8 +75,11 @@ function AppShell() {
   const { user } = useAuth();
   const { worlds, worldId, setWorldId } = useActiveWorld();
   const { combatUnseen, notesUnseen, codexUnseen, inventoryUnseen, markSeen } = useActivityBadges(!!user);
+  // Stripe Checkout/Portal redirects land back on the bare app root — route
+  // straight to the Billing tab so its own effect can refresh the tier.
+  const returningFromBilling = new URLSearchParams(window.location.search).has("billing");
   const [area, setArea] = useState<Area>("prep");
-  const [subTab, setSubTab] = useState<SubTab>("create");
+  const [subTab, setSubTab] = useState<SubTab>(returningFromBilling ? "billing" : "create");
   const [rosterWorldFilter, setRosterWorldFilter] = useState("");
   const [rosterSelection, setRosterSelection] = useState<RosterSelection | null>(null);
   const [printItems, setPrintItems] = useState<PrintItem[] | null>(null);
@@ -156,6 +160,7 @@ function AppShell() {
               <button className={subTab === "create" ? "active" : ""} aria-current={subTab === "create" ? "true" : undefined} onClick={() => selectSubTab("create")}>Create</button>
               <button className={subTab === "myCharacter" ? "active" : ""} aria-current={subTab === "myCharacter" ? "true" : undefined} onClick={() => selectSubTab("myCharacter")}>My Character</button>
               <button className={subTab === "compendium" ? "active" : ""} aria-current={subTab === "compendium" ? "true" : undefined} onClick={() => selectSubTab("compendium")}>Compendium</button>
+              <button className={subTab === "billing" ? "active" : ""} aria-current={subTab === "billing" ? "true" : undefined} onClick={() => selectSubTab("billing")}>Billing</button>
             </>
           )}
           {area === "world" && (
@@ -191,6 +196,7 @@ function AppShell() {
         {subTab === "create" && <CreatePage />}
         {subTab === "myCharacter" && <MyCharacterPage onViewRoster={viewRosterForWorld} />}
         {subTab === "compendium" && <CompendiumPage />}
+        {subTab === "billing" && <BillingPage />}
         {subTab === "overview" && <WorldOverviewPage onNavigate={navigateFromOverview} />}
         {subTab === "worlds" && <WorldsPage onViewRoster={viewRosterForWorld} />}
         {subTab === "roster" && (

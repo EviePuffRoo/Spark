@@ -12,6 +12,8 @@ model User {
   username          String   @unique
   passwordHash      String
   recoveryCodeHash  String?
+  tier              String   @default("free")
+  stripeCustomerId  String?
   createdAt         DateTime @default(now())
 
   worlds          World[]

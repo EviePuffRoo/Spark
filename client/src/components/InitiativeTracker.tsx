@@ -178,6 +178,7 @@ export function InitiativeTracker({
         hpVisible: true,
         level: pc.level,
         equipmentAcBonus: acBonus > 0 ? acBonus : undefined,
+        playerCharacterId: pc.id,
       });
     }
   }

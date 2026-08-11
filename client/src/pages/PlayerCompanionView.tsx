@@ -4,6 +4,8 @@ import { api } from "../api";
 import { useAuth } from "../AuthContext";
 import { useActiveWorld } from "../ActiveWorldContext";
 import { useWorldLiveChannel } from "../useWorldLiveChannel";
+import { useMyTurnNotifier } from "../useMyTurnNotifier";
+import { useLocalStorage } from "../useLocalStorage";
 import { DiceRoller } from "../components/DiceRoller";
 import { HpTrackerPanel } from "../components/HpTrackerPanel";
 import { DeathSavesPanel } from "../components/DeathSavesPanel";
@@ -19,9 +21,10 @@ function backToDesktopHref(): string {
   return `${url.pathname}${url.search}`;
 }
 
-function TurnOrderStrip({ worldId }: { worldId: string }) {
+function TurnOrderStrip({ worldId, myPlayerCharacterIds, notifyEnabled }: { worldId: string; myPlayerCharacterIds: string[]; notifyEnabled: boolean }) {
   const [encounter, setEncounter] = useState<Encounter | null>(null);
   useWorldLiveChannel(worldId, { onEncounter: setEncounter });
+  useMyTurnNotifier(encounter, myPlayerCharacterIds, notifyEnabled);
 
   if (!encounter || encounter.combatants.length === 0) {
     return <p className="hint">No active combat right now.</p>;
@@ -94,6 +97,8 @@ export function PlayerCompanionView() {
   const { user } = useAuth();
   const { worlds, worldId, setWorldId } = useActiveWorld();
   const [characters, setCharacters] = useState<PlayerCharacter[]>([]);
+  const [notifyEnabled, setNotifyEnabled] = useLocalStorage("spark-notify-my-turn", false);
+  const [notifyBlocked, setNotifyBlocked] = useState(false);
 
   function refreshCharacters() {
     api.listMyPlayerCharacters().then(setCharacters).catch(() => {});
@@ -109,6 +114,25 @@ export function PlayerCompanionView() {
   }, [worldId, worlds, setWorldId]);
 
   const myCharactersHere = characters.filter((pc) => pc.worldId === worldId);
+  const myPlayerCharacterIds = myCharactersHere.map((pc) => pc.id);
+
+  async function handleToggleNotify() {
+    if (notifyEnabled) {
+      setNotifyEnabled(false);
+      return;
+    }
+    if (typeof Notification === "undefined") {
+      setNotifyBlocked(true);
+      return;
+    }
+    const permission = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
+    if (permission === "granted") {
+      setNotifyEnabled(true);
+      setNotifyBlocked(false);
+    } else {
+      setNotifyBlocked(true);
+    }
+  }
 
   return (
     <div className="player-companion">
@@ -137,8 +161,16 @@ export function PlayerCompanionView() {
           {worldId && (
             <>
               <section className="panel">
-                <h2 className="section-heading">Turn Order</h2>
-                <TurnOrderStrip worldId={worldId} />
+                <div className="section-heading-row">
+                  <h2 className="section-heading">Turn Order</h2>
+                  <button className="btn-secondary" onClick={handleToggleNotify}>
+                    {notifyEnabled ? "🔔 Notify on my turn: On" : "🔕 Notify on my turn: Off"}
+                  </button>
+                </div>
+                {notifyBlocked && (
+                  <p className="hint">Notifications are blocked — enable them in your browser's site settings to use this.</p>
+                )}
+                <TurnOrderStrip worldId={worldId} myPlayerCharacterIds={myPlayerCharacterIds} notifyEnabled={notifyEnabled} />
               </section>
 
               <section className="panel">

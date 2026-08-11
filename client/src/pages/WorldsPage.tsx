@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api, type WorldSummary, type WorldMemberInfo } from "../api";
 import { useActiveWorld } from "../ActiveWorldContext";
+import { downloadJson } from "../downloadJson";
 
 function summarizeCounts(w: WorldSummary): string {
   const parts: [number, string][] = [
@@ -21,18 +22,6 @@ function summarizeCounts(w: WorldSummary): string {
 
 function slugify(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "world";
-}
-
-function downloadJson(filename: string, data: unknown) {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
 }
 
 export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) => void }) {

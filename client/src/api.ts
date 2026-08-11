@@ -120,6 +120,7 @@ export const api = {
   listCharacters: (worldId?: string) =>
     request<Character[]>(`/characters${worldId ? `?worldId=${worldId}` : ""}`),
   getCharacter: (id: string) => request<Character>(`/characters/${id}`),
+  exportCharacterForFoundry: (id: string) => request<Record<string, unknown>>(`/characters/${id}/export/foundry`),
   saveCharacter: (character: GeneratedCharacter & { worldId?: string | null; tags?: string[]; notes?: string }) =>
     request<Character>("/characters", { method: "POST", body: JSON.stringify(character) }),
   updateCharacter: (id: string, patch: Partial<Character>) =>
@@ -197,6 +198,7 @@ export const api = {
     request<PlayerCharacter[]>(`/player-characters${worldId ? `?worldId=${worldId}` : ""}`),
   listMyPlayerCharacters: () => request<PlayerCharacter[]>("/player-characters?mine=true"),
   getPlayerCharacter: (id: string) => request<PlayerCharacter>(`/player-characters/${id}`),
+  exportPlayerCharacterForFoundry: (id: string) => request<Record<string, unknown>>(`/player-characters/${id}/export/foundry`),
   savePlayerCharacter: (pc: PlayerCharacterInput & { worldId?: string | null; tags?: string[]; notes?: string }) =>
     request<PlayerCharacter>("/player-characters", { method: "POST", body: JSON.stringify(pc) }),
   updatePlayerCharacter: (id: string, patch: Partial<PlayerCharacter>) =>

@@ -3,6 +3,7 @@ import type { Character, Item, Location, QuestHook, Faction, EncounterTable, Ses
 import { QUEST_STATUSES, QUEST_STATUS_LABELS, layoutDungeonRooms } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { useAuth } from "../AuthContext";
+import { downloadJson } from "../downloadJson";
 import { StatBlockView } from "../components/StatBlockView";
 import { BackstoryView } from "../components/BackstoryView";
 import { ItemCardView } from "../components/ItemCardView";
@@ -95,6 +96,10 @@ const MODE_TO_ENTITY_TYPE: Record<Mode, EntityType> = {
 export interface RosterSelection {
   type: EntityType;
   id: string;
+}
+
+function slugify(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "actor";
 }
 
 async function fetchPrintItem(type: EntityType, id: string): Promise<PrintItem | null> {
@@ -424,6 +429,16 @@ export function RosterPage({
     else if (selectedNote) onPrint([{ type: "sessionNote", data: selectedNote }]);
     else if (selectedAdventure) onPrint([{ type: "adventure", data: selectedAdventure }]);
     else if (selectedPlayerCharacter) onPrint([{ type: "playerCharacter", data: selectedPlayerCharacter }]);
+  }
+
+  async function handleExportFoundry() {
+    if (selectedCharacter) {
+      const actor = await api.exportCharacterForFoundry(selectedCharacter.id);
+      downloadJson(`${slugify(selectedCharacter.name)}-foundry.json`, actor);
+    } else if (selectedPlayerCharacter) {
+      const actor = await api.exportPlayerCharacterForFoundry(selectedPlayerCharacter.id);
+      downloadJson(`${slugify(selectedPlayerCharacter.name)}-foundry.json`, actor);
+    }
   }
 
   async function handlePrintPack(rootItem: PrintItem) {
@@ -809,6 +824,9 @@ export function RosterPage({
 
         {selected && !editingContent && onPrint && mode !== "zoneMapTemplates" && mode !== "dungeons" && mode !== "shops" && mode !== "regions" && mode !== "settlements" && (
           <button className="btn-secondary" onClick={handlePrint}>Print</button>
+        )}
+        {(selectedCharacter || selectedPlayerCharacter) && !editingContent && (
+          <button className="btn-secondary" onClick={handleExportFoundry}>Export for Foundry VTT</button>
         )}
         {selected && !editingContent && onPrint && mode === "notes" && (
           <button className="btn-secondary" onClick={handlePrintSessionPack}>Print Session Pack</button>

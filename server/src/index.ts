@@ -46,6 +46,7 @@ import { compendiumRouter } from "./routes/compendium.js";
 import { searchRouter } from "./routes/search.js";
 import { linksRouter } from "./routes/links.js";
 import { backupRouter } from "./routes/backup.js";
+import { vttExportRouter } from "./routes/vttExport.js";
 import { billingRouter, billingWebhookHandler } from "./routes/billing.js";
 import { FREE_TIER_GENERATE_LIMIT, PAID_TIER_GENERATE_LIMIT } from "./billingLimits.js";
 import { prisma } from "./db.js";
@@ -120,6 +121,7 @@ app.use("/api/compendium", compendiumRouter);
 app.use("/api/search", searchRouter);
 app.use("/api/links", linksRouter);
 app.use("/api/backup", backupRouter);
+app.use("/api", vttExportRouter);
 app.use("/api/billing", billingRouter);
 
 if (fs.existsSync(clientDist)) {

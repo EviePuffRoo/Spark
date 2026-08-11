@@ -46,6 +46,7 @@ import { compendiumRouter } from "./routes/compendium.js";
 import { searchRouter } from "./routes/search.js";
 import { linksRouter } from "./routes/links.js";
 import { backupRouter } from "./routes/backup.js";
+import { vttExportRouter } from "./routes/vttExport.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const clientDist = path.resolve(__dirname, "../../client/dist");
@@ -108,6 +109,7 @@ app.use("/api/compendium", compendiumRouter);
 app.use("/api/search", searchRouter);
 app.use("/api/links", linksRouter);
 app.use("/api/backup", backupRouter);
+app.use("/api", vttExportRouter);
 
 if (fs.existsSync(clientDist)) {
   app.use(express.static(clientDist));

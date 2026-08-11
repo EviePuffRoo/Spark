@@ -743,6 +743,7 @@ export interface CodexNote extends CodexNoteInput {
 export interface AuthUser {
   id: string;
   username: string;
+  tier: string;
 }
 
 export interface SignupResult extends AuthUser {

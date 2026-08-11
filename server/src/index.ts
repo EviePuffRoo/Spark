@@ -46,6 +46,9 @@ import { compendiumRouter } from "./routes/compendium.js";
 import { searchRouter } from "./routes/search.js";
 import { linksRouter } from "./routes/links.js";
 import { backupRouter } from "./routes/backup.js";
+import { billingRouter, billingWebhookHandler } from "./routes/billing.js";
+import { FREE_TIER_GENERATE_LIMIT, PAID_TIER_GENERATE_LIMIT } from "./billingLimits.js";
+import { prisma } from "./db.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const clientDist = path.resolve(__dirname, "../../client/dist");
@@ -53,6 +56,12 @@ const clientDist = path.resolve(__dirname, "../../client/dist");
 const app = express();
 app.use(cors());
 app.use(cookieParser());
+
+// Stripe signs the raw request body and calls this endpoint directly (not
+// as a logged-in browser), so it must sit before express.json() rewrites
+// the body and before the requireAuth gate below.
+app.post("/api/billing/webhook", express.raw({ type: "application/json" }), billingWebhookHandler);
+
 app.use(express.json({ limit: "10mb" }));
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
@@ -63,7 +72,10 @@ app.use("/api", requireAuth);
 
 const generateLimiter = rateLimit({
   windowMs: 60 * 1000,
-  limit: 60,
+  limit: async (req) => {
+    const user = await prisma.user.findUnique({ where: { id: req.userId }, select: { tier: true } });
+    return user?.tier === "paid" ? PAID_TIER_GENERATE_LIMIT : FREE_TIER_GENERATE_LIMIT;
+  },
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "You're generating a bit fast — please wait a moment and try again." },
@@ -108,6 +120,7 @@ app.use("/api/compendium", compendiumRouter);
 app.use("/api/search", searchRouter);
 app.use("/api/links", linksRouter);
 app.use("/api/backup", backupRouter);
+app.use("/api/billing", billingRouter);
 
 if (fs.existsSync(clientDist)) {
   app.use(express.static(clientDist));

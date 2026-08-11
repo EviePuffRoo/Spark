@@ -331,4 +331,7 @@ export const api = {
   regenerateRecoveryCode: () => request<RecoveryCodeResult>("/auth/recovery-code", { method: "POST" }),
   resetPassword: (username: string, recoveryCode: string, newPassword: string) =>
     request<SignupResult>("/auth/reset-password", { method: "POST", body: JSON.stringify({ username, recoveryCode, newPassword }) }),
+
+  createCheckoutSession: () => request<{ url: string | null }>("/billing/checkout", { method: "POST" }),
+  createPortalSession: () => request<{ url: string | null }>("/billing/portal", { method: "POST" }),
 };

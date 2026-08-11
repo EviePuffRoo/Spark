@@ -3,6 +3,7 @@ import { prisma } from "../db.js";
 import { generateRecoveryCode, hashRecoveryCode, verifyRecoveryCode } from "../auth.js";
 import { getMemberWorldIds } from "../worldAccess.js";
 import { FREE_TIER_WORLD_LIMIT } from "../billingLimits.js";
+import { seedStarterWorld } from "../seedStarterWorld.js";
 
 export const worldsRouter = Router();
 
@@ -87,6 +88,18 @@ worldsRouter.post("/", async (req, res) => {
 
   const row = await prisma.world.create({ data: { name, description: description ?? null, userId: req.userId! } });
   res.status(201).json(row);
+});
+
+// Gated to accounts with zero worlds so it can't be spammed to create
+// infinite sample worlds — once it's used, "Load a Sample World" is no
+// longer relevant to that account.
+worldsRouter.post("/starter", async (req, res) => {
+  const existingCount = await prisma.world.count({ where: { userId: req.userId } });
+  if (existingCount > 0) {
+    return res.status(409).json({ error: "You already have worlds — the sample world is only for brand-new accounts" });
+  }
+  const { worldId } = await seedStarterWorld(req.userId!);
+  res.status(201).json({ worldId });
 });
 
 worldsRouter.patch("/:id", async (req, res) => {

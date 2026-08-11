@@ -488,6 +488,7 @@ export interface LiveCombatant {
   zoneId?: string;
   hidden?: boolean;
   equipmentAcBonus?: number;
+  playerCharacterId?: string;
 }
 
 export interface ZoneHazard {

@@ -291,6 +291,7 @@ export const api = {
   getWorld: (id: string) => request<World>(`/worlds/${id}`),
   createWorld: (name: string, description?: string) =>
     request<World>("/worlds", { method: "POST", body: JSON.stringify({ name, description }) }),
+  createStarterWorld: () => request<{ worldId: string }>("/worlds/starter", { method: "POST" }),
   updateWorld: (id: string, patch: Partial<World>) =>
     request<World>(`/worlds/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   deleteWorld: (id: string) => request<void>(`/worlds/${id}`, { method: "DELETE" }),

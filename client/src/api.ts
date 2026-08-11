@@ -20,6 +20,7 @@ import type {
   Settlement, GenerateSettlementRequest, GeneratedSettlement,
   ActivitySummary,
   EntityType, EntityLink, SearchResult,
+  PublicGalleryEntry, PublishEntryInput,
   AuthUser, SignupResult, RecoveryCodeResult,
   SpellDef, ConditionDef, RuleDef,
 } from "@spark/shared";
@@ -317,6 +318,23 @@ export const api = {
 
   exportWorld: (worldId: string) => request<unknown>(`/backup/export?worldId=${worldId}`),
   exportAll: () => request<unknown>("/backup/export"),
+
+  listPublicGallery: (params?: { entityType?: EntityType; cursor?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.entityType) q.set("entityType", params.entityType);
+    if (params?.cursor) q.set("cursor", params.cursor);
+    const qs = q.toString();
+    return request<{ entries: PublicGalleryEntry[]; nextCursor: string | null }>(`/public${qs ? `?${qs}` : ""}`);
+  },
+  getPublicGalleryEntry: (id: string) =>
+    request<{
+      id: string; entityType: EntityType; entityId: string; title: string; description?: string;
+      publisherUsername: string; publishedAt: string; data: unknown;
+    }>(`/public/${id}`),
+  publishEntry: (body: PublishEntryInput) =>
+    request<{ id: string }>("/public", { method: "POST", body: JSON.stringify(body) }),
+  unpublishEntry: (id: string) => request<void>(`/public/${id}`, { method: "DELETE" }),
+  cloneFromGallery: (id: string) => request<{ id: string }>(`/public/${id}/clone`, { method: "POST" }),
   importBackup: (bundle: unknown) =>
     request<ImportResult>("/backup/import", { method: "POST", body: JSON.stringify(bundle) }),
 

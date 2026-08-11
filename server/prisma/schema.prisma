@@ -35,6 +35,7 @@ model User {
   shops           Shop[]
   regions         Region[]
   settlements     Settlement[]
+  publishedEntries PublishedEntry[]
 }
 
 model World {
@@ -494,6 +495,27 @@ model Encounter {
   activeDungeonId     String?
   activeDungeonRoomId String?
   updatedAt   DateTime @updatedAt
+}
+
+// A user-owned entity published to the public gallery, browsable/cloneable
+// by any signed-in account. No FK to the source row — Prisma can't express
+// a polymorphic relation across the ~14 entity tables entityType can name —
+// so a row whose source was later deleted becomes a harmless orphan that
+// GET /api/public simply skips (its adapter lookup returns null) rather
+// than being actively cleaned up from every entity's DELETE route.
+model PublishedEntry {
+  id          String   @id @default(cuid())
+  entityType  String
+  entityId    String
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  publishedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@index([entityType])
+  @@index([userId])
 }
 
 model Link {

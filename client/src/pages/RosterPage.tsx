@@ -152,6 +152,10 @@ export function RosterPage({
   const [searchFilter, setSearchFilter] = useState("");
   const [questStatus, setQuestStatus] = useState<QuestStatus>("active");
   const [showFactionWeb, setShowFactionWeb] = useState(false);
+  const [publishOpen, setPublishOpen] = useState(false);
+  const [publishTitle, setPublishTitle] = useState("");
+  const [publishDescription, setPublishDescription] = useState("");
+  const [publishStatus, setPublishStatus] = useState<"idle" | "saving" | "published">("idle");
   const [showDungeonMap, setShowDungeonMap] = useState(false);
 
   function refresh() {
@@ -253,6 +257,8 @@ export function RosterPage({
     setEditingContent(false);
     setShowDungeonMap(false);
     setActionError(null);
+    setPublishOpen(false);
+    setPublishStatus("idle");
     // Keyed on id, not the object itself: `selected`/`selectedQuest`/
     // `selectedLocation` are recomputed (new reference) on every list
     // refresh, including the optimistic per-pointermove updates from
@@ -305,6 +311,29 @@ export function RosterPage({
       setActionError((e as Error).message);
     } finally {
       setStatus("idle");
+    }
+  }
+
+  function openPublish() {
+    setPublishTitle(selectedDisplayName);
+    setPublishDescription("");
+    setPublishStatus("idle");
+    setPublishOpen(true);
+  }
+
+  async function handlePublish() {
+    if (!selected || !publishTitle.trim()) return;
+    setPublishStatus("saving");
+    setActionError(null);
+    try {
+      await api.publishEntry({
+        entityType: MODE_TO_ENTITY_TYPE[mode], entityId: selected.id,
+        title: publishTitle.trim(), description: publishDescription.trim() || undefined,
+      });
+      setPublishStatus("published");
+    } catch (e) {
+      setActionError((e as Error).message);
+      setPublishStatus("idle");
     }
   }
 
@@ -872,8 +901,30 @@ export function RosterPage({
                     {status === "saving" ? "Saving…" : "Save Changes"}
                   </button>
                   <button className="btn-secondary" onClick={handleDuplicate} disabled={status === "saving"}>Duplicate</button>
+                  <button className="btn-secondary" onClick={openPublish}>Publish to Gallery</button>
                   <button className="btn-danger" onClick={handleDelete}>Delete</button>
                 </div>
+                {publishOpen && (
+                  <div className="save-panel">
+                    <h3 className="section-heading">Publish to Gallery</h3>
+                    <p className="hint">Anyone signed in will be able to view and clone this into their own Roster.</p>
+                    <label className="field">
+                      <span>Title</span>
+                      <input type="text" value={publishTitle} onChange={(e) => setPublishTitle(e.target.value)} />
+                    </label>
+                    <label className="field">
+                      <span>Description (optional)</span>
+                      <textarea value={publishDescription} onChange={(e) => setPublishDescription(e.target.value)} rows={2} />
+                    </label>
+                    <div className="button-row">
+                      <button className="btn-primary" onClick={handlePublish} disabled={publishStatus === "saving" || !publishTitle.trim()}>
+                        {publishStatus === "saving" ? "Publishing…" : "Publish"}
+                      </button>
+                      <button className="btn-secondary" onClick={() => setPublishOpen(false)}>Cancel</button>
+                    </div>
+                    {publishStatus === "published" && <p className="success">Published — visible in the Homebrew Gallery.</p>}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="save-panel">

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { generateRecoveryCode, hashRecoveryCode, verifyRecoveryCode } from "../auth.js";
 import { getMemberWorldIds } from "../worldAccess.js";
+import { FREE_TIER_WORLD_LIMIT } from "../billingLimits.js";
 import { seedStarterWorld } from "../seedStarterWorld.js";
 
 export const worldsRouter = Router();
@@ -73,6 +74,18 @@ worldsRouter.get("/:id", async (req, res) => {
 worldsRouter.post("/", async (req, res) => {
   const { name, description } = req.body ?? {};
   if (!name) return res.status(400).json({ error: "World name is required" });
+
+  // requireAuth doesn't attach tier (it's a pure JWT check with no DB hit,
+  // and we don't want to add one to every authenticated request) — so this
+  // is the one route that looks it up, only when a cap decision needs it.
+  const user = await prisma.user.findUnique({ where: { id: req.userId }, select: { tier: true } });
+  if (user?.tier !== "paid") {
+    const worldCount = await prisma.world.count({ where: { userId: req.userId } });
+    if (worldCount >= FREE_TIER_WORLD_LIMIT) {
+      return res.status(403).json({ error: `Free accounts are limited to ${FREE_TIER_WORLD_LIMIT} worlds — upgrade to create more.` });
+    }
+  }
+
   const row = await prisma.world.create({ data: { name, description: description ?? null, userId: req.userId! } });
   res.status(201).json(row);
 });

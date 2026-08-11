@@ -721,6 +721,25 @@ export interface SearchResult extends EntityRef {
   worldId?: string | null;
 }
 
+export interface PublicGalleryEntry {
+  id: string;
+  entityType: EntityType;
+  entityId: string;
+  title: string;
+  description?: string;
+  name: string;
+  meta: string;
+  publisherUsername: string;
+  publishedAt: string;
+}
+
+export interface PublishEntryInput {
+  entityType: EntityType;
+  entityId: string;
+  title: string;
+  description?: string;
+}
+
 export interface EntityLink {
   id: string;
   label?: string;

@@ -1,4 +1,6 @@
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../db.js";
 import { getAdapter, isEntityType } from "../entityAdapters.js";
 import {
@@ -6,11 +8,35 @@ import {
   toSessionNoteDTO, toAdventureDTO, toPlayerCharacterDTO, toZoneMapTemplateDTO, toDungeonDTO,
   toShopDTO, toRegionDTO, toSettlementDTO,
 } from "../serialize.js";
-import type { EntityType, PublicGalleryEntry } from "@spark/shared";
+import type { EntityType, GalleryReportReason, PublicGalleryEntry } from "@spark/shared";
 
 export const publicGalleryRouter = Router();
 
 const PAGE_SIZE = 20;
+
+const REPORT_REASONS: GalleryReportReason[] = ["spam", "offensive", "copyright", "other"];
+
+// Gallery-specific backstops on top of the general 300/min API limiter —
+// publish and report are qualitatively different abuse patterns (gallery
+// spam, report-brigading) than generic API hammering, so they get their own
+// tighter ceilings.
+const publishLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.userId!,
+  message: { error: "You're publishing a bit fast — please wait a while and try again." },
+});
+
+const reportLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.userId!,
+  message: { error: "You're reporting a bit fast — please wait a while and try again." },
+});
 
 // Reuses the exact same DTO shape each entity's own GET route returns, so
 // the client can render a published entry with the same card components
@@ -41,7 +67,7 @@ publicGalleryRouter.get("/", async (req, res) => {
   const typeFilter = typeof entityType === "string" && isEntityType(entityType) ? entityType : undefined;
 
   const rows = await prisma.publishedEntry.findMany({
-    where: typeFilter ? { entityType: typeFilter } : undefined,
+    where: { removedAt: null, ...(typeFilter ? { entityType: typeFilter } : {}) },
     orderBy: { publishedAt: "desc" },
     ...(typeof cursor === "string" ? { cursor: { id: cursor }, skip: 1 } : {}),
     take: PAGE_SIZE + 1,
@@ -78,7 +104,7 @@ publicGalleryRouter.get("/", async (req, res) => {
 
 publicGalleryRouter.get("/:id", async (req, res) => {
   const entry = await prisma.publishedEntry.findUnique({ where: { id: req.params.id }, include: { user: { select: { username: true } } } });
-  if (!entry) return res.status(404).json({ error: "Published entry not found" });
+  if (!entry || entry.removedAt) return res.status(404).json({ error: "Published entry not found" });
 
   const adapter = getAdapter(entry.entityType);
   if (!adapter) return res.status(400).json({ error: "Unknown entity type" });
@@ -98,10 +124,15 @@ publicGalleryRouter.get("/:id", async (req, res) => {
   });
 });
 
-publicGalleryRouter.post("/", async (req, res) => {
+publicGalleryRouter.post("/", publishLimiter, async (req, res) => {
   const { entityType, entityId, title, description } = req.body ?? {};
   if (!isEntityType(entityType) || typeof entityId !== "string" || !title) {
     return res.status(400).json({ error: "entityType, entityId, and title are required" });
+  }
+
+  const user = await prisma.user.findUnique({ where: { id: req.userId }, select: { canPublish: true } });
+  if (!user?.canPublish) {
+    return res.status(403).json({ error: "Your publishing access has been suspended." });
   }
 
   const adapter = getAdapter(entityType);
@@ -128,9 +159,31 @@ publicGalleryRouter.delete("/:id", async (req, res) => {
   res.status(204).end();
 });
 
+publicGalleryRouter.post("/:id/report", reportLimiter, async (req, res) => {
+  const { reason, detail } = req.body ?? {};
+  if (!REPORT_REASONS.includes(reason)) {
+    return res.status(400).json({ error: "A valid reason is required" });
+  }
+
+  const entry = await prisma.publishedEntry.findUnique({ where: { id: req.params.id } });
+  if (!entry || entry.removedAt) return res.status(404).json({ error: "Published entry not found" });
+
+  try {
+    await prisma.galleryReport.create({
+      data: { entryId: entry.id, reporterId: req.userId!, reason, detail: detail || null },
+    });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      return res.status(409).json({ error: "You've already reported this entry." });
+    }
+    throw err;
+  }
+  res.status(201).json({ ok: true });
+});
+
 publicGalleryRouter.post("/:id/clone", async (req, res) => {
   const entry = await prisma.publishedEntry.findUnique({ where: { id: req.params.id } });
-  if (!entry) return res.status(404).json({ error: "Published entry not found" });
+  if (!entry || entry.removedAt) return res.status(404).json({ error: "Published entry not found" });
 
   const adapter = getAdapter(entry.entityType);
   if (!adapter) return res.status(400).json({ error: "Unknown entity type" });

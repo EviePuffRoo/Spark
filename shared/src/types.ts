@@ -740,6 +740,30 @@ export interface PublishEntryInput {
   description?: string;
 }
 
+export type GalleryReportReason = "spam" | "offensive" | "copyright" | "other";
+
+export interface GalleryReportDTO {
+  id: string;
+  reason: GalleryReportReason;
+  detail?: string;
+  status: string;
+  reporterUsername: string;
+  createdAt: string;
+}
+
+export interface ModerationQueueEntry {
+  id: string;
+  entityType: EntityType;
+  entityId: string;
+  title: string;
+  name: string;
+  publisherUsername: string;
+  publisherId: string;
+  publishedAt: string;
+  reportCount: number;
+  reports: GalleryReportDTO[];
+}
+
 export interface EntityLink {
   id: string;
   label?: string;
@@ -764,6 +788,7 @@ export interface AuthUser {
   id: string;
   username: string;
   tier: string;
+  role: string;
 }
 
 export interface SignupResult extends AuthUser {

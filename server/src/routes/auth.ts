@@ -17,8 +17,25 @@ const authLimiter = rateLimit({
   message: { error: "Too many attempts — please wait a few minutes and try again." },
 });
 
-function toAuthUser(user: { id: string; username: string; tier: string }): AuthUser {
-  return { id: user.id, username: user.username, tier: user.tier };
+function toAuthUser(user: { id: string; username: string; tier: string; role: string }): AuthUser {
+  return { id: user.id, username: user.username, tier: user.tier, role: user.role };
+}
+
+// ADMIN_USERNAMES (comma-separated, Render env var) is the single source of
+// truth for who's an admin — no in-app UI grants it, matching how
+// STRIPE_SECRET_KEY etc. are configured. Synced on every signup/login/me
+// check so adding or removing a name there takes effect on the account's
+// next request, no manual DB edit needed either direction.
+const ADMIN_USERNAMES = new Set(
+  (process.env.ADMIN_USERNAMES ?? "").split(",").map((u) => u.trim()).filter(Boolean)
+);
+
+async function syncAdminRole<T extends { id: string; username: string; role: string }>(user: T): Promise<T> {
+  const shouldBeAdmin = ADMIN_USERNAMES.has(user.username);
+  if (shouldBeAdmin === (user.role === "admin")) return user;
+  const role = shouldBeAdmin ? "admin" : "user";
+  await prisma.user.update({ where: { id: user.id }, data: { role } });
+  return { ...user, role };
 }
 
 authRouter.post("/signup", authLimiter, async (req, res) => {
@@ -33,7 +50,7 @@ authRouter.post("/signup", authLimiter, async (req, res) => {
   const passwordHash = await hashPassword(password);
   const recoveryCode = generateRecoveryCode();
   const recoveryCodeHash = await hashRecoveryCode(recoveryCode);
-  const user = await prisma.user.create({ data: { username: username.trim(), passwordHash, recoveryCodeHash } });
+  const user = await syncAdminRole(await prisma.user.create({ data: { username: username.trim(), passwordHash, recoveryCodeHash } }));
 
   setSessionCookie(res, signToken(user.id));
   const result: SignupResult = { ...toAuthUser(user), recoveryCode };
@@ -52,7 +69,7 @@ authRouter.post("/login", authLimiter, async (req, res) => {
   }
 
   setSessionCookie(res, signToken(user.id));
-  res.json(toAuthUser(user));
+  res.json(toAuthUser(await syncAdminRole(user)));
 });
 
 authRouter.post("/logout", (_req, res) => {
@@ -63,7 +80,7 @@ authRouter.post("/logout", (_req, res) => {
 authRouter.get("/me", requireAuth, async (req, res) => {
   const user = await prisma.user.findUnique({ where: { id: req.userId } });
   if (!user) return res.status(401).json({ error: "Not signed in" });
-  res.json(toAuthUser(user));
+  res.json(toAuthUser(await syncAdminRole(user)));
 });
 
 authRouter.post("/change-password", requireAuth, async (req, res) => {

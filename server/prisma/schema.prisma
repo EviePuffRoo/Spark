@@ -14,6 +14,8 @@ model User {
   recoveryCodeHash  String?
   tier              String   @default("free")
   stripeCustomerId  String?
+  role              String   @default("user")
+  canPublish        Boolean  @default(true)
   createdAt         DateTime @default(now())
 
   worlds          World[]
@@ -38,6 +40,7 @@ model User {
   regions         Region[]
   settlements     Settlement[]
   publishedEntries PublishedEntry[]
+  galleryReports  GalleryReport[]
 }
 
 model World {
@@ -516,8 +519,38 @@ model PublishedEntry {
   publishedAt DateTime @default(now())
   createdAt   DateTime @default(now())
 
+  // Set on admin takedown. The row is kept (soft delete) rather than
+  // removed, so the report/audit trail survives — every read path filters
+  // on removedAt: null, the same shape as the orphan-skip above.
+  removedAt       DateTime?
+  removedReason   String?
+  removedByUserId String?
+
+  reports     GalleryReport[]
+
   @@index([entityType])
   @@index([userId])
+}
+
+// A user flag on a published gallery entry. One report per user per entry
+// (see the unique constraint below) — repeat-reporting the same entry
+// doesn't inflate its queue weight.
+model GalleryReport {
+  id          String    @id @default(cuid())
+  entryId     String
+  entry       PublishedEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  reporterId  String
+  reporter    User      @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  reason      String
+  detail      String?
+  status      String    @default("pending")
+  createdAt   DateTime  @default(now())
+  resolvedAt  DateTime?
+  resolvedByUserId String?
+
+  @@unique([entryId, reporterId])
+  @@index([status])
+  @@index([entryId])
 }
 
 model Link {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { EntityType, PublicGalleryEntry } from "@spark/shared";
+import type { EntityType, GalleryReportReason, PublicGalleryEntry } from "@spark/shared";
 import { ENTITY_TYPES } from "@spark/shared";
 import { api } from "../api";
 import { StatBlockView } from "../components/StatBlockView";
@@ -21,6 +21,13 @@ import { SettlementCardView } from "../components/SettlementCardView";
 const ENTITY_TYPE_LABELS: Record<EntityType, string> = Object.fromEntries(
   ENTITY_TYPES.map((t) => [t.type, t.label])
 ) as Record<EntityType, string>;
+
+const REPORT_REASON_LABELS: Record<GalleryReportReason, string> = {
+  spam: "Spam",
+  offensive: "Offensive content",
+  copyright: "Copyright / IP concern",
+  other: "Other",
+};
 
 function renderEntryDetail(entityType: EntityType, data: any) {
   switch (entityType) {
@@ -68,6 +75,10 @@ export function GalleryPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [cloneStatus, setCloneStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState<GalleryReportReason>("spam");
+  const [reportDetail, setReportDetail] = useState("");
+  const [reportStatus, setReportStatus] = useState<string | null>(null);
 
   function refresh() {
     setLoading(true);
@@ -96,6 +107,9 @@ export function GalleryPage() {
     setSelectedId(id);
     setDetail(null);
     setCloneStatus(null);
+    setReportOpen(false);
+    setReportStatus(null);
+    setReportDetail("");
     setDetailLoading(true);
     try {
       const full = await api.getPublicGalleryEntry(id);
@@ -121,6 +135,19 @@ export function GalleryPage() {
       setCloneStatus("Cloned to your Roster.");
     } catch (e) {
       setError((e as Error).message);
+    }
+  }
+
+  async function handleReport() {
+    if (!selectedId) return;
+    setReportStatus(null);
+    try {
+      await api.reportGalleryEntry(selectedId, reportReason, reportDetail.trim() || undefined);
+      setReportStatus("Thanks — this has been reported for review.");
+      setReportOpen(false);
+      setReportDetail("");
+    } catch (e) {
+      setReportStatus((e as Error).message);
     }
   }
 
@@ -183,8 +210,29 @@ export function GalleryPage() {
               {renderEntryDetail(detail.entry.entityType, detail.data)}
               <div className="button-row">
                 <button className="btn-primary" onClick={handleClone}>Clone to my Roster</button>
+                <button className="btn-secondary" onClick={() => setReportOpen((v) => !v)}>Report</button>
               </div>
               {cloneStatus && <p className="success">{cloneStatus}</p>}
+              {reportOpen && (
+                <div className="save-panel">
+                  <label className="field">
+                    <span>Reason</span>
+                    <select value={reportReason} onChange={(e) => setReportReason(e.target.value as GalleryReportReason)}>
+                      {Object.entries(REPORT_REASON_LABELS).map(([value, label]) => (
+                        <option key={value} value={value}>{label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="field">
+                    <span>Details (optional)</span>
+                    <textarea value={reportDetail} onChange={(e) => setReportDetail(e.target.value)} rows={2} />
+                  </label>
+                  <div className="button-row">
+                    <button className="btn-primary" onClick={handleReport}>Submit Report</button>
+                  </div>
+                </div>
+              )}
+              {reportStatus && <p className="hint">{reportStatus}</p>}
             </>
           )}
         </div>

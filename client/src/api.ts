@@ -20,7 +20,7 @@ import type {
   Settlement, GenerateSettlementRequest, GeneratedSettlement,
   ActivitySummary,
   EntityType, EntityLink, SearchResult,
-  PublicGalleryEntry, PublishEntryInput,
+  PublicGalleryEntry, PublishEntryInput, GalleryReportReason, ModerationQueueEntry,
   AuthUser, SignupResult, RecoveryCodeResult,
   SpellDef, ConditionDef, RuleDef,
 } from "@spark/shared";
@@ -338,6 +338,21 @@ export const api = {
     request<{ id: string }>("/public", { method: "POST", body: JSON.stringify(body) }),
   unpublishEntry: (id: string) => request<void>(`/public/${id}`, { method: "DELETE" }),
   cloneFromGallery: (id: string) => request<{ id: string }>(`/public/${id}/clone`, { method: "POST" }),
+  reportGalleryEntry: (id: string, reason: GalleryReportReason, detail?: string) =>
+    request<{ ok: true }>(`/public/${id}/report`, { method: "POST", body: JSON.stringify({ reason, detail }) }),
+
+  listModerationQueue: (params?: { status?: string; cursor?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.status) q.set("status", params.status);
+    if (params?.cursor) q.set("cursor", params.cursor);
+    const qs = q.toString();
+    return request<{ entries: ModerationQueueEntry[]; nextCursor: string | null }>(`/admin/gallery/reports${qs ? `?${qs}` : ""}`);
+  },
+  removeGalleryEntry: (id: string, reason: string) =>
+    request<void>(`/admin/gallery/entries/${id}/remove`, { method: "POST", body: JSON.stringify({ reason }) }),
+  dismissReport: (id: string) => request<void>(`/admin/gallery/reports/${id}/dismiss`, { method: "POST" }),
+  suspendPublishing: (userId: string) => request<void>(`/admin/gallery/users/${userId}/suspend-publishing`, { method: "POST" }),
+  restorePublishing: (userId: string) => request<void>(`/admin/gallery/users/${userId}/restore-publishing`, { method: "POST" }),
   importBackup: (bundle: unknown) =>
     request<ImportResult>("/backup/import", { method: "POST", body: JSON.stringify(bundle) }),
 

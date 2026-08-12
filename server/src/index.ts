@@ -54,6 +54,7 @@ import { searchRouter } from "./routes/search.js";
 import { linksRouter } from "./routes/links.js";
 import { backupRouter } from "./routes/backup.js";
 import { publicGalleryRouter } from "./routes/publicGallery.js";
+import { moderationRouter } from "./routes/moderation.js";
 import { vttExportRouter } from "./routes/vttExport.js";
 import { billingRouter, billingWebhookHandler } from "./routes/billing.js";
 import { FREE_TIER_GENERATE_LIMIT, PAID_TIER_GENERATE_LIMIT } from "./billingLimits.js";
@@ -159,6 +160,7 @@ app.use("/api/search", searchRouter);
 app.use("/api/links", linksRouter);
 app.use("/api/backup", backupRouter);
 app.use("/api/public", publicGalleryRouter);
+app.use("/api/admin/gallery", moderationRouter);
 app.use("/api", vttExportRouter);
 app.use("/api/billing", billingRouter);
 

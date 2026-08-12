@@ -20,6 +20,7 @@ import { CompendiumPage } from "./pages/CompendiumPage";
 import { BillingPage } from "./pages/BillingPage";
 import { CodexPage } from "./pages/CodexPage";
 import { GalleryPage } from "./pages/GalleryPage";
+import { ModerationPage } from "./pages/ModerationPage";
 import { InventoryPage } from "./pages/InventoryPage";
 import { DowntimePage } from "./pages/DowntimePage";
 import { ShopPage } from "./pages/ShopPage";
@@ -28,7 +29,7 @@ import { PrintPane, type PrintItem } from "./components/PrintPane";
 import { PrepIcon, WorldIcon, PlayIcon } from "./components/icons";
 
 type Area = "prep" | "world" | "play";
-type SubTab = "create" | "myCharacter" | "compendium" | "billing" | "overview" | "worlds" | "roster" | "codex" | "notes" | "downtime" | "combat" | "shop" | "inventory" | "gallery";
+type SubTab = "create" | "myCharacter" | "compendium" | "billing" | "overview" | "worlds" | "roster" | "codex" | "notes" | "downtime" | "combat" | "shop" | "inventory" | "gallery" | "moderation";
 
 const AREA_LABELS: Record<Area, string> = { prep: "Prep", world: "World", play: "Play" };
 const AREA_ICONS: Record<Area, typeof PrepIcon> = { prep: PrepIcon, world: WorldIcon, play: PlayIcon };
@@ -176,6 +177,9 @@ function AppShell() {
               </button>
               <button className={subTab === "downtime" ? "active" : ""} aria-current={subTab === "downtime" ? "true" : undefined} onClick={() => selectSubTab("downtime")}>Downtime</button>
               <button className={subTab === "gallery" ? "active" : ""} aria-current={subTab === "gallery" ? "true" : undefined} onClick={() => selectSubTab("gallery")}>Gallery</button>
+              {user?.role === "admin" && (
+                <button className={subTab === "moderation" ? "active" : ""} aria-current={subTab === "moderation" ? "true" : undefined} onClick={() => selectSubTab("moderation")}>Moderation</button>
+              )}
             </>
           )}
           {area === "play" && (
@@ -210,6 +214,7 @@ function AppShell() {
         )}
         {subTab === "codex" && <CodexPage />}
         {subTab === "gallery" && <GalleryPage />}
+        {subTab === "moderation" && user?.role === "admin" && <ModerationPage />}
         {subTab === "notes" && <SessionNotesPage onOpenInRoster={openInRoster} />}
         {subTab === "downtime" && <DowntimePage />}
         {subTab === "combat" && <CombatPage />}

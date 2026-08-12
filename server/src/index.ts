@@ -92,6 +92,22 @@ app.use("/api/auth", authRouter);
 // Everything below requires a signed-in user.
 app.use("/api", requireAuth);
 
+// Backstop for every authenticated route that isn't already behind a
+// stricter, purpose-specific limiter (currently just the generate routes
+// below) — a compromised or careless account shouldn't be able to hammer
+// CRUD routes or, worse, /api/billing/checkout (which calls Stripe on every
+// request) without limit. Keyed by user, not IP, since every request here
+// is already authenticated.
+const generalApiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.userId!,
+  message: { error: "You're making requests a bit fast — please wait a moment and try again." },
+});
+app.use("/api", generalApiLimiter);
+
 const generateLimiter = rateLimit({
   windowMs: 60 * 1000,
   limit: async (req) => {

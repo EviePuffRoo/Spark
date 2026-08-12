@@ -56,6 +56,10 @@ export async function billingWebhookHandler(req: Request, res: Response) {
 // Everything below is mounted under requireAuth, same as every other router.
 export const billingRouter = Router();
 
+function isStaleCustomerError(err: unknown): boolean {
+  return err instanceof Stripe.errors.StripeInvalidRequestError && err.code === "resource_missing" && err.param === "customer";
+}
+
 billingRouter.post("/checkout", async (req, res) => {
   if (!stripe || !process.env.STRIPE_PRICE_ID) {
     return res.status(503).json({ error: "Billing isn't configured on this server yet." });
@@ -63,31 +67,53 @@ billingRouter.post("/checkout", async (req, res) => {
   const user = await prisma.user.findUnique({ where: { id: req.userId } });
   if (!user) return res.status(401).json({ error: "Not signed in" });
 
-  let customerId = user.stripeCustomerId;
-  if (!customerId) {
-    const customer = await stripe.customers.create({ metadata: { userId: user.id } });
-    customerId = customer.id;
-    await prisma.user.update({ where: { id: user.id }, data: { stripeCustomerId: customerId } });
+  async function createCustomer(): Promise<string> {
+    const customer = await stripe!.customers.create({ metadata: { userId: user!.id } });
+    await prisma.user.update({ where: { id: user!.id }, data: { stripeCustomerId: customer.id } });
+    return customer.id;
   }
 
-  const origin = resolveOrigin(req);
-  try {
-    const session = await stripe.checkout.sessions.create({
+  async function createSession(customerId: string) {
+    const origin = resolveOrigin(req);
+    return stripe!.checkout.sessions.create({
       mode: "subscription",
       customer: customerId,
-      line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
+      line_items: [{ price: process.env.STRIPE_PRICE_ID!, quantity: 1 }],
       success_url: `${origin}/?billing=success`,
       cancel_url: `${origin}/?billing=cancel`,
     });
-    res.json({ url: session.url });
+  }
+
+  const customerId = user.stripeCustomerId ?? await createCustomer();
+
+  try {
+    const session = await createSession(customerId);
+    return res.json({ url: session.url });
   } catch (err) {
-    // Surface Stripe's own message (e.g. a misconfigured Price ID) instead
-    // of a generic 500 — this is the kind of error that's actionable for
-    // whoever is setting up billing, not a bug to hide from them.
-    if (err instanceof Stripe.errors.StripeError) {
-      return res.status(502).json({ error: `Stripe rejected the checkout request: ${err.message}` });
+    if (!isStaleCustomerError(err)) {
+      // Surface Stripe's own message (e.g. a misconfigured Price ID) instead
+      // of a generic 500 — this is the kind of error that's actionable for
+      // whoever is setting up billing, not a bug to hide from them.
+      if (err instanceof Stripe.errors.StripeError) {
+        return res.status(502).json({ error: `Stripe rejected the checkout request: ${err.message}` });
+      }
+      throw err;
     }
-    throw err;
+    // The stored stripeCustomerId doesn't exist on whatever Stripe account
+    // is currently configured (deleted on Stripe's side, or created under a
+    // different account/key than what's live now) — self-heal by creating a
+    // fresh customer once, rather than leaving the account permanently
+    // stuck on checkout.
+    try {
+      const freshCustomerId = await createCustomer();
+      const session = await createSession(freshCustomerId);
+      return res.json({ url: session.url });
+    } catch (retryErr) {
+      if (retryErr instanceof Stripe.errors.StripeError) {
+        return res.status(502).json({ error: `Stripe rejected the checkout request: ${retryErr.message}` });
+      }
+      throw retryErr;
+    }
   }
 });
 
@@ -103,6 +129,12 @@ billingRouter.post("/portal", async (req, res) => {
     });
     res.json({ url: session.url });
   } catch (err) {
+    if (isStaleCustomerError(err)) {
+      // Nothing to self-heal into here — there's no subscription to manage
+      // for a customer Stripe doesn't recognize, so the honest answer is
+      // "upgrade again", same message as never having subscribed at all.
+      return res.status(400).json({ error: "No billing account found for this user yet — upgrade first." });
+    }
     if (err instanceof Stripe.errors.StripeError) {
       return res.status(502).json({ error: `Stripe rejected the portal request: ${err.message}` });
     }

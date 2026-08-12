@@ -71,14 +71,24 @@ billingRouter.post("/checkout", async (req, res) => {
   }
 
   const origin = resolveOrigin(req);
-  const session = await stripe.checkout.sessions.create({
-    mode: "subscription",
-    customer: customerId,
-    line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
-    success_url: `${origin}/?billing=success`,
-    cancel_url: `${origin}/?billing=cancel`,
-  });
-  res.json({ url: session.url });
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      customer: customerId,
+      line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
+      success_url: `${origin}/?billing=success`,
+      cancel_url: `${origin}/?billing=cancel`,
+    });
+    res.json({ url: session.url });
+  } catch (err) {
+    // Surface Stripe's own message (e.g. a misconfigured Price ID) instead
+    // of a generic 500 — this is the kind of error that's actionable for
+    // whoever is setting up billing, not a bug to hide from them.
+    if (err instanceof Stripe.errors.StripeError) {
+      return res.status(502).json({ error: `Stripe rejected the checkout request: ${err.message}` });
+    }
+    throw err;
+  }
 });
 
 billingRouter.post("/portal", async (req, res) => {
@@ -86,9 +96,16 @@ billingRouter.post("/portal", async (req, res) => {
   const user = await prisma.user.findUnique({ where: { id: req.userId } });
   if (!user?.stripeCustomerId) return res.status(400).json({ error: "No billing account found for this user yet — upgrade first." });
 
-  const session = await stripe.billingPortal.sessions.create({
-    customer: user.stripeCustomerId,
-    return_url: `${resolveOrigin(req)}/`,
-  });
-  res.json({ url: session.url });
+  try {
+    const session = await stripe.billingPortal.sessions.create({
+      customer: user.stripeCustomerId,
+      return_url: `${resolveOrigin(req)}/`,
+    });
+    res.json({ url: session.url });
+  } catch (err) {
+    if (err instanceof Stripe.errors.StripeError) {
+      return res.status(502).json({ error: `Stripe rejected the portal request: ${err.message}` });
+    }
+    throw err;
+  }
 });

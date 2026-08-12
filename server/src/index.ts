@@ -2,6 +2,13 @@ import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import express from "express";
+// Express 4 doesn't forward a rejected promise from an async route handler
+// to error-handling middleware on its own — it becomes an unhandled
+// rejection that crashes the whole process (and every other in-flight
+// request with it). This patches route/router handling so those rejections
+// reach the catch-all error handler below instead. Must be imported before
+// any router is registered.
+import "express-async-errors";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import rateLimit from "express-rate-limit";
@@ -51,6 +58,19 @@ import { vttExportRouter } from "./routes/vttExport.js";
 import { billingRouter, billingWebhookHandler } from "./routes/billing.js";
 import { FREE_TIER_GENERATE_LIMIT, PAID_TIER_GENERATE_LIMIT } from "./billingLimits.js";
 import { prisma } from "./db.js";
+
+// Belt-and-suspenders: express-async-errors covers rejections inside route
+// handlers, but anything that rejects outside the request/response cycle
+// (a stray non-awaited promise, startup code, etc.) would otherwise still
+// crash the whole process per Node's default behavior. Log instead — for
+// a small single-instance app, going down entirely on any one hiccup is a
+// worse failure mode than staying up with a logged error.
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled rejection:", reason);
+});
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught exception:", err);
+});
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const clientDist = path.resolve(__dirname, "../../client/dist");
@@ -132,6 +152,15 @@ if (fs.existsSync(clientDist)) {
     res.sendFile(path.join(clientDist, "index.html"));
   });
 }
+
+// Catch-all: any error thrown or rejected inside a route handler (now
+// forwarded here by express-async-errors above) lands as a clean JSON 500
+// for that one request, instead of crashing the process for everyone.
+app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error(err);
+  if (res.headersSent) return;
+  res.status(500).json({ error: "Something went wrong on our end — please try again." });
+});
 
 const port = process.env.PORT ? Number(process.env.PORT) : 4000;
 app.listen(port, () => {

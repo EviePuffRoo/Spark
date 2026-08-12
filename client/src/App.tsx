@@ -5,8 +5,6 @@ import { useAuth } from "./AuthContext";
 import { ActiveWorldProvider, useActiveWorld } from "./ActiveWorldContext";
 import { useActivityBadges } from "./useActivityBadges";
 import { AuthPage } from "./pages/AuthPage";
-import { AccountMenu } from "./components/AccountMenu";
-import { ThemeToggle } from "./components/ThemeToggle";
 import { RecoveryCodeDisplay } from "./components/RecoveryCodeDisplay";
 import { CreatePage } from "./pages/CreatePage";
 import { SessionNotesPage } from "./pages/SessionNotesPage";
@@ -18,6 +16,7 @@ import { MyCharacterPage } from "./pages/MyCharacterPage";
 import { PlayerCompanionView } from "./pages/PlayerCompanionView";
 import { CompendiumPage } from "./pages/CompendiumPage";
 import { BillingPage } from "./pages/BillingPage";
+import { ProfilePage } from "./pages/ProfilePage";
 import { CodexPage } from "./pages/CodexPage";
 import { GalleryPage } from "./pages/GalleryPage";
 import { ModerationPage } from "./pages/ModerationPage";
@@ -26,14 +25,14 @@ import { DowntimePage } from "./pages/DowntimePage";
 import { ShopPage } from "./pages/ShopPage";
 import { GlobalSearch } from "./components/GlobalSearch";
 import { PrintPane, type PrintItem } from "./components/PrintPane";
-import { PrepIcon, WorldIcon, PlayIcon } from "./components/icons";
+import { PrepIcon, WorldIcon, PlayIcon, AccountIcon } from "./components/icons";
 
-type Area = "prep" | "world" | "play";
-type SubTab = "create" | "myCharacter" | "compendium" | "billing" | "overview" | "worlds" | "roster" | "codex" | "notes" | "downtime" | "combat" | "shop" | "inventory" | "gallery" | "moderation";
+type Area = "prep" | "world" | "play" | "account";
+type SubTab = "create" | "compendium" | "overview" | "worlds" | "roster" | "codex" | "notes" | "downtime" | "combat" | "shop" | "inventory" | "gallery" | "profile" | "myCharacter" | "billing" | "moderation";
 
-const AREA_LABELS: Record<Area, string> = { prep: "Prep", world: "World", play: "Play" };
-const AREA_ICONS: Record<Area, typeof PrepIcon> = { prep: PrepIcon, world: WorldIcon, play: PlayIcon };
-const AREA_DEFAULT_SUBTAB: Record<Area, SubTab> = { prep: "create", world: "overview", play: "combat" };
+const AREA_LABELS: Record<Area, string> = { prep: "Prep", world: "World", play: "Play", account: "Account" };
+const AREA_ICONS: Record<Area, typeof PrepIcon> = { prep: PrepIcon, world: WorldIcon, play: PlayIcon, account: AccountIcon };
+const AREA_DEFAULT_SUBTAB: Record<Area, SubTab> = { prep: "create", world: "overview", play: "combat", account: "profile" };
 
 function App() {
   const { user, loading, pendingRecoveryCode } = useAuth();
@@ -79,7 +78,7 @@ function AppShell() {
   // Stripe Checkout/Portal redirects land back on the bare app root — route
   // straight to the Billing tab so its own effect can refresh the tier.
   const returningFromBilling = new URLSearchParams(window.location.search).has("billing");
-  const [area, setArea] = useState<Area>("prep");
+  const [area, setArea] = useState<Area>(returningFromBilling ? "account" : "prep");
   const [subTab, setSubTab] = useState<SubTab>(returningFromBilling ? "billing" : "create");
   const [rosterWorldFilter, setRosterWorldFilter] = useState("");
   const [rosterSelection, setRosterSelection] = useState<RosterSelection | null>(null);
@@ -134,8 +133,6 @@ function AppShell() {
             </select>
           )}
           <a className="btn-secondary" href="?play=1">Player View</a>
-          <ThemeToggle />
-          <AccountMenu />
         </div>
         <h1>Spark</h1>
         <p className="tagline">Everything a DM needs to prep and run a session, ready for the table</p>
@@ -159,9 +156,7 @@ function AppShell() {
           {area === "prep" && (
             <>
               <button className={subTab === "create" ? "active" : ""} aria-current={subTab === "create" ? "true" : undefined} onClick={() => selectSubTab("create")}>Create</button>
-              <button className={subTab === "myCharacter" ? "active" : ""} aria-current={subTab === "myCharacter" ? "true" : undefined} onClick={() => selectSubTab("myCharacter")}>My Character</button>
               <button className={subTab === "compendium" ? "active" : ""} aria-current={subTab === "compendium" ? "true" : undefined} onClick={() => selectSubTab("compendium")}>Compendium</button>
-              <button className={subTab === "billing" ? "active" : ""} aria-current={subTab === "billing" ? "true" : undefined} onClick={() => selectSubTab("billing")}>Billing</button>
             </>
           )}
           {area === "world" && (
@@ -177,9 +172,6 @@ function AppShell() {
               </button>
               <button className={subTab === "downtime" ? "active" : ""} aria-current={subTab === "downtime" ? "true" : undefined} onClick={() => selectSubTab("downtime")}>Downtime</button>
               <button className={subTab === "gallery" ? "active" : ""} aria-current={subTab === "gallery" ? "true" : undefined} onClick={() => selectSubTab("gallery")}>Gallery</button>
-              {user?.role === "admin" && (
-                <button className={subTab === "moderation" ? "active" : ""} aria-current={subTab === "moderation" ? "true" : undefined} onClick={() => selectSubTab("moderation")}>Moderation</button>
-              )}
             </>
           )}
           {area === "play" && (
@@ -193,14 +185,26 @@ function AppShell() {
               </button>
             </>
           )}
+          {area === "account" && (
+            <>
+              <button className={subTab === "profile" ? "active" : ""} aria-current={subTab === "profile" ? "true" : undefined} onClick={() => selectSubTab("profile")}>Profile</button>
+              <button className={subTab === "myCharacter" ? "active" : ""} aria-current={subTab === "myCharacter" ? "true" : undefined} onClick={() => selectSubTab("myCharacter")}>My Character</button>
+              <button className={subTab === "billing" ? "active" : ""} aria-current={subTab === "billing" ? "true" : undefined} onClick={() => selectSubTab("billing")}>Billing</button>
+              {user?.role === "admin" && (
+                <button className={subTab === "moderation" ? "active" : ""} aria-current={subTab === "moderation" ? "true" : undefined} onClick={() => selectSubTab("moderation")}>Moderation</button>
+              )}
+            </>
+          )}
         </nav>
       </header>
 
       <main>
         {subTab === "create" && <CreatePage />}
-        {subTab === "myCharacter" && <MyCharacterPage onViewRoster={viewRosterForWorld} />}
         {subTab === "compendium" && <CompendiumPage />}
+        {subTab === "profile" && <ProfilePage />}
+        {subTab === "myCharacter" && <MyCharacterPage onViewRoster={viewRosterForWorld} />}
         {subTab === "billing" && <BillingPage />}
+        {subTab === "moderation" && user?.role === "admin" && <ModerationPage />}
         {subTab === "overview" && <WorldOverviewPage onNavigate={navigateFromOverview} />}
         {subTab === "worlds" && <WorldsPage onViewRoster={viewRosterForWorld} />}
         {subTab === "roster" && (
@@ -214,7 +218,6 @@ function AppShell() {
         )}
         {subTab === "codex" && <CodexPage />}
         {subTab === "gallery" && <GalleryPage />}
-        {subTab === "moderation" && user?.role === "admin" && <ModerationPage />}
         {subTab === "notes" && <SessionNotesPage onOpenInRoster={openInRoster} />}
         {subTab === "downtime" && <DowntimePage />}
         {subTab === "combat" && <CombatPage />}

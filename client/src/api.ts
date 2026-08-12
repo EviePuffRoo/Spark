@@ -364,6 +364,8 @@ export const api = {
   me: () => request<AuthUser>("/auth/me"),
   changePassword: (currentPassword: string, newPassword: string) =>
     request<void>("/auth/change-password", { method: "POST", body: JSON.stringify({ currentPassword, newPassword }) }),
+  deleteAccount: (password: string) =>
+    request<void>("/auth/me", { method: "DELETE", body: JSON.stringify({ password }) }),
   regenerateRecoveryCode: () => request<RecoveryCodeResult>("/auth/recovery-code", { method: "POST" }),
   resetPassword: (username: string, recoveryCode: string, newPassword: string) =>
     request<SignupResult>("/auth/reset-password", { method: "POST", body: JSON.stringify({ username, recoveryCode, newPassword }) }),

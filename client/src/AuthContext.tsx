@@ -14,6 +14,7 @@ interface AuthContextValue {
   acknowledgeRecoveryCode: () => void;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  deleteAccount: (password: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -69,6 +70,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }
 
+  async function deleteAccount(password: string) {
+    await api.deleteAccount(password);
+    setUser(null);
+  }
+
   // Re-fetches the current user — used after returning from a Stripe
   // Checkout/Portal redirect, since the tier flip lands via webhook and may
   // not have landed by the time the browser comes back.
@@ -80,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider value={{
       user, loading, pendingRecoveryCode, sessionMessage,
-      login, signup, resetPassword, regenerateRecoveryCode, acknowledgeRecoveryCode, logout, refreshUser,
+      login, signup, resetPassword, regenerateRecoveryCode, acknowledgeRecoveryCode, logout, refreshUser, deleteAccount,
     }}>
       {children}
     </AuthContext.Provider>

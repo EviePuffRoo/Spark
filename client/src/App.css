@@ -375,6 +375,18 @@ textarea {
   border-top: 1px dashed var(--border);
 }
 
+.danger-zone {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--danger);
+  border-radius: 10px;
+}
+
+.danger-zone .section-heading {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
 /* Adventure Forge role slots */
 .role-slot {
   margin-bottom: 16px;

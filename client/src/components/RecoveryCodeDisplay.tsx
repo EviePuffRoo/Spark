@@ -12,7 +12,7 @@ export function RecoveryCodeDisplay({ code }: { code: string }) {
           there's no email recovery. Write it down or save it in a password manager now.
         </p>
         <p className="recovery-code">{code}</p>
-        <p className="hint">You can generate a new one any time from the account menu, which will make this one stop working.</p>
+        <p className="hint">You can generate a new one any time from your Profile settings, which will make this one stop working.</p>
         <button className="btn-primary" onClick={acknowledgeRecoveryCode}>I've saved it, continue</button>
       </div>
     </div>

@@ -83,6 +83,25 @@ authRouter.get("/me", requireAuth, async (req, res) => {
   res.json(toAuthUser(await syncAdminRole(user)));
 });
 
+authRouter.delete("/me", requireAuth, async (req, res) => {
+  const { password } = req.body ?? {};
+  if (typeof password !== "string") {
+    return res.status(400).json({ error: "Password is required to delete your account." });
+  }
+
+  const user = await prisma.user.findUnique({ where: { id: req.userId } });
+  if (!user || !(await verifyPassword(password, user.passwordHash))) {
+    return res.status(401).json({ error: "Incorrect password." });
+  }
+
+  // Every userId/reporterId relation across the schema is onDelete: Cascade,
+  // so this cleanly removes every row this account owns — worlds, entities,
+  // published gallery entries, reports, everything.
+  await prisma.user.delete({ where: { id: user.id } });
+  clearSessionCookie(res);
+  res.status(204).end();
+});
+
 authRouter.post("/change-password", requireAuth, async (req, res) => {
   const { currentPassword, newPassword } = req.body ?? {};
   if (typeof currentPassword !== "string" || typeof newPassword !== "string" || newPassword.length < 8) {

@@ -6,7 +6,15 @@ dist-ssr/
 # Prisma / SQLite
 server/prisma/dev.db
 server/prisma/dev.db-journal
+server/prisma/test.db
+server/prisma/test.db-journal
+server/prisma/e2e.db
+server/prisma/e2e.db-journal
 server/.env
+
+# Playwright
+client/test-results/
+client/playwright-report/
 
 .DS_Store
 *.log

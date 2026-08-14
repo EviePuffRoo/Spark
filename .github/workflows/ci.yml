@@ -1,0 +1,47 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install
+
+      - name: Typecheck + test server
+        working-directory: server
+        run: |
+          npx tsc --noEmit
+          npm test
+
+      - name: Typecheck + build + lint + test client
+        working-directory: client
+        run: |
+          npm run build
+          npm run lint
+          npm test
+
+      - name: Test shared
+        working-directory: shared
+        run: npm test
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install
+      - name: Install Playwright's Chromium
+        working-directory: client
+        run: npx playwright install --with-deps chromium
+      - name: Run e2e smoke test
+        working-directory: client
+        run: npm run test:e2e

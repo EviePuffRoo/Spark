@@ -764,6 +764,15 @@ export interface ModerationQueueEntry {
   reports: GalleryReportDTO[];
 }
 
+export interface AdminUserSummary {
+  id: string;
+  username: string;
+  tier: string;
+  role: string;
+  canPublish: boolean;
+  createdAt: string;
+}
+
 export interface EntityLink {
   id: string;
   label?: string;

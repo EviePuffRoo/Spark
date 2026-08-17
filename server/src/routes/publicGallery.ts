@@ -3,6 +3,7 @@ import rateLimit from "express-rate-limit";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../db.js";
 import { getAdapter, isEntityType } from "../entityAdapters.js";
+import { testAwareLimit } from "../rateLimitConfig.js";
 import {
   toCharacterDTO, toItemDTO, toLocationDTO, toQuestHookDTO, toFactionDTO, toEncounterTableDTO,
   toSessionNoteDTO, toAdventureDTO, toPlayerCharacterDTO, toZoneMapTemplateDTO, toDungeonDTO,
@@ -22,7 +23,7 @@ const REPORT_REASONS: GalleryReportReason[] = ["spam", "offensive", "copyright",
 // tighter ceilings.
 const publishLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  limit: 10,
+  limit: testAwareLimit(10),
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => req.userId!,
@@ -31,7 +32,7 @@ const publishLimiter = rateLimit({
 
 const reportLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  limit: 20,
+  limit: testAwareLimit(20),
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => req.userId!,

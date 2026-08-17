@@ -10,7 +10,10 @@
     "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "migrate:deploy": "prisma migrate deploy"
+    "migrate:deploy": "prisma migrate deploy",
+    "pretest": "DATABASE_URL=file:./test.db npx prisma migrate deploy",
+    "test": "vitest run",
+    "e2e": "DATABASE_URL=file:./e2e.db npx prisma migrate deploy && DATABASE_URL=file:./e2e.db PORT=4000 npx tsx src/index.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.20.0",
@@ -31,8 +34,11 @@
     "@types/express": "^4.17.21",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^22.7.4",
+    "@types/supertest": "^7.2.1",
     "prisma": "^5.20.0",
+    "supertest": "^7.2.2",
     "tsx": "^4.19.1",
-    "typescript": "^5.6.2"
+    "typescript": "^5.6.2",
+    "vitest": "^4.1.10"
   }
 }

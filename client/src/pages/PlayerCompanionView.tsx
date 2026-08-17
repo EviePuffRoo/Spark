@@ -138,6 +138,7 @@ export function PlayerCompanionView() {
   return (
     <div className="player-companion">
       <header className="player-companion-header">
+        <a className="btn-secondary player-companion-exit" href={backToDesktopHref()} aria-label="Back to full app">← Full App</a>
         <h1>Spark</h1>
         <div className="player-companion-header-actions">
           <ThemeToggle />

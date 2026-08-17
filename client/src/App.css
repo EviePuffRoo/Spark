@@ -1975,12 +1975,32 @@ textarea {
 .player-companion-header h1 {
   font-size: 1.4rem;
   margin: 0;
+  flex-shrink: 0;
 }
 
 .player-companion-header-actions {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+}
+
+.player-companion-exit {
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.player-companion-header-actions .account-menu {
+  min-width: 0;
+}
+
+.player-companion-header-actions .account-menu > button {
+  max-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .player-companion select,

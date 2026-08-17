@@ -119,7 +119,25 @@ function AppShell() {
   const playAreaUnseen = combatUnseen || inventoryUnseen;
 
   return (
-    <div className="app">
+    <div className="app-shell">
+      <nav className="nav-rail" aria-label="Main navigation">
+        <img src="/favicon.svg" alt="Spark" className="nav-rail-bolt" />
+        <div className="nav-rail-items">
+          {(Object.keys(AREA_LABELS) as Area[]).map((a) => {
+            const Icon = AREA_ICONS[a];
+            return (
+              <button key={a} className={`nav-rail-item${area === a ? " active" : ""}`} aria-current={area === a ? "true" : undefined} onClick={() => selectArea(a)}>
+                <Icon className="nav-icon" aria-hidden="true" />
+                <span className="nav-rail-label">{AREA_LABELS[a]}</span>
+                {a === "world" && worldAreaUnseen && <span className="nav-badge" aria-label="New world activity" />}
+                {a === "play" && playAreaUnseen && <span className="nav-badge" aria-label="New play activity" />}
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+
+      <div className="app-content">
       <header className="app-header">
         <div className="app-header-actions">
           {worlds.length > 0 && (
@@ -135,23 +153,7 @@ function AppShell() {
           )}
           <a className="btn-secondary" href="?play=1">Player View</a>
         </div>
-        <h1>Spark</h1>
-        <p className="tagline">Everything a DM needs to prep and run a session, ready for the table</p>
         <GlobalSearch onSelect={openInRoster} />
-
-        <nav className="tabs area-tabs">
-          {(Object.keys(AREA_LABELS) as Area[]).map((a) => {
-            const Icon = AREA_ICONS[a];
-            return (
-              <button key={a} className={area === a ? "active" : ""} aria-current={area === a ? "true" : undefined} onClick={() => selectArea(a)}>
-                <Icon className="nav-icon" aria-hidden="true" />
-                {AREA_LABELS[a]}
-                {a === "world" && worldAreaUnseen && <span className="nav-badge" aria-label="New world activity" />}
-                {a === "play" && playAreaUnseen && <span className="nav-badge" aria-label="New play activity" />}
-              </button>
-            );
-          })}
-        </nav>
 
         <nav className="tabs area-subtabs">
           {area === "prep" && (
@@ -231,6 +233,7 @@ function AppShell() {
       </main>
 
       <PrintPane items={printItems} />
+      </div>
     </div>
   );
 }

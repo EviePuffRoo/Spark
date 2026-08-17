@@ -272,7 +272,7 @@ export function DiceRoller({
                   <button className="dice-history-delete" onClick={() => deleteRecord(r.id)} aria-label={`Delete roll ${r.notation}${r.label ? ` (${r.label})` : ""}`}>×</button>
                 </div>
                 <span className="entity-meta">
-                  [{r.results.join(", ")}]{r.modifier ? ` ${r.modifier > 0 ? "+" : ""}${r.modifier}` : ""} = <strong>{r.total}</strong>
+                  [{r.results.join(", ")}]{r.modifier ? ` ${r.modifier > 0 ? "+" : ""}${r.modifier}` : ""} = <strong className="dice-total mono">{r.total}</strong>
                   {timeAgo(r.timestamp) && <span className="dice-history-time"> · {timeAgo(r.timestamp)}</span>}
                 </span>
               </li>
@@ -303,7 +303,7 @@ export function DiceRoller({
                     )}
                   </div>
                   <span className="entity-meta">
-                    [{r.results.join(", ")}]{r.modifier ? ` ${r.modifier > 0 ? "+" : ""}${r.modifier}` : ""} = <strong>{r.total}</strong>
+                    [{r.results.join(", ")}]{r.modifier ? ` ${r.modifier > 0 ? "+" : ""}${r.modifier}` : ""} = <strong className="dice-total mono">{r.total}</strong>
                     <span className="dice-history-time"> · {timeAgo(new Date(r.createdAt).getTime())}</span>
                   </span>
                   <div className="button-row">

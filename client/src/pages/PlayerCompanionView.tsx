@@ -42,7 +42,7 @@ function TurnOrderStrip({ worldId, myPlayerCharacterIds, notifyEnabled }: { worl
         <li key={c.id} className={`player-companion-combatant${c.id === activeId ? " active-turn" : ""}`}>
           <span className="entity-name">{c.name}</span>
           {c.currentHp !== undefined && c.maxHp !== undefined ? (
-            <span className="combatant-hp-value">{c.currentHp} / {c.maxHp} HP</span>
+            <span className="combatant-hp-value mono">{c.currentHp} / {c.maxHp} HP</span>
           ) : (
             <span className={`hp-status-badge hp-status-${c.hpStatus}`}>{c.hpStatus}</span>
           )}

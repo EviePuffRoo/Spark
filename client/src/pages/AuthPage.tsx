@@ -39,7 +39,10 @@ export function AuthPage() {
   return (
     <div className="page auth-page">
       <div className="auth-pitch">
-        <h1>Spark</h1>
+        <div className="auth-wordmark">
+          <img src="/favicon.svg" alt="" className="auth-bolt" />
+          <h1>Spark</h1>
+        </div>
         <p className="tagline">Everything a DM needs to prep and run a session, ready for the table</p>
         <ul className="auth-pitch-points">
           <li>

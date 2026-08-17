@@ -35,6 +35,17 @@ function abilityModifier(score: number): number {
   return Math.floor((score - 10) / 2);
 }
 
+function HpBar({ current, max }: { current: number; max: number }) {
+  if (max <= 0) return null;
+  const pct = Math.max(0, Math.min(100, (current / max) * 100));
+  const state = pct <= 25 ? "critical" : pct <= 50 ? "low" : "ok";
+  return (
+    <div className="hp-bar" role="progressbar" aria-valuenow={current} aria-valuemin={0} aria-valuemax={max}>
+      <div className={`hp-bar-fill hp-bar-${state}`} style={{ width: `${pct}%` }} />
+    </div>
+  );
+}
+
 function rollD20(): number {
   return Math.floor(Math.random() * 20) + 1;
 }
@@ -423,7 +434,7 @@ export function InitiativeTracker({
           <CombatIcon className="page-title-icon" aria-hidden="true" />
           <h2>Initiative Tracker</h2>
         </div>
-        <span className="round-banner">Round {activeEncounter.round}</span>
+        <span className="round-banner mono">Round {activeEncounter.round}</span>
       </div>
 
       {worlds.length === 0 ? (
@@ -600,7 +611,7 @@ export function InitiativeTracker({
             <div className="combatant-main">
               <input
                 type="number"
-                className="combatant-initiative"
+                className="combatant-initiative mono"
                 value={c.initiative}
                 onChange={(e) => updateCombatant(c.id, { initiative: Number(e.target.value) })}
                 aria-label={`${c.name} initiative`}
@@ -665,7 +676,8 @@ export function InitiativeTracker({
             })()}
 
             <div className="combatant-hp">
-              <span className="combatant-hp-value">{c.currentHp ?? 0} / {c.maxHp ?? 0} HP</span>
+              <span className="combatant-hp-value mono">{c.currentHp ?? 0} / {c.maxHp ?? 0} HP</span>
+              <HpBar current={c.currentHp ?? 0} max={c.maxHp ?? 0} />
               <input
                 type="number"
                 className="combatant-hp-input"
@@ -726,7 +738,7 @@ export function InitiativeTracker({
         ) : (
           <li key={c.id} className={`combatant-row read-only${c.id === activeId ? " active-turn" : ""}${c.hpStatus === "down" ? " down" : ""}`}>
             <div className="combatant-main">
-              <span className="combatant-initiative-readonly">{c.initiative}</span>
+              <span className="combatant-initiative-readonly mono">{c.initiative}</span>
               <span className="combatant-name">{c.name}</span>
               {c.armorClass !== undefined && (
                 <span className="entity-meta">
@@ -746,7 +758,10 @@ export function InitiativeTracker({
 
             <div className="combatant-hp">
               {c.currentHp !== undefined && c.maxHp !== undefined ? (
-                <span className="combatant-hp-value">{c.currentHp} / {c.maxHp} HP</span>
+                <>
+                  <span className="combatant-hp-value mono">{c.currentHp} / {c.maxHp} HP</span>
+                  <HpBar current={c.currentHp} max={c.maxHp} />
+                </>
               ) : (
                 <span className={`hp-status-badge hp-status-${c.hpStatus}`}>{HP_STATUS_LABELS[c.hpStatus]}</span>
               )}

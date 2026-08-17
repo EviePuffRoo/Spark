@@ -1,17 +1,28 @@
 :root {
-  --bg: #f5f1e8;
+  --bg: #f7f6fb;
   --bg-panel: #ffffff;
-  --text: #2a2018;
-  --text-muted: #6b5f4f;
-  --border: #d8cfba;
-  --accent: #7a1f2b;
-  --accent-dark: #5c1620;
+  --bg-elevated-2: #f0edf9;
+  --text: #16121f;
+  --text-muted: #635d80;
+  --text-faint: #948dae;
+  --border: #e4e0f0;
+  --border-strong: #d3cce8;
+  --accent: #7c3aed;
+  --accent-2: #0284c7;
+  --accent-dark: #6423d6;
   --accent-contrast: #ffffff;
-  --danger: #a3352c;
-  --success: #2f6b3a;
-  --rule-gold: #b08d3e;
+  --gradient: linear-gradient(120deg, #7c3aed 0%, #4f6df5 55%, #0ea5e9 100%);
+  --glow: rgba(124, 58, 237, 0.25);
+  --danger: #dc2645;
+  --danger-glow: rgba(220, 38, 69, 0.3);
+  --success: #16a34a;
+  --success-glow: rgba(22, 163, 74, 0.28);
+  --warning: #d97706;
+  --rule-gold: var(--accent);
+  --font-display: "Unbounded", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
-  font: 16px/1.5 "Segoe UI", system-ui, Roboto, sans-serif;
+  font: 16px/1.55 "Manrope", system-ui, sans-serif;
   color-scheme: light dark;
   color: var(--text);
   background: var(--bg);
@@ -19,34 +30,50 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #1b1815;
-    --bg-panel: #262220;
-    --text: #ece5d8;
-    --text-muted: #a89a86;
-    --border: #3a352f;
-    --accent: #d67e8b;
-    --accent-dark: #9c4750;
-    --accent-contrast: #1b1815;
-    --danger: #e0776d;
-    --success: #6fbf7d;
-    --rule-gold: #c9a44f;
+    --bg: #0b0a13;
+    --bg-panel: #131022;
+    --bg-elevated-2: #1c1836;
+    --text: #f5f3fc;
+    --text-muted: #a89fc9;
+    --text-faint: #655d8a;
+    --border: #241f47;
+    --border-strong: #352d63;
+    --accent: #9d5cff;
+    --accent-2: #46c6ff;
+    --accent-dark: #7d3dff;
+    --accent-contrast: #0b0a13;
+    --gradient: linear-gradient(120deg, #9d5cff 0%, #5b8dff 55%, #46c6ff 100%);
+    --glow: rgba(157, 92, 255, 0.5);
+    --danger: #ff5d7e;
+    --danger-glow: rgba(255, 93, 126, 0.45);
+    --success: #4fe0a0;
+    --success-glow: rgba(79, 224, 160, 0.4);
+    --warning: #ffb84f;
   }
 }
 
 /* Explicit overrides from the in-app theme toggle, taking precedence over
    the OS preference above either direction. */
 :root[data-theme="dark"] {
-  --bg: #1b1815;
-  --bg-panel: #262220;
-  --text: #ece5d8;
-  --text-muted: #a89a86;
-  --border: #3a352f;
-  --accent: #d67e8b;
-  --accent-dark: #9c4750;
-  --accent-contrast: #1b1815;
-  --danger: #e0776d;
-  --success: #6fbf7d;
-  --rule-gold: #c9a44f;
+  --bg: #0b0a13;
+  --bg-panel: #131022;
+  --bg-elevated-2: #1c1836;
+  --text: #f5f3fc;
+  --text-muted: #a89fc9;
+  --text-faint: #655d8a;
+  --border: #241f47;
+  --border-strong: #352d63;
+  --accent: #9d5cff;
+  --accent-2: #46c6ff;
+  --accent-dark: #7d3dff;
+  --accent-contrast: #0b0a13;
+  --gradient: linear-gradient(120deg, #9d5cff 0%, #5b8dff 55%, #46c6ff 100%);
+  --glow: rgba(157, 92, 255, 0.5);
+  --danger: #ff5d7e;
+  --danger-glow: rgba(255, 93, 126, 0.45);
+  --success: #4fe0a0;
+  --success-glow: rgba(79, 224, 160, 0.4);
+  --warning: #ffb84f;
   color-scheme: dark;
 }
 

@@ -148,7 +148,7 @@ export function WorldOverviewPage({ onNavigate }: { onNavigate: (subTab: Overvie
         <div className="panel">
           <h3 className="section-heading">Party</h3>
           {loading && <p className="hint">Loading…</p>}
-          {!loading && <p className="ledger-gold-total">{ledger?.gold ?? 0} gp</p>}
+          {!loading && <p className="ledger-gold-total mono">{ledger?.gold ?? 0} gp</p>}
           {!loading && ledger && ledger.items.length > 0 && (
             <ul className="entity-list">
               {ledger.items.map((item) => (

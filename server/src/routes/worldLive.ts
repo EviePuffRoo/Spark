@@ -1,6 +1,6 @@
 import { Router, type Response } from "express";
 import { prisma } from "../db.js";
-import { toEncounterDTO, toLedgerEntryDTO, toRollLogEntryDTO } from "../serialize.js";
+import { toEncounterDTO, toLedgerEntryDTO, toRollLogEntryDTO, toChatMessageDTO } from "../serialize.js";
 import { findAccessibleWorld } from "../worldAccess.js";
 import { subscribeToWorld, type WorldChangeKind } from "../worldEvents.js";
 import type { LedgerSummary } from "@spark/shared";
@@ -45,8 +45,17 @@ async function sendRollLog(res: Response, worldId: string, isOwner: boolean) {
   res.write(`event: rollLog\ndata: ${JSON.stringify(rows.map(toRollLogEntryDTO))}\n\n`);
 }
 
+async function sendChat(res: Response, worldId: string) {
+  const rows = await prisma.chatMessage.findMany({
+    where: { worldId },
+    orderBy: { createdAt: "asc" },
+    take: 100,
+  });
+  res.write(`event: chat\ndata: ${JSON.stringify(rows.map(toChatMessageDTO))}\n\n`);
+}
+
 // Multiplexed SSE channel for a world's live-updating data (encounter,
-// ledger, roll log). One connection, three possible `event:` names, so the
+// ledger, roll log, chat). One connection, four possible `event:` names, so the
 // client's EventSource can addEventListener per kind. Sits behind the
 // existing global requireAuth gate (server/src/index.ts) — no auth changes,
 // since EventSource sends cookies automatically on same-origin requests.
@@ -67,6 +76,7 @@ worldLiveRouter.get("/:worldId/live", async (req, res) => {
     if (kind === "encounter") sendEncounter(res, worldId, viewerId, world.userId).catch(() => {});
     else if (kind === "ledger") sendLedger(res, worldId).catch(() => {});
     else if (kind === "rollLog") sendRollLog(res, worldId, isOwner).catch(() => {});
+    else if (kind === "chat") sendChat(res, worldId).catch(() => {});
   });
 
   const pingTimer = setInterval(() => res.write(":ping\n\n"), PING_INTERVAL_MS);

@@ -15,15 +15,18 @@ activityRouter.get("/", async (req, res) => {
     return res.json(empty);
   }
 
-  const [latestRoll, latestEncounter, latestNote, latestCodexNote, latestLedgerEntry] = await Promise.all([
+  const [latestRoll, latestEncounter, latestChat, latestNote, latestCodexNote, latestLedgerEntry] = await Promise.all([
     prisma.rollLogEntry.findFirst({ where: { worldId: { in: worldIds } }, orderBy: { createdAt: "desc" } }),
     prisma.encounter.findFirst({ where: { worldId: { in: worldIds } }, orderBy: { updatedAt: "desc" } }),
+    prisma.chatMessage.findFirst({ where: { worldId: { in: worldIds } }, orderBy: { createdAt: "desc" } }),
     prisma.sessionNote.findFirst({ where: { worldId: { in: worldIds } }, orderBy: { createdAt: "desc" } }),
     prisma.codexNote.findFirst({ where: { worldId: { in: worldIds } }, orderBy: { createdAt: "desc" } }),
     prisma.ledgerEntry.findFirst({ where: { worldId: { in: worldIds } }, orderBy: { createdAt: "desc" } }),
   ]);
 
-  const combatTimestamps = [latestRoll?.createdAt, latestEncounter?.updatedAt].filter((d): d is Date => !!d);
+  // Chat lives on the same Combat page as the roll log, so new messages
+  // light up the same "Combat" nav-badge dot rolls already do.
+  const combatTimestamps = [latestRoll?.createdAt, latestEncounter?.updatedAt, latestChat?.createdAt].filter((d): d is Date => !!d);
   const combatActivityAt = combatTimestamps.length > 0
     ? new Date(Math.max(...combatTimestamps.map((d) => d.getTime()))).toISOString()
     : null;

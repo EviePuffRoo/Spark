@@ -56,10 +56,11 @@ export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) =
     if (!name.trim() || creating) return;
     setCreating(true);
     try {
-      await api.createWorld(name.trim(), description.trim() || undefined);
+      const world = await api.createWorld(name.trim(), description.trim() || undefined);
       setName("");
       setDescription("");
       refresh();
+      setWorldId(world.id);
     } catch (e) {
       setError((e as Error).message);
     } finally {

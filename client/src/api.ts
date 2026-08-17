@@ -9,6 +9,7 @@ import type {
   Adventure, GenerateAdventureRequest, GeneratedAdventure,
   PlayerCharacter, PlayerCharacterInput, GeneratePlayerCharacterRequest, GeneratedPlayerCharacter,
   RollLogEntry, RollLogEntryInput,
+  ChatMessage, ChatMessageInput,
   CodexNote, CodexNoteInput,
   LedgerEntry, LedgerEntryInput, LedgerSummary,
   DowntimeActivity, DowntimeActivityInput,
@@ -210,6 +211,11 @@ export const api = {
   postRollLogEntry: (entry: RollLogEntryInput) =>
     request<RollLogEntry>("/roll-log", { method: "POST", body: JSON.stringify(entry) }),
   deleteRollLogEntry: (id: string) => request<void>(`/roll-log/${id}`, { method: "DELETE" }),
+
+  listChat: (worldId: string) => request<ChatMessage[]>(`/chat?worldId=${worldId}`),
+  postChatMessage: (input: ChatMessageInput) =>
+    request<ChatMessage>("/chat", { method: "POST", body: JSON.stringify(input) }),
+  deleteChatMessage: (id: string) => request<void>(`/chat/${id}`, { method: "DELETE" }),
 
   getCodexNotes: (entityType: EntityType, entityId: string) =>
     request<CodexNote[]>(`/codex-notes?entityType=${entityType}&entityId=${entityId}`),

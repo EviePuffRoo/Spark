@@ -413,6 +413,20 @@ export interface RollLogEntry extends RollLogEntryInput {
   createdAt: string;
 }
 
+export interface ChatMessageInput {
+  worldId: string;
+  text: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  worldId: string;
+  userId: string;
+  senderName: string;
+  text: string;
+  createdAt: string;
+}
+
 export type LedgerEntryKind = "gold" | "item";
 
 export interface LedgerEntryInput {

@@ -33,7 +33,7 @@ function rollDice(count: number, sides: number): number[] {
   return Array.from({ length: count }, () => Math.floor(Math.random() * sides) + 1);
 }
 
-function timeAgo(ms?: number): string | null {
+export function timeAgo(ms?: number): string | null {
   if (!ms) return null;
   const seconds = Math.floor((Date.now() - ms) / 1000);
   if (seconds < 10) return "just now";

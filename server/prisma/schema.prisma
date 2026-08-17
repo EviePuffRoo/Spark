@@ -41,6 +41,7 @@ model User {
   settlements     Settlement[]
   publishedEntries PublishedEntry[]
   galleryReports  GalleryReport[]
+  chatMessages    ChatMessage[]
 }
 
 model World {
@@ -72,6 +73,7 @@ model World {
   regions         Region[]
   settlements     Settlement[]
   encounter       Encounter?
+  chatMessages    ChatMessage[]
 
   @@index([userId])
 }
@@ -433,6 +435,25 @@ model RollLogEntry {
   label           String?
   hiddenFromParty Boolean  @default(false)
   createdAt       DateTime @default(now())
+
+  @@index([worldId])
+  @@index([userId])
+}
+
+// senderName is stamped server-side from the poster's own username, not
+// client-supplied like RollLogEntry.rollerName — chat is an identity-bound
+// conversation, not a "which PC rolled this" label, so it shouldn't be
+// spoofable. No hidden/secret variant either; everyone with world access
+// sees the same feed.
+model ChatMessage {
+  id         String   @id @default(cuid())
+  worldId    String
+  world      World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  senderName String
+  text       String
+  createdAt  DateTime @default(now())
 
   @@index([worldId])
   @@index([userId])

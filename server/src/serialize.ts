@@ -4,12 +4,12 @@ import type {
   Adventure as AdventureRow, PlayerCharacter as PlayerCharacterRow, RollLogEntry as RollLogEntryRow,
   Encounter as EncounterRow, CodexNote as CodexNoteRow, LedgerEntry as LedgerEntryRow,
   ZoneMapTemplate as ZoneMapTemplateRow, Dungeon as DungeonRow, DowntimeActivity as DowntimeActivityRow, Shop as ShopRow,
-  Region as RegionRow, Settlement as SettlementRow,
+  Region as RegionRow, Settlement as SettlementRow, ChatMessage as ChatMessageRow,
 } from "@prisma/client";
 import type {
   Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, PlayerCharacter, RollLogEntry,
   Encounter, LiveCombatant, HpStatus, CodexNote, EntityType, LedgerEntry, LedgerEntryKind, EncounterZone, EncounterZoneEffect,
-  ZoneMapTemplate, Dungeon, DowntimeActivity, DowntimeActivityType, Shop, ShopStockEntry, Region, Settlement,
+  ZoneMapTemplate, Dungeon, DowntimeActivity, DowntimeActivityType, Shop, ShopStockEntry, Region, Settlement, ChatMessage,
 } from "@spark/shared";
 
 export function toCharacterDTO(row: CharacterRow): Character {
@@ -279,6 +279,17 @@ export function toRollLogEntryDTO(row: RollLogEntryRow): RollLogEntry {
     mode: row.mode === "adv" || row.mode === "dis" ? row.mode : undefined,
     label: row.label ?? undefined,
     hiddenFromParty: row.hiddenFromParty,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+export function toChatMessageDTO(row: ChatMessageRow): ChatMessage {
+  return {
+    id: row.id,
+    worldId: row.worldId,
+    userId: row.userId,
+    senderName: row.senderName,
+    text: row.text,
     createdAt: row.createdAt.toISOString(),
   };
 }

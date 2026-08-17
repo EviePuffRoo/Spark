@@ -13,7 +13,7 @@ import { EventEmitter } from "node:events";
 // one instance never reaches a subscriber connected to another. Not needed
 // today — deployment is one Node process (app.listen) backed by SQLite.
 
-export type WorldChangeKind = "encounter" | "ledger" | "rollLog";
+export type WorldChangeKind = "encounter" | "ledger" | "rollLog" | "chat";
 
 const CHANGE_EVENT = "change";
 const emitters = new Map<string, EventEmitter>();

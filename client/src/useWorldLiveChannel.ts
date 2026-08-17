@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import type { Encounter, LedgerSummary, RollLogEntry } from "@spark/shared";
+import type { Encounter, LedgerSummary, RollLogEntry, ChatMessage } from "@spark/shared";
 import { api } from "./api";
 
 interface WorldLiveOptions {
   onEncounter?: (encounter: Encounter) => void;
   onLedger?: (summary: LedgerSummary) => void;
   onRollLog?: (rows: RollLogEntry[]) => void;
+  onChat?: (messages: ChatMessage[]) => void;
 }
 
 // Replaces the app's old per-page 5s polling loops with one pushed SSE
@@ -40,6 +41,7 @@ export function useWorldLiveChannel(worldId: string | null | undefined, options:
       if (opts.onEncounter) api.getEncounter(worldId).then((e) => { if (!cancelled) opts.onEncounter?.(e); }).catch(() => {});
       if (opts.onLedger) api.getLedger(worldId).then((s) => { if (!cancelled) opts.onLedger?.(s); }).catch(() => {});
       if (opts.onRollLog) api.listRollLog(worldId).then((r) => { if (!cancelled) opts.onRollLog?.(r); }).catch(() => {});
+      if (opts.onChat) api.listChat(worldId).then((c) => { if (!cancelled) opts.onChat?.(c); }).catch(() => {});
     };
 
     es.onerror = () => {
@@ -66,6 +68,10 @@ export function useWorldLiveChannel(worldId: string | null | undefined, options:
     es.addEventListener("rollLog", (ev) => {
       if (cancelled) return;
       optionsRef.current.onRollLog?.(JSON.parse((ev as MessageEvent).data));
+    });
+    es.addEventListener("chat", (ev) => {
+      if (cancelled) return;
+      optionsRef.current.onChat?.(JSON.parse((ev as MessageEvent).data));
     });
 
     return () => {

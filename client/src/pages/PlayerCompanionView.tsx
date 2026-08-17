@@ -7,6 +7,7 @@ import { useWorldLiveChannel } from "../useWorldLiveChannel";
 import { useMyTurnNotifier } from "../useMyTurnNotifier";
 import { useLocalStorage } from "../useLocalStorage";
 import { DiceRoller } from "../components/DiceRoller";
+import { ChatPanel } from "../components/ChatPanel";
 import { HpTrackerPanel } from "../components/HpTrackerPanel";
 import { DeathSavesPanel } from "../components/DeathSavesPanel";
 import { SpellSlotsPanel } from "../components/SpellSlotsPanel";
@@ -172,6 +173,8 @@ export function PlayerCompanionView() {
                 )}
                 <TurnOrderStrip worldId={worldId} myPlayerCharacterIds={myPlayerCharacterIds} notifyEnabled={notifyEnabled} />
               </section>
+
+              <ChatPanel worldId={worldId} worlds={worlds} />
 
               <section className="panel">
                 <DiceRoller worlds={worlds} partyWorldId={worldId} setPartyWorldId={setWorldId} initialMode="party" />

@@ -611,11 +611,15 @@ textarea {
   border-radius: 14px;
   padding: 18px 20px;
   background: var(--bg-panel);
+  box-shadow: 0 20px 50px -32px var(--glow);
 }
 
 .statblock-name {
   font-family: var(--font-display);
-  color: var(--accent);
+  background: var(--gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
   margin: 0;
   font-size: 1.6rem;
 }
@@ -719,14 +723,24 @@ textarea {
   margin: 10px 0;
 }
 
+.ability {
+  padding: 8px 4px;
+  border-radius: 8px;
+  background: var(--bg-elevated-2);
+}
+
 .ability-label {
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.4px;
   color: var(--text-muted);
+  text-transform: uppercase;
 }
 
 .ability-score {
   font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--accent);
 }
 
 .ability-grid.editable {

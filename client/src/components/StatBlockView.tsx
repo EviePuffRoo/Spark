@@ -28,7 +28,7 @@ export function StatBlockView({ name, subtitle, statBlock }: { name: string; sub
         {ABILITY_ORDER.map(({ key, label }) => (
           <div key={key} className="ability">
             <div className="ability-label">{label}</div>
-            <div className="ability-score">{statBlock.abilityScores[key]} ({modifier(statBlock.abilityScores[key])})</div>
+            <div className="ability-score mono">{statBlock.abilityScores[key]} ({modifier(statBlock.abilityScores[key])})</div>
           </div>
         ))}
       </div>

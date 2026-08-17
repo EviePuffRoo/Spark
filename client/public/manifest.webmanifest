@@ -1,0 +1,15 @@
+{
+  "name": "Spark — D&D Campaign Prep & Live Table",
+  "short_name": "Spark",
+  "description": "Prep a D&D campaign and run it live at the table — encounters, dice, HP tracking, and party chat, synced to every player's phone.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f5f1e8",
+  "theme_color": "#7a1f2b",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

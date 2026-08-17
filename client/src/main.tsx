@@ -11,6 +11,14 @@ import { PresentationView } from './pages/PresentationView.tsx'
 // presentation view needs neither.
 const presentWorldId = new URLSearchParams(window.location.search).get('present')
 
+// Only registered in production builds — a service worker caching Vite's
+// dev-server responses would fight its HMR and serve stale modules.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {})
+  })
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     {presentWorldId ? (

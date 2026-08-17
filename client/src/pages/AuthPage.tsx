@@ -38,10 +38,23 @@ export function AuthPage() {
 
   return (
     <div className="page auth-page">
-      <div className="panel auth-panel">
+      <div className="auth-pitch">
         <h1>Spark</h1>
         <p className="tagline">Everything a DM needs to prep and run a session, ready for the table</p>
+        <ul className="auth-pitch-points">
+          <li>
+            <strong>One tool, prep to table.</strong> Build your world, then run it live — encounters, dice, HP, and party chat sync to every player's phone as you play.
+          </li>
+          <li>
+            <strong>No AI, ever.</strong> Every generator is hand-curated and deterministic. Nothing about your campaign is sent to a language model — not your notes, not your players' characters, nothing.
+          </li>
+          <li>
+            <strong>Real-time sync, free.</strong> Live combat, chat, and party tracking aren't a paid tier here — they're just how the app works.
+          </li>
+        </ul>
+      </div>
 
+      <div className="panel auth-panel">
         {sessionMessage && <p className="error">{sessionMessage}</p>}
 
         {mode !== "reset" && (

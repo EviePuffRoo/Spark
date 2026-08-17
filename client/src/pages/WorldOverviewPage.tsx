@@ -5,6 +5,7 @@ import { useActiveWorld } from "../ActiveWorldContext";
 import { useAuth } from "../AuthContext";
 import { WorldMapView } from "../components/WorldMapView";
 import { LastSessionPanel } from "../components/LastSessionPanel";
+import { NextSessionPanel } from "../components/NextSessionPanel";
 
 export type OverviewNavTarget = "worlds" | "roster" | "codex" | "notes" | "downtime" | "shop";
 
@@ -107,6 +108,7 @@ export function WorldOverviewPage({ onNavigate }: { onNavigate: (subTab: Overvie
       <div className="panel">
         <h2>{world.name}</h2>
         {world.description && <p className="hint">{world.description}</p>}
+        <NextSessionPanel world={world} onUpdated={refreshWorlds} />
         <p className="entity-meta">
           {nonEmptyCounts.length === 0
             ? "Empty so far"

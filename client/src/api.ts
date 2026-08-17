@@ -301,7 +301,7 @@ export const api = {
   createWorld: (name: string, description?: string) =>
     request<World>("/worlds", { method: "POST", body: JSON.stringify({ name, description }) }),
   createStarterWorld: () => request<{ worldId: string }>("/worlds/starter", { method: "POST" }),
-  updateWorld: (id: string, patch: Partial<World>) =>
+  updateWorld: (id: string, patch: Partial<Omit<World, "nextSessionAt">> & { nextSessionAt?: string | null }) =>
     request<World>(`/worlds/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   deleteWorld: (id: string) => request<void>(`/worlds/${id}`, { method: "DELETE" }),
 

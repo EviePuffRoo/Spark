@@ -20,6 +20,7 @@ import { ProfilePage } from "./pages/ProfilePage";
 import { CodexPage } from "./pages/CodexPage";
 import { GalleryPage } from "./pages/GalleryPage";
 import { ModerationPage } from "./pages/ModerationPage";
+import { AdminUsersPage } from "./pages/AdminUsersPage";
 import { InventoryPage } from "./pages/InventoryPage";
 import { DowntimePage } from "./pages/DowntimePage";
 import { ShopPage } from "./pages/ShopPage";
@@ -28,7 +29,7 @@ import { PrintPane, type PrintItem } from "./components/PrintPane";
 import { PrepIcon, WorldIcon, PlayIcon, AccountIcon } from "./components/icons";
 
 type Area = "prep" | "world" | "play" | "account";
-type SubTab = "create" | "compendium" | "overview" | "worlds" | "roster" | "codex" | "notes" | "downtime" | "combat" | "shop" | "inventory" | "gallery" | "profile" | "myCharacter" | "billing" | "moderation";
+type SubTab = "create" | "compendium" | "overview" | "worlds" | "roster" | "codex" | "notes" | "downtime" | "combat" | "shop" | "inventory" | "gallery" | "profile" | "myCharacter" | "billing" | "moderation" | "users";
 
 const AREA_LABELS: Record<Area, string> = { prep: "Prep", world: "World", play: "Play", account: "Account" };
 const AREA_ICONS: Record<Area, typeof PrepIcon> = { prep: PrepIcon, world: WorldIcon, play: PlayIcon, account: AccountIcon };
@@ -191,7 +192,10 @@ function AppShell() {
               <button className={subTab === "myCharacter" ? "active" : ""} aria-current={subTab === "myCharacter" ? "true" : undefined} onClick={() => selectSubTab("myCharacter")}>My Character</button>
               <button className={subTab === "billing" ? "active" : ""} aria-current={subTab === "billing" ? "true" : undefined} onClick={() => selectSubTab("billing")}>Billing</button>
               {user?.role === "admin" && (
-                <button className={subTab === "moderation" ? "active" : ""} aria-current={subTab === "moderation" ? "true" : undefined} onClick={() => selectSubTab("moderation")}>Moderation</button>
+                <>
+                  <button className={subTab === "moderation" ? "active" : ""} aria-current={subTab === "moderation" ? "true" : undefined} onClick={() => selectSubTab("moderation")}>Moderation</button>
+                  <button className={subTab === "users" ? "active" : ""} aria-current={subTab === "users" ? "true" : undefined} onClick={() => selectSubTab("users")}>Users</button>
+                </>
               )}
             </>
           )}
@@ -205,6 +209,7 @@ function AppShell() {
         {subTab === "myCharacter" && <MyCharacterPage onViewRoster={viewRosterForWorld} />}
         {subTab === "billing" && <BillingPage />}
         {subTab === "moderation" && user?.role === "admin" && <ModerationPage />}
+        {subTab === "users" && user?.role === "admin" && <AdminUsersPage />}
         {subTab === "overview" && <WorldOverviewPage onNavigate={navigateFromOverview} />}
         {subTab === "worlds" && <WorldsPage onViewRoster={viewRosterForWorld} />}
         {subTab === "roster" && (

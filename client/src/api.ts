@@ -20,7 +20,7 @@ import type {
   Settlement, GenerateSettlementRequest, GeneratedSettlement,
   ActivitySummary,
   EntityType, EntityLink, SearchResult,
-  PublicGalleryEntry, PublishEntryInput, GalleryReportReason, ModerationQueueEntry,
+  PublicGalleryEntry, PublishEntryInput, GalleryReportReason, ModerationQueueEntry, AdminUserSummary,
   AuthUser, SignupResult, RecoveryCodeResult,
   SpellDef, ConditionDef, RuleDef,
 } from "@spark/shared";
@@ -353,6 +353,12 @@ export const api = {
   dismissReport: (id: string) => request<void>(`/admin/gallery/reports/${id}/dismiss`, { method: "POST" }),
   suspendPublishing: (userId: string) => request<void>(`/admin/gallery/users/${userId}/suspend-publishing`, { method: "POST" }),
   restorePublishing: (userId: string) => request<void>(`/admin/gallery/users/${userId}/restore-publishing`, { method: "POST" }),
+
+  lookupUsers: (query: string) => request<{ users: AdminUserSummary[] }>(`/admin/users?q=${encodeURIComponent(query)}`),
+  adminIssueRecoveryCode: (userId: string) =>
+    request<{ recoveryCode: string }>(`/admin/users/${userId}/recovery-code`, { method: "POST" }),
+  adminSetPassword: (userId: string, newPassword: string) =>
+    request<void>(`/admin/users/${userId}/reset-password`, { method: "POST", body: JSON.stringify({ newPassword }) }),
   importBackup: (bundle: unknown) =>
     request<ImportResult>("/backup/import", { method: "POST", body: JSON.stringify(bundle) }),
 

@@ -8,6 +8,7 @@ import { useMyTurnNotifier } from "../useMyTurnNotifier";
 import { useLocalStorage } from "../useLocalStorage";
 import { DiceRoller } from "../components/DiceRoller";
 import { ChatPanel } from "../components/ChatPanel";
+import { LastSessionPanel } from "../components/LastSessionPanel";
 import { HpTrackerPanel } from "../components/HpTrackerPanel";
 import { DeathSavesPanel } from "../components/DeathSavesPanel";
 import { SpellSlotsPanel } from "../components/SpellSlotsPanel";
@@ -162,6 +163,8 @@ export function PlayerCompanionView() {
 
           {worldId && (
             <>
+              <LastSessionPanel worldId={worldId} />
+
               <section className="panel">
                 <div className="section-heading-row">
                   <h2 className="section-heading">Turn Order</h2>

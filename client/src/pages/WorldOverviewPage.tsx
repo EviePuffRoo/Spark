@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import type { QuestHook, SessionNote, LedgerSummary, Region, Settlement } from "@spark/shared";
+import type { QuestHook, LedgerSummary, Region, Settlement } from "@spark/shared";
 import { api } from "../api";
 import { useActiveWorld } from "../ActiveWorldContext";
 import { useAuth } from "../AuthContext";
 import { WorldMapView } from "../components/WorldMapView";
+import { LastSessionPanel } from "../components/LastSessionPanel";
 
 export type OverviewNavTarget = "worlds" | "roster" | "codex" | "notes" | "downtime" | "shop";
 
@@ -11,7 +12,6 @@ export function WorldOverviewPage({ onNavigate }: { onNavigate: (subTab: Overvie
   const { worlds, worldId, refreshWorlds } = useActiveWorld();
   const { user } = useAuth();
   const [quests, setQuests] = useState<QuestHook[]>([]);
-  const [notes, setNotes] = useState<SessionNote[]>([]);
   const [ledger, setLedger] = useState<LedgerSummary | null>(null);
   const [regions, setRegions] = useState<Region[]>([]);
   const [settlements, setSettlements] = useState<Settlement[]>([]);
@@ -30,7 +30,6 @@ export function WorldOverviewPage({ onNavigate }: { onNavigate: (subTab: Overvie
     refreshWorlds();
     if (!worldId) {
       setQuests([]);
-      setNotes([]);
       setLedger(null);
       setRegions([]);
       setSettlements([]);
@@ -39,11 +38,9 @@ export function WorldOverviewPage({ onNavigate }: { onNavigate: (subTab: Overvie
     setLoading(true);
     Promise.all([
       api.listQuests(worldId),
-      api.listSessionNotes(worldId),
       api.getLedger(worldId),
-    ]).then(([q, n, l]) => {
+    ]).then(([q, l]) => {
       setQuests(q);
-      setNotes(n);
       setLedger(l);
     }).catch(() => {}).finally(() => setLoading(false));
     refreshMap();
@@ -91,9 +88,6 @@ export function WorldOverviewPage({ onNavigate }: { onNavigate: (subTab: Overvie
   }
 
   const activeQuests = quests.filter((q) => q.status === "active");
-  const latestNote = notes.length > 0
-    ? notes.reduce((a, b) => (new Date(a.sessionDate ?? a.createdAt) > new Date(b.sessionDate ?? b.createdAt) ? a : b))
-    : null;
 
   const counts: [number, string][] = [
     [world.characterCount, "character"],
@@ -165,18 +159,7 @@ export function WorldOverviewPage({ onNavigate }: { onNavigate: (subTab: Overvie
           )}
         </div>
 
-        <div className="panel">
-          <h3 className="section-heading">Where We Left Off</h3>
-          {!loading && !latestNote && <p className="hint">No session notes for this world yet.</p>}
-          {latestNote && (
-            <>
-              <p><strong>{latestNote.title}</strong>{latestNote.sessionLabel ? ` — ${latestNote.sessionLabel}` : ""}</p>
-              <p>{latestNote.summary}</p>
-              {latestNote.nextSteps && <p><strong>Next steps:</strong> {latestNote.nextSteps}</p>}
-              <button className="btn-secondary" onClick={() => onNavigate("notes")}>Open Notes</button>
-            </>
-          )}
-        </div>
+        <LastSessionPanel worldId={worldId} onOpenNotes={() => onNavigate("notes")} />
       </div>
 
       <div className="panel">

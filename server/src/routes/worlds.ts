@@ -14,7 +14,7 @@ const COUNT_SELECT = {
 };
 
 function toSummary(
-  row: { id: string; name: string; description: string | null; createdAt: Date; updatedAt: Date; _count: Record<string, number> },
+  row: { id: string; name: string; description: string | null; nextSessionAt: Date | null; createdAt: Date; updatedAt: Date; _count: Record<string, number> },
   isOwner: boolean,
   ownerUsername?: string
 ) {
@@ -22,6 +22,7 @@ function toSummary(
     id: row.id,
     name: row.name,
     description: row.description ?? undefined,
+    nextSessionAt: row.nextSessionAt?.toISOString(),
     isOwner,
     ownerUsername,
     characterCount: row._count.characters,
@@ -66,6 +67,7 @@ worldsRouter.get("/:id", async (req, res) => {
     id: row.id,
     name: row.name,
     description: row.description ?? undefined,
+    nextSessionAt: row.nextSessionAt?.toISOString(),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   });
@@ -103,10 +105,19 @@ worldsRouter.post("/starter", async (req, res) => {
 });
 
 worldsRouter.patch("/:id", async (req, res) => {
-  const { name, description } = req.body ?? {};
+  const { name, description, nextSessionAt } = req.body ?? {};
   const data: Record<string, unknown> = {};
   if (name !== undefined) data.name = name;
   if (description !== undefined) data.description = description;
+  if (nextSessionAt !== undefined) {
+    if (nextSessionAt === null) {
+      data.nextSessionAt = null;
+    } else {
+      const parsed = new Date(nextSessionAt);
+      if (Number.isNaN(parsed.getTime())) return res.status(400).json({ error: "nextSessionAt is not a valid date" });
+      data.nextSessionAt = parsed;
+    }
+  }
 
   const result = await prisma.world.updateMany({ where: { id: req.params.id, userId: req.userId }, data });
   if (result.count === 0) return res.status(404).json({ error: "World not found" });

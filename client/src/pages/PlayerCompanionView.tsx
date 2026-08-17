@@ -5,9 +5,11 @@ import { useAuth } from "../AuthContext";
 import { useActiveWorld } from "../ActiveWorldContext";
 import { useWorldLiveChannel } from "../useWorldLiveChannel";
 import { useMyTurnNotifier } from "../useMyTurnNotifier";
+import { useSessionReminder } from "../useSessionReminder";
 import { useLocalStorage } from "../useLocalStorage";
 import { DiceRoller } from "../components/DiceRoller";
 import { ChatPanel } from "../components/ChatPanel";
+import { NextSessionPanel } from "../components/NextSessionPanel";
 import { HpTrackerPanel } from "../components/HpTrackerPanel";
 import { DeathSavesPanel } from "../components/DeathSavesPanel";
 import { SpellSlotsPanel } from "../components/SpellSlotsPanel";
@@ -94,12 +96,24 @@ function CharacterPanel({ pc, onRefresh }: { pc: PlayerCharacter; onRefresh: () 
   );
 }
 
+async function ensureNotificationPermission(): Promise<boolean> {
+  if (typeof Notification === "undefined") return false;
+  if (Notification.permission === "granted") return true;
+  const permission = await Notification.requestPermission();
+  return permission === "granted";
+}
+
 export function PlayerCompanionView() {
   const { user } = useAuth();
-  const { worlds, worldId, setWorldId } = useActiveWorld();
+  const { worlds, worldId, setWorldId, refreshWorlds } = useActiveWorld();
   const [characters, setCharacters] = useState<PlayerCharacter[]>([]);
   const [notifyEnabled, setNotifyEnabled] = useLocalStorage("spark-notify-my-turn", false);
   const [notifyBlocked, setNotifyBlocked] = useState(false);
+  const [sessionRemindEnabled, setSessionRemindEnabled] = useLocalStorage("spark-notify-next-session", false);
+  const [sessionRemindBlocked, setSessionRemindBlocked] = useState(false);
+
+  const world = worlds.find((w) => w.id === worldId) ?? null;
+  useSessionReminder(world?.nextSessionAt, sessionRemindEnabled);
 
   function refreshCharacters() {
     api.listMyPlayerCharacters().then(setCharacters).catch(() => {});
@@ -122,16 +136,26 @@ export function PlayerCompanionView() {
       setNotifyEnabled(false);
       return;
     }
-    if (typeof Notification === "undefined") {
-      setNotifyBlocked(true);
-      return;
-    }
-    const permission = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
-    if (permission === "granted") {
+    const granted = await ensureNotificationPermission();
+    if (granted) {
       setNotifyEnabled(true);
       setNotifyBlocked(false);
     } else {
       setNotifyBlocked(true);
+    }
+  }
+
+  async function handleToggleSessionRemind() {
+    if (sessionRemindEnabled) {
+      setSessionRemindEnabled(false);
+      return;
+    }
+    const granted = await ensureNotificationPermission();
+    if (granted) {
+      setSessionRemindEnabled(true);
+      setSessionRemindBlocked(false);
+    } else {
+      setSessionRemindBlocked(true);
     }
   }
 
@@ -158,6 +182,21 @@ export function PlayerCompanionView() {
                 {worlds.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
               </select>
             </label>
+          )}
+
+          {worldId && world && (world.isOwner || world.nextSessionAt) && (
+            <section className="panel">
+              <div className="section-heading-row">
+                <h2 className="section-heading">Next Session</h2>
+                <button className="btn-secondary" onClick={handleToggleSessionRemind}>
+                  {sessionRemindEnabled ? "🔔 Remind me: On" : "🔕 Remind me: Off"}
+                </button>
+              </div>
+              {sessionRemindBlocked && (
+                <p className="hint">Notifications are blocked — enable them in your browser's site settings to use this.</p>
+              )}
+              <NextSessionPanel world={world} onUpdated={refreshWorlds} />
+            </section>
           )}
 
           {worldId && (

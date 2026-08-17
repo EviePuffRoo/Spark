@@ -933,6 +933,18 @@ textarea {
   padding-top: 8px;
 }
 
+.next-session-line {
+  margin: 4px 0 12px;
+}
+
+.next-session-line .link-button {
+  margin-top: 0;
+}
+
+.next-session-editor {
+  margin-bottom: 12px;
+}
+
 .link-button {
   background: none;
   border: none;

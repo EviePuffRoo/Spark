@@ -72,6 +72,7 @@ export interface World {
   id: string;
   name: string;
   description?: string;
+  nextSessionAt?: string;
   createdAt: string;
   updatedAt: string;
 }

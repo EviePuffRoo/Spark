@@ -1,6 +1,7 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { prisma } from "../db.js";
+import { testAwareLimit } from "../rateLimitConfig.js";
 import {
   hashPassword, verifyPassword, signToken, setSessionCookie, clearSessionCookie, requireAuth,
   generateRecoveryCode, hashRecoveryCode, verifyRecoveryCode,
@@ -11,7 +12,7 @@ export const authRouter = Router();
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 20,
+  limit: testAwareLimit(20),
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many attempts — please wait a few minutes and try again." },

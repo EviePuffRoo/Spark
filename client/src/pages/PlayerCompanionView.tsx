@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { Encounter, PlayerCharacter, DeathSaves, SpellSlotLevel, ClassResource } from "@spark/shared";
+import type { Encounter, LiveCombatant, PlayerCharacter, DeathSaves, SpellSlotLevel, ClassResource } from "@spark/shared";
 import { api } from "../api";
 import { useAuth } from "../AuthContext";
 import { useActiveWorld } from "../ActiveWorldContext";
@@ -25,16 +25,11 @@ function backToDesktopHref(): string {
   return `${url.pathname}${url.search}`;
 }
 
-function TurnOrderStrip({ worldId, myPlayerCharacterIds, notifyEnabled }: { worldId: string; myPlayerCharacterIds: string[]; notifyEnabled: boolean }) {
-  const [encounter, setEncounter] = useState<Encounter | null>(null);
-  useWorldLiveChannel(worldId, { onEncounter: setEncounter });
-  useMyTurnNotifier(encounter, myPlayerCharacterIds, notifyEnabled);
-
-  if (!encounter || encounter.combatants.length === 0) {
+function TurnOrderStrip({ combatants, activeId }: { combatants: LiveCombatant[]; activeId: string | null }) {
+  if (combatants.length === 0) {
     return <p className="hint">No active combat right now.</p>;
   }
-  const sorted = [...encounter.combatants].sort((a, b) => b.initiative - a.initiative);
-  const activeId = sorted[encounter.turnIndex % sorted.length]?.id ?? null;
+  const sorted = [...combatants].sort((a, b) => b.initiative - a.initiative);
 
   return (
     <ol className="player-companion-turn-strip">
@@ -52,7 +47,7 @@ function TurnOrderStrip({ worldId, myPlayerCharacterIds, notifyEnabled }: { worl
   );
 }
 
-function CharacterPanel({ pc, onRefresh }: { pc: PlayerCharacter; onRefresh: () => void }) {
+function CharacterPanel({ pc, isMyTurn, onRefresh }: { pc: PlayerCharacter; isMyTurn: boolean; onRefresh: () => void }) {
   const [hp, setHp] = useState(pc.currentHp);
   const [saves, setSaves] = useState<DeathSaves>(pc.deathSaves);
   const [slots, setSlots] = useState<SpellSlotLevel[]>(pc.spellSlots);
@@ -79,8 +74,11 @@ function CharacterPanel({ pc, onRefresh }: { pc: PlayerCharacter; onRefresh: () 
   }
 
   return (
-    <div className="player-companion-character panel">
-      <h3 className="section-heading">{pc.name}</h3>
+    <div className={`player-companion-character panel${isMyTurn ? " my-turn" : ""}`}>
+      <div className="section-heading-row">
+        <h3 className="section-heading">{pc.name}</h3>
+        {isMyTurn && <span className="my-turn-badge">⚔ Your Turn</span>}
+      </div>
       <p className="entity-meta">{pc.className} {pc.level} · {pc.race}</p>
 
       <HpTrackerPanel currentHp={hp} maxHp={pc.maxHp} onChange={(v) => { setHp(v); api.updatePlayerCharacter(pc.id, { currentHp: v }); }} />
@@ -131,6 +129,14 @@ export function PlayerCompanionView() {
 
   const myCharactersHere = characters.filter((pc) => pc.worldId === worldId);
   const myPlayerCharacterIds = myCharactersHere.map((pc) => pc.id);
+
+  const [encounter, setEncounter] = useState<Encounter | null>(null);
+  useWorldLiveChannel(worldId, { onEncounter: setEncounter });
+  useMyTurnNotifier(encounter, myPlayerCharacterIds, notifyEnabled);
+  const combatants = encounter?.combatants ?? [];
+  const sortedCombatants = [...combatants].sort((a, b) => b.initiative - a.initiative);
+  const activeCombatant = combatants.length > 0 ? sortedCombatants[(encounter?.turnIndex ?? 0) % sortedCombatants.length] ?? null : null;
+  const activeId = activeCombatant?.id ?? null;
 
   async function handleToggleNotify() {
     if (notifyEnabled) {
@@ -216,7 +222,7 @@ export function PlayerCompanionView() {
                 {notifyBlocked && (
                   <p className="hint">Notifications are blocked — enable them in your browser's site settings to use this.</p>
                 )}
-                <TurnOrderStrip worldId={worldId} myPlayerCharacterIds={myPlayerCharacterIds} notifyEnabled={notifyEnabled} />
+                <TurnOrderStrip combatants={combatants} activeId={activeId} />
               </section>
 
               <ChatPanel worldId={worldId} worlds={worlds} />
@@ -226,7 +232,7 @@ export function PlayerCompanionView() {
               </section>
 
               {myCharactersHere.map((pc) => (
-                <CharacterPanel key={pc.id} pc={pc} onRefresh={refreshCharacters} />
+                <CharacterPanel key={pc.id} pc={pc} isMyTurn={activeCombatant?.playerCharacterId === pc.id} onRefresh={refreshCharacters} />
               ))}
             </>
           )}

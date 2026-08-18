@@ -8,16 +8,20 @@ export function ClassResourcePanel({
 }) {
   if (!resource) return null;
 
-  function setCurrent(current: number) {
+  function adjust(sign: 1 | -1) {
     if (!resource) return;
-    onChange?.({ ...resource, current: Math.max(0, Math.min(resource.max, current)) });
+    onChange?.({ ...resource, current: Math.max(0, Math.min(resource.max, resource.current + sign)) });
   }
 
   return (
     <div className="class-resource-panel">
       <h3 className="section-heading">{resource.name}</h3>
       {onChange ? (
-        <input type="number" min={0} max={resource.max} value={resource.current} onChange={(e) => setCurrent(Number(e.target.value))} />
+        <div className="button-row">
+          <button type="button" className="btn-secondary" onClick={() => adjust(-1)} disabled={resource.current <= 0} aria-label={`Use a ${resource.name}`}>− Use</button>
+          <span className="class-resource-value mono">{resource.current} / {resource.max}</span>
+          <button type="button" className="btn-secondary" onClick={() => adjust(1)} disabled={resource.current >= resource.max} aria-label={`Restore a ${resource.name}`}>+ Restore</button>
+        </div>
       ) : (
         <p>{resource.current} / {resource.max}</p>
       )}

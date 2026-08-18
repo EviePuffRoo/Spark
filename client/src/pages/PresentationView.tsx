@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Dungeon, Encounter, HpStatus } from "@spark/shared";
 import { api } from "../api";
 import { ZoneMap } from "../components/ZoneMap";
@@ -21,9 +21,27 @@ export function PresentationView({ worldId }: { worldId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [activeDungeon, setActiveDungeon] = useState<Dungeon | null>(null);
   const [mapView, setMapView] = useState<"room" | "dungeon">("room");
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const { error: liveError } = useWorldLiveChannel(worldId, { onEncounter: setEncounter });
   useEffect(() => { if (liveError) setError(liveError); }, [liveError]);
+
+  useEffect(() => {
+    function onFullscreenChange() {
+      setIsFullscreen(document.fullscreenElement === rootRef.current);
+    }
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
+  }, []);
+
+  function toggleFullscreen() {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      rootRef.current?.requestFullscreen();
+    }
+  }
 
   useEffect(() => {
     const dungeonId = encounter?.activeDungeonId;
@@ -58,9 +76,14 @@ export function PresentationView({ worldId }: { worldId: string }) {
   const activeId = sorted.length > 0 ? sorted[display.turnIndex % sorted.length]?.id ?? null : null;
 
   return (
-    <div className="presentation-view">
+    <div className="presentation-view" ref={rootRef}>
       <div className="presentation-header">
-        <span className="round-banner">Round {display.round}</span>
+        <span className="round-banner mono">Round {display.round}</span>
+        {document.fullscreenEnabled && (
+          <button type="button" className="btn-secondary presentation-fullscreen-btn" onClick={toggleFullscreen}>
+            {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+          </button>
+        )}
       </div>
 
       <ol className="presentation-turn-order">

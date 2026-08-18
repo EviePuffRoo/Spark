@@ -11,6 +11,7 @@ import { rollTableIndex } from "../rollTable";
 import { computeDifficulty, type DifficultyRating } from "../encounterDifficulty";
 import { CombatIcon } from "./icons";
 import { EmptyState } from "./EmptyState";
+import { PresentationView } from "../pages/PresentationView";
 
 const CONDITIONS = CONDITIONS_COMPENDIUM.map((c) => c.name);
 const CONDITION_RULES: Record<string, string> = Object.fromEntries(
@@ -84,6 +85,7 @@ export function InitiativeTracker({
   const [openConditionsFor, setOpenConditionsFor] = useState<string | null>(null);
   const [showConditionRules, setShowConditionRules] = useState(false);
   const [showZoneMap, setShowZoneMap] = useState(false);
+  const [showTableView, setShowTableView] = useState(false);
   const [activeDungeon, setActiveDungeon] = useState<Dungeon | null>(null);
   const [lootOpenFor, setLootOpenFor] = useState<string | null>(null);
   const [lootKind, setLootKind] = useState<"gold" | "item">("gold");
@@ -487,11 +489,25 @@ export function InitiativeTracker({
       <div className="button-row">
         <button className="btn-secondary" aria-expanded={showZoneMap} onClick={() => setShowZoneMap((v) => !v)}>{showZoneMap ? "Hide Zone Map" : "Show Zone Map"}</button>
         {isOwner && (
-          <button className="btn-secondary" onClick={() => window.open(`${window.location.pathname}?present=${partyWorldId}`, "_blank")}>
-            Cast to Table
-          </button>
+          <>
+            <button className="btn-secondary" aria-expanded={showTableView} onClick={() => setShowTableView((v) => !v)}>
+              {showTableView ? "Hide Table View" : "Table View"}
+            </button>
+            <button
+              className="btn-secondary"
+              onClick={() => window.open(`${window.location.pathname}?present=${partyWorldId}`, "_blank", "noopener,width=1400,height=900")}
+            >
+              Cast to Table ↗
+            </button>
+          </>
         )}
       </div>
+      {isOwner && (
+        <p className="hint">
+          <strong>Table View</strong> shows the read-only turn order and map right here — no second window needed.{" "}
+          <strong>Cast to Table</strong> opens the same thing in its own window, for a second monitor or TV.
+        </p>
+      )}
 
       {canEdit && activeDungeon && (
         <p className="hint">
@@ -535,6 +551,12 @@ export function InitiativeTracker({
           onLoadTemplate={loadZoneMapTemplate}
           onLoadDungeonRoom={loadDungeonRoom}
         />
+      )}
+
+      {showTableView && partyMode && partyWorldId && (
+        <div className="inline-table-view">
+          <PresentationView worldId={partyWorldId} />
+        </div>
       )}
 
       {canEdit && rosterPickType && !pickedTable && (

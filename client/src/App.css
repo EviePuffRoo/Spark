@@ -1104,7 +1104,9 @@ textarea {
   padding-bottom: 0;
 }
 
-.batch-result-card .btn-danger {
+.batch-result-actions {
+  display: flex;
+  gap: 10px;
   margin-top: 12px;
 }
 

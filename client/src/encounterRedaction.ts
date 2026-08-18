@@ -22,6 +22,8 @@ export function filterEncounterForDisplay(encounter: Encounter): Encounter {
       currentHp: c.hpVisible ? c.currentHp : undefined,
       maxHp: c.hpVisible ? c.maxHp : undefined,
       xp: undefined,
+      attacks: undefined,
+      conditions: c.conditions.filter((cond) => cond.expiresAtRound === null || cond.expiresAtRound >= encounter.round),
     }))
     .filter((c) => {
       if (c.hidden) return false;

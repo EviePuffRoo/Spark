@@ -1,3 +1,5 @@
+import type { ParsedAttack } from "./statBlockAttacks.js";
+
 export type AbilityKey = "str" | "dex" | "con" | "int" | "wis" | "cha";
 
 export type AbilityScores = Record<AbilityKey, number>;
@@ -486,6 +488,13 @@ export interface DowntimeActivity extends DowntimeActivityInput {
 export type CombatantKind = "monster" | "playerCharacter" | "custom";
 export type HpStatus = "healthy" | "injured" | "bloodied" | "nearDeath" | "down";
 
+export interface LiveCombatantCondition {
+  name: string;
+  // Absolute round number the condition lapses at (matches EncounterZoneEffect's
+  // expiresAtRound convention below), or null for a duration the DM clears by hand.
+  expiresAtRound: number | null;
+}
+
 export interface LiveCombatant {
   id: string;
   name: string;
@@ -495,7 +504,7 @@ export interface LiveCombatant {
   currentHp?: number;
   hpStatus: HpStatus;
   armorClass?: number;
-  conditions: string[];
+  conditions: LiveCombatantCondition[];
   notes: string;
   hpVisible: boolean;
   xp?: number;
@@ -504,6 +513,10 @@ export interface LiveCombatant {
   hidden?: boolean;
   equipmentAcBonus?: number;
   playerCharacterId?: string;
+  // Snapshotted from the source Character's stat block when added to combat
+  // (see parseStatBlockAttacks) — not looked up live, same as maxHp/armorClass,
+  // so combat state survives the source NPC/monster being edited or deleted.
+  attacks?: ParsedAttack[];
 }
 
 export interface ZoneHazard {

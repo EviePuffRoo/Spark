@@ -371,6 +371,11 @@ export function toEncounterDTO(row: EncounterRow, viewerId: string, worldOwnerId
         currentHp: showHp ? c.currentHp : undefined,
         maxHp: showHp ? c.maxHp : undefined,
         xp: isOwner ? c.xp : undefined,
+        // Damage dice/to-hit bonuses are DM-side prep info, same spoiler
+        // concern as xp above — a player shouldn't be able to read a
+        // monster's exact attack bonus off the wire before it's rolled.
+        attacks: isOwner ? c.attacks : undefined,
+        conditions: (c.conditions ?? []).filter((cond) => cond.expiresAtRound === null || cond.expiresAtRound >= row.round),
       };
     })
     .filter((c: LiveCombatant) => {

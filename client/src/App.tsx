@@ -40,11 +40,10 @@ function App() {
 
   if (loading) {
     return (
-      <div className="app">
-        <header className="app-header">
-          <h1>Spark</h1>
-          <p className="tagline">Loading…</p>
-        </header>
+      <div className="app-loading">
+        <img src="/favicon.svg" alt="" className="app-loading-bolt" />
+        <h1>Spark</h1>
+        <div className="app-loading-spinner" role="status" aria-label="Loading" />
       </div>
     );
   }

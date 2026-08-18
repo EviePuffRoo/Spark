@@ -60,7 +60,7 @@ export function DiceRoller({
   const [error, setError] = useState<string | null>(null);
 
   const [mode, setMode] = useState<"personal" | "party">(initialMode);
-  const [rollerName, setRollerName] = useState(user?.username ?? "");
+  const [rollerName, setRollerName] = useState(user?.displayName || user?.username || "");
   const [secret, setSecret] = useState(false);
   const [partyLog, setPartyLog] = useState<RollLogEntry[]>([]);
   const [partyError, setPartyError] = useState<string | null>(null);
@@ -95,7 +95,7 @@ export function DiceRoller({
     try {
       const row = await api.postRollLogEntry({
         worldId: selectedWorldId,
-        rollerName: rollerName.trim() || user.username,
+        rollerName: rollerName.trim() || user.displayName || user.username,
         hiddenFromParty: secret,
         ...payload,
       });
@@ -211,7 +211,7 @@ export function DiceRoller({
           {selectedWorldId && (
             <label className="field">
               <span>Rolling as</span>
-              <input type="text" value={rollerName} onChange={(e) => setRollerName(e.target.value)} placeholder={user?.username} />
+              <input type="text" value={rollerName} onChange={(e) => setRollerName(e.target.value)} placeholder={user?.displayName || user?.username} />
             </label>
           )}
           {partyError && <p className="error">{partyError}</p>}

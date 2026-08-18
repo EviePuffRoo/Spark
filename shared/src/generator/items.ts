@@ -49,7 +49,12 @@ export function generateItem(request: GenerateItemRequest = {}): GeneratedItem {
   const rarity = !request.fullyRandom && requestedTier >= 0 ? request.rarity! : pick(ITEM_RARITY_TIERS);
   const tier = ITEM_RARITY_TIERS.indexOf(rarity);
 
-  const baseName = `${titleCase(adjective)} ${itemType}`;
+  // Item type names are sometimes already compound ("Brass Compass",
+  // "Music Box") — prepending a material adjective on top of those doubles
+  // up on material ("Tarnished Silver Brass Compass") and reads like two
+  // names collided. Multi-word types already carry their own material/
+  // character, so they stand alone.
+  const baseName = itemType.includes(" ") ? itemType : `${titleCase(adjective)} ${itemType}`;
   const generatedName = Math.random() < 0.4 ? `${baseName}, called ${pick(ITEM_EPITHETS)}` : baseName;
   const name = !request.fullyRandom && request.name ? request.name : generatedName;
 

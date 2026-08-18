@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { generateRecoveryCode, hashRecoveryCode, verifyRecoveryCode } from "../auth.js";
 import { getMemberWorldIds } from "../worldAccess.js";
-import { FREE_TIER_WORLD_LIMIT } from "../billingLimits.js";
+import { FREE_TIER_WORLD_LIMIT } from "@spark/shared";
 import { seedStarterWorld } from "../seedStarterWorld.js";
 
 export const worldsRouter = Router();

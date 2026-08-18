@@ -234,7 +234,7 @@ export function PlayerCompanionView() {
       )}
 
       <a className="player-companion-back-link" href={backToDesktopHref()}>
-        {user ? `Signed in as ${user.username} — Full App` : "Full App"}
+        {user ? `Signed in as ${user.displayName || user.username} — Full App` : "Full App"}
       </a>
     </div>
   );

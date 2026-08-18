@@ -180,7 +180,11 @@ export function GalleryPage() {
           {loading ? (
             <p className="hint">Loading…</p>
           ) : filtered.length === 0 ? (
-            <p className="hint">Nothing published yet.</p>
+            <p className="hint">
+              {query || typeFilter
+                ? "Nothing matches that search."
+                : "Nothing published yet — be the first. Save something to your Roster, then use “Publish to Gallery” from its details to share it here."}
+            </p>
           ) : (
             <ul className="entity-list">
               {filtered.map((e) => (

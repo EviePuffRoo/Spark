@@ -103,7 +103,10 @@ export function ProfilePage() {
     <div className="page">
       <div className="panel">
         <h2>Profile</h2>
-        <p className="entity-meta">Signed in as {user.username}{user.role === "admin" ? " (admin)" : ""}</p>
+        <p className="entity-meta">
+          Signed in as {user.displayName ? `${user.displayName} (${user.username})` : user.username}
+          {user.role === "admin" ? " (admin)" : ""}
+        </p>
 
         <h3 className="section-heading">Display Name</h3>
         <div className="save-panel">

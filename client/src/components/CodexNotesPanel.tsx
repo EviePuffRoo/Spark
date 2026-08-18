@@ -23,7 +23,7 @@ export function CodexNotesPanel({
 }) {
   const { user } = useAuth();
   const [notes, setNotes] = useState<CodexNote[]>([]);
-  const [authorName, setAuthorName] = useState(user?.username ?? "");
+  const [authorName, setAuthorName] = useState(user?.displayName || user?.username || "");
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -43,7 +43,7 @@ export function CodexNotesPanel({
     try {
       await api.postCodexNote({
         worldId, entityType, entityId,
-        authorName: authorName.trim() || user!.username,
+        authorName: authorName.trim() || user!.displayName || user!.username,
         text: text.trim(),
       });
       setText("");
@@ -72,7 +72,7 @@ export function CodexNotesPanel({
 
       <label className="field">
         <span>Your name</span>
-        <input type="text" value={authorName} onChange={(e) => setAuthorName(e.target.value)} placeholder={user?.username} />
+        <input type="text" value={authorName} onChange={(e) => setAuthorName(e.target.value)} placeholder={user?.displayName || user?.username} />
       </label>
       <label className="field">
         <span>Add a note</span>

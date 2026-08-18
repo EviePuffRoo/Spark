@@ -6,9 +6,7 @@ import type { ActivitySummary } from "@spark/shared";
 export const activityRouter = Router();
 
 activityRouter.get("/", async (req, res) => {
-  const memberWorldIds = await getMemberWorldIds(req.userId!);
-  const ownedWorlds = await prisma.world.findMany({ where: { userId: req.userId }, select: { id: true } });
-  const worldIds = Array.from(new Set([...memberWorldIds, ...ownedWorlds.map((w) => w.id)]));
+  const worldIds = await getMemberWorldIds(req.userId!);
 
   if (worldIds.length === 0) {
     const empty: ActivitySummary = { combatActivityAt: null, notesActivityAt: null, codexActivityAt: null, inventoryActivityAt: null };

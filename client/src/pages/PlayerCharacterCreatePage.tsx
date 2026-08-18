@@ -5,6 +5,7 @@ import { api, type ReferenceData } from "../api";
 import { useActiveWorld } from "../ActiveWorldContext";
 import { PlayerCharacterCardView } from "../components/PlayerCharacterCardView";
 import { PlayerCharacterEditor } from "../components/PlayerCharacterEditor";
+import { SaveEntityFields } from "../components/SaveEntityFields";
 
 const BLANK_PC: PlayerCharacterInput = {
   name: "", className: "", level: 1, race: "", armorClass: 10, maxHp: 10,
@@ -36,6 +37,7 @@ export function PlayerCharacterCreatePage() {
   const [saveWorldId, setSaveWorldId] = useState(worldId);
   const [saveTags, setSaveTags] = useState("");
   const [saveNotes, setSaveNotes] = useState("");
+  const [saveHidden, setSaveHidden] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
 
   useEffect(() => {
@@ -94,6 +96,7 @@ export function PlayerCharacterCreatePage() {
         worldId: saveWorldId || null,
         tags: saveTags.split(",").map((t) => t.trim()).filter(Boolean),
         notes: saveNotes || undefined,
+        hiddenFromParty: saveHidden,
       });
       setSaveStatus("saved");
     } catch (e) {
@@ -112,21 +115,12 @@ export function PlayerCharacterCreatePage() {
       {saveStatus === "saved" && <p className="success">Saved to roster.</p>}
       {saveOpen && saveStatus !== "saved" && (
         <div className="save-panel">
-          <label className="field">
-            <span>World (optional)</span>
-            <select value={saveWorldId} onChange={(e) => setSaveWorldId(e.target.value)}>
-              <option value="">Unassigned</option>
-              {worlds.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
-            </select>
-          </label>
-          <label className="field">
-            <span>Tags (comma separated)</span>
-            <input type="text" value={saveTags} onChange={(e) => setSaveTags(e.target.value)} placeholder="party, act-1" />
-          </label>
-          <label className="field">
-            <span>Notes</span>
-            <textarea value={saveNotes} onChange={(e) => setSaveNotes(e.target.value)} rows={3} />
-          </label>
+          <SaveEntityFields
+            worlds={worlds} worldId={saveWorldId} setWorldId={setSaveWorldId}
+            tags={saveTags} setTags={setSaveTags} tagsPlaceholder="party, act-1"
+            notes={saveNotes} setNotes={setSaveNotes}
+            hiddenFromParty={saveHidden} setHiddenFromParty={setSaveHidden}
+          />
           <button className="btn-primary" onClick={handleSave} disabled={saveStatus === "saving"}>
             {saveStatus === "saving" ? "Saving…" : "Confirm Save"}
           </button>

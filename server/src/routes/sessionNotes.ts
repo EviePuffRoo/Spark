@@ -26,7 +26,7 @@ sessionNotesRouter.get("/:id", async (req, res) => {
 
 sessionNotesRouter.post("/", async (req, res) => {
   const body = req.body ?? {};
-  const { title, sessionLabel, sessionDate, summary, looseThreads, nextSteps, worldId, tags, notes } = body;
+  const { title, sessionLabel, sessionDate, summary, looseThreads, nextSteps, worldId, tags, notes, hiddenFromParty } = body;
 
   if (!title || !summary) {
     return res.status(400).json({ error: "Title and summary are required" });
@@ -42,6 +42,7 @@ sessionNotesRouter.post("/", async (req, res) => {
       worldId: worldId ?? null,
       tags: JSON.stringify(Array.isArray(tags) ? tags : []),
       notes: notes ?? null,
+      hiddenFromParty: !!hiddenFromParty,
       userId: req.userId!,
     },
   });

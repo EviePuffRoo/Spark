@@ -28,7 +28,7 @@ charactersRouter.post("/", async (req, res) => {
   const body = req.body ?? {};
   const {
     kind, name, race, background, alignment, templateId, templateName,
-    statBlock, backstory, worldId, tags, notes,
+    statBlock, backstory, worldId, tags, notes, hiddenFromParty,
   } = body;
 
   if (!kind || !name || !alignment || !templateId || !templateName || !statBlock || !backstory) {
@@ -44,6 +44,7 @@ charactersRouter.post("/", async (req, res) => {
       worldId: worldId ?? null,
       tags: JSON.stringify(Array.isArray(tags) ? tags : []),
       notes: notes ?? null,
+      hiddenFromParty: !!hiddenFromParty,
       userId: req.userId!,
     },
   });

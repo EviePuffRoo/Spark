@@ -6,6 +6,7 @@ import { useActiveWorld } from "../ActiveWorldContext";
 import { DungeonCardView } from "../components/DungeonCardView";
 import { DungeonEditor } from "../components/DungeonEditor";
 import { DungeonMapView } from "../components/DungeonMapView";
+import { SaveEntityFields } from "../components/SaveEntityFields";
 
 const BLANK_DUNGEON: DungeonInput = { name: "", rooms: [] };
 const noopUpdateRoomRect = () => {};
@@ -31,6 +32,7 @@ export function DungeonCreatePage() {
   const [saveWorldId, setSaveWorldId] = useState(worldId);
   const [saveTags, setSaveTags] = useState("");
   const [saveNotes, setSaveNotes] = useState("");
+  const [saveHidden, setSaveHidden] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
 
   // Computed once per generation (it uses Math.random() internally) so the
@@ -74,7 +76,7 @@ export function DungeonCreatePage() {
   // Generated rooms don't have a real ZoneMapTemplate yet — create one
   // per room first (each with the room's single pre-rolled zone) so we
   // have real template ids, then assemble and save the Dungeon itself.
-  async function saveGenerated(outline: GeneratedDungeonOutline, resolvedWorldId: string | null, tags: string[], notes: string | undefined) {
+  async function saveGenerated(outline: GeneratedDungeonOutline, resolvedWorldId: string | null, tags: string[], notes: string | undefined, hidden: boolean) {
     const rooms: DungeonRoom[] = [];
     for (const room of outline.rooms) {
       const template = await api.saveZoneMapTemplate({
@@ -87,7 +89,7 @@ export function DungeonCreatePage() {
       });
       rooms.push({ id: room.roomId, name: room.name, templateId: template.id, exits: room.exits, rect: rectByRoomId.get(room.roomId) });
     }
-    await api.saveDungeon({ name: outline.name, rooms, worldId: resolvedWorldId, tags, notes });
+    await api.saveDungeon({ name: outline.name, rooms, worldId: resolvedWorldId, tags, notes, hiddenFromParty: hidden });
   }
 
   async function handleSave() {
@@ -98,9 +100,9 @@ export function DungeonCreatePage() {
       const tags = saveTags.split(",").map((t) => t.trim()).filter(Boolean);
       const notes = saveNotes || undefined;
       if (creationMode === "generate" && generated) {
-        await saveGenerated(generated, resolvedWorldId, tags, notes);
+        await saveGenerated(generated, resolvedWorldId, tags, notes, saveHidden);
       } else if (manualResult) {
-        await api.saveDungeon({ ...manualResult, worldId: resolvedWorldId, tags, notes });
+        await api.saveDungeon({ ...manualResult, worldId: resolvedWorldId, tags, notes, hiddenFromParty: saveHidden });
       } else {
         return;
       }
@@ -121,21 +123,12 @@ export function DungeonCreatePage() {
       {saveStatus === "saved" && <p className="success">Saved to roster.</p>}
       {saveOpen && saveStatus !== "saved" && (
         <div className="save-panel">
-          <label className="field">
-            <span>World (optional)</span>
-            <select value={saveWorldId} onChange={(e) => setSaveWorldId(e.target.value)}>
-              <option value="">Unassigned</option>
-              {worlds.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
-            </select>
-          </label>
-          <label className="field">
-            <span>Tags (comma separated)</span>
-            <input type="text" value={saveTags} onChange={(e) => setSaveTags(e.target.value)} placeholder="dungeon, act-1" />
-          </label>
-          <label className="field">
-            <span>Notes</span>
-            <textarea value={saveNotes} onChange={(e) => setSaveNotes(e.target.value)} rows={3} />
-          </label>
+          <SaveEntityFields
+            worlds={worlds} worldId={saveWorldId} setWorldId={setSaveWorldId}
+            tags={saveTags} setTags={setSaveTags} tagsPlaceholder="dungeon, act-1"
+            notes={saveNotes} setNotes={setSaveNotes}
+            hiddenFromParty={saveHidden} setHiddenFromParty={setSaveHidden}
+          />
           <button className="btn-primary" onClick={handleSave} disabled={saveStatus === "saving"}>
             {saveStatus === "saving" ? "Saving…" : "Confirm Save"}
           </button>

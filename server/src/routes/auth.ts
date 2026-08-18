@@ -18,8 +18,8 @@ const authLimiter = rateLimit({
   message: { error: "Too many attempts — please wait a few minutes and try again." },
 });
 
-function toAuthUser(user: { id: string; username: string; tier: string; role: string }): AuthUser {
-  return { id: user.id, username: user.username, tier: user.tier, role: user.role };
+function toAuthUser(user: { id: string; username: string; displayName: string | null; tier: string; role: string }): AuthUser {
+  return { id: user.id, username: user.username, displayName: user.displayName, tier: user.tier, role: user.role };
 }
 
 // ADMIN_USERNAMES (comma-separated, Render env var) is the single source of
@@ -81,6 +81,27 @@ authRouter.post("/logout", (_req, res) => {
 authRouter.get("/me", requireAuth, async (req, res) => {
   const user = await prisma.user.findUnique({ where: { id: req.userId } });
   if (!user) return res.status(401).json({ error: "Not signed in" });
+  res.json(toAuthUser(await syncAdminRole(user)));
+});
+
+// Display name is optional and purely cosmetic (shown instead of the login
+// username wherever a person's name appears — ledger entries, shop
+// transactions, etc.). An empty/whitespace-only value clears it back to null,
+// which falls back to showing the username again.
+authRouter.patch("/me", requireAuth, async (req, res) => {
+  const { displayName } = req.body ?? {};
+  if (displayName !== undefined && typeof displayName !== "string") {
+    return res.status(400).json({ error: "Display name must be text." });
+  }
+  const trimmed = typeof displayName === "string" ? displayName.trim() : undefined;
+  if (trimmed !== undefined && trimmed.length > 40) {
+    return res.status(400).json({ error: "Display name must be 40 characters or fewer." });
+  }
+
+  const user = await prisma.user.update({
+    where: { id: req.userId },
+    data: { displayName: trimmed === undefined ? undefined : trimmed || null },
+  });
   res.json(toAuthUser(await syncAdminRole(user)));
 });
 

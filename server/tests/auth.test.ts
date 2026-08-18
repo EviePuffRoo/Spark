@@ -127,6 +127,46 @@ describe("change password / recovery code", () => {
   });
 });
 
+describe("display name", () => {
+  async function signupAgent(username: string) {
+    const agent = request.agent(app);
+    await agent.post("/api/auth/signup").send({ username, password: "password123" });
+    return agent;
+  }
+
+  it("defaults to null and can be set, trimmed, and read back via /auth/me", async () => {
+    const agent = await signupAgent("mallory");
+    const fresh = await agent.get("/api/auth/me");
+    expect(fresh.body.displayName).toBeNull();
+
+    const patched = await agent.patch("/api/auth/me").send({ displayName: "  Mal the Mysterious  " });
+    expect(patched.status).toBe(200);
+    expect(patched.body.displayName).toBe("Mal the Mysterious");
+
+    const reread = await agent.get("/api/auth/me");
+    expect(reread.body.displayName).toBe("Mal the Mysterious");
+  });
+
+  it("clears back to null on an empty/whitespace-only value", async () => {
+    const agent = await signupAgent("nathan");
+    await agent.patch("/api/auth/me").send({ displayName: "Nate" });
+    const cleared = await agent.patch("/api/auth/me").send({ displayName: "   " });
+    expect(cleared.status).toBe(200);
+    expect(cleared.body.displayName).toBeNull();
+  });
+
+  it("rejects a display name over 40 characters", async () => {
+    const agent = await signupAgent("olivia");
+    const res = await agent.patch("/api/auth/me").send({ displayName: "x".repeat(41) });
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects an unauthenticated request", async () => {
+    const res = await request(app).patch("/api/auth/me").send({ displayName: "Nope" });
+    expect(res.status).toBe(401);
+  });
+});
+
 describe("account deletion", () => {
   it("rejects deletion with the wrong password and leaves the account intact", async () => {
     const agent = request.agent(app);

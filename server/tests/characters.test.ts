@@ -64,9 +64,9 @@ describe("characters CRUD + ownership — representative entity-router template"
     const worldId = world.body.id as string;
 
     const visible = await dm.post("/api/characters").send(charPayload({ name: "Visible NPC", worldId }));
+    expect(visible.body.hiddenFromParty).toBe(false);
     const hidden = await dm.post("/api/characters").send(charPayload({ name: "Hidden NPC", worldId, hiddenFromParty: true }));
-    // hiddenFromParty isn't part of POST's accepted fields — set it via PATCH.
-    await dm.patch(`/api/characters/${hidden.body.id}`).send({ hiddenFromParty: true });
+    expect(hidden.body.hiddenFromParty).toBe(true);
 
     const joinCode = await dm.post(`/api/worlds/${worldId}/join-code`);
     const { agent: player } = await signupAgent("playeruser1");

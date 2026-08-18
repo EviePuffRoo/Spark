@@ -70,7 +70,7 @@ playerCharactersRouter.get("/:id", async (req, res) => {
 
 playerCharactersRouter.post("/", async (req, res) => {
   const body = req.body ?? {};
-  const { name, className, level, race, armorClass, maxHp, abilityScores, playerName, worldId, tags, notes } = body;
+  const { name, className, level, race, armorClass, maxHp, abilityScores, playerName, worldId, tags, notes, hiddenFromParty } = body;
 
   if (!name || !className || !level || !race || !armorClass || !maxHp) {
     return res.status(400).json({ error: "Missing required player character fields" });
@@ -87,6 +87,7 @@ playerCharactersRouter.post("/", async (req, res) => {
       notes: notes ?? null,
       spellSlots: JSON.stringify(coerceSpellSlots(body.spellSlots)),
       classResources: JSON.stringify(coerceClassResources(body.classResources)),
+      hiddenFromParty: !!hiddenFromParty,
       userId: req.userId!,
     },
   });
@@ -126,6 +127,34 @@ playerCharactersRouter.patch("/:id", async (req, res) => {
   if (result.count === 0) return res.status(404).json({ error: "Player character not found" });
   const row = await prisma.playerCharacter.findUnique({ where: { id: req.params.id } });
   res.json(toPlayerCharacterDTO(row!));
+});
+
+// Hands a player character to a different account — e.g. a DM pre-rolled a
+// PC before session zero and now wants the actual player's own login to own
+// (and be able to edit/rest/track) it, instead of it staying stuck under
+// whoever originally generated it. Only the world's owner can do this, and
+// only to another member of that same world (or back to themselves).
+playerCharactersRouter.patch("/:id/owner", async (req, res) => {
+  const { userId: targetUserId } = req.body ?? {};
+  if (typeof targetUserId !== "string" || !targetUserId) {
+    return res.status(400).json({ error: "A target user is required." });
+  }
+
+  const pc = await prisma.playerCharacter.findUnique({ where: { id: req.params.id } });
+  if (!pc || !pc.worldId) return res.status(404).json({ error: "Player character not found" });
+
+  const world = await prisma.world.findUnique({ where: { id: pc.worldId } });
+  if (!world || world.userId !== req.userId) {
+    return res.status(403).json({ error: "Only the world's owner can reassign a player character." });
+  }
+
+  if (targetUserId !== world.userId) {
+    const membership = await prisma.worldMember.findUnique({ where: { worldId_userId: { worldId: world.id, userId: targetUserId } } });
+    if (!membership) return res.status(400).json({ error: "That user isn't a member of this world." });
+  }
+
+  const row = await prisma.playerCharacter.update({ where: { id: pc.id }, data: { userId: targetUserId } });
+  res.json(toPlayerCharacterDTO(row));
 });
 
 playerCharactersRouter.post("/:id/rest", async (req, res) => {

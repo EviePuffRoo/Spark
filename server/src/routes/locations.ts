@@ -26,7 +26,7 @@ locationsRouter.get("/:id", async (req, res) => {
 
 locationsRouter.post("/", async (req, res) => {
   const body = req.body ?? {};
-  const { name, locationType, category, description, notableFeature, keeper, rumor, worldId, tags, notes, settlementId } = body;
+  const { name, locationType, category, description, notableFeature, keeper, rumor, worldId, tags, notes, settlementId, hiddenFromParty } = body;
 
   if (!name || !locationType || !category || !description || !notableFeature || !keeper || !rumor) {
     return res.status(400).json({ error: "Missing required location fields" });
@@ -39,6 +39,7 @@ locationsRouter.post("/", async (req, res) => {
       settlementId: settlementId ?? null,
       tags: JSON.stringify(Array.isArray(tags) ? tags : []),
       notes: notes ?? null,
+      hiddenFromParty: !!hiddenFromParty,
       userId: req.userId!,
     },
   });

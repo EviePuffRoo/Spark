@@ -4,6 +4,7 @@ import { api, type ReferenceData } from "../api";
 import { useActiveWorld } from "../ActiveWorldContext";
 import { RegionCardView } from "../components/RegionCardView";
 import { RegionEditor } from "../components/RegionEditor";
+import { SaveEntityFields } from "../components/SaveEntityFields";
 
 const BLANK_REGION: GeneratedRegion = { name: "", terrainCategory: "", description: "" };
 
@@ -22,6 +23,7 @@ export function RegionForgePage() {
   const [saveWorldId, setSaveWorldId] = useState(worldId);
   const [saveTags, setSaveTags] = useState("");
   const [saveNotes, setSaveNotes] = useState("");
+  const [saveHidden, setSaveHidden] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
 
   useEffect(() => {
@@ -70,6 +72,7 @@ export function RegionForgePage() {
         worldId: saveWorldId || null,
         tags: saveTags.split(",").map((t) => t.trim()).filter(Boolean),
         notes: saveNotes || undefined,
+        hiddenFromParty: saveHidden,
       });
       setSaveStatus("saved");
     } catch (e) {
@@ -88,21 +91,12 @@ export function RegionForgePage() {
       {saveStatus === "saved" && <p className="success">Saved to roster.</p>}
       {saveOpen && saveStatus !== "saved" && (
         <div className="save-panel">
-          <label className="field">
-            <span>World (optional)</span>
-            <select value={saveWorldId} onChange={(e) => setSaveWorldId(e.target.value)}>
-              <option value="">Unassigned</option>
-              {worlds.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
-            </select>
-          </label>
-          <label className="field">
-            <span>Tags (comma separated)</span>
-            <input type="text" value={saveTags} onChange={(e) => setSaveTags(e.target.value)} placeholder="frontier, act-1" />
-          </label>
-          <label className="field">
-            <span>Notes</span>
-            <textarea value={saveNotes} onChange={(e) => setSaveNotes(e.target.value)} rows={3} />
-          </label>
+          <SaveEntityFields
+            worlds={worlds} worldId={saveWorldId} setWorldId={setSaveWorldId}
+            tags={saveTags} setTags={setSaveTags} tagsPlaceholder="frontier, act-1"
+            notes={saveNotes} setNotes={setSaveNotes}
+            hiddenFromParty={saveHidden} setHiddenFromParty={setSaveHidden}
+          />
           <button className="btn-primary" onClick={handleSave} disabled={saveStatus === "saving"}>
             {saveStatus === "saving" ? "Saving…" : "Confirm Save"}
           </button>

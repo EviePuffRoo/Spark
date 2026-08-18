@@ -4,6 +4,7 @@ import { api, type ReferenceData } from "../api";
 import { useActiveWorld } from "../ActiveWorldContext";
 import { FactionCardView } from "../components/FactionCardView";
 import { FactionEditor } from "../components/FactionEditor";
+import { SaveEntityFields } from "../components/SaveEntityFields";
 
 const BLANK_FACTION: GeneratedFaction = { name: "", factionType: "", agenda: "", methods: "", publicFace: "", hook: "" };
 
@@ -22,6 +23,7 @@ export function FactionForgePage() {
   const [saveWorldId, setSaveWorldId] = useState(worldId);
   const [saveTags, setSaveTags] = useState("");
   const [saveNotes, setSaveNotes] = useState("");
+  const [saveHidden, setSaveHidden] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
 
   useEffect(() => {
@@ -66,6 +68,7 @@ export function FactionForgePage() {
         worldId: saveWorldId || null,
         tags: saveTags.split(",").map((t) => t.trim()).filter(Boolean),
         notes: saveNotes || undefined,
+        hiddenFromParty: saveHidden,
       })));
       setSaveStatus("saved");
     } catch (e) {
@@ -83,6 +86,7 @@ export function FactionForgePage() {
         worldId: saveWorldId || null,
         tags: saveTags.split(",").map((t) => t.trim()).filter(Boolean),
         notes: saveNotes || undefined,
+        hiddenFromParty: saveHidden,
       });
       setSaveStatus("saved");
     } catch (e) {
@@ -94,23 +98,12 @@ export function FactionForgePage() {
   const fullyRandom = !!form.fullyRandom;
 
   const savePanelFields = (
-    <>
-      <label className="field">
-        <span>World (optional)</span>
-        <select value={saveWorldId} onChange={(e) => setSaveWorldId(e.target.value)}>
-          <option value="">Unassigned</option>
-          {worlds.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
-        </select>
-      </label>
-      <label className="field">
-        <span>Tags (comma separated)</span>
-        <input type="text" value={saveTags} onChange={(e) => setSaveTags(e.target.value)} placeholder="antagonist, act-2, city" />
-      </label>
-      <label className="field">
-        <span>Notes</span>
-        <textarea value={saveNotes} onChange={(e) => setSaveNotes(e.target.value)} rows={3} placeholder="Where this fits in your world…" />
-      </label>
-    </>
+    <SaveEntityFields
+      worlds={worlds} worldId={saveWorldId} setWorldId={setSaveWorldId}
+      tags={saveTags} setTags={setSaveTags} tagsPlaceholder="antagonist, act-2, city"
+      notes={saveNotes} setNotes={setSaveNotes} notesPlaceholder="Where this fits in your world…"
+      hiddenFromParty={saveHidden} setHiddenFromParty={setSaveHidden}
+    />
   );
 
   const batchResultPanel = (

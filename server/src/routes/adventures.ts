@@ -26,7 +26,7 @@ adventuresRouter.get("/:id", async (req, res) => {
 
 adventuresRouter.post("/", async (req, res) => {
   const body = req.body ?? {};
-  const { title, tier, premise, hook, objective, complication, reward, worldId, tags, notes } = body;
+  const { title, tier, premise, hook, objective, complication, reward, worldId, tags, notes, hiddenFromParty } = body;
 
   if (!title || !tier || !premise || !hook || !objective || !complication || !reward) {
     return res.status(400).json({ error: "Missing required adventure fields" });
@@ -38,6 +38,7 @@ adventuresRouter.post("/", async (req, res) => {
       worldId: worldId ?? null,
       tags: JSON.stringify(Array.isArray(tags) ? tags : []),
       notes: notes ?? null,
+      hiddenFromParty: !!hiddenFromParty,
       userId: req.userId!,
     },
   });

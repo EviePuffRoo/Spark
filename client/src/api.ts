@@ -123,7 +123,7 @@ export const api = {
     request<Character[]>(`/characters${worldId ? `?worldId=${worldId}` : ""}`),
   getCharacter: (id: string) => request<Character>(`/characters/${id}`),
   exportCharacterForFoundry: (id: string) => request<Record<string, unknown>>(`/characters/${id}/export/foundry`),
-  saveCharacter: (character: GeneratedCharacter & { worldId?: string | null; tags?: string[]; notes?: string }) =>
+  saveCharacter: (character: GeneratedCharacter & { worldId?: string | null; tags?: string[]; notes?: string; hiddenFromParty?: boolean }) =>
     request<Character>("/characters", { method: "POST", body: JSON.stringify(character) }),
   updateCharacter: (id: string, patch: Partial<Character>) =>
     request<Character>(`/characters/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
@@ -132,7 +132,7 @@ export const api = {
   listItems: (worldId?: string) =>
     request<Item[]>(`/items${worldId ? `?worldId=${worldId}` : ""}`),
   getItem: (id: string) => request<Item>(`/items/${id}`),
-  saveItem: (item: GeneratedItem & { worldId?: string | null; tags?: string[]; notes?: string }) =>
+  saveItem: (item: GeneratedItem & { worldId?: string | null; tags?: string[]; notes?: string; hiddenFromParty?: boolean }) =>
     request<Item>("/items", { method: "POST", body: JSON.stringify(item) }),
   updateItem: (id: string, patch: Partial<Item>) =>
     request<Item>(`/items/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
@@ -141,7 +141,7 @@ export const api = {
   listLocations: (worldId?: string) =>
     request<Location[]>(`/locations${worldId ? `?worldId=${worldId}` : ""}`),
   getLocation: (id: string) => request<Location>(`/locations/${id}`),
-  saveLocation: (location: GeneratedLocation & { worldId?: string | null; tags?: string[]; notes?: string }) =>
+  saveLocation: (location: GeneratedLocation & { worldId?: string | null; tags?: string[]; notes?: string; hiddenFromParty?: boolean }) =>
     request<Location>("/locations", { method: "POST", body: JSON.stringify(location) }),
   updateLocation: (id: string, patch: Partial<Location>) =>
     request<Location>(`/locations/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
@@ -150,7 +150,7 @@ export const api = {
   listQuests: (worldId?: string) =>
     request<QuestHook[]>(`/quests${worldId ? `?worldId=${worldId}` : ""}`),
   getQuest: (id: string) => request<QuestHook>(`/quests/${id}`),
-  saveQuest: (quest: GeneratedQuestHook & { worldId?: string | null; tags?: string[]; notes?: string }) =>
+  saveQuest: (quest: GeneratedQuestHook & { worldId?: string | null; tags?: string[]; notes?: string; hiddenFromParty?: boolean }) =>
     request<QuestHook>("/quests", { method: "POST", body: JSON.stringify(quest) }),
   updateQuest: (id: string, patch: Partial<QuestHook>) =>
     request<QuestHook>(`/quests/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
@@ -159,7 +159,7 @@ export const api = {
   listFactions: (worldId?: string) =>
     request<Faction[]>(`/factions${worldId ? `?worldId=${worldId}` : ""}`),
   getFaction: (id: string) => request<Faction>(`/factions/${id}`),
-  saveFaction: (faction: GeneratedFaction & { worldId?: string | null; tags?: string[]; notes?: string }) =>
+  saveFaction: (faction: GeneratedFaction & { worldId?: string | null; tags?: string[]; notes?: string; hiddenFromParty?: boolean }) =>
     request<Faction>("/factions", { method: "POST", body: JSON.stringify(faction) }),
   updateFaction: (id: string, patch: Partial<Faction>) =>
     request<Faction>(`/factions/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
@@ -168,7 +168,7 @@ export const api = {
   listEncounterTables: (worldId?: string) =>
     request<EncounterTable[]>(`/encounter-tables${worldId ? `?worldId=${worldId}` : ""}`),
   getEncounterTable: (id: string) => request<EncounterTable>(`/encounter-tables/${id}`),
-  saveEncounterTable: (table: GeneratedEncounterTable & { worldId?: string | null; tags?: string[]; notes?: string }) =>
+  saveEncounterTable: (table: GeneratedEncounterTable & { worldId?: string | null; tags?: string[]; notes?: string; hiddenFromParty?: boolean }) =>
     request<EncounterTable>("/encounter-tables", { method: "POST", body: JSON.stringify(table) }),
   updateEncounterTable: (id: string, patch: Partial<EncounterTable>) =>
     request<EncounterTable>(`/encounter-tables/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
@@ -186,7 +186,7 @@ export const api = {
   listAdventures: (worldId?: string) =>
     request<Adventure[]>(`/adventures${worldId ? `?worldId=${worldId}` : ""}`),
   getAdventure: (id: string) => request<Adventure>(`/adventures/${id}`),
-  saveAdventure: (adventure: GeneratedAdventure & { worldId?: string | null; tags?: string[]; notes?: string }) =>
+  saveAdventure: (adventure: GeneratedAdventure & { worldId?: string | null; tags?: string[]; notes?: string; hiddenFromParty?: boolean }) =>
     request<Adventure>("/adventures", { method: "POST", body: JSON.stringify(adventure) }),
   updateAdventure: (id: string, patch: Partial<Adventure>) =>
     request<Adventure>(`/adventures/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
@@ -201,11 +201,13 @@ export const api = {
   listMyPlayerCharacters: () => request<PlayerCharacter[]>("/player-characters?mine=true"),
   getPlayerCharacter: (id: string) => request<PlayerCharacter>(`/player-characters/${id}`),
   exportPlayerCharacterForFoundry: (id: string) => request<Record<string, unknown>>(`/player-characters/${id}/export/foundry`),
-  savePlayerCharacter: (pc: PlayerCharacterInput & { worldId?: string | null; tags?: string[]; notes?: string }) =>
+  savePlayerCharacter: (pc: PlayerCharacterInput & { worldId?: string | null; tags?: string[]; notes?: string; hiddenFromParty?: boolean }) =>
     request<PlayerCharacter>("/player-characters", { method: "POST", body: JSON.stringify(pc) }),
   updatePlayerCharacter: (id: string, patch: Partial<PlayerCharacter>) =>
     request<PlayerCharacter>(`/player-characters/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   deletePlayerCharacter: (id: string) => request<void>(`/player-characters/${id}`, { method: "DELETE" }),
+  reassignPlayerCharacterOwner: (id: string, userId: string) =>
+    request<PlayerCharacter>(`/player-characters/${id}/owner`, { method: "PATCH", body: JSON.stringify({ userId }) }),
 
   listRollLog: (worldId: string) => request<RollLogEntry[]>(`/roll-log?worldId=${worldId}`),
   postRollLogEntry: (entry: RollLogEntryInput) =>
@@ -255,7 +257,7 @@ export const api = {
   listDungeons: (worldId?: string) =>
     request<Dungeon[]>(`/dungeons${worldId ? `?worldId=${worldId}` : ""}`),
   getDungeon: (id: string) => request<Dungeon>(`/dungeons/${id}`),
-  saveDungeon: (dungeon: DungeonInput & { worldId?: string | null; tags?: string[]; notes?: string }) =>
+  saveDungeon: (dungeon: DungeonInput & { worldId?: string | null; tags?: string[]; notes?: string; hiddenFromParty?: boolean }) =>
     request<Dungeon>("/dungeons", { method: "POST", body: JSON.stringify(dungeon) }),
   updateDungeon: (id: string, patch: Partial<Dungeon>) =>
     request<Dungeon>(`/dungeons/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
@@ -266,7 +268,7 @@ export const api = {
   listShops: (worldId?: string) =>
     request<Shop[]>(`/shops${worldId ? `?worldId=${worldId}` : ""}`),
   getShop: (id: string) => request<Shop>(`/shops/${id}`),
-  saveShop: (shop: ShopInput & { worldId?: string | null; tags?: string[]; notes?: string }) =>
+  saveShop: (shop: ShopInput & { worldId?: string | null; tags?: string[]; notes?: string; hiddenFromParty?: boolean }) =>
     request<Shop>("/shops", { method: "POST", body: JSON.stringify(shop) }),
   updateShop: (id: string, patch: Partial<Shop>) =>
     request<Shop>(`/shops/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
@@ -277,7 +279,7 @@ export const api = {
   listRegions: (worldId?: string) =>
     request<Region[]>(`/regions${worldId ? `?worldId=${worldId}` : ""}`),
   getRegion: (id: string) => request<Region>(`/regions/${id}`),
-  saveRegion: (region: GeneratedRegion & { worldId?: string | null; tags?: string[]; notes?: string; x?: number; y?: number }) =>
+  saveRegion: (region: GeneratedRegion & { worldId?: string | null; tags?: string[]; notes?: string; x?: number; y?: number; hiddenFromParty?: boolean }) =>
     request<Region>("/regions", { method: "POST", body: JSON.stringify(region) }),
   updateRegion: (id: string, patch: Partial<Region>) =>
     request<Region>(`/regions/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
@@ -288,7 +290,7 @@ export const api = {
   listSettlements: (worldId?: string) =>
     request<Settlement[]>(`/settlements${worldId ? `?worldId=${worldId}` : ""}`),
   getSettlement: (id: string) => request<Settlement>(`/settlements/${id}`),
-  saveSettlement: (settlement: GeneratedSettlement & { worldId?: string | null; tags?: string[]; notes?: string; regionId?: string | null }) =>
+  saveSettlement: (settlement: GeneratedSettlement & { worldId?: string | null; tags?: string[]; notes?: string; regionId?: string | null; hiddenFromParty?: boolean }) =>
     request<Settlement>("/settlements", { method: "POST", body: JSON.stringify(settlement) }),
   updateSettlement: (id: string, patch: Partial<Settlement>) =>
     request<Settlement>(`/settlements/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
@@ -374,6 +376,8 @@ export const api = {
     request<AuthUser>("/auth/login", { method: "POST", body: JSON.stringify({ username, password }) }),
   logout: () => request<void>("/auth/logout", { method: "POST" }),
   me: () => request<AuthUser>("/auth/me"),
+  updateDisplayName: (displayName: string) =>
+    request<AuthUser>("/auth/me", { method: "PATCH", body: JSON.stringify({ displayName }) }),
   changePassword: (currentPassword: string, newPassword: string) =>
     request<void>("/auth/change-password", { method: "POST", body: JSON.stringify({ currentPassword, newPassword }) }),
   deleteAccount: (password: string) =>

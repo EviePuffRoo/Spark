@@ -26,7 +26,7 @@ questsRouter.get("/:id", async (req, res) => {
 
 questsRouter.post("/", async (req, res) => {
   const body = req.body ?? {};
-  const { title, questType, tier, hook, objective, complication, reward, worldId, tags, notes } = body;
+  const { title, questType, tier, hook, objective, complication, reward, worldId, tags, notes, hiddenFromParty } = body;
 
   if (!title || !questType || !tier || !hook || !objective || !complication || !reward) {
     return res.status(400).json({ error: "Missing required quest hook fields" });
@@ -38,6 +38,7 @@ questsRouter.post("/", async (req, res) => {
       worldId: worldId ?? null,
       tags: JSON.stringify(Array.isArray(tags) ? tags : []),
       notes: notes ?? null,
+      hiddenFromParty: !!hiddenFromParty,
       userId: req.userId!,
     },
   });

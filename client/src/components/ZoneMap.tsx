@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { EncounterZone, EncounterZoneEffect, LiveCombatant, Location, SearchResult, Dungeon } from "@spark/shared";
 import { zoneDistances } from "../zoneGraph";
 import { api } from "../api";
@@ -53,6 +53,14 @@ export function ZoneMap({
   onLoadDungeonRoom: (dungeonId: string, roomId: string) => void;
 }) {
   const svgRef = useRef<SVGSVGElement | null>(null);
+  // SVG url(#id) references resolve against the whole document, not just
+  // this <svg> — if two ZoneMaps render at once (e.g. the DM's editable map
+  // alongside the inline Table View), unscoped ids would collide and one
+  // map's gradients/pattern would silently break.
+  const uid = useId().replace(/:/g, "");
+  const gridId = `zoneGrid-${uid}`;
+  const fillGradientId = `zoneFillGradient-${uid}`;
+  const edgeGradientId = `zoneEdgeGradient-${uid}`;
   const [transform, setTransform] = useState({ x: 0, y: 0, k: 1 });
   const transformRef = useRef(transform);
   transformRef.current = transform;
@@ -340,6 +348,19 @@ export function ZoneMap({
           className="zone-map-svg"
           onWheel={handleWheel}
         >
+        <defs>
+          <pattern id={gridId} width="28" height="28" patternUnits="userSpaceOnUse">
+            <circle cx="1" cy="1" r="1" className="zone-grid-dot" />
+          </pattern>
+          <radialGradient id={fillGradientId} cx="35%" cy="30%" r="75%">
+            <stop offset="0%" stopColor="var(--accent-2)" stopOpacity="0.28" />
+            <stop offset="100%" stopColor="var(--accent)" stopOpacity="0.05" />
+          </radialGradient>
+          <linearGradient id={edgeGradientId} x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="var(--accent)" />
+            <stop offset="100%" stopColor="var(--accent-2)" />
+          </linearGradient>
+        </defs>
         <rect
           x={0} y={0} width={WIDTH} height={HEIGHT} fill="transparent"
           onPointerDown={handleBackgroundPointerDown}
@@ -347,6 +368,7 @@ export function ZoneMap({
           onPointerUp={handleBackgroundPointerUp}
         />
         <g transform={`translate(${transform.x} ${transform.y}) scale(${transform.k})`}>
+          <rect x={-2000} y={-2000} width={4000} height={4000} fill={`url(#${gridId})`} pointerEvents="none" />
           {zones.flatMap((zone) =>
             zone.connections
               .filter((otherId) => zones.some((z) => z.id === otherId))
@@ -358,6 +380,7 @@ export function ZoneMap({
                     key={`${zone.id}-${otherId}`}
                     x1={zone.x} y1={zone.y} x2={other.x} y2={other.y}
                     className="zone-edge"
+                    stroke={`url(#${edgeGradientId})`}
                   />
                 );
               }),
@@ -378,7 +401,7 @@ export function ZoneMap({
                   onPointerMove={(e) => handleZonePointerMove(e, zone)}
                   onPointerUp={(e) => handleZonePointerUp(e, zone)}
                 >
-                  <circle r={ZONE_RADIUS} />
+                  <circle r={ZONE_RADIUS} fill={`url(#${fillGradientId})`} />
                   <text y={ZONE_RADIUS + 16}>{zone.name}</text>
                   {zone.tags.length > 0 && <text y={ZONE_RADIUS + 32} className="zone-tags-label">{zone.tags.join(" · ")}</text>}
                 </g>
@@ -388,7 +411,11 @@ export function ZoneMap({
                   </text>
                 ))}
                 {tokens.map((token) => (
-                  <g key={token.combatant.id} transform={`translate(${token.x} ${token.y})`} className={`zone-token zone-token-${token.combatant.kind}`}>
+                  <g
+                    key={token.combatant.id}
+                    transform={`translate(${token.x} ${token.y})`}
+                    className={`zone-token zone-token-${token.combatant.kind}${token.combatant.id === activeId ? " zone-token-active-turn" : ""}`}
+                  >
                     <circle
                       r={TOKEN_RADIUS}
                       onPointerDown={(e) => handleTokenPointerDown(e, token)}

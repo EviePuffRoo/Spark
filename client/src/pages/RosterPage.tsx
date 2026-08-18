@@ -39,8 +39,10 @@ import { RegionEditor } from "../components/RegionEditor";
 import { SettlementCardView } from "../components/SettlementCardView";
 import { SettlementEditor } from "../components/SettlementEditor";
 import { EntitySearchPicker } from "../components/EntitySearchPicker";
+import { GroupedTabs } from "../components/GroupedTabs";
 
 export type Mode = "characters" | "items" | "locations" | "quests" | "factions" | "encounters" | "notes" | "adventures" | "playerCharacters" | "zoneMapTemplates" | "dungeons" | "shops" | "regions" | "settlements";
+type RosterGroup = "characters" | "world" | "story" | "tools";
 
 const MODE_LABELS: Record<Mode, string> = {
   characters: "Characters",
@@ -58,6 +60,24 @@ const MODE_LABELS: Record<Mode, string> = {
   regions: "Regions",
   settlements: "Settlements",
 };
+
+const ROSTER_GROUPS: Record<RosterGroup, Mode[]> = {
+  characters: ["characters", "playerCharacters"],
+  world: ["locations", "regions", "settlements"],
+  story: ["quests", "factions", "adventures", "encounters", "notes"],
+  tools: ["items", "shops", "dungeons", "zoneMapTemplates"],
+};
+
+const ROSTER_GROUP_LABELS: Record<RosterGroup, string> = {
+  characters: "Characters",
+  world: "World",
+  story: "Story",
+  tools: "Tools",
+};
+
+const ROSTER_MODE_TO_GROUP = Object.fromEntries(
+  (Object.keys(ROSTER_GROUPS) as RosterGroup[]).flatMap((g) => ROSTER_GROUPS[g].map((m) => [m, g])),
+) as Record<Mode, RosterGroup>;
 
 export const ENTITY_TYPE_TO_MODE: Record<EntityType, Mode> = {
   character: "characters",
@@ -578,11 +598,15 @@ export function RosterPage({
   return (
     <div className="page roster-layout">
       <div className="panel roster-list">
-        <div className="tabs roster-mode-tabs">
-          {(Object.keys(MODE_LABELS) as Mode[]).map((m) => (
-            <button key={m} className={mode === m ? "active" : ""} aria-current={mode === m ? "true" : undefined} onClick={() => switchMode(m)}>{MODE_LABELS[m]}</button>
-          ))}
-        </div>
+        <GroupedTabs
+          className="roster-mode-tabs"
+          groups={ROSTER_GROUPS}
+          groupLabels={ROSTER_GROUP_LABELS}
+          itemLabels={MODE_LABELS}
+          groupOf={(m) => ROSTER_MODE_TO_GROUP[m]}
+          active={mode}
+          onSelect={switchMode}
+        />
 
         {mode === "factions" && (
           <button className="btn-secondary" onClick={() => setShowFactionWeb(true)}>Relationship Web</button>

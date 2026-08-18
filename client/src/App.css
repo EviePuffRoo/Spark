@@ -10,6 +10,54 @@
   min-height: 100vh;
 }
 
+.area-sidebar {
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  height: 100vh;
+  width: 190px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 22px 12px;
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+}
+
+.area-sidebar button {
+  position: relative;
+  text-align: left;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.area-sidebar button:hover {
+  color: var(--text);
+  background: var(--bg-elevated-2);
+}
+
+.area-sidebar button.active {
+  background: var(--gradient);
+  color: var(--accent-contrast);
+  box-shadow: 0 6px 18px -6px var(--glow);
+}
+
+.area-sidebar .nav-badge {
+  top: 50%;
+  right: 12px;
+  left: auto;
+  transform: translateY(-50%);
+}
+
 .nav-rail {
   position: sticky;
   top: 0;
@@ -131,6 +179,26 @@
 
   .app-content {
     padding-bottom: 84px;
+  }
+
+  .area-sidebar {
+    position: static;
+    height: auto;
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: visible;
+    padding: 10px 12px;
+    gap: 8px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .area-sidebar button {
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 }
 
@@ -315,15 +383,6 @@
 
 .page-title h2 {
   margin: 0;
-}
-
-.area-subtabs {
-  margin-top: 8px;
-}
-
-.area-subtabs button {
-  padding: 6px 14px;
-  font-size: 0.85rem;
 }
 
 .nav-badge {
@@ -915,7 +974,6 @@ textarea {
 }
 
 .roster-mode-tabs {
-  justify-content: flex-start;
   margin-bottom: 16px;
 }
 
@@ -924,17 +982,33 @@ textarea {
   font-size: 0.85rem;
 }
 
-.create-type-tabs,
 .forge-mode-tabs {
   justify-content: flex-start;
   margin-bottom: 20px;
   flex-wrap: wrap;
 }
 
+.create-type-tabs {
+  margin-bottom: 20px;
+}
+
 .create-type-tabs button {
   padding: 7px 16px;
   font-size: 0.88rem;
   border-radius: 6px;
+}
+
+.grouped-tabs-groups {
+  justify-content: flex-start;
+  margin-bottom: 8px;
+}
+
+.grouped-tabs-groups button {
+  font-weight: 700;
+}
+
+.grouped-tabs-items {
+  justify-content: flex-start;
 }
 
 .encounter-table {

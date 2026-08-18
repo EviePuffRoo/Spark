@@ -137,6 +137,54 @@ function AppShell() {
         </div>
       </nav>
 
+      <nav className="area-sidebar" aria-label="Section navigation">
+        {area === "prep" && (
+          <>
+            <button className={subTab === "create" ? "active" : ""} aria-current={subTab === "create" ? "true" : undefined} onClick={() => selectSubTab("create")}>Create</button>
+            <button className={subTab === "compendium" ? "active" : ""} aria-current={subTab === "compendium" ? "true" : undefined} onClick={() => selectSubTab("compendium")}>Compendium</button>
+          </>
+        )}
+        {area === "world" && (
+          <>
+            <button className={subTab === "overview" ? "active" : ""} aria-current={subTab === "overview" ? "true" : undefined} onClick={() => selectSubTab("overview")}>Overview</button>
+            <button className={subTab === "worlds" ? "active" : ""} aria-current={subTab === "worlds" ? "true" : undefined} onClick={() => selectSubTab("worlds")}>Worlds</button>
+            <button className={subTab === "roster" ? "active" : ""} aria-current={subTab === "roster" ? "true" : undefined} onClick={() => selectSubTab("roster")}>Roster</button>
+            <button className={subTab === "codex" ? "active" : ""} aria-current={subTab === "codex" ? "true" : undefined} onClick={() => selectSubTab("codex")}>
+              Codex{codexUnseen && <span className="nav-badge" aria-label="New codex activity" />}
+            </button>
+            <button className={subTab === "notes" ? "active" : ""} aria-current={subTab === "notes" ? "true" : undefined} onClick={() => selectSubTab("notes")}>
+              Notes{notesUnseen && <span className="nav-badge" aria-label="New notes activity" />}
+            </button>
+            <button className={subTab === "downtime" ? "active" : ""} aria-current={subTab === "downtime" ? "true" : undefined} onClick={() => selectSubTab("downtime")}>Downtime</button>
+            <button className={subTab === "gallery" ? "active" : ""} aria-current={subTab === "gallery" ? "true" : undefined} onClick={() => selectSubTab("gallery")}>Gallery</button>
+          </>
+        )}
+        {area === "play" && (
+          <>
+            <button className={subTab === "combat" ? "active" : ""} aria-current={subTab === "combat" ? "true" : undefined} onClick={() => selectSubTab("combat")}>
+              Combat{combatUnseen && <span className="nav-badge" aria-label="New combat activity" />}
+            </button>
+            <button className={subTab === "shop" ? "active" : ""} aria-current={subTab === "shop" ? "true" : undefined} onClick={() => selectSubTab("shop")}>Shop</button>
+            <button className={subTab === "inventory" ? "active" : ""} aria-current={subTab === "inventory" ? "true" : undefined} onClick={() => selectSubTab("inventory")}>
+              Inventory{inventoryUnseen && <span className="nav-badge" aria-label="New inventory activity" />}
+            </button>
+          </>
+        )}
+        {area === "account" && (
+          <>
+            <button className={subTab === "profile" ? "active" : ""} aria-current={subTab === "profile" ? "true" : undefined} onClick={() => selectSubTab("profile")}>Profile</button>
+            <button className={subTab === "myCharacter" ? "active" : ""} aria-current={subTab === "myCharacter" ? "true" : undefined} onClick={() => selectSubTab("myCharacter")}>My Character</button>
+            <button className={subTab === "billing" ? "active" : ""} aria-current={subTab === "billing" ? "true" : undefined} onClick={() => selectSubTab("billing")}>Billing</button>
+            {user?.role === "admin" && (
+              <>
+                <button className={subTab === "moderation" ? "active" : ""} aria-current={subTab === "moderation" ? "true" : undefined} onClick={() => selectSubTab("moderation")}>Moderation</button>
+                <button className={subTab === "users" ? "active" : ""} aria-current={subTab === "users" ? "true" : undefined} onClick={() => selectSubTab("users")}>Users</button>
+              </>
+            )}
+          </>
+        )}
+      </nav>
+
       <div className="app-content">
       <header className="app-header">
         <div className="app-header-actions">
@@ -154,54 +202,6 @@ function AppShell() {
           <a className="btn-secondary" href="?play=1">Player View</a>
         </div>
         <GlobalSearch onSelect={openInRoster} />
-
-        <nav className="tabs area-subtabs">
-          {area === "prep" && (
-            <>
-              <button className={subTab === "create" ? "active" : ""} aria-current={subTab === "create" ? "true" : undefined} onClick={() => selectSubTab("create")}>Create</button>
-              <button className={subTab === "compendium" ? "active" : ""} aria-current={subTab === "compendium" ? "true" : undefined} onClick={() => selectSubTab("compendium")}>Compendium</button>
-            </>
-          )}
-          {area === "world" && (
-            <>
-              <button className={subTab === "overview" ? "active" : ""} aria-current={subTab === "overview" ? "true" : undefined} onClick={() => selectSubTab("overview")}>Overview</button>
-              <button className={subTab === "worlds" ? "active" : ""} aria-current={subTab === "worlds" ? "true" : undefined} onClick={() => selectSubTab("worlds")}>Worlds</button>
-              <button className={subTab === "roster" ? "active" : ""} aria-current={subTab === "roster" ? "true" : undefined} onClick={() => selectSubTab("roster")}>Roster</button>
-              <button className={subTab === "codex" ? "active" : ""} aria-current={subTab === "codex" ? "true" : undefined} onClick={() => selectSubTab("codex")}>
-                Codex{codexUnseen && <span className="nav-badge" aria-label="New codex activity" />}
-              </button>
-              <button className={subTab === "notes" ? "active" : ""} aria-current={subTab === "notes" ? "true" : undefined} onClick={() => selectSubTab("notes")}>
-                Notes{notesUnseen && <span className="nav-badge" aria-label="New notes activity" />}
-              </button>
-              <button className={subTab === "downtime" ? "active" : ""} aria-current={subTab === "downtime" ? "true" : undefined} onClick={() => selectSubTab("downtime")}>Downtime</button>
-              <button className={subTab === "gallery" ? "active" : ""} aria-current={subTab === "gallery" ? "true" : undefined} onClick={() => selectSubTab("gallery")}>Gallery</button>
-            </>
-          )}
-          {area === "play" && (
-            <>
-              <button className={subTab === "combat" ? "active" : ""} aria-current={subTab === "combat" ? "true" : undefined} onClick={() => selectSubTab("combat")}>
-                Combat{combatUnseen && <span className="nav-badge" aria-label="New combat activity" />}
-              </button>
-              <button className={subTab === "shop" ? "active" : ""} aria-current={subTab === "shop" ? "true" : undefined} onClick={() => selectSubTab("shop")}>Shop</button>
-              <button className={subTab === "inventory" ? "active" : ""} aria-current={subTab === "inventory" ? "true" : undefined} onClick={() => selectSubTab("inventory")}>
-                Inventory{inventoryUnseen && <span className="nav-badge" aria-label="New inventory activity" />}
-              </button>
-            </>
-          )}
-          {area === "account" && (
-            <>
-              <button className={subTab === "profile" ? "active" : ""} aria-current={subTab === "profile" ? "true" : undefined} onClick={() => selectSubTab("profile")}>Profile</button>
-              <button className={subTab === "myCharacter" ? "active" : ""} aria-current={subTab === "myCharacter" ? "true" : undefined} onClick={() => selectSubTab("myCharacter")}>My Character</button>
-              <button className={subTab === "billing" ? "active" : ""} aria-current={subTab === "billing" ? "true" : undefined} onClick={() => selectSubTab("billing")}>Billing</button>
-              {user?.role === "admin" && (
-                <>
-                  <button className={subTab === "moderation" ? "active" : ""} aria-current={subTab === "moderation" ? "true" : undefined} onClick={() => selectSubTab("moderation")}>Moderation</button>
-                  <button className={subTab === "users" ? "active" : ""} aria-current={subTab === "users" ? "true" : undefined} onClick={() => selectSubTab("users")}>Users</button>
-                </>
-              )}
-            </>
-          )}
-        </nav>
       </header>
 
       <main>

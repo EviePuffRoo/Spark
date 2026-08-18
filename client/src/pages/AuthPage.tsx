@@ -6,6 +6,7 @@ export function AuthPage() {
   const [mode, setMode] = useState<"login" | "signup" | "reset">("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [recoveryCode, setRecoveryCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -14,13 +15,18 @@ export function AuthPage() {
     setMode(next);
     setError(null);
     setPassword("");
+    setConfirmPassword("");
     setRecoveryCode("");
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setSubmitting(true);
     setError(null);
+    if (mode !== "login" && password !== confirmPassword) {
+      setError("New password and confirmation don't match.");
+      return;
+    }
+    setSubmitting(true);
     try {
       if (mode === "login") {
         await login(username, password);
@@ -84,6 +90,12 @@ export function AuthPage() {
             <span>{mode === "reset" ? "New password" : "Password"}</span>
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={mode === "login" ? "current-password" : "new-password"} required />
           </label>
+          {mode !== "login" && (
+            <label className="field">
+              <span>{mode === "reset" ? "Confirm new password" : "Confirm password"}</span>
+              <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} autoComplete="new-password" required />
+            </label>
+          )}
           {mode !== "login" && <p className="hint">At least 8 characters.</p>}
           {error && <p className="error">{error}</p>}
           <button className="btn-primary" type="submit" disabled={submitting}>

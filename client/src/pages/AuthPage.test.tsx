@@ -50,9 +50,22 @@ describe("AuthPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Sign Up" }));
     fireEvent.change(screen.getByLabelText("Username"), { target: { value: "newuser" } });
     fireEvent.change(screen.getByLabelText("Password"), { target: { value: "password123" } });
+    fireEvent.change(screen.getByLabelText("Confirm password"), { target: { value: "password123" } });
     fireEvent.click(submitButton());
 
     await waitFor(() => expect(mockSignup).toHaveBeenCalledWith("newuser", "password123"));
+  });
+
+  it("blocks signup submission and shows an error when the confirmation doesn't match", async () => {
+    render(<AuthPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Sign Up" }));
+    fireEvent.change(screen.getByLabelText("Username"), { target: { value: "newuser" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "password123" } });
+    fireEvent.change(screen.getByLabelText("Confirm password"), { target: { value: "typo" } });
+    fireEvent.click(submitButton());
+
+    expect(await screen.findByText("New password and confirmation don't match.")).toBeInTheDocument();
+    expect(mockSignup).not.toHaveBeenCalled();
   });
 
   it("switches to reset mode via Forgot password?, showing a recovery code field and hiding the mode tabs", () => {
@@ -71,9 +84,24 @@ describe("AuthPage", () => {
     fireEvent.change(screen.getByLabelText("Username"), { target: { value: "gary" } });
     fireEvent.change(screen.getByLabelText("Recovery code"), { target: { value: "ABCD-EFGH-IJKL-MNOP" } });
     fireEvent.change(screen.getByLabelText("New password"), { target: { value: "brandnewpass1" } });
+    fireEvent.change(screen.getByLabelText("Confirm new password"), { target: { value: "brandnewpass1" } });
     fireEvent.click(submitButton());
 
     await waitFor(() => expect(mockResetPassword).toHaveBeenCalledWith("gary", "ABCD-EFGH-IJKL-MNOP", "brandnewpass1"));
+  });
+
+  it("blocks reset submission and shows an error when the confirmation doesn't match", async () => {
+    render(<AuthPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Forgot password?" }));
+
+    fireEvent.change(screen.getByLabelText("Username"), { target: { value: "gary" } });
+    fireEvent.change(screen.getByLabelText("Recovery code"), { target: { value: "ABCD-EFGH-IJKL-MNOP" } });
+    fireEvent.change(screen.getByLabelText("New password"), { target: { value: "brandnewpass1" } });
+    fireEvent.change(screen.getByLabelText("Confirm new password"), { target: { value: "typo" } });
+    fireEvent.click(submitButton());
+
+    expect(await screen.findByText("New password and confirmation don't match.")).toBeInTheDocument();
+    expect(mockResetPassword).not.toHaveBeenCalled();
   });
 
   it("shows the error message when login() rejects", async () => {

@@ -22,6 +22,20 @@ beforeEach(() => {
   mockRegenerateRecoveryCode.mockReset();
 });
 
+describe("ProfilePage change password", () => {
+  it("blocks submission and shows an error when the confirmation doesn't match", () => {
+    render(<ProfilePage />);
+    fireEvent.click(screen.getByRole("button", { name: "Change Password" }));
+
+    fireEvent.change(screen.getByLabelText("Current password"), { target: { value: "oldpass1" } });
+    fireEvent.change(screen.getByLabelText("New password"), { target: { value: "newpass123" } });
+    fireEvent.change(screen.getByLabelText("Confirm new password"), { target: { value: "typo" } });
+    fireEvent.click(screen.getByRole("button", { name: "Update Password" }));
+
+    expect(screen.getByText("New password and confirmation don't match.")).toBeInTheDocument();
+  });
+});
+
 describe("ProfilePage danger zone", () => {
   it("requires a confirm() before deleting, and does nothing if the user cancels", async () => {
     vi.spyOn(window, "confirm").mockReturnValue(false);

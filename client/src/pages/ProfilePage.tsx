@@ -13,6 +13,7 @@ export function ProfilePage() {
   const [changingPassword, setChangingPassword] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordStatus, setPasswordStatus] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
 
@@ -23,11 +24,16 @@ export function ProfilePage() {
     e.preventDefault();
     setPasswordError(null);
     setPasswordStatus(null);
+    if (newPassword !== confirmPassword) {
+      setPasswordError("New password and confirmation don't match.");
+      return;
+    }
     try {
       await api.changePassword(currentPassword, newPassword);
       setPasswordStatus("Password updated.");
       setCurrentPassword("");
       setNewPassword("");
+      setConfirmPassword("");
       setChangingPassword(false);
     } catch (e) {
       setPasswordError((e as Error).message);
@@ -97,6 +103,10 @@ export function ProfilePage() {
               <label className="field">
                 <span>New password</span>
                 <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} autoComplete="new-password" required />
+              </label>
+              <label className="field">
+                <span>Confirm new password</span>
+                <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} autoComplete="new-password" required />
               </label>
               {passwordError && <p className="error">{passwordError}</p>}
               <button className="btn-primary" type="submit">Update Password</button>

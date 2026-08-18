@@ -20,6 +20,7 @@ export function ItemForgePage() {
   const [form, setForm] = useState<GenerateItemRequest>({});
   const [quantity, setQuantity] = useState<number | "">(1);
   const [results, setResults] = useState<GeneratedItem[]>([]);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [manualResult, setManualResult] = useState<GeneratedItem | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +38,7 @@ export function ItemForgePage() {
   function switchMode(next: "generate" | "manual") {
     setCreationMode(next);
     setResults([]);
+    setEditingIndex(null);
     setManualResult(null);
     setSaveOpen(false);
     setSaveStatus("idle");
@@ -46,6 +48,7 @@ export function ItemForgePage() {
     const qty = Math.min(10, Math.max(1, Number(quantity) || 1));
     setLoading(true);
     setError(null);
+    setEditingIndex(null);
     setSaveOpen(false);
     setSaveStatus("idle");
     try {
@@ -61,6 +64,12 @@ export function ItemForgePage() {
 
   function removeResult(index: number) {
     setResults(results.filter((_, i) => i !== index));
+    setEditingIndex(null);
+  }
+
+  function updateResult(index: number, patch: GeneratedItem) {
+    setResults(results.map((r, i) => (i === index ? patch : r)));
+    setEditingIndex(null);
   }
 
   async function handleSaveAll() {
@@ -126,14 +135,30 @@ export function ItemForgePage() {
         <>
           {results.map((item, index) => (
             <div className="batch-result-card" key={index}>
-              <ItemCardView item={item} />
-              {results.length > 1 && saveStatus !== "saved" && (
-                <button className="btn-danger" onClick={() => removeResult(index)} aria-label={`Remove ${item.name} from batch`}>Remove from batch</button>
+              {editingIndex === index ? (
+                <ItemEditor
+                  value={item}
+                  onSave={async (patch) => updateResult(index, patch)}
+                  onCancel={() => setEditingIndex(null)}
+                  saveLabel="Save Changes"
+                />
+              ) : (
+                <>
+                  <ItemCardView item={item} />
+                  {saveStatus !== "saved" && (
+                    <div className="batch-result-actions">
+                      <button className="btn-secondary" onClick={() => setEditingIndex(index)}>Edit</button>
+                      {results.length > 1 && (
+                        <button className="btn-danger" onClick={() => removeResult(index)} aria-label={`Remove ${item.name} from batch`}>Remove from batch</button>
+                      )}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           ))}
 
-          {!saveOpen && saveStatus !== "saved" && (
+          {editingIndex === null && !saveOpen && saveStatus !== "saved" && (
             <button className="btn-secondary" onClick={() => setSaveOpen(true)}>
               {results.length > 1 ? `Save All ${results.length} to Roster` : "Save to Roster"}
             </button>

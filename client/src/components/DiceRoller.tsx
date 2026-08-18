@@ -19,7 +19,7 @@ interface RollRecord {
 const PRESETS = [4, 6, 8, 10, 12, 20, 100];
 const HISTORY_LIMIT = 50;
 
-function parseNotation(input: string): { count: number; sides: number; modifier: number } | null {
+export function parseNotation(input: string): { count: number; sides: number; modifier: number } | null {
   const match = input.trim().match(/^(\d*)d(\d+)([+-]\d+)?$/i);
   if (!match) return null;
   const count = match[1] ? Number(match[1]) : 1;
@@ -29,7 +29,7 @@ function parseNotation(input: string): { count: number; sides: number; modifier:
   return { count, sides, modifier };
 }
 
-function rollDice(count: number, sides: number): number[] {
+export function rollDice(count: number, sides: number): number[] {
   return Array.from({ length: count }, () => Math.floor(Math.random() * sides) + 1);
 }
 

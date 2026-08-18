@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import type { SearchResult, LiveCombatant, EncounterStateInput, EncounterTable, EncounterZone, HpStatus, Dungeon, Item } from "@spark/shared";
-import { computeEquipmentBonuses, CONDITIONS_COMPENDIUM } from "@spark/shared";
+import type { SearchResult, LiveCombatant, LiveCombatantCondition, EncounterStateInput, EncounterTable, EncounterZone, HpStatus, Dungeon, Item } from "@spark/shared";
+import { computeEquipmentBonuses, CONDITIONS_COMPENDIUM, parseStatBlockAttacks } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { useAuth } from "../AuthContext";
 import { EntitySearchPicker } from "./EntitySearchPicker";
@@ -12,6 +12,7 @@ import { computeDifficulty, type DifficultyRating } from "../encounterDifficulty
 import { CombatIcon } from "./icons";
 import { EmptyState } from "./EmptyState";
 import { PresentationView } from "../pages/PresentationView";
+import { parseNotation, rollDice } from "./DiceRoller";
 
 const CONDITIONS = CONDITIONS_COMPENDIUM.map((c) => c.name);
 const CONDITION_RULES: Record<string, string> = Object.fromEntries(
@@ -83,7 +84,17 @@ export function InitiativeTracker({
   const [customLevel, setCustomLevel] = useState<number | "">("");
   const [hpDelta, setHpDelta] = useState<Record<string, string>>({});
   const [openConditionsFor, setOpenConditionsFor] = useState<string | null>(null);
+  const [conditionDuration, setConditionDuration] = useState<Record<string, string>>({});
   const [showConditionRules, setShowConditionRules] = useState(false);
+  const [attackOpenFor, setAttackOpenFor] = useState<string | null>(null);
+  const [attackTargetId, setAttackTargetId] = useState("");
+  const [attackChoice, setAttackChoice] = useState("");
+  const [attackToHitBonus, setAttackToHitBonus] = useState("0");
+  const [attackDamageDice, setAttackDamageDice] = useState("1d6");
+  const [attackAdvMode, setAttackAdvMode] = useState<"normal" | "adv" | "dis">("normal");
+  const [attackRollResult, setAttackRollResult] = useState<{ rolls: number[]; total: number; hit: boolean | null } | null>(null);
+  const [attackDamageResult, setAttackDamageResult] = useState<{ total: number } | null>(null);
+  const [attackError, setAttackError] = useState<string | null>(null);
   const [showZoneMap, setShowZoneMap] = useState(false);
   const [showTableView, setShowTableView] = useState(false);
   const [activeDungeon, setActiveDungeon] = useState<Dungeon | null>(null);
@@ -109,9 +120,18 @@ export function InitiativeTracker({
 
   const activeEncounter: EncounterStateInput = partyMode ? (liveEncounter ?? BLANK_ENCOUNTER) : encounter;
 
-  // Older saved encounters (before conditions/kind/hpVisible/zones existed) won't have these fields.
+  // Older saved encounters (before conditions/kind/hpVisible/zones existed) won't have these
+  // fields, and encounters saved before duration tracking existed have plain strings in
+  // conditions rather than { name, expiresAtRound } — normalize both on the way in.
   const sorted = [...activeEncounter.combatants]
-    .map((c) => ({ ...c, conditions: c.conditions ?? [], kind: c.kind ?? "custom", hpVisible: c.hpVisible ?? false }))
+    .map((c) => ({
+      ...c,
+      conditions: (c.conditions ?? []).map((cond): LiveCombatantCondition =>
+        typeof cond === "string" ? { name: cond, expiresAtRound: null } : cond
+      ),
+      kind: c.kind ?? "custom",
+      hpVisible: c.hpVisible ?? false,
+    }))
     .sort((a, b) => b.initiative - a.initiative);
   const activeId = sorted.length > 0 ? sorted[activeEncounter.turnIndex % sorted.length]?.id : null;
   const difficulty = computeDifficulty(sorted);
@@ -159,6 +179,7 @@ export function InitiativeTracker({
     if (type === "character") {
       const character = await api.getCharacter(result.id);
       const acBonus = await equipmentAcBonusFor(character.equippedItems, character.attunedItems);
+      const attacks = parseStatBlockAttacks(character.statBlock.actions);
       addCombatant({
         id: crypto.randomUUID(),
         name: character.name,
@@ -173,6 +194,7 @@ export function InitiativeTracker({
         hpVisible: false,
         xp: character.statBlock.xp,
         equipmentAcBonus: acBonus > 0 ? acBonus : undefined,
+        attacks: attacks.length > 0 ? attacks : undefined,
       });
     } else if (type === "playerCharacter") {
       const pc = await api.getPlayerCharacter(result.id);
@@ -248,13 +270,18 @@ export function InitiativeTracker({
     applyEncounterUpdate((e) => ({ ...e, combatants: e.combatants.map((c) => (c.id === id ? { ...c, ...patch } : c)) }));
   }
 
-  function toggleCondition(id: string, condition: string) {
+  function toggleCondition(id: string, name: string) {
     applyEncounterUpdate((e) => ({
       ...e,
       combatants: e.combatants.map((c) => {
         if (c.id !== id) return c;
         const conditions = c.conditions ?? [];
-        return { ...c, conditions: conditions.includes(condition) ? conditions.filter((x) => x !== condition) : [...conditions, condition] };
+        if (conditions.some((cond) => cond.name === name)) {
+          return { ...c, conditions: conditions.filter((cond) => cond.name !== name) };
+        }
+        const rounds = Number(conditionDuration[id]);
+        const expiresAtRound = Number.isFinite(rounds) && rounds > 0 ? e.round + rounds : null;
+        return { ...c, conditions: [...conditions, { name, expiresAtRound }] };
       }),
     }));
   }
@@ -367,6 +394,72 @@ export function InitiativeTracker({
         .then(setLiveEncounter)
         .catch((err) => setLiveError((err as Error).message));
     }
+  }
+
+  function openAttackFor(c: LiveCombatant) {
+    setAttackOpenFor(c.id);
+    const firstTarget = sorted.find((t) => t.id !== c.id);
+    setAttackTargetId(firstTarget?.id ?? "");
+    selectAttack(c, c.attacks?.[0]?.name ?? "");
+    setAttackAdvMode("normal");
+    setAttackError(null);
+  }
+
+  function selectAttack(c: LiveCombatant, name: string) {
+    setAttackChoice(name);
+    const found = c.attacks?.find((a) => a.name === name);
+    setAttackToHitBonus(String(found?.toHitBonus ?? 0));
+    setAttackDamageDice(found?.damageDice ?? "1d6");
+    setAttackRollResult(null);
+    setAttackDamageResult(null);
+    setAttackError(null);
+  }
+
+  async function announceAttackRoll(attacker: LiveCombatant, payload: {
+    notation: string; results: number[]; modifier: number; total: number; mode?: "adv" | "dis";
+  }, label: string) {
+    if (!partyMode || !partyWorldId) return;
+    try {
+      await api.postRollLogEntry({ worldId: partyWorldId, rollerName: attacker.name, hiddenFromParty: false, label, ...payload });
+    } catch {
+      // Best-effort party announcement — the attack itself already resolved locally either way.
+    }
+  }
+
+  function rollToHit(attacker: LiveCombatant) {
+    const target = sorted.find((t) => t.id === attackTargetId);
+    const bonus = Number(attackToHitBonus) || 0;
+    const rolls = attackAdvMode === "normal" ? [rollD20()] : [rollD20(), rollD20()];
+    const kept = attackAdvMode === "dis" ? Math.min(...rolls) : Math.max(...rolls);
+    const total = kept + bonus;
+    const hit = target?.armorClass !== undefined ? total >= target.armorClass : null;
+    setAttackRollResult({ rolls, total, hit });
+    setAttackDamageResult(null);
+    if (target) {
+      const acNote = target.armorClass !== undefined ? ` (AC ${target.armorClass})` : "";
+      const outcome = hit === null ? "" : hit ? " — HIT" : " — MISS";
+      announceAttackRoll(attacker, {
+        notation: "1d20", results: rolls, modifier: bonus, total, mode: attackAdvMode === "normal" ? undefined : attackAdvMode,
+      }, `${attackChoice || "Attack"}: ${attacker.name} vs ${target.name}${acNote}${outcome}`);
+    }
+  }
+
+  function rollDamage(attacker: LiveCombatant) {
+    const target = sorted.find((t) => t.id === attackTargetId);
+    if (!target) return;
+    const parsed = parseNotation(attackDamageDice);
+    if (!parsed) {
+      setAttackError(`Can't parse "${attackDamageDice}" — try something like 1d8+3.`);
+      return;
+    }
+    setAttackError(null);
+    const results = rollDice(parsed.count, parsed.sides);
+    const total = Math.max(0, results.reduce((sum, r) => sum + r, 0) + parsed.modifier);
+    setAttackDamageResult({ total });
+    adjustHp(target.id, -total);
+    announceAttackRoll(attacker, {
+      notation: attackDamageDice, results, modifier: parsed.modifier, total,
+    }, `${attackChoice || "Attack"} damage: ${attacker.name} vs ${target.name}`);
   }
 
   function openLootFor(c: LiveCombatant) {
@@ -645,25 +738,108 @@ export function InitiativeTracker({
                   {!!c.equipmentAcBonus && <span className="item-stat-badge" title={`Includes +${c.equipmentAcBonus} from equipped items`}>+{c.equipmentAcBonus} equipped</span>}
                 </span>
               )}
+              {sorted.length > 1 && (
+                <button
+                  className="btn-secondary"
+                  aria-expanded={attackOpenFor === c.id}
+                  onClick={() => (attackOpenFor === c.id ? setAttackOpenFor(null) : openAttackFor(c))}
+                >
+                  ⚔ Attack
+                </button>
+              )}
               <button className="btn-danger" onClick={() => removeCombatant(c.id)} aria-label={`Remove ${c.name}`}>Remove</button>
             </div>
 
+            {attackOpenFor === c.id && (
+              <div className="save-panel attack-panel">
+                <label className="field">
+                  <span>Target</span>
+                  <select value={attackTargetId} onChange={(e) => setAttackTargetId(e.target.value)}>
+                    {sorted.filter((t) => t.id !== c.id).map((t) => (
+                      <option key={t.id} value={t.id}>{t.name}{t.armorClass !== undefined ? ` (AC ${t.armorClass})` : ""}</option>
+                    ))}
+                  </select>
+                </label>
+                {!!c.attacks?.length && (
+                  <label className="field">
+                    <span>Attack</span>
+                    <select value={attackChoice} onChange={(e) => selectAttack(c, e.target.value)}>
+                      {c.attacks.map((a) => <option key={a.name} value={a.name}>{a.name}</option>)}
+                      <option value="">Manual attack</option>
+                    </select>
+                  </label>
+                )}
+                {(() => {
+                  const selected = c.attacks?.find((a) => a.name === attackChoice);
+                  return selected?.savingThrow ? (
+                    <p className="hint">
+                      Also calls for a DC {selected.savingThrow.dc} {selected.savingThrow.ability.toUpperCase()} saving throw — resolve that separately.
+                    </p>
+                  ) : null;
+                })()}
+                <label className="field">
+                  <span>To-hit bonus</span>
+                  <input type="number" value={attackToHitBonus} onChange={(e) => setAttackToHitBonus(e.target.value)} />
+                </label>
+                <div className="tabs apply-mode-toggle" role="tablist">
+                  <button className={attackAdvMode === "normal" ? "active" : ""} aria-current={attackAdvMode === "normal" ? "true" : undefined} onClick={() => setAttackAdvMode("normal")}>Normal</button>
+                  <button className={attackAdvMode === "adv" ? "active" : ""} aria-current={attackAdvMode === "adv" ? "true" : undefined} onClick={() => setAttackAdvMode("adv")}>Advantage</button>
+                  <button className={attackAdvMode === "dis" ? "active" : ""} aria-current={attackAdvMode === "dis" ? "true" : undefined} onClick={() => setAttackAdvMode("dis")}>Disadvantage</button>
+                </div>
+                <button className="btn-primary" onClick={() => rollToHit(c)}>Roll to Hit</button>
+                {attackRollResult && (
+                  <p className="encounter-roll-result" role="status">
+                    Rolled [{attackRollResult.rolls.join(", ")}]{attackToHitBonus !== "0" ? ` + ${attackToHitBonus}` : ""} = <strong className="mono">{attackRollResult.total}</strong>
+                    {" — "}
+                    {attackRollResult.hit === null ? "target has no AC set" : attackRollResult.hit ? <strong>HIT</strong> : <strong>MISS</strong>}
+                  </p>
+                )}
+                {attackRollResult?.hit !== false && (
+                  <>
+                    <label className="field">
+                      <span>Damage dice</span>
+                      <input type="text" value={attackDamageDice} onChange={(e) => setAttackDamageDice(e.target.value)} placeholder="e.g. 1d8+3" />
+                    </label>
+                    {attackError && <p className="error">{attackError}</p>}
+                    <button className="btn-primary" onClick={() => rollDamage(c)}>Roll Damage &amp; Apply</button>
+                    {attackDamageResult && (
+                      <p className="encounter-roll-result" role="status">Applied {attackDamageResult.total} damage.</p>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
             <div className="combatant-conditions">
-              {c.conditions.map((cond) => (
-                <span key={cond} className="condition-chip">
-                  {cond}
-                  <button onClick={() => toggleCondition(c.id, cond)} aria-label={`Remove ${cond} from ${c.name}`}>×</button>
-                </span>
-              ))}
+              {c.conditions.map((cond) => {
+                const expired = cond.expiresAtRound !== null && cond.expiresAtRound < activeEncounter.round;
+                return (
+                  <span key={cond.name} className={`condition-chip${expired ? " condition-chip-expired" : ""}`}>
+                    {cond.name}
+                    {cond.expiresAtRound !== null && ` (until round ${cond.expiresAtRound})`}
+                    <button onClick={() => toggleCondition(c.id, cond.name)} aria-label={`Remove ${cond.name} from ${c.name}`}>×</button>
+                  </span>
+                );
+              })}
               <button className="btn-secondary condition-toggle" aria-expanded={openConditionsFor === c.id} onClick={() => setOpenConditionsFor(openConditionsFor === c.id ? null : c.id)}>
                 + Condition
               </button>
               {openConditionsFor === c.id && (
                 <div className="condition-picker">
+                  <label className="field condition-duration-field">
+                    <span>Duration in rounds (optional)</span>
+                    <input
+                      type="number"
+                      min={1}
+                      value={conditionDuration[c.id] ?? ""}
+                      onChange={(e) => setConditionDuration((d) => ({ ...d, [c.id]: e.target.value }))}
+                      placeholder="indefinite"
+                    />
+                  </label>
                   {CONDITIONS.map((cond) => (
                     <button
                       key={cond}
-                      className={c.conditions.includes(cond) ? "active" : ""}
+                      className={c.conditions.some((x) => x.name === cond) ? "active" : ""}
                       onClick={() => toggleCondition(c.id, cond)}
                     >
                       {cond}
@@ -773,7 +949,7 @@ export function InitiativeTracker({
             {c.conditions.length > 0 && (
               <div className="combatant-conditions">
                 {c.conditions.map((cond) => (
-                  <span key={cond} className="condition-chip condition-chip-readonly">{cond}</span>
+                  <span key={cond.name} className="condition-chip condition-chip-readonly">{cond.name}</span>
                 ))}
               </div>
             )}

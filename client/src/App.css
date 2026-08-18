@@ -2109,6 +2109,15 @@ textarea {
   padding: 0;
 }
 
+.condition-chip-expired {
+  opacity: 0.55;
+}
+
+.condition-duration-field {
+  width: 100%;
+  margin-bottom: 6px;
+}
+
 .condition-toggle {
   margin-top: 0;
   padding: 2px 10px;

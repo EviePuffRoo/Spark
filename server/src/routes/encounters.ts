@@ -3,15 +3,50 @@ import { prisma } from "../db.js";
 import { toEncounterDTO } from "../serialize.js";
 import { findAccessibleWorld } from "../worldAccess.js";
 import { publishWorldChange } from "../worldEvents.js";
-import type { LiveCombatant, CombatantKind, EncounterZone, EncounterZoneEffect, ZoneHazard } from "@spark/shared";
+import type { LiveCombatant, LiveCombatantCondition, CombatantKind, EncounterZone, EncounterZoneEffect, ZoneHazard, ParsedAttack, AbilityKey } from "@spark/shared";
 
 export const encountersRouter = Router();
+
+const ABILITY_KEYS: AbilityKey[] = ["str", "dex", "con", "int", "wis", "cha"];
+
+// Conditions used to be a plain string[]; a raw string entry from an
+// encounter saved before duration tracking existed is treated as an
+// indefinite condition rather than dropped, so older saved encounters
+// keep working without a migration.
+function coerceCondition(raw: unknown): LiveCombatantCondition | null {
+  if (typeof raw === "string") return raw ? { name: raw, expiresAtRound: null } : null;
+  if (!raw || typeof raw !== "object") return null;
+  const c = raw as Record<string, unknown>;
+  if (typeof c.name !== "string" || !c.name) return null;
+  return { name: c.name, expiresAtRound: typeof c.expiresAtRound === "number" ? c.expiresAtRound : null };
+}
+
+function coerceAttack(raw: unknown): ParsedAttack | null {
+  if (!raw || typeof raw !== "object") return null;
+  const a = raw as Record<string, unknown>;
+  if (typeof a.name !== "string") return null;
+  let savingThrow: ParsedAttack["savingThrow"] = null;
+  if (a.savingThrow && typeof a.savingThrow === "object") {
+    const s = a.savingThrow as Record<string, unknown>;
+    if (ABILITY_KEYS.includes(s.ability as AbilityKey) && typeof s.dc === "number") {
+      savingThrow = { ability: s.ability as AbilityKey, dc: s.dc };
+    }
+  }
+  return {
+    name: a.name,
+    toHitBonus: typeof a.toHitBonus === "number" ? a.toHitBonus : null,
+    damageDice: typeof a.damageDice === "string" ? a.damageDice : null,
+    damageType: typeof a.damageType === "string" ? a.damageType : null,
+    savingThrow,
+  };
+}
 
 function coerceCombatant(raw: unknown): LiveCombatant | null {
   if (!raw || typeof raw !== "object") return null;
   const c = raw as Record<string, unknown>;
   if (typeof c.id !== "string" || typeof c.name !== "string") return null;
   const kind: CombatantKind = c.kind === "monster" || c.kind === "playerCharacter" ? c.kind : "custom";
+  const attacks = Array.isArray(c.attacks) ? c.attacks.map(coerceAttack).filter((a): a is ParsedAttack => a !== null) : undefined;
   return {
     id: c.id,
     name: c.name,
@@ -21,7 +56,7 @@ function coerceCombatant(raw: unknown): LiveCombatant | null {
     currentHp: typeof c.currentHp === "number" ? c.currentHp : undefined,
     hpStatus: "healthy", // recomputed server-side on every read, this value is discarded
     armorClass: typeof c.armorClass === "number" ? c.armorClass : undefined,
-    conditions: Array.isArray(c.conditions) ? c.conditions.filter((x): x is string => typeof x === "string") : [],
+    conditions: Array.isArray(c.conditions) ? c.conditions.map(coerceCondition).filter((x): x is LiveCombatantCondition => x !== null) : [],
     notes: typeof c.notes === "string" ? c.notes : "",
     hpVisible: c.hpVisible !== false,
     xp: typeof c.xp === "number" ? c.xp : undefined,
@@ -29,6 +64,7 @@ function coerceCombatant(raw: unknown): LiveCombatant | null {
     zoneId: typeof c.zoneId === "string" ? c.zoneId : undefined,
     hidden: c.hidden === true,
     playerCharacterId: typeof c.playerCharacterId === "string" ? c.playerCharacterId : undefined,
+    attacks: attacks && attacks.length > 0 ? attacks : undefined,
   };
 }
 

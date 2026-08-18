@@ -50,9 +50,13 @@ function generateMonsterName(): string {
   return `${pick(MONSTER_FIRST_NAMES)} ${pick(MONSTER_EPITHETS)}`;
 }
 
+function articleFor(word: string): "a" | "an" {
+  return /^[aeiou]/i.test(word) ? "an" : "a";
+}
+
 function buildNpcBackstory(templateName: string, backgroundName: string | undefined): Backstory {
   return {
-    occupationOrRole: backgroundName ? `${templateName} (formerly a ${backgroundName})` : templateName,
+    occupationOrRole: backgroundName ? `${templateName} (formerly ${articleFor(backgroundName)} ${backgroundName})` : templateName,
     personalityTrait: pick(PERSONALITY_TRAITS),
     ideal: pick(IDEALS),
     bond: pick(BONDS),

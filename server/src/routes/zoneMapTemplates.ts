@@ -28,7 +28,7 @@ zoneMapTemplatesRouter.get("/:id", async (req, res) => {
 
 zoneMapTemplatesRouter.post("/", async (req, res) => {
   const body = req.body ?? {};
-  const { name, zones, worldId, tags, notes } = body;
+  const { name, zones, worldId, tags, notes, hiddenFromParty } = body;
 
   if (!name || !Array.isArray(zones) || zones.length === 0) {
     return res.status(400).json({ error: "Missing required zone map template fields" });
@@ -42,6 +42,7 @@ zoneMapTemplatesRouter.post("/", async (req, res) => {
       worldId: worldId ?? null,
       tags: JSON.stringify(Array.isArray(tags) ? tags : []),
       notes: notes ?? null,
+      hiddenFromParty: !!hiddenFromParty,
       userId: req.userId!,
     },
   });

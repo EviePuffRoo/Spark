@@ -7,6 +7,7 @@ import { api } from "../api";
 import { useActiveWorld } from "../ActiveWorldContext";
 import { AdventureCardView } from "../components/AdventureCardView";
 import { EntitySearchPicker } from "../components/EntitySearchPicker";
+import { SaveEntityFields } from "../components/SaveEntityFields";
 
 type RoleSlot<T> = { kind: "new"; data: T } | { kind: "existing"; id: string; name: string };
 
@@ -115,6 +116,7 @@ export function AdventureForgePage() {
   const [saveWorldId, setSaveWorldId] = useState(worldId);
   const [saveTags, setSaveTags] = useState("");
   const [saveNotes, setSaveNotes] = useState("");
+  const [saveHidden, setSaveHidden] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
 
   const allCoreFilled = !!(questGiver && antagonist && startLocation && climaxLocation && reward);
@@ -174,6 +176,7 @@ export function AdventureForgePage() {
         worldId,
         tags: saveTags.split(",").map((t) => t.trim()).filter(Boolean),
         notes: saveNotes || undefined,
+        hiddenFromParty: saveHidden,
       });
 
       const cast: [string | null, EntityType, string][] = [
@@ -198,23 +201,12 @@ export function AdventureForgePage() {
   }
 
   const savePanelFields = (
-    <>
-      <label className="field">
-        <span>World (optional)</span>
-        <select value={saveWorldId} onChange={(e) => setSaveWorldId(e.target.value)}>
-          <option value="">Unassigned</option>
-          {worlds.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
-        </select>
-      </label>
-      <label className="field">
-        <span>Tags (comma separated)</span>
-        <input type="text" value={saveTags} onChange={(e) => setSaveTags(e.target.value)} placeholder="one-shot, act-1" />
-      </label>
-      <label className="field">
-        <span>Notes</span>
-        <textarea value={saveNotes} onChange={(e) => setSaveNotes(e.target.value)} rows={3} placeholder="Anything else for your table…" />
-      </label>
-    </>
+    <SaveEntityFields
+      worlds={worlds} worldId={saveWorldId} setWorldId={setSaveWorldId}
+      tags={saveTags} setTags={setSaveTags} tagsPlaceholder="one-shot, act-1"
+      notes={saveNotes} setNotes={setSaveNotes} notesPlaceholder="Anything else for your table…"
+      hiddenFromParty={saveHidden} setHiddenFromParty={setSaveHidden}
+    />
   );
 
   return (

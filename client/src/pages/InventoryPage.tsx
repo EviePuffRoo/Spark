@@ -23,7 +23,7 @@ export function InventoryPage() {
   const [summary, setSummary] = useState<LedgerSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [authorName, setAuthorName] = useState(user?.username ?? "");
+  const [authorName, setAuthorName] = useState(user?.displayName || user?.username || "");
   const [goldAmount, setGoldAmount] = useState("");
   const [goldReason, setGoldReason] = useState("");
   const [itemName, setItemName] = useState("");
@@ -54,7 +54,7 @@ export function InventoryPage() {
       await api.postLedgerEntry({
         worldId, kind: "gold", amount: Math.trunc(amount),
         label: goldReason.trim() || (amount > 0 ? "Gold added" : "Gold spent"),
-        authorName: authorName.trim() || user!.username,
+        authorName: authorName.trim() || user!.displayName || user!.username,
       });
       setGoldAmount("");
       setGoldReason("");
@@ -72,7 +72,7 @@ export function InventoryPage() {
       await api.postLedgerEntry({
         worldId, kind: "item", amount: Math.trunc(quantity),
         label: itemName.trim(),
-        authorName: authorName.trim() || user!.username,
+        authorName: authorName.trim() || user!.displayName || user!.username,
       });
       setItemName("");
       setItemQuantity("1");
@@ -116,7 +116,7 @@ export function InventoryPage() {
           <>
             <label className="field">
               <span>Your name</span>
-              <input type="text" value={authorName} onChange={(e) => setAuthorName(e.target.value)} placeholder={user?.username} />
+              <input type="text" value={authorName} onChange={(e) => setAuthorName(e.target.value)} placeholder={user?.displayName || user?.username} />
             </label>
 
             <div className="save-panel">

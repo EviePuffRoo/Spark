@@ -5,7 +5,7 @@ import { useLocalStorage } from "../useLocalStorage";
 import { api } from "../api";
 
 export function ProfilePage() {
-  const { user, logout, regenerateRecoveryCode, deleteAccount } = useAuth();
+  const { user, logout, regenerateRecoveryCode, deleteAccount, updateDisplayName } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const [notifyEnabled, setNotifyEnabled] = useLocalStorage("spark-notify-my-turn", false);
   const [notifyBlocked, setNotifyBlocked] = useState(false);
@@ -19,6 +19,26 @@ export function ProfilePage() {
 
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const [displayName, setDisplayName] = useState(user?.displayName ?? "");
+  const [savingDisplayName, setSavingDisplayName] = useState(false);
+  const [displayNameStatus, setDisplayNameStatus] = useState<string | null>(null);
+  const [displayNameError, setDisplayNameError] = useState<string | null>(null);
+
+  async function handleSaveDisplayName(e: React.FormEvent) {
+    e.preventDefault();
+    setDisplayNameError(null);
+    setDisplayNameStatus(null);
+    setSavingDisplayName(true);
+    try {
+      await updateDisplayName(displayName);
+      setDisplayNameStatus("Saved.");
+    } catch (e) {
+      setDisplayNameError((e as Error).message);
+    } finally {
+      setSavingDisplayName(false);
+    }
+  }
 
   async function handleChangePassword(e: React.FormEvent) {
     e.preventDefault();
@@ -84,6 +104,20 @@ export function ProfilePage() {
       <div className="panel">
         <h2>Profile</h2>
         <p className="entity-meta">Signed in as {user.username}{user.role === "admin" ? " (admin)" : ""}</p>
+
+        <h3 className="section-heading">Display Name</h3>
+        <div className="save-panel">
+          <p className="hint">Shown instead of your login username on party ledgers, shop transactions, and anywhere else your name appears to others. Leave blank to use your username.</p>
+          <form className="account-change-password" onSubmit={handleSaveDisplayName}>
+            <label className="field">
+              <span>Display name</span>
+              <input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder={user.username} maxLength={40} />
+            </label>
+            {displayNameError && <p className="error">{displayNameError}</p>}
+            {displayNameStatus && <p className="success">{displayNameStatus}</p>}
+            <button className="btn-primary" type="submit" disabled={savingDisplayName}>{savingDisplayName ? "Saving…" : "Save Display Name"}</button>
+          </form>
+        </div>
 
         <h3 className="section-heading">Account</h3>
         <div className="save-panel">

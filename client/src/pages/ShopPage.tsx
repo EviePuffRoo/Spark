@@ -13,7 +13,7 @@ export function ShopPage() {
   const { worlds, worldId } = useActiveWorld();
   const [shops, setShops] = useState<Shop[]>([]);
   const [selectedShopId, setSelectedShopId] = useState("");
-  const [authorName, setAuthorName] = useState(user?.username ?? "");
+  const [authorName, setAuthorName] = useState(user?.displayName || user?.username || "");
   const [quantities, setQuantities] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [busyStockId, setBusyStockId] = useState<string | null>(null);
@@ -53,7 +53,7 @@ export function ShopPage() {
     setBusyStockId(stockId);
     setError(null);
     try {
-      const name = authorName.trim() || user!.username;
+      const name = authorName.trim() || user!.displayName || user!.username;
       await api.postLedgerEntry({ worldId, kind: "gold", amount: -entry.price * qty, label: `Bought ${entry.itemName} from ${shop.name}`, authorName: name });
       await api.postLedgerEntry({ worldId, kind: "item", amount: qty, label: entry.itemName, authorName: name });
       if (entry.quantity !== -1) {
@@ -75,7 +75,7 @@ export function ShopPage() {
     setBusyStockId(stockId);
     setError(null);
     try {
-      const name = authorName.trim() || user!.username;
+      const name = authorName.trim() || user!.displayName || user!.username;
       const sellPrice = Math.floor(entry.price * SELL_RATE);
       await api.postLedgerEntry({ worldId, kind: "gold", amount: sellPrice * qty, label: `Sold ${entry.itemName} to ${shop.name}`, authorName: name });
       await api.postLedgerEntry({ worldId, kind: "item", amount: -qty, label: entry.itemName, authorName: name });
@@ -116,7 +116,7 @@ export function ShopPage() {
             </label>
             <label className="field">
               <span>Your name</span>
-              <input type="text" value={authorName} onChange={(e) => setAuthorName(e.target.value)} placeholder={user?.username} />
+              <input type="text" value={authorName} onChange={(e) => setAuthorName(e.target.value)} placeholder={user?.displayName || user?.username} />
             </label>
           </>
         )}

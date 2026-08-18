@@ -28,7 +28,7 @@ itemsRouter.post("/", async (req, res) => {
   const body = req.body ?? {};
   const {
     name, itemType, category, rarity, description, property, history, worldId, tags, notes,
-    rarityTier, bonusType, bonusValue, requiresAttunement, charges, rechargeRule, value,
+    rarityTier, bonusType, bonusValue, requiresAttunement, charges, rechargeRule, value, hiddenFromParty,
   } = body;
 
   if (!name || !itemType || !category || !rarity || !description || !property || !history) {
@@ -48,6 +48,7 @@ itemsRouter.post("/", async (req, res) => {
       worldId: worldId ?? null,
       tags: JSON.stringify(Array.isArray(tags) ? tags : []),
       notes: notes ?? null,
+      hiddenFromParty: !!hiddenFromParty,
       userId: req.userId!,
     },
   });

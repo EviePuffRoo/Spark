@@ -26,7 +26,7 @@ regionsRouter.get("/:id", async (req, res) => {
 
 regionsRouter.post("/", async (req, res) => {
   const body = req.body ?? {};
-  const { name, terrainCategory, dangerLevel, description, worldId, tags, notes, x, y } = body;
+  const { name, terrainCategory, dangerLevel, description, worldId, tags, notes, x, y, hiddenFromParty } = body;
 
   if (!name || !terrainCategory || !description) {
     return res.status(400).json({ error: "Missing required region fields" });
@@ -41,6 +41,7 @@ regionsRouter.post("/", async (req, res) => {
       y: typeof y === "number" ? y : 0,
       tags: JSON.stringify(Array.isArray(tags) ? tags : []),
       notes: notes ?? null,
+      hiddenFromParty: !!hiddenFromParty,
       userId: req.userId!,
     },
   });

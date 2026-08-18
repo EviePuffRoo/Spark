@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, PlayerCharacter, ZoneMapTemplate, Dungeon, DungeonRoomRect, Shop, Region, Settlement, EntityType, QuestStatus } from "@spark/shared";
 import { QUEST_STATUSES, QUEST_STATUS_LABELS, layoutDungeonRooms } from "@spark/shared";
-import { api, type WorldSummary } from "../api";
+import { api, type WorldSummary, type WorldMemberInfo } from "../api";
 import { useAuth } from "../AuthContext";
 import { downloadJson } from "../downloadJson";
 import { StatBlockView } from "../components/StatBlockView";
@@ -182,6 +182,10 @@ export function RosterPage({
   const [publishDescription, setPublishDescription] = useState("");
   const [publishStatus, setPublishStatus] = useState<"idle" | "saving" | "published">("idle");
   const [showDungeonMap, setShowDungeonMap] = useState(false);
+  const [worldMembers, setWorldMembers] = useState<WorldMemberInfo[]>([]);
+  const [assignTargetUserId, setAssignTargetUserId] = useState("");
+  const [assignStatus, setAssignStatus] = useState<"idle" | "saving">("idle");
+  const [assignError, setAssignError] = useState<string | null>(null);
 
   function refresh() {
     const w = worldFilter || undefined;
@@ -257,6 +261,44 @@ export function RosterPage({
     selectedCharacter?.name ?? selectedItem?.name ?? selectedLocation?.name ?? selectedQuest?.title ??
     selectedFaction?.name ?? selectedEncounter?.name ?? selectedNote?.title ?? selectedAdventure?.title ?? selectedPlayerCharacter?.name ?? selectedZoneMapTemplate?.name ?? selectedDungeon?.name ?? selectedShop?.name ?? selectedRegion?.name ?? selectedSettlement?.name ?? "";
   const canEditSelected = !selected || selected.userId === user?.id;
+
+  // Reassigning a player character's owner is a world-ownership action, not
+  // an entity-ownership one (canEditSelected) — the whole point is letting
+  // the DM hand off a PC they created to the player who'll actually use it,
+  // which means it must stay available even after that hand-off leaves the
+  // DM's own account no longer owning the PC.
+  const selectedPlayerCharacterWorld = selectedPlayerCharacter?.worldId
+    ? worlds.find((w) => w.id === selectedPlayerCharacter.worldId)
+    : undefined;
+  const canReassignSelectedPlayerCharacter = !!selectedPlayerCharacterWorld?.isOwner;
+
+  useEffect(() => {
+    setAssignError(null);
+    if (!canReassignSelectedPlayerCharacter || !selectedPlayerCharacterWorld) {
+      setWorldMembers([]);
+      return;
+    }
+    api.getWorldMembers(selectedPlayerCharacterWorld.id).then(setWorldMembers).catch(() => setWorldMembers([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPlayerCharacterWorld?.id, canReassignSelectedPlayerCharacter]);
+
+  useEffect(() => {
+    setAssignTargetUserId(selectedPlayerCharacter?.userId ?? "");
+  }, [selectedPlayerCharacter?.id, selectedPlayerCharacter?.userId]);
+
+  async function handleReassignOwner() {
+    if (!selectedPlayerCharacter || !assignTargetUserId || assignTargetUserId === selectedPlayerCharacter.userId) return;
+    setAssignStatus("saving");
+    setAssignError(null);
+    try {
+      await api.reassignPlayerCharacterOwner(selectedPlayerCharacter.id, assignTargetUserId);
+      refresh();
+    } catch (e) {
+      setAssignError((e as Error).message);
+    } finally {
+      setAssignStatus("idle");
+    }
+  }
 
   const [locationSettlementId, setLocationSettlementId] = useState<string | null>(null);
   const [locationSettlementName, setLocationSettlementName] = useState<string>("");
@@ -891,6 +933,30 @@ export function RosterPage({
         {selected && !editingContent && (
           <>
             <LinkedEntities type={MODE_TO_ENTITY_TYPE[mode]} id={selected.id} />
+
+            {selectedPlayerCharacter && canReassignSelectedPlayerCharacter && user && (
+              <div className="save-panel">
+                <h3 className="section-heading">Owner</h3>
+                <p className="hint">Who this character sheet belongs to — that account is the only one who can edit it, rest it, and track its spell slots.</p>
+                <label className="field">
+                  <span>Belongs to</span>
+                  <select value={assignTargetUserId} onChange={(e) => setAssignTargetUserId(e.target.value)}>
+                    <option value={user.id}>{user.displayName || user.username} (you, DM)</option>
+                    {worldMembers.map((m) => (
+                      <option key={m.userId} value={m.userId}>{m.username}</option>
+                    ))}
+                  </select>
+                </label>
+                {assignError && <p className="error">{assignError}</p>}
+                <button
+                  className="btn-secondary"
+                  onClick={handleReassignOwner}
+                  disabled={assignStatus === "saving" || assignTargetUserId === selectedPlayerCharacter.userId}
+                >
+                  {assignStatus === "saving" ? "Saving…" : "Assign"}
+                </button>
+              </div>
+            )}
 
             {canEditSelected ? (
               <div className="save-panel">

@@ -26,7 +26,7 @@ factionsRouter.get("/:id", async (req, res) => {
 
 factionsRouter.post("/", async (req, res) => {
   const body = req.body ?? {};
-  const { name, factionType, agenda, methods, publicFace, hook, worldId, tags, notes } = body;
+  const { name, factionType, agenda, methods, publicFace, hook, worldId, tags, notes, hiddenFromParty } = body;
 
   if (!name || !factionType || !agenda || !methods || !publicFace || !hook) {
     return res.status(400).json({ error: "Missing required faction fields" });
@@ -38,6 +38,7 @@ factionsRouter.post("/", async (req, res) => {
       worldId: worldId ?? null,
       tags: JSON.stringify(Array.isArray(tags) ? tags : []),
       notes: notes ?? null,
+      hiddenFromParty: !!hiddenFromParty,
       userId: req.userId!,
     },
   });

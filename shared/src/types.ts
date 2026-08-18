@@ -811,6 +811,7 @@ export interface CodexNote extends CodexNoteInput {
 export interface AuthUser {
   id: string;
   username: string;
+  displayName: string | null;
   tier: string;
   role: string;
 }

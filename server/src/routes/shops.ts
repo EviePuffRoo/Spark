@@ -42,7 +42,7 @@ shopsRouter.get("/:id", async (req, res) => {
 
 shopsRouter.post("/", async (req, res) => {
   const body = req.body ?? {};
-  const { name, description, stock, worldId, tags, notes } = body;
+  const { name, description, stock, worldId, tags, notes, hiddenFromParty } = body;
 
   if (!name || !Array.isArray(stock)) {
     return res.status(400).json({ error: "Missing required shop fields" });
@@ -57,6 +57,7 @@ shopsRouter.post("/", async (req, res) => {
       worldId: worldId ?? null,
       tags: JSON.stringify(Array.isArray(tags) ? tags : []),
       notes: notes ?? null,
+      hiddenFromParty: !!hiddenFromParty,
       userId: req.userId!,
     },
   });

@@ -5,6 +5,7 @@ import { api, type ReferenceData } from "../api";
 import { useActiveWorld } from "../ActiveWorldContext";
 import { ItemCardView } from "../components/ItemCardView";
 import { ItemEditor } from "../components/ItemEditor";
+import { SaveEntityFields } from "../components/SaveEntityFields";
 
 const TIER_0 = ITEM_RARITY_TIER_INFO[0];
 const BLANK_ITEM: GeneratedItem = {
@@ -29,6 +30,7 @@ export function ItemForgePage() {
   const [saveWorldId, setSaveWorldId] = useState(worldId);
   const [saveTags, setSaveTags] = useState("");
   const [saveNotes, setSaveNotes] = useState("");
+  const [saveHidden, setSaveHidden] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
 
   useEffect(() => {
@@ -81,6 +83,7 @@ export function ItemForgePage() {
         worldId: saveWorldId || null,
         tags: saveTags.split(",").map((t) => t.trim()).filter(Boolean),
         notes: saveNotes || undefined,
+        hiddenFromParty: saveHidden,
       })));
       setSaveStatus("saved");
     } catch (e) {
@@ -98,6 +101,7 @@ export function ItemForgePage() {
         worldId: saveWorldId || null,
         tags: saveTags.split(",").map((t) => t.trim()).filter(Boolean),
         notes: saveNotes || undefined,
+        hiddenFromParty: saveHidden,
       });
       setSaveStatus("saved");
     } catch (e) {
@@ -109,23 +113,12 @@ export function ItemForgePage() {
   const fullyRandom = !!form.fullyRandom;
 
   const savePanelFields = (
-    <>
-      <label className="field">
-        <span>World (optional)</span>
-        <select value={saveWorldId} onChange={(e) => setSaveWorldId(e.target.value)}>
-          <option value="">Unassigned</option>
-          {worlds.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
-        </select>
-      </label>
-      <label className="field">
-        <span>Tags (comma separated)</span>
-        <input type="text" value={saveTags} onChange={(e) => setSaveTags(e.target.value)} placeholder="quest reward, cursed, market find" />
-      </label>
-      <label className="field">
-        <span>Notes</span>
-        <textarea value={saveNotes} onChange={(e) => setSaveNotes(e.target.value)} rows={3} placeholder="Where and how you plan to use it…" />
-      </label>
-    </>
+    <SaveEntityFields
+      worlds={worlds} worldId={saveWorldId} setWorldId={setSaveWorldId}
+      tags={saveTags} setTags={setSaveTags} tagsPlaceholder="quest reward, cursed, market find"
+      notes={saveNotes} setNotes={setSaveNotes} notesPlaceholder="Where and how you plan to use it…"
+      hiddenFromParty={saveHidden} setHiddenFromParty={setSaveHidden}
+    />
   );
 
   const batchResultPanel = (

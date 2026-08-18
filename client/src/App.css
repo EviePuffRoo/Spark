@@ -482,6 +482,11 @@
   color: var(--text-muted);
 }
 
+.save-visibility-hint {
+  margin-top: -6px;
+  font-size: 13px;
+}
+
 .mono {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;

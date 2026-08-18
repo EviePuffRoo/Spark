@@ -8,6 +8,8 @@ services:
     startCommand: npm run migrate:deploy --workspace server && npm run start:server
     healthCheckPath: /api/health
     autoDeployTrigger: commit
+    domains:
+      - sparkdm.quest
     disk:
       name: spark-data
       mountPath: /var/data

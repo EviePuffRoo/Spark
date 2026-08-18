@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { DowntimeActivity, DowntimeActivityType, EncounterTable, LiveCombatant, EncounterStateInput, SearchResult, Region } from "@spark/shared";
+import type { DowntimeActivity, DowntimeActivityType, EncounterTable, LiveCombatant, EncounterStateInput, SearchResult, Region, PlayerCharacter } from "@spark/shared";
 import { DOWNTIME_ACTIVITY_TYPES, DOWNTIME_ACTIVITY_TYPE_LABELS } from "@spark/shared";
 import { api } from "../api";
 import { useAuth } from "../AuthContext";
@@ -37,6 +37,7 @@ export function DowntimePage() {
   const [dayCount, setDayCount] = useState(1);
   const [checks, setChecks] = useState<TravelCheck[]>([]);
 
+  const [playerCharacters, setPlayerCharacters] = useState<PlayerCharacter[]>([]);
   const [regions, setRegions] = useState<Region[]>([]);
   const [originRegion, setOriginRegion] = useState<Region | null>(null);
   const [destinationRegion, setDestinationRegion] = useState<Region | null>(null);
@@ -47,10 +48,12 @@ export function DowntimePage() {
     if (!worldId) {
       setActivities([]);
       setRegions([]);
+      setPlayerCharacters([]);
       return;
     }
     api.listDowntimeActivities(worldId).then(setActivities).catch(() => {});
     api.listRegions(worldId).then(setRegions).catch(() => {});
+    api.listPlayerCharacters(worldId).then(setPlayerCharacters).catch(() => {});
   }
 
   useEffect(refresh, [worldId]);
@@ -171,7 +174,10 @@ export function DowntimePage() {
 
             <label className="field">
               <span>Character name</span>
-              <input type="text" value={characterName} onChange={(e) => setCharacterName(e.target.value)} placeholder="e.g. Aria" />
+              <input type="text" value={characterName} onChange={(e) => setCharacterName(e.target.value)} placeholder="e.g. Aria" list="downtime-character-names" />
+              <datalist id="downtime-character-names">
+                {playerCharacters.map((pc) => <option key={pc.id} value={pc.name} />)}
+              </datalist>
             </label>
             <label className="field">
               <span>Activity type</span>

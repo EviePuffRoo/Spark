@@ -59,7 +59,7 @@ import { moderationRouter } from "./routes/moderation.js";
 import { adminUsersRouter } from "./routes/adminUsers.js";
 import { vttExportRouter } from "./routes/vttExport.js";
 import { billingRouter, billingWebhookHandler } from "./routes/billing.js";
-import { FREE_TIER_GENERATE_LIMIT, PAID_TIER_GENERATE_LIMIT } from "./billingLimits.js";
+import { FREE_TIER_GENERATE_LIMIT, PAID_TIER_GENERATE_LIMIT } from "@spark/shared";
 import { testAwareLimit } from "./rateLimitConfig.js";
 import { prisma } from "./db.js";
 

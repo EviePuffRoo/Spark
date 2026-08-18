@@ -30,14 +30,14 @@ chatRouter.post("/", async (req, res) => {
   const world = await findAccessibleWorld(req.userId!, worldId);
   if (!world) return res.status(403).json({ error: "You don't have access to this world" });
 
-  // senderName is the poster's own account username, not client-supplied —
-  // chat is an identity-bound conversation, unlike the roll log's
-  // client-chosen rollerName label.
+  // senderName is the poster's own account identity (display name if set,
+  // else username), not client-supplied — chat is an identity-bound
+  // conversation, unlike the roll log's client-chosen rollerName label.
   const user = await prisma.user.findUnique({ where: { id: req.userId! } });
   if (!user) return res.status(401).json({ error: "Not signed in" });
 
   const row = await prisma.chatMessage.create({
-    data: { worldId, userId: req.userId!, senderName: user.username, text: text.trim() },
+    data: { worldId, userId: req.userId!, senderName: user.displayName || user.username, text: text.trim() },
   });
   publishWorldChange(worldId, "chat");
   res.status(201).json(toChatMessageDTO(row));

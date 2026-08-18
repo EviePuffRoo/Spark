@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { FREE_TIER_WORLD_LIMIT, FREE_TIER_GENERATE_LIMIT, PAID_TIER_GENERATE_LIMIT } from "@spark/shared";
 import { api } from "../api";
 import { useAuth } from "../AuthContext";
 
@@ -59,9 +60,32 @@ export function BillingPage() {
           many worlds you can have and how fast you can generate content.
         </p>
 
+        <table className="plan-comparison">
+          <thead>
+            <tr>
+              <th scope="col"></th>
+              <th scope="col">Free</th>
+              <th scope="col">Paid</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">Worlds</th>
+              <td>{FREE_TIER_WORLD_LIMIT}</td>
+              <td>Unlimited</td>
+            </tr>
+            <tr>
+              <th scope="row">Generations per minute</th>
+              <td>{FREE_TIER_GENERATE_LIMIT}</td>
+              <td>{PAID_TIER_GENERATE_LIMIT}</td>
+            </tr>
+          </tbody>
+        </table>
+
         <div className="save-panel">
           <h3 className="section-heading">Current Plan</h3>
           <p className="entity-meta">{isPaid ? "Paid — higher limits" : "Free"}</p>
+          {!isPaid && <p className="hint">You'll see the exact price and can review everything on the next screen before you pay anything.</p>}
           {error && <p className="error">{error}</p>}
           {isPaid ? (
             <button className="btn-secondary" onClick={handleManage} disabled={loading}>

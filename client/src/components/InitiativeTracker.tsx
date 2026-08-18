@@ -91,7 +91,7 @@ export function InitiativeTracker({
   const [lootKind, setLootKind] = useState<"gold" | "item">("gold");
   const [lootLabel, setLootLabel] = useState("");
   const [lootAmount, setLootAmount] = useState("");
-  const [lootAuthorName, setLootAuthorName] = useState(user?.username ?? "");
+  const [lootAuthorName, setLootAuthorName] = useState(user?.displayName || user?.username || "");
   const [lootStatus, setLootStatus] = useState<"idle" | "saving">("idle");
   const [lootError, setLootError] = useState<string | null>(null);
 
@@ -388,7 +388,7 @@ export function InitiativeTracker({
         kind: lootKind,
         amount,
         label: lootLabel.trim() || (lootKind === "gold" ? `Loot from ${c.name}` : c.name),
-        authorName: lootAuthorName.trim() || user!.username,
+        authorName: lootAuthorName.trim() || user!.displayName || user!.username,
       });
       setLootOpenFor(null);
       setLootAmount("");
@@ -748,7 +748,7 @@ export function InitiativeTracker({
                 </label>
                 <label className="field">
                   <span>Your name</span>
-                  <input type="text" value={lootAuthorName} onChange={(e) => setLootAuthorName(e.target.value)} placeholder={user?.username} />
+                  <input type="text" value={lootAuthorName} onChange={(e) => setLootAuthorName(e.target.value)} placeholder={user?.displayName || user?.username} />
                 </label>
                 {lootError && <p className="error">{lootError}</p>}
                 <button className="btn-primary" onClick={() => submitLoot(c)} disabled={lootStatus === "saving"}>

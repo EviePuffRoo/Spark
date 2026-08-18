@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { api, type WorldSummary, type WorldMemberInfo } from "../api";
 import { useActiveWorld } from "../ActiveWorldContext";
 import { downloadJson } from "../downloadJson";
+import { CopyButton } from "../components/CopyButton";
 
 function summarizeCounts(w: WorldSummary): string {
   const parts: [number, string][] = [
@@ -269,9 +270,10 @@ export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) =
                     {generatedCode ? "Regenerate Invite Code" : "Get Invite Code"}
                   </button>
                   {generatedCode && (
-                    <p className="hint">
-                      Share this code — it won't be shown again: <strong>{generatedCode}</strong>
-                    </p>
+                    <div className="invite-code-row">
+                      <p className="hint">Share this code — it won't be shown again: <code>{generatedCode}</code></p>
+                      <CopyButton value={generatedCode} />
+                    </div>
                   )}
                   {memberError && <p className="error">{memberError}</p>}
                   {members.length === 0 && <p className="hint">Nobody has joined this world yet.</p>}

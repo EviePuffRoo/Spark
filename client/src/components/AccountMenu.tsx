@@ -75,8 +75,9 @@ export function AccountMenu() {
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="true"
         aria-expanded={open}
+        title={user.displayName ? `${user.displayName} (${user.username})` : user.username}
       >
-        {user.username}
+        {user.displayName || user.username}
       </button>
       {open && (
         <div className="account-menu-dropdown">

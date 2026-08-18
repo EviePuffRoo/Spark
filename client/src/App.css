@@ -930,8 +930,26 @@ textarea {
   min-width: 60px;
 }
 
-.spell-slot-field input {
+.spell-slot-field .button-row {
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.spell-slot-field .button-row button {
+  padding: 2px 10px;
+  min-width: 32px;
+}
+
+.spell-slot-value,
+.class-resource-value {
+  font-variant-numeric: tabular-nums;
+  min-width: 44px;
   text-align: center;
+}
+
+.class-resource-panel .button-row {
+  align-items: center;
 }
 
 .dynamic-list-editor {
@@ -2682,6 +2700,22 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.player-companion-character.my-turn {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 0 20px -6px var(--glow);
+  background: color-mix(in srgb, var(--accent) 6%, var(--bg-panel));
+}
+
+.my-turn-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
 }
 
 .player-companion-back-link {

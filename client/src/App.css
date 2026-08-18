@@ -1444,6 +1444,10 @@ textarea {
   margin: 16px 0;
 }
 
+.zone-map-canvas {
+  position: relative;
+}
+
 .zone-map-svg {
   display: block;
   width: 100%;
@@ -1453,6 +1457,23 @@ textarea {
   border: 1px solid var(--border);
   border-radius: 10px;
   touch-action: none;
+}
+
+.zone-map-zoom-controls {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  z-index: 2;
+  display: flex;
+  gap: 6px;
+}
+
+.zone-map-zoom-controls button {
+  min-width: 36px;
+  padding: 6px 10px;
+  font-size: 1rem;
+  line-height: 1;
+  box-shadow: 0 4px 14px -6px rgba(0, 0, 0, 0.5);
 }
 
 .zone-edge {

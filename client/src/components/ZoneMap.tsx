@@ -172,8 +172,24 @@ export function ZoneMap({
   }
 
   function handleWheel(e: React.WheelEvent<SVGSVGElement>) {
-    const delta = -e.deltaY * 0.001;
-    setTransform((t) => ({ ...t, k: Math.min(2.5, Math.max(0.3, t.k * (1 + delta))) }));
+    e.preventDefault();
+    if (e.ctrlKey || e.metaKey) {
+      // Trackpad pinch-to-zoom (and Ctrl/Cmd+wheel) arrive as wheel events
+      // with ctrlKey set — everything else is a two-finger pan gesture and
+      // should not also zoom the map.
+      const delta = -e.deltaY * 0.001;
+      setTransform((t) => ({ ...t, k: Math.min(2.5, Math.max(0.3, t.k * (1 + delta))) }));
+    } else {
+      setTransform((t) => ({ ...t, x: t.x - e.deltaX, y: t.y - e.deltaY }));
+    }
+  }
+
+  function zoomBy(factor: number) {
+    setTransform((t) => ({ ...t, k: Math.min(2.5, Math.max(0.3, t.k * factor)) }));
+  }
+
+  function resetView() {
+    setTransform({ x: 0, y: 0, k: 1 });
   }
 
   const activeCombatant = combatants.find((c) => c.id === activeId) ?? null;
@@ -312,12 +328,18 @@ export function ZoneMap({
         </div>
       )}
 
-      <svg
-        ref={svgRef}
-        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-        className="zone-map-svg"
-        onWheel={handleWheel}
-      >
+      <div className="zone-map-canvas">
+        <div className="zone-map-zoom-controls">
+          <button type="button" className="btn-secondary" onClick={() => zoomBy(1.2)} aria-label="Zoom in">+</button>
+          <button type="button" className="btn-secondary" onClick={() => zoomBy(1 / 1.2)} aria-label="Zoom out">−</button>
+          <button type="button" className="btn-secondary" onClick={resetView} aria-label="Reset zoom and pan">Reset</button>
+        </div>
+        <svg
+          ref={svgRef}
+          viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+          className="zone-map-svg"
+          onWheel={handleWheel}
+        >
         <rect
           x={0} y={0} width={WIDTH} height={HEIGHT} fill="transparent"
           onPointerDown={handleBackgroundPointerDown}
@@ -391,7 +413,8 @@ export function ZoneMap({
             );
           })()}
         </g>
-      </svg>
+        </svg>
+      </div>
 
       {unplaced.length > 0 && (
         <div className="save-panel">

@@ -106,7 +106,7 @@ async function ensureNotificationPermission(): Promise<boolean> {
 
 export function PlayerCompanionView() {
   const { user } = useAuth();
-  const { worlds, worldId, setWorldId, refreshWorlds } = useActiveWorld();
+  const { worlds, worldId, setWorldId, refreshWorlds, loading: worldsLoading } = useActiveWorld();
   const [characters, setCharacters] = useState<PlayerCharacter[]>([]);
   const [notifyEnabled, setNotifyEnabled] = useLocalStorage("spark-notify-my-turn", false);
   const [notifyBlocked, setNotifyBlocked] = useState(false);
@@ -171,7 +171,9 @@ export function PlayerCompanionView() {
         </div>
       </header>
 
-      {worlds.length === 0 ? (
+      {worldsLoading ? (
+        <p className="hint">Loading…</p>
+      ) : worlds.length === 0 ? (
         <p className="hint">You're not in any worlds yet — join one from the full app.</p>
       ) : (
         <>

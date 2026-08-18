@@ -121,7 +121,10 @@ function AppShell() {
   return (
     <div className="app-shell">
       <nav className="nav-rail" aria-label="Main navigation">
-        <img src="/favicon.svg" alt="Spark" className="nav-rail-bolt" />
+        <div className="nav-rail-brand">
+          <img src="/favicon.svg" alt="" className="nav-rail-bolt" />
+          <span className="nav-rail-wordmark">Spark</span>
+        </div>
         <div className="nav-rail-items">
           {(Object.keys(AREA_LABELS) as Area[]).map((a) => {
             const Icon = AREA_ICONS[a];

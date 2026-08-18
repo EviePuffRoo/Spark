@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { WelcomePanel } from "../components/WelcomePanel";
+import { GroupedTabs } from "../components/GroupedTabs";
 import { GeneratorPage } from "./GeneratorPage";
 import { ItemForgePage } from "./ItemForgePage";
 import { LocationForgePage } from "./LocationForgePage";
@@ -14,6 +15,7 @@ import { RegionForgePage } from "./RegionForgePage";
 import { SettlementForgePage } from "./SettlementForgePage";
 
 type CreateType = "npc" | "item" | "location" | "quest" | "faction" | "encounter" | "adventure" | "playerCharacter" | "dungeon" | "shop" | "region" | "settlement";
+type CreateGroup = "characters" | "world" | "story" | "tools";
 
 const CREATE_TYPE_LABELS: Record<CreateType, string> = {
   npc: "NPCs & Monsters",
@@ -30,19 +32,39 @@ const CREATE_TYPE_LABELS: Record<CreateType, string> = {
   settlement: "Settlements",
 };
 
+const CREATE_GROUPS: Record<CreateGroup, CreateType[]> = {
+  characters: ["npc", "playerCharacter"],
+  world: ["location", "region", "settlement"],
+  story: ["quest", "faction", "adventure", "encounter"],
+  tools: ["item", "shop", "dungeon"],
+};
+
+const CREATE_GROUP_LABELS: Record<CreateGroup, string> = {
+  characters: "Characters",
+  world: "World",
+  story: "Story",
+  tools: "Tools",
+};
+
+const CREATE_TYPE_TO_GROUP = Object.fromEntries(
+  (Object.keys(CREATE_GROUPS) as CreateGroup[]).flatMap((g) => CREATE_GROUPS[g].map((t) => [t, g])),
+) as Record<CreateType, CreateGroup>;
+
 export function CreatePage() {
   const [createType, setCreateType] = useState<CreateType>("npc");
 
   return (
     <div>
       <WelcomePanel />
-      <div className="tabs create-type-tabs">
-        {(Object.keys(CREATE_TYPE_LABELS) as CreateType[]).map((t) => (
-          <button key={t} className={createType === t ? "active" : ""} aria-current={createType === t ? "true" : undefined} onClick={() => setCreateType(t)}>
-            {CREATE_TYPE_LABELS[t]}
-          </button>
-        ))}
-      </div>
+      <GroupedTabs
+        className="create-type-tabs"
+        groups={CREATE_GROUPS}
+        groupLabels={CREATE_GROUP_LABELS}
+        itemLabels={CREATE_TYPE_LABELS}
+        groupOf={(t) => CREATE_TYPE_TO_GROUP[t]}
+        active={createType}
+        onSelect={setCreateType}
+      />
 
       {createType === "npc" && <GeneratorPage />}
       {createType === "item" && <ItemForgePage />}

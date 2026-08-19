@@ -21,7 +21,7 @@ import type {
   Settlement, GenerateSettlementRequest, GeneratedSettlement,
   ActivitySummary,
   EntityType, EntityLink, SearchResult,
-  PublicGalleryEntry, PublishEntryInput, GalleryReportReason, ModerationQueueEntry, AdminUserSummary,
+  PublicGalleryEntry, PublishEntryInput, GalleryReportReason, ModerationQueueEntry, AdminUserSummary, AdminStats,
   AuthUser, SignupResult, RecoveryCodeResult,
   SpellDef, ConditionDef, RuleDef,
 } from "@spark/shared";
@@ -367,6 +367,7 @@ export const api = {
     request<{ recoveryCode: string }>(`/admin/users/${userId}/recovery-code`, { method: "POST" }),
   adminSetPassword: (userId: string, newPassword: string) =>
     request<void>(`/admin/users/${userId}/reset-password`, { method: "POST", body: JSON.stringify({ newPassword }) }),
+  adminStats: () => request<AdminStats>("/admin/stats"),
   importBackup: (bundle: unknown) =>
     request<ImportResult>("/backup/import", { method: "POST", body: JSON.stringify(bundle) }),
 

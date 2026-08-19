@@ -13,10 +13,15 @@ import type { DungeonRoom } from "@spark/shared";
 // dungeon step depends on ZoneMapTemplate ids created earlier in the same
 // run — a mid-sequence failure should roll back the whole bundle rather than
 // leaving an orphaned partial world behind.
+// Exported so anything that needs to identify a starter world after the
+// fact (e.g. admin stats estimating onboarding adoption) uses this same
+// constant instead of a second copy of the string that could drift.
+export const STARTER_WORLD_NAME = "The Salt Coast";
+
 export async function seedStarterWorld(userId: string): Promise<{ worldId: string }> {
   return prisma.$transaction(async (tx) => {
     const world = await tx.world.create({
-      data: { name: "The Salt Coast", description: "A sample world — a storm-battered fishing coast with a few hooks ready to pull on.", userId },
+      data: { name: STARTER_WORLD_NAME, description: "A sample world — a storm-battered fishing coast with a few hooks ready to pull on.", userId },
     });
     const worldId = world.id;
 

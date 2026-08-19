@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FREE_TIER_WORLD_LIMIT, FREE_TIER_GENERATE_LIMIT, PAID_TIER_GENERATE_LIMIT } from "@spark/shared";
+import { FREE_TIER_WORLD_LIMIT, FREE_TIER_GENERATE_LIMIT, PAID_TIER_GENERATE_LIMIT, RECENT_HISTORY_LIMIT } from "@spark/shared";
 import { api } from "../api";
 import { useAuth } from "../AuthContext";
 
@@ -56,8 +56,9 @@ export function BillingPage() {
       <div className="panel">
         <h2>Billing</h2>
         <p className="hint">
-          Every feature in Spark is free, forever — no exceptions. The paid plan only raises two usage caps: how
-          many worlds you can have and how fast you can generate content.
+          Every feature in Spark is free, forever — no exceptions. The paid plan only raises usage caps: how
+          many worlds you can have, how fast you can generate content, and how far back you can browse roll
+          log and chat history.
         </p>
 
         <table className="plan-comparison">
@@ -78,6 +79,11 @@ export function BillingPage() {
               <th scope="row">Generations per minute</th>
               <td>{FREE_TIER_GENERATE_LIMIT}</td>
               <td>{PAID_TIER_GENERATE_LIMIT}</td>
+            </tr>
+            <tr>
+              <th scope="row">Roll log &amp; chat history</th>
+              <td>Last {RECENT_HISTORY_LIMIT}</td>
+              <td>Full history</td>
             </tr>
           </tbody>
         </table>

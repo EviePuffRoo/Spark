@@ -3,6 +3,7 @@ import { prisma } from "../db.js";
 import { toRollLogEntryDTO } from "../serialize.js";
 import { findAccessibleWorld } from "../worldAccess.js";
 import { publishWorldChange } from "../worldEvents.js";
+import { RECENT_HISTORY_LIMIT } from "@spark/shared";
 
 export const rollLogRouter = Router();
 
@@ -17,7 +18,37 @@ rollLogRouter.get("/", async (req, res) => {
   const rows = await prisma.rollLogEntry.findMany({
     where: { worldId, ...(isOwner ? {} : { hiddenFromParty: false }) },
     orderBy: { createdAt: "desc" },
-    take: 100,
+    take: RECENT_HISTORY_LIMIT,
+  });
+  res.json(rows.map(toRollLogEntryDTO));
+});
+
+// Paid-only: paging back further than the live view's most-recent window.
+// Never touched by the live SSE channel (worldLive.ts) — that always
+// re-sends the same top-RECENT_HISTORY_LIMIT window, so merging paginated
+// results into the same client state would get wiped by the next live
+// update. The client keeps this in a separate, on-demand section instead.
+rollLogRouter.get("/history", async (req, res) => {
+  const { worldId, before } = req.query;
+  if (typeof worldId !== "string" || typeof before !== "string") {
+    return res.status(400).json({ error: "worldId and before are required" });
+  }
+
+  const world = await findAccessibleWorld(req.userId!, worldId);
+  if (!world) return res.status(403).json({ error: "You don't have access to this world" });
+
+  const user = await prisma.user.findUnique({ where: { id: req.userId! }, select: { tier: true } });
+  if (user?.tier !== "paid") {
+    return res.status(403).json({ error: "Full history is a paid feature — upgrade to browse past this point.", code: "history_paid_only" });
+  }
+
+  const isOwner = world.userId === req.userId;
+  const rows = await prisma.rollLogEntry.findMany({
+    where: { worldId, ...(isOwner ? {} : { hiddenFromParty: false }) },
+    orderBy: { createdAt: "desc" },
+    cursor: { id: before },
+    skip: 1,
+    take: 50,
   });
   res.json(rows.map(toRollLogEntryDTO));
 });

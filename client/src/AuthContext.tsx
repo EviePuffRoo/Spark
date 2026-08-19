@@ -6,12 +6,14 @@ interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
   pendingRecoveryCode: string | null;
+  justSignedUp: boolean;
   sessionMessage: string | null;
   login: (username: string, password: string) => Promise<void>;
   signup: (username: string, password: string) => Promise<void>;
   resetPassword: (username: string, recoveryCode: string, newPassword: string) => Promise<void>;
   regenerateRecoveryCode: () => Promise<void>;
   acknowledgeRecoveryCode: () => void;
+  dismissOnboarding: () => void;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   deleteAccount: (password: string) => Promise<void>;
@@ -24,6 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [pendingRecoveryCode, setPendingRecoveryCode] = useState<string | null>(null);
+  const [justSignedUp, setJustSignedUp] = useState(false);
   const [sessionMessage, setSessionMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -47,6 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { recoveryCode, ...newUser } = await api.signup(username, password);
     setUser(newUser);
     setPendingRecoveryCode(recoveryCode);
+    setJustSignedUp(true);
     setSessionMessage(null);
   }
 
@@ -64,6 +68,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   function acknowledgeRecoveryCode() {
     setPendingRecoveryCode(null);
+  }
+
+  function dismissOnboarding() {
+    setJustSignedUp(false);
   }
 
   async function logout() {
@@ -91,8 +99,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={{
-      user, loading, pendingRecoveryCode, sessionMessage,
-      login, signup, resetPassword, regenerateRecoveryCode, acknowledgeRecoveryCode, logout, refreshUser, deleteAccount, updateDisplayName,
+      user, loading, pendingRecoveryCode, justSignedUp, sessionMessage,
+      login, signup, resetPassword, regenerateRecoveryCode, acknowledgeRecoveryCode, dismissOnboarding, logout, refreshUser, deleteAccount, updateDisplayName,
     }}>
       {children}
     </AuthContext.Provider>

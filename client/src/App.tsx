@@ -6,6 +6,7 @@ import { ActiveWorldProvider, useActiveWorld } from "./ActiveWorldContext";
 import { useActivityBadges } from "./useActivityBadges";
 import { AuthPage } from "./pages/AuthPage";
 import { RecoveryCodeDisplay } from "./components/RecoveryCodeDisplay";
+import { OnboardingChoice } from "./components/OnboardingChoice";
 import { CreatePage } from "./pages/CreatePage";
 import { SessionNotesPage } from "./pages/SessionNotesPage";
 import { RosterPage, type RosterSelection } from "./pages/RosterPage";
@@ -36,7 +37,8 @@ const AREA_ICONS: Record<Area, typeof PrepIcon> = { prep: PrepIcon, world: World
 const AREA_DEFAULT_SUBTAB: Record<Area, SubTab> = { prep: "create", world: "overview", play: "combat", account: "profile" };
 
 function App() {
-  const { user, loading, pendingRecoveryCode } = useAuth();
+  const { user, loading, pendingRecoveryCode, justSignedUp, dismissOnboarding } = useAuth();
+  const [landOnOverview, setLandOnOverview] = useState(false);
 
   if (loading) {
     return (
@@ -56,30 +58,33 @@ function App() {
   // cast-to-TV view, this still requires a normal login — it just swaps the
   // desktop tabbed shell for a mobile-first view once signed in.
   const isPlayMode = new URLSearchParams(window.location.search).get("play") === "1";
-  if (isPlayMode) {
-    return (
-      <ActiveWorldProvider>
-        <PlayerCompanionView />
-      </ActiveWorldProvider>
-    );
-  }
 
+  // OnboardingChoice needs setWorldId from the same ActiveWorldProvider
+  // instance AppShell/PlayerCompanionView use (picking the sample world
+  // there must be visible once AppShell mounts), so all three branches
+  // share one provider instead of each having its own.
   return (
     <ActiveWorldProvider>
-      <AppShell />
+      {justSignedUp ? (
+        <OnboardingChoice onDone={(overview) => { dismissOnboarding(); setLandOnOverview(overview); }} />
+      ) : isPlayMode ? (
+        <PlayerCompanionView />
+      ) : (
+        <AppShell initialLandOnOverview={landOnOverview} />
+      )}
     </ActiveWorldProvider>
   );
 }
 
-function AppShell() {
+function AppShell({ initialLandOnOverview = false }: { initialLandOnOverview?: boolean }) {
   const { user } = useAuth();
   const { worlds, worldId, setWorldId } = useActiveWorld();
   const { combatUnseen, notesUnseen, codexUnseen, inventoryUnseen, markSeen } = useActivityBadges(!!user);
   // Stripe Checkout/Portal redirects land back on the bare app root — route
   // straight to the Billing tab so its own effect can refresh the tier.
   const returningFromBilling = new URLSearchParams(window.location.search).has("billing");
-  const [area, setArea] = useState<Area>(returningFromBilling ? "account" : "prep");
-  const [subTab, setSubTab] = useState<SubTab>(returningFromBilling ? "billing" : "create");
+  const [area, setArea] = useState<Area>(returningFromBilling ? "account" : initialLandOnOverview ? "world" : "prep");
+  const [subTab, setSubTab] = useState<SubTab>(returningFromBilling ? "billing" : initialLandOnOverview ? "overview" : "create");
   const [rosterWorldFilter, setRosterWorldFilter] = useState("");
   const [rosterSelection, setRosterSelection] = useState<RosterSelection | null>(null);
   const [printItems, setPrintItems] = useState<PrintItem[] | null>(null);

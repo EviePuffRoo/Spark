@@ -3,6 +3,7 @@ import { prisma } from "../db.js";
 import { toEncounterDTO, toLedgerEntryDTO, toRollLogEntryDTO, toChatMessageDTO } from "../serialize.js";
 import { findAccessibleWorld } from "../worldAccess.js";
 import { subscribeToWorld, type WorldChangeKind } from "../worldEvents.js";
+import { RECENT_HISTORY_LIMIT } from "@spark/shared";
 import type { LedgerSummary } from "@spark/shared";
 
 export const worldLiveRouter = Router();
@@ -40,18 +41,21 @@ async function sendRollLog(res: Response, worldId: string, isOwner: boolean) {
   const rows = await prisma.rollLogEntry.findMany({
     where: { worldId, ...(isOwner ? {} : { hiddenFromParty: false }) },
     orderBy: { createdAt: "desc" },
-    take: 100,
+    take: RECENT_HISTORY_LIMIT,
   });
   res.write(`event: rollLog\ndata: ${JSON.stringify(rows.map(toRollLogEntryDTO))}\n\n`);
 }
 
 async function sendChat(res: Response, worldId: string) {
+  // See the identical note on chatRouter's GET / handler (chat.ts) — take()
+  // has to run against descending order to get the newest window, then
+  // reverse for the ascending display order the chat panel renders.
   const rows = await prisma.chatMessage.findMany({
     where: { worldId },
-    orderBy: { createdAt: "asc" },
-    take: 100,
+    orderBy: { createdAt: "desc" },
+    take: RECENT_HISTORY_LIMIT,
   });
-  res.write(`event: chat\ndata: ${JSON.stringify(rows.map(toChatMessageDTO))}\n\n`);
+  res.write(`event: chat\ndata: ${JSON.stringify(rows.reverse().map(toChatMessageDTO))}\n\n`);
 }
 
 // Multiplexed SSE channel for a world's live-updating data (encounter,

@@ -213,11 +213,15 @@ export const api = {
   postRollLogEntry: (entry: RollLogEntryInput) =>
     request<RollLogEntry>("/roll-log", { method: "POST", body: JSON.stringify(entry) }),
   deleteRollLogEntry: (id: string) => request<void>(`/roll-log/${id}`, { method: "DELETE" }),
+  loadOlderRollLog: (worldId: string, before: string) =>
+    request<RollLogEntry[]>(`/roll-log/history?worldId=${worldId}&before=${before}`),
 
   listChat: (worldId: string) => request<ChatMessage[]>(`/chat?worldId=${worldId}`),
   postChatMessage: (input: ChatMessageInput) =>
     request<ChatMessage>("/chat", { method: "POST", body: JSON.stringify(input) }),
   deleteChatMessage: (id: string) => request<void>(`/chat/${id}`, { method: "DELETE" }),
+  loadOlderChat: (worldId: string, before: string) =>
+    request<ChatMessage[]>(`/chat/history?worldId=${worldId}&before=${before}`),
 
   getCodexNotes: (entityType: EntityType, entityId: string) =>
     request<CodexNote[]>(`/codex-notes?entityType=${entityType}&entityId=${entityId}`),

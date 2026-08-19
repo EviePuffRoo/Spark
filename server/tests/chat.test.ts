@@ -122,4 +122,36 @@ describe("chat", () => {
     const dmDelete = await dm.delete(`/api/chat/${msgId}`);
     expect(dmDelete.status).toBe(204);
   });
+
+  it("403s a free account's history request with a machine-readable code", async () => {
+    const { agent } = await signupAgent("chathistoryfree1");
+    const world = await agent.post("/api/worlds").send({ name: "History World" });
+    const worldId = world.body.id as string;
+    const msg = await agent.post("/api/chat").send({ worldId, text: "only message" });
+
+    const res = await agent.get(`/api/chat/history`).query({ worldId, before: msg.body.id });
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe("history_paid_only");
+  });
+
+  it("pages a paid account back through messages older than the given cursor", async () => {
+    const { agent, userId } = await signupAgent("chathistorypaid1");
+    await prisma.user.update({ where: { id: userId }, data: { tier: "paid" } });
+    const world = await agent.post("/api/worlds").send({ name: "Paid History World" });
+    const worldId = world.body.id as string;
+
+    const first = await agent.post("/api/chat").send({ worldId, text: "oldest" });
+    await agent.post("/api/chat").send({ worldId, text: "middle" });
+    const third = await agent.post("/api/chat").send({ worldId, text: "newest" });
+
+    // Paginating "before" the newest message should surface the older two,
+    // most-recent-of-the-old first (descending — see chat.ts's /history note).
+    const page = await agent.get(`/api/chat/history`).query({ worldId, before: third.body.id });
+    expect(page.status).toBe(200);
+    expect(page.body.map((m: { text: string }) => m.text)).toEqual(["middle", "oldest"]);
+
+    // Paginating "before" the oldest message returns nothing further back.
+    const exhausted = await agent.get(`/api/chat/history`).query({ worldId, before: first.body.id });
+    expect(exhausted.body).toEqual([]);
+  });
 });

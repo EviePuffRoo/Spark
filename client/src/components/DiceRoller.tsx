@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { RollLogEntry, LiveCombatant } from "@spark/shared";
+import { RECENT_HISTORY_LIMIT } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { useAuth } from "../AuthContext";
 import { useLocalStorage } from "../useLocalStorage";
@@ -65,6 +66,13 @@ export function DiceRoller({
   const [partyLog, setPartyLog] = useState<RollLogEntry[]>([]);
   const [partyError, setPartyError] = useState<string | null>(null);
 
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [olderRolls, setOlderRolls] = useState<RollLogEntry[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [historyExhausted, setHistoryExhausted] = useState(false);
+  const isPaid = user?.tier === "paid";
+
   const [applyOpenFor, setApplyOpenFor] = useState<string | null>(null);
   const [applyCombatants, setApplyCombatants] = useState<LiveCombatant[] | null>(null);
   const [applyTargetId, setApplyTargetId] = useState("");
@@ -78,10 +86,41 @@ export function DiceRoller({
       setPartyLog([]);
       setApplyOpenFor(null);
     }
+    // A world switch invalidates any loaded older history regardless of mode.
+    setHistoryOpen(false);
+    setOlderRolls([]);
+    setHistoryExhausted(false);
+    setHistoryError(null);
   }, [mode, selectedWorldId]);
 
   const { error: liveError } = useWorldLiveChannel(mode === "party" ? selectedWorldId : null, { onRollLog: setPartyLog });
   useEffect(() => { if (liveError) setPartyError(liveError); }, [liveError]);
+
+  async function loadOlderRolls() {
+    if (!selectedWorldId || historyLoading) return;
+    const cursor = olderRolls.length > 0 ? olderRolls[olderRolls.length - 1].id : partyLog[partyLog.length - 1]?.id;
+    if (!cursor) return;
+    setHistoryLoading(true);
+    setHistoryError(null);
+    try {
+      const rows = await api.loadOlderRollLog(selectedWorldId, cursor);
+      if (rows.length === 0) setHistoryExhausted(true);
+      setOlderRolls((prev) => [...prev, ...rows]);
+    } catch (e) {
+      setHistoryError((e as Error).message);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
+
+  function toggleHistory() {
+    if (historyOpen) {
+      setHistoryOpen(false);
+      return;
+    }
+    setHistoryOpen(true);
+    if (isPaid && olderRolls.length === 0 && !historyExhausted) loadOlderRolls();
+  }
 
   function pushLocalRecord(record: RollRecord) {
     setHistory((h) => [record, ...h].slice(0, HISTORY_LIMIT));
@@ -339,6 +378,44 @@ export function DiceRoller({
               );
             })}
           </ul>
+
+          <div className="button-row">
+            <button className="btn-secondary" onClick={toggleHistory} aria-expanded={historyOpen}>
+              {historyOpen ? "Hide Full History" : "View Full History"}
+            </button>
+          </div>
+
+          {historyOpen && !isPaid && (
+            <p className="hint">Full history beyond the last {RECENT_HISTORY_LIMIT} rolls is a paid feature — see Billing to upgrade.</p>
+          )}
+
+          {historyOpen && isPaid && (
+            <>
+              <ul className="dice-history older-history">
+                {olderRolls.map((r) => (
+                  <li key={r.id} className="dice-history-row">
+                    <span className="entity-name">
+                      {r.rollerName}: {r.notation}
+                      {r.mode && <span className="entity-meta"> ({r.mode === "adv" ? "adv" : "dis"})</span>}
+                      {r.label && <span className="entity-meta"> — {r.label}</span>}
+                    </span>
+                    <span className="entity-meta">
+                      [{r.results.join(", ")}]{r.modifier ? ` ${r.modifier > 0 ? "+" : ""}${r.modifier}` : ""} = <strong className="dice-total mono">{r.total}</strong>
+                      <span className="dice-history-time"> · {timeAgo(new Date(r.createdAt).getTime())}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {historyError && <p className="error">{historyError}</p>}
+              {!historyExhausted && (
+                <button className="btn-secondary" onClick={loadOlderRolls} disabled={historyLoading}>
+                  {historyLoading ? "Loading…" : "Load More"}
+                </button>
+              )}
+              {historyExhausted && olderRolls.length === 0 && <p className="hint">No older rolls.</p>}
+              {historyExhausted && olderRolls.length > 0 && <p className="hint">That's the full history.</p>}
+            </>
+          )}
         </>
       )}
     </div>

@@ -39,6 +39,12 @@ describe("signup/login", () => {
     expect(good.body.username).toBe("carol");
   });
 
+  it("rejects login for a username that was never signed up, same as a wrong password", async () => {
+    const res = await request(app).post("/api/auth/login").send({ username: "nobody-here", password: "whatever123" });
+    expect(res.status).toBe(401);
+    expect(res.body.error).toBe("Incorrect username or password.");
+  });
+
   it("promotes the configured ADMIN_USERNAMES account to admin on signup, and no one else", async () => {
     // vitest.config.ts sets ADMIN_USERNAMES=admintestuser — auth.ts reads it
     // once at module load, so this asserts against that fixed value rather
@@ -124,6 +130,14 @@ describe("change password / recovery code", () => {
       .post("/api/auth/reset-password")
       .send({ username: "judy", recoveryCode: "WRONG-CODE-0000-0000", newPassword: "brandnewpass1" });
     expect(res.status).toBe(401);
+  });
+
+  it("rejects reset-password for a username that was never signed up, same as a wrong code", async () => {
+    const res = await request(app)
+      .post("/api/auth/reset-password")
+      .send({ username: "nobody-here", recoveryCode: "WRONG-CODE-0000-0000", newPassword: "brandnewpass1" });
+    expect(res.status).toBe(401);
+    expect(res.body.error).toBe("That username and recovery code don't match.");
   });
 });
 

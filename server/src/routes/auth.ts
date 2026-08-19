@@ -4,7 +4,7 @@ import { prisma } from "../db.js";
 import { testAwareLimit } from "../rateLimitConfig.js";
 import {
   hashPassword, verifyPassword, signToken, setSessionCookie, clearSessionCookie, requireAuth,
-  generateRecoveryCode, hashRecoveryCode, verifyRecoveryCode,
+  generateRecoveryCode, hashRecoveryCode, verifyRecoveryCode, DECOY_HASH,
 } from "../auth.js";
 import type { AuthUser, SignupResult, RecoveryCodeResult } from "@spark/shared";
 
@@ -65,7 +65,11 @@ authRouter.post("/login", authLimiter, async (req, res) => {
   }
 
   const user = await prisma.user.findUnique({ where: { username: username.trim() } });
-  if (!user || !(await verifyPassword(password, user.passwordHash))) {
+  // Always runs a real bcrypt.compare, even for a username that doesn't
+  // exist, so response time can't be used to enumerate accounts — see
+  // DECOY_HASH in auth.ts.
+  const passwordOk = await verifyPassword(password, user?.passwordHash ?? DECOY_HASH);
+  if (!user || !passwordOk) {
     return res.status(401).json({ error: "Incorrect username or password." });
   }
 
@@ -157,7 +161,9 @@ authRouter.post("/reset-password", authLimiter, async (req, res) => {
   }
 
   const user = await prisma.user.findUnique({ where: { username: username.trim() } });
-  if (!user?.recoveryCodeHash || !(await verifyRecoveryCode(recoveryCode, user.recoveryCodeHash))) {
+  // Same timing-safety rationale as /login — see DECOY_HASH in auth.ts.
+  const codeOk = await verifyRecoveryCode(recoveryCode, user?.recoveryCodeHash ?? DECOY_HASH);
+  if (!user || !codeOk) {
     return res.status(401).json({ error: "That username and recovery code don't match." });
   }
 

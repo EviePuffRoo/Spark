@@ -51,6 +51,16 @@ export function verifyRecoveryCode(code: string, hash: string): Promise<boolean>
   return bcrypt.compare(normalizeRecoveryCode(code), hash);
 }
 
+// A precomputed bcrypt hash of a value nobody will ever type. Login and
+// reset-password both look up a user by username and then verify a
+// password/recovery code against that user's hash — if the route only
+// calls bcrypt.compare when a user was actually found, a nonexistent
+// username returns near-instantly while a real one takes the full ~100ms
+// bcrypt comparison, and that timing difference alone reveals which
+// usernames exist. Passing this in place of a missing hash keeps the
+// comparison — and its cost — unconditional either way.
+export const DECOY_HASH = "$2b$10$NlSUvVqklX5y7e9pLce4pOUqgkvOmgOrgCAz01O7/YNc9jxtIwjMG";
+
 export function signToken(userId: string): string {
   return jwt.sign({ sub: userId }, JWT_SECRET, { expiresIn: TOKEN_TTL });
 }
@@ -68,7 +78,12 @@ export function setSessionCookie(res: Response, token: string) {
   res.cookie(COOKIE_NAME, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.RENDER === "true",
+    // RENDER is the confirmed signal for today's actual deployment (Render
+    // sets it on every service); NODE_ENV === "production" is included too
+    // so the cookie still ships Secure if this ever runs somewhere else
+    // that sets NODE_ENV but not a Render-specific var, rather than
+    // silently falling back to plain HTTP there.
+    secure: process.env.RENDER === "true" || process.env.NODE_ENV === "production",
     maxAge: 30 * 24 * 60 * 60 * 1000,
   });
 }

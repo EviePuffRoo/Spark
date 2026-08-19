@@ -84,7 +84,7 @@ worldsRouter.post("/", async (req, res) => {
   if (user?.tier !== "paid") {
     const worldCount = await prisma.world.count({ where: { userId: req.userId } });
     if (worldCount >= FREE_TIER_WORLD_LIMIT) {
-      return res.status(403).json({ error: `Free accounts are limited to ${FREE_TIER_WORLD_LIMIT} worlds — upgrade to create more.` });
+      return res.status(403).json({ error: `Free accounts are limited to ${FREE_TIER_WORLD_LIMIT} worlds — upgrade to create more.`, code: "world_limit" });
     }
   }
 

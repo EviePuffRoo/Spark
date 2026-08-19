@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { FREE_TIER_WORLD_LIMIT } from "@spark/shared";
 import { api, type WorldSummary, type WorldMemberInfo } from "../api";
 import { useActiveWorld } from "../ActiveWorldContext";
+import { useAuth } from "../AuthContext";
 import { downloadJson } from "../downloadJson";
 import { CopyButton } from "../components/CopyButton";
 
@@ -25,13 +27,15 @@ function slugify(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "world";
 }
 
-export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) => void }) {
+export function WorldsPage({ onViewRoster, onNavigateToBilling }: { onViewRoster: (worldId: string) => void; onNavigateToBilling: () => void }) {
+  const { user } = useAuth();
   const { refreshWorlds, setWorldId } = useActiveWorld();
   const [worlds, setWorlds] = useState<WorldSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [limitReached, setLimitReached] = useState(false);
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [loadingStarter, setLoadingStarter] = useState(false);
@@ -56,6 +60,7 @@ export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) =
   async function handleCreate() {
     if (!name.trim() || creating) return;
     setCreating(true);
+    setLimitReached(false);
     try {
       const world = await api.createWorld(name.trim(), description.trim() || undefined);
       setName("");
@@ -63,7 +68,8 @@ export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) =
       refresh();
       setWorldId(world.id);
     } catch (e) {
-      setError((e as Error).message);
+      if ((e as Error & { code?: string }).code === "world_limit") setLimitReached(true);
+      else setError((e as Error).message);
     } finally {
       setCreating(false);
     }
@@ -194,6 +200,7 @@ export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) =
 
   const myWorlds = worlds.filter((w) => w.isOwner);
   const sharedWorlds = worlds.filter((w) => !w.isOwner);
+  const isPaid = user?.tier === "paid";
 
   return (
     <div className="page">
@@ -216,7 +223,17 @@ export function WorldsPage({ onViewRoster }: { onViewRoster: (worldId: string) =
               {loadingStarter ? "Loading…" : "Load a Sample World"}
             </button>
           )}
+          {!isPaid && !loading && (
+            <p className="hint">{myWorlds.length} of {FREE_TIER_WORLD_LIMIT} free worlds used</p>
+          )}
         </div>
+
+        {limitReached && (
+          <div className="upgrade-callout">
+            <p>Free accounts are limited to {FREE_TIER_WORLD_LIMIT} worlds — upgrade for unlimited worlds and faster generation.</p>
+            <button className="btn-primary" onClick={onNavigateToBilling}>Upgrade — $4.99/mo</button>
+          </div>
+        )}
 
         <div className="save-panel">
           <label className="field">

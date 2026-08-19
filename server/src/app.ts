@@ -80,6 +80,18 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const clientDist = path.resolve(__dirname, "../../client/dist");
 
 export const app = express();
+
+// Runs behind exactly one reverse proxy in every environment this actually
+// serves traffic in — Render's load balancer in production, Vite's dev
+// proxy locally — so trust exactly one X-Forwarded-For hop. Without this,
+// express-rate-limit's IP-based keying (below, and the auth-route limiter
+// in routes/auth.ts) sees the proxy's own address for every request: either
+// every user shares one rate-limit bucket (one bad actor locks out login
+// for everyone) or, if trust proxy were instead set to blindly trust an
+// unbounded chain, X-Forwarded-For becomes spoofable and the limiter does
+// nothing.
+app.set("trust proxy", 1);
+
 app.use(cors());
 app.use(cookieParser());
 

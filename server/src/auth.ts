@@ -3,6 +3,15 @@ import jwt from "jsonwebtoken";
 import { randomInt } from "node:crypto";
 import type { Request, Response, NextFunction } from "express";
 
+// render.yaml generates a real JWT_SECRET for the deployed service (Render
+// sets RENDER=true itself, same signal setSessionCookie below already uses
+// to know it's live) — refusing to boot without one there means a missing
+// or accidentally-cleared env var fails loudly at deploy time instead of
+// silently serving every session signed with a secret that's sitting in
+// this public repo. Local dev keeps the convenience fallback.
+if (process.env.RENDER === "true" && !process.env.JWT_SECRET) {
+  throw new Error("JWT_SECRET must be set in the deployed environment — refusing to start with the fallback dev secret.");
+}
 const JWT_SECRET = process.env.JWT_SECRET ?? "dev-only-insecure-secret-change-me";
 const COOKIE_NAME = "spark_session";
 const TOKEN_TTL = "30d";

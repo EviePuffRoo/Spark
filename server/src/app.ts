@@ -57,6 +57,7 @@ import { backupRouter } from "./routes/backup.js";
 import { publicGalleryRouter } from "./routes/publicGallery.js";
 import { moderationRouter } from "./routes/moderation.js";
 import { adminUsersRouter } from "./routes/adminUsers.js";
+import { adminStatsRouter } from "./routes/adminStats.js";
 import { vttExportRouter } from "./routes/vttExport.js";
 import { billingRouter, billingWebhookHandler } from "./routes/billing.js";
 import { FREE_TIER_GENERATE_LIMIT, PAID_TIER_GENERATE_LIMIT } from "@spark/shared";
@@ -178,6 +179,7 @@ app.use("/api/backup", backupRouter);
 app.use("/api/public", publicGalleryRouter);
 app.use("/api/admin/gallery", moderationRouter);
 app.use("/api/admin/users", adminUsersRouter);
+app.use("/api/admin/stats", adminStatsRouter);
 app.use("/api", vttExportRouter);
 app.use("/api/billing", billingRouter);
 

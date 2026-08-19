@@ -801,6 +801,16 @@ export interface AdminUserSummary {
   createdAt: string;
 }
 
+export interface AdminStats {
+  totalUsers: number;
+  freeUsers: number;
+  paidUsers: number;
+  signupsLast7Days: number;
+  signupsLast30Days: number;
+  totalWorlds: number;
+  starterWorldsCreated: number;
+}
+
 export interface EntityLink {
   id: string;
   label?: string;

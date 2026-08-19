@@ -811,6 +811,26 @@ export interface AdminStats {
   starterWorldsCreated: number;
 }
 
+export interface SessionHighlightRoll {
+  rollerName: string;
+  notation: string;
+  total: number;
+  label: string | null;
+  createdAt: string;
+}
+
+export interface SessionHighlights {
+  worldId: string;
+  since: string;
+  rollCount: number;
+  messageCount: number;
+  naturalTwenties: SessionHighlightRoll[];
+  naturalOnes: SessionHighlightRoll[];
+  topRolls: SessionHighlightRoll[];
+  goldDelta: number;
+  itemsGained: { label: string; quantity: number }[];
+}
+
 export interface EntityLink {
   id: string;
   label?: string;

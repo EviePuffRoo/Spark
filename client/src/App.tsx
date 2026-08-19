@@ -103,6 +103,11 @@ function AppShell() {
     setSubTab("roster");
   }
 
+  function navigateToBilling() {
+    setArea("account");
+    setSubTab("billing");
+  }
+
   function openInRoster(type: EntityType, id: string) {
     setRosterSelection({ type, id });
     setArea("world");
@@ -215,7 +220,7 @@ function AppShell() {
         {subTab === "moderation" && user?.role === "admin" && <ModerationPage />}
         {subTab === "users" && user?.role === "admin" && <AdminUsersPage />}
         {subTab === "overview" && <WorldOverviewPage onNavigate={navigateFromOverview} />}
-        {subTab === "worlds" && <WorldsPage onViewRoster={viewRosterForWorld} />}
+        {subTab === "worlds" && <WorldsPage onViewRoster={viewRosterForWorld} onNavigateToBilling={navigateToBilling} />}
         {subTab === "roster" && (
           <RosterPage
             worldFilter={rosterWorldFilter}

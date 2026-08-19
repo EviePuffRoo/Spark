@@ -45,7 +45,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
       onSessionExpired?.();
     }
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.error ?? `Request failed: ${res.status}`);
+    throw Object.assign(new Error(body.error ?? `Request failed: ${res.status}`), { code: body.code as string | undefined });
   }
   if (res.status === 204) return undefined as T;
   return res.json();

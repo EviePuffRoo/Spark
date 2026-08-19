@@ -686,6 +686,24 @@ textarea {
   border-color: var(--danger);
 }
 
+.upgrade-callout {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--accent);
+  border-radius: 14px;
+  box-shadow: 0 0 20px -6px var(--glow);
+  background: color-mix(in srgb, var(--accent) 6%, var(--bg-panel));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.upgrade-callout p {
+  margin: 0;
+}
+
 /* Adventure Forge role slots */
 .role-slot {
   margin-bottom: 16px;

@@ -12,6 +12,7 @@ import type {
   ChatMessage, ChatMessageInput,
   CodexNote, CodexNoteInput,
   LedgerEntry, LedgerEntryInput, LedgerSummary,
+  SessionHighlights,
   DowntimeActivity, DowntimeActivityInput,
   Encounter, EncounterStateInput,
   ZoneMapTemplate, ZoneMapTemplateInput,
@@ -230,6 +231,8 @@ export const api = {
   deleteCodexNote: (id: string) => request<void>(`/codex-notes/${id}`, { method: "DELETE" }),
 
   getLedger: (worldId: string) => request<LedgerSummary>(`/ledger?worldId=${worldId}`),
+  getSessionHighlights: (worldId: string, since: string) =>
+    request<SessionHighlights>(`/session-highlights?worldId=${worldId}&since=${encodeURIComponent(since)}`),
   postLedgerEntry: (entry: LedgerEntryInput) =>
     request<LedgerEntry>("/ledger", { method: "POST", body: JSON.stringify(entry) }),
   deleteLedgerEntry: (id: string) => request<void>(`/ledger/${id}`, { method: "DELETE" }),

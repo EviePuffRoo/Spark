@@ -182,8 +182,23 @@ app.use("/api", vttExportRouter);
 app.use("/api/billing", billingRouter);
 
 if (fs.existsSync(clientDist)) {
-  app.use(express.static(clientDist));
+  // Vite content-hashes everything under assets/ (e.g. index-BYLZRNzN.js) —
+  // a new deploy ships new filenames, so these can be cached for a year
+  // without ever risking a stale asset. index.html and the SPA-fallback
+  // below reference those hashed filenames, so they're explicitly kept
+  // revalidate-on-every-request instead, otherwise a cached stale
+  // index.html could point at asset filenames a later deploy removed.
+  app.use("/assets", express.static(path.join(clientDist, "assets"), {
+    maxAge: "1y",
+    immutable: true,
+  }));
+  app.use(express.static(clientDist, {
+    setHeaders: (res, filePath) => {
+      if (path.basename(filePath) === "index.html") res.setHeader("Cache-Control", "no-cache");
+    },
+  }));
   app.get(/^\/(?!api\/).*/, (_req, res) => {
+    res.set("Cache-Control", "no-cache");
     res.sendFile(path.join(clientDist, "index.html"));
   });
 }

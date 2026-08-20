@@ -11,7 +11,7 @@ export function EmptyState({
   return (
     <div className="empty-state">
       <div className="empty-state-icon">{icon}</div>
-      <h3>{heading}</h3>
+      <h2>{heading}</h2>
       <p className="hint">{hint}</p>
       {action}
     </div>

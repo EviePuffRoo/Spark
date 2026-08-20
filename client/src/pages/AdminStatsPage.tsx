@@ -5,10 +5,27 @@ import { api } from "../api";
 export function AdminStatsPage() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [backupStatus, setBackupStatus] = useState<"idle" | "running">("idle");
+  const [backupResult, setBackupResult] = useState<string | null>(null);
+  const [backupError, setBackupError] = useState<string | null>(null);
 
   useEffect(() => {
     api.adminStats().then(setStats).catch((e) => setError((e as Error).message));
   }, []);
+
+  async function runBackup() {
+    setBackupStatus("running");
+    setBackupResult(null);
+    setBackupError(null);
+    try {
+      const { key, pruned } = await api.runDatabaseBackup();
+      setBackupResult(`Uploaded ${key}${pruned > 0 ? ` — pruned ${pruned} old backup${pruned === 1 ? "" : "s"}` : ""}`);
+    } catch (e) {
+      setBackupError((e as Error).message);
+    } finally {
+      setBackupStatus("idle");
+    }
+  }
 
   const paidPct = stats && stats.totalUsers > 0 ? Math.round((stats.paidUsers / stats.totalUsers) * 100) : 0;
 
@@ -58,6 +75,19 @@ export function AdminStatsPage() {
             "Sample worlds loaded" is an estimate — it counts worlds still named "The Salt Coast", not a tracked event.
           </p>
         )}
+      </div>
+
+      <div className="panel">
+        <h2>Database Backups</h2>
+        <p className="hint">
+          Triggers the same backup the scheduled daily job runs — useful right before a risky
+          deploy or migration, without waiting for the next scheduled window.
+        </p>
+        <button className="btn-secondary" onClick={runBackup} disabled={backupStatus === "running"}>
+          {backupStatus === "running" ? "Backing up…" : "Run Backup Now"}
+        </button>
+        {backupResult && <p className="hint">{backupResult}</p>}
+        {backupError && <p className="error">{backupError}</p>}
       </div>
     </div>
   );

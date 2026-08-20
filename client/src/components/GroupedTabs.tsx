@@ -33,8 +33,9 @@ export function GroupedTabs<T extends string, G extends string>({
         {groupKeys.map((g) => (
           <button
             key={g}
+            role="tab"
             className={activeGroup === g ? "active" : ""}
-            aria-current={activeGroup === g ? "true" : undefined}
+            aria-selected={activeGroup === g}
             onClick={() => { setActiveGroup(g); onSelect(groups[g][0]); }}
           >
             {groupLabels[g]}
@@ -45,8 +46,9 @@ export function GroupedTabs<T extends string, G extends string>({
         {groups[activeGroup].map((item) => (
           <button
             key={item}
+            role="tab"
             className={active === item ? "active" : ""}
-            aria-current={active === item ? "true" : undefined}
+            aria-selected={active === item}
             onClick={() => onSelect(item)}
           >
             {itemLabels[item]}

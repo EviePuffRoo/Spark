@@ -233,8 +233,8 @@ export function DiceRoller({
         <p className="hint">Create or join a world to roll with your party.</p>
       ) : (
         <div className="tabs dice-mode-toggle" role="tablist">
-          <button className={mode === "personal" ? "active" : ""} aria-current={mode === "personal" ? "true" : undefined} onClick={() => setMode("personal")}>Personal</button>
-          <button className={partyMode ? "active" : ""} aria-current={partyMode ? "true" : undefined} onClick={() => setMode("party")}>Party</button>
+          <button role="tab" className={mode === "personal" ? "active" : ""} aria-selected={mode === "personal"} onClick={() => setMode("personal")}>Personal</button>
+          <button role="tab" className={partyMode ? "active" : ""} aria-selected={partyMode} onClick={() => setMode("party")}>Party</button>
         </div>
       )}
 
@@ -364,8 +364,8 @@ export function DiceRoller({
                             </select>
                           </label>
                           <div className="tabs apply-mode-toggle" role="tablist">
-                            <button className={applyMode === "damage" ? "active" : ""} aria-current={applyMode === "damage" ? "true" : undefined} onClick={() => setApplyMode("damage")}>Damage</button>
-                            <button className={applyMode === "heal" ? "active" : ""} aria-current={applyMode === "heal" ? "true" : undefined} onClick={() => setApplyMode("heal")}>Heal</button>
+                            <button role="tab" className={applyMode === "damage" ? "active" : ""} aria-selected={applyMode === "damage"} onClick={() => setApplyMode("damage")}>Damage</button>
+                            <button role="tab" className={applyMode === "heal" ? "active" : ""} aria-selected={applyMode === "heal"} onClick={() => setApplyMode("heal")}>Heal</button>
                           </div>
                           <button className="btn-primary" onClick={() => applyRollToCombat(r)}>
                             Apply {r.total} {applyMode === "damage" ? "Damage" : "Healing"}

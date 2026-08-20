@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { SpellDef, ConditionDef, RuleDef } from "@spark/shared";
 import { api, type CompendiumData } from "../api";
 import { CompendiumIcon } from "../components/icons";
 import { EmptyState } from "../components/EmptyState";
+import { useScrollDetailOnSelect } from "../useScrollDetailOnSelect";
 
 type CompendiumTab = "spells" | "conditions" | "rules";
 
@@ -34,6 +35,8 @@ export function CompendiumPage() {
   const [classFilter, setClassFilter] = useState<string>("all");
   const [ruleCategoryFilter, setRuleCategoryFilter] = useState<string>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const detailRef = useRef<HTMLDivElement>(null);
+  useScrollDetailOnSelect(detailRef, selectedId);
 
   useEffect(() => {
     api.getCompendium().then(setData).finally(() => setLoading(false));
@@ -184,7 +187,7 @@ export function CompendiumPage() {
         )}
       </div>
 
-      <div className="panel result-panel">
+      <div className="panel result-panel" ref={detailRef}>
         {!selectedSpell && !selectedCondition && !selectedRule && (
           <EmptyState
             icon={<CompendiumIcon />}

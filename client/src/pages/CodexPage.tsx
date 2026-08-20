@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Character, Location, Faction, QuestHook, EntityType } from "@spark/shared";
 import { api } from "../api";
 import { useActiveWorld } from "../ActiveWorldContext";
@@ -11,6 +11,7 @@ import { LinkedEntities } from "../components/LinkedEntities";
 import { CodexNotesPanel } from "../components/CodexNotesPanel";
 import { CodexIcon } from "../components/icons";
 import { EmptyState } from "../components/EmptyState";
+import { useScrollDetailOnSelect } from "../useScrollDetailOnSelect";
 
 type CodexMode = "npcs" | "locations" | "factions" | "quests";
 
@@ -36,6 +37,8 @@ export function CodexPage() {
   const [factions, setFactions] = useState<Faction[]>([]);
   const [quests, setQuests] = useState<QuestHook[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const detailRef = useRef<HTMLDivElement>(null);
+  useScrollDetailOnSelect(detailRef, selectedId);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -124,7 +127,7 @@ export function CodexPage() {
         )}
       </div>
 
-      <div className="panel result-panel">
+      <div className="panel result-panel" ref={detailRef}>
         {!selectedId && (
           <EmptyState
             icon={<CodexIcon />}

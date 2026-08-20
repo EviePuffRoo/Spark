@@ -207,7 +207,7 @@ export function DowntimePage() {
           <div className="panel result-panel">
             <h3 className="section-heading">Recent Activity</h3>
             {activities.length === 0 && (
-              <EmptyState icon={<DowntimeIcon />} heading="No downtime logged yet" hint="Log what each PC did between sessions using the form on the left." />
+              <EmptyState icon={<DowntimeIcon />} heading="No downtime logged yet" hint="Log what each PC did between sessions using the form below." />
             )}
             <ul className="entity-list">
               {activities.map((a) => (

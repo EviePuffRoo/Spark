@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, PlayerCharacter, ZoneMapTemplate, Dungeon, DungeonRoomRect, Shop, Region, Settlement, EntityType, QuestStatus } from "@spark/shared";
 import { QUEST_STATUSES, QUEST_STATUS_LABELS, layoutDungeonRooms } from "@spark/shared";
 import { api, type WorldSummary, type WorldMemberInfo } from "../api";
 import { useAuth } from "../AuthContext";
 import { downloadJson } from "../downloadJson";
+import { useScrollDetailOnSelect } from "../useScrollDetailOnSelect";
 import { StatBlockView } from "../components/StatBlockView";
 import { BackstoryView } from "../components/BackstoryView";
 import { ItemCardView } from "../components/ItemCardView";
@@ -164,6 +165,8 @@ export function RosterPage({
   const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [worlds, setWorlds] = useState<WorldSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const detailRef = useRef<HTMLDivElement>(null);
+  useScrollDetailOnSelect(detailRef, selectedId);
   const [metaNotes, setMetaNotes] = useState("");
   const [tags, setTags] = useState("");
   const [assignedWorld, setAssignedWorld] = useState("");
@@ -718,7 +721,7 @@ export function RosterPage({
         </ul>
       </div>
 
-      <div className="panel result-panel">
+      <div className="panel result-panel" ref={detailRef}>
         {!selected && (
           <EmptyState
             icon={<RosterIcon />}

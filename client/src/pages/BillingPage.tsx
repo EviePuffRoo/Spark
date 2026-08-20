@@ -64,7 +64,7 @@ export function BillingPage() {
         <table className="plan-comparison">
           <thead>
             <tr>
-              <th scope="col"></th>
+              <th scope="col"><span className="sr-only">Feature</span></th>
               <th scope="col">Free</th>
               <th scope="col">Paid</th>
             </tr>

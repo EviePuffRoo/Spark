@@ -43,7 +43,7 @@ export function AuthPage() {
   }
 
   return (
-    <div className="page auth-page">
+    <main className="page auth-page">
       <div className="auth-pitch">
         <div className="auth-wordmark">
           <img src="/favicon.svg" alt="" className="auth-bolt" />
@@ -110,6 +110,6 @@ export function AuthPage() {
           <button className="link-button" onClick={() => switchMode("login")}>← Back to log in</button>
         )}
       </div>
-    </div>
+    </main>
   );
 }

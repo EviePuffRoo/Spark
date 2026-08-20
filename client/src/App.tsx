@@ -36,6 +36,12 @@ type SubTab = "create" | "compendium" | "overview" | "worlds" | "roster" | "code
 const AREA_LABELS: Record<Area, string> = { prep: "Prep", world: "World", play: "Play", account: "Account" };
 const AREA_ICONS: Record<Area, typeof PrepIcon> = { prep: PrepIcon, world: WorldIcon, play: PlayIcon, account: AccountIcon };
 const AREA_DEFAULT_SUBTAB: Record<Area, SubTab> = { prep: "create", world: "overview", play: "combat", account: "profile" };
+const SUBTAB_LABELS: Record<SubTab, string> = {
+  create: "Create", compendium: "Compendium", overview: "Overview", worlds: "Worlds",
+  roster: "Roster", codex: "Codex", notes: "Notes", downtime: "Downtime", combat: "Combat",
+  shop: "Shop", inventory: "Inventory", gallery: "Gallery", profile: "Profile",
+  myCharacter: "My Character", billing: "Billing", moderation: "Moderation", users: "Users", stats: "Stats",
+};
 
 function App() {
   const { user, loading, pendingRecoveryCode, justSignedUp, dismissOnboarding } = useAuth();
@@ -219,6 +225,7 @@ function AppShell({ initialLandOnOverview = false }: { initialLandOnOverview?: b
       </header>
 
       <main>
+        <h1 className="sr-only">Spark — {SUBTAB_LABELS[subTab]}</h1>
         {subTab === "create" && <CreatePage />}
         {subTab === "compendium" && <CompendiumPage />}
         {subTab === "profile" && <ProfilePage />}

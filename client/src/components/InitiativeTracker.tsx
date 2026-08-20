@@ -536,8 +536,8 @@ export function InitiativeTracker({
         <p className="hint">Create or join a world to run combat with your party.</p>
       ) : (
         <div className="tabs dice-mode-toggle" role="tablist">
-          <button className={mode === "personal" ? "active" : ""} aria-current={mode === "personal" ? "true" : undefined} onClick={() => setMode("personal")}>Personal</button>
-          <button className={partyMode ? "active" : ""} aria-current={partyMode ? "true" : undefined} onClick={() => setMode("party")}>Party</button>
+          <button role="tab" className={mode === "personal" ? "active" : ""} aria-selected={mode === "personal"} onClick={() => setMode("personal")}>Personal</button>
+          <button role="tab" className={partyMode ? "active" : ""} aria-selected={partyMode} onClick={() => setMode("party")}>Party</button>
         </div>
       )}
 
@@ -782,9 +782,9 @@ export function InitiativeTracker({
                   <input type="number" value={attackToHitBonus} onChange={(e) => setAttackToHitBonus(e.target.value)} />
                 </label>
                 <div className="tabs apply-mode-toggle" role="tablist">
-                  <button className={attackAdvMode === "normal" ? "active" : ""} aria-current={attackAdvMode === "normal" ? "true" : undefined} onClick={() => setAttackAdvMode("normal")}>Normal</button>
-                  <button className={attackAdvMode === "adv" ? "active" : ""} aria-current={attackAdvMode === "adv" ? "true" : undefined} onClick={() => setAttackAdvMode("adv")}>Advantage</button>
-                  <button className={attackAdvMode === "dis" ? "active" : ""} aria-current={attackAdvMode === "dis" ? "true" : undefined} onClick={() => setAttackAdvMode("dis")}>Disadvantage</button>
+                  <button role="tab" className={attackAdvMode === "normal" ? "active" : ""} aria-selected={attackAdvMode === "normal"} onClick={() => setAttackAdvMode("normal")}>Normal</button>
+                  <button role="tab" className={attackAdvMode === "adv" ? "active" : ""} aria-selected={attackAdvMode === "adv"} onClick={() => setAttackAdvMode("adv")}>Advantage</button>
+                  <button role="tab" className={attackAdvMode === "dis" ? "active" : ""} aria-selected={attackAdvMode === "dis"} onClick={() => setAttackAdvMode("dis")}>Disadvantage</button>
                 </div>
                 <button className="btn-primary" onClick={() => rollToHit(c)}>Roll to Hit</button>
                 {attackRollResult && (
@@ -911,8 +911,8 @@ export function InitiativeTracker({
             {lootOpenFor === c.id && (
               <div className="save-panel">
                 <div className="tabs" role="tablist">
-                  <button className={lootKind === "gold" ? "active" : ""} aria-current={lootKind === "gold" ? "true" : undefined} onClick={() => { setLootKind("gold"); setLootLabel(`Loot from ${c.name}`); }}>Gold</button>
-                  <button className={lootKind === "item" ? "active" : ""} aria-current={lootKind === "item" ? "true" : undefined} onClick={() => { setLootKind("item"); setLootLabel(""); }}>Item</button>
+                  <button role="tab" className={lootKind === "gold" ? "active" : ""} aria-selected={lootKind === "gold"} onClick={() => { setLootKind("gold"); setLootLabel(`Loot from ${c.name}`); }}>Gold</button>
+                  <button role="tab" className={lootKind === "item" ? "active" : ""} aria-selected={lootKind === "item"} onClick={() => { setLootKind("item"); setLootLabel(""); }}>Item</button>
                 </div>
                 <label className="field">
                   <span>{lootKind === "gold" ? "Reason" : "Item name"}</span>

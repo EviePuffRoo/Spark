@@ -59,11 +59,13 @@ import { publicGalleryRouter } from "./routes/publicGallery.js";
 import { moderationRouter } from "./routes/moderation.js";
 import { adminUsersRouter } from "./routes/adminUsers.js";
 import { adminStatsRouter } from "./routes/adminStats.js";
+import { adminBackupRouter } from "./routes/adminBackup.js";
 import { vttExportRouter } from "./routes/vttExport.js";
 import { billingRouter, billingWebhookHandler } from "./routes/billing.js";
 import { FREE_TIER_GENERATE_LIMIT, PAID_TIER_GENERATE_LIMIT } from "@spark/shared";
 import { testAwareLimit } from "./rateLimitConfig.js";
 import { prisma } from "./db.js";
+import { legalPagesRouter } from "./legalPages.js";
 
 // Belt-and-suspenders: express-async-errors covers rejections inside route
 // handlers, but anything that rejects outside the request/response cycle
@@ -182,8 +184,15 @@ app.use("/api/public", publicGalleryRouter);
 app.use("/api/admin/gallery", moderationRouter);
 app.use("/api/admin/users", adminUsersRouter);
 app.use("/api/admin/stats", adminStatsRouter);
+app.use("/api/admin/db-backup", adminBackupRouter);
 app.use("/api", vttExportRouter);
 app.use("/api/billing", billingRouter);
+
+// Server-rendered, not part of the React SPA — reachable even if the JS
+// bundle fails to load, and linkable from anywhere (Stripe, emails)
+// without depending on client-side routing. Must be mounted before the
+// SPA catch-all below.
+app.use(legalPagesRouter);
 
 if (fs.existsSync(clientDist)) {
   // Vite content-hashes everything under assets/ (e.g. index-BYLZRNzN.js) —

@@ -109,6 +109,11 @@ export function AuthPage() {
         {mode === "reset" && (
           <button className="link-button" onClick={() => switchMode("login")}>← Back to log in</button>
         )}
+
+        <p className="hint auth-legal-links">
+          By continuing you agree to our <a href="/terms">Terms of Service</a> and{" "}
+          <a href="/privacy">Privacy Policy</a>.
+        </p>
       </div>
     </main>
   );

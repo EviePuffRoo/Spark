@@ -106,7 +106,20 @@ app.post("/api/billing/webhook", express.raw({ type: "application/json" }), bill
 
 app.use(express.json({ limit: "10mb" }));
 
-app.get("/api/health", (_req, res) => res.json({ ok: true }));
+// Also used as Render's own deploy health check (render.yaml), so this
+// stays a trivial, fast query — not a place for anything heavier. A
+// process that's up but can't reach its database (the exact failure mode
+// external uptime monitoring most needs to catch) would otherwise report
+// healthy with a static { ok: true } response.
+app.get("/api/health", async (_req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Health check failed — database unreachable:", err);
+    res.status(503).json({ ok: false });
+  }
+});
 app.use("/api/auth", authRouter);
 
 // Everything below requires a signed-in user.

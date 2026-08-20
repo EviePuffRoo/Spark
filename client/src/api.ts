@@ -375,6 +375,7 @@ export const api = {
   adminSetPassword: (userId: string, newPassword: string) =>
     request<void>(`/admin/users/${userId}/reset-password`, { method: "POST", body: JSON.stringify({ newPassword }) }),
   adminStats: () => request<AdminStats>("/admin/stats"),
+  runDatabaseBackup: () => request<{ key: string; pruned: number }>("/admin/db-backup/run", { method: "POST" }),
   importBackup: (bundle: unknown) =>
     request<ImportResult>("/backup/import", { method: "POST", body: JSON.stringify(bundle) }),
 

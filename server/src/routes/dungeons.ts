@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { toDungeonDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
-import { getMemberWorldIds } from "../worldAccess.js";
+import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
 import type { DungeonExit, DungeonRoom, DungeonRoomRect } from "@spark/shared";
 
 export const dungeonsRouter = Router();
@@ -63,6 +63,10 @@ dungeonsRouter.post("/", async (req, res) => {
   if (!name || !Array.isArray(rooms) || rooms.length === 0) {
     return res.status(400).json({ error: "Missing required dungeon fields" });
   }
+  if (typeof worldId === "string") {
+    const world = await findAccessibleWorld(req.userId!, worldId);
+    if (!world) return res.status(403).json({ error: "You don't have access to this world" });
+  }
   const coercedRooms = rooms.map(coerceRoom).filter((r: DungeonRoom | null): r is DungeonRoom => r !== null);
 
   const row = await prisma.dungeon.create({
@@ -90,7 +94,13 @@ dungeonsRouter.patch("/:id", async (req, res) => {
     const coercedRooms = Array.isArray(body.rooms) ? body.rooms.map(coerceRoom).filter((r: DungeonRoom | null): r is DungeonRoom => r !== null) : [];
     data.rooms = JSON.stringify(coercedRooms);
   }
-  if ("worldId" in body) data.worldId = body.worldId ?? null;
+  if ("worldId" in body) {
+    if (typeof body.worldId === "string") {
+      const world = await findAccessibleWorld(req.userId!, body.worldId);
+      if (!world) return res.status(403).json({ error: "You don't have access to this world" });
+    }
+    data.worldId = body.worldId ?? null;
+  }
   if ("tags" in body) data.tags = JSON.stringify(Array.isArray(body.tags) ? body.tags : []);
 
   const result = await prisma.dungeon.updateMany({ where: { id: req.params.id, userId: req.userId }, data });

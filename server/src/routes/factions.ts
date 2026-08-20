@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { toFactionDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
-import { getMemberWorldIds } from "../worldAccess.js";
+import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
 
 export const factionsRouter = Router();
 
@@ -31,6 +31,10 @@ factionsRouter.post("/", async (req, res) => {
   if (!name || !factionType || !agenda || !methods || !publicFace || !hook) {
     return res.status(400).json({ error: "Missing required faction fields" });
   }
+  if (typeof worldId === "string") {
+    const world = await findAccessibleWorld(req.userId!, worldId);
+    if (!world) return res.status(403).json({ error: "You don't have access to this world" });
+  }
 
   const row = await prisma.faction.create({
     data: {
@@ -52,7 +56,13 @@ factionsRouter.patch("/:id", async (req, res) => {
   for (const field of ["name", "factionType", "agenda", "methods", "publicFace", "hook", "notes", "hiddenFromParty", "reputation"] as const) {
     if (field in body) data[field] = body[field];
   }
-  if ("worldId" in body) data.worldId = body.worldId ?? null;
+  if ("worldId" in body) {
+    if (typeof body.worldId === "string") {
+      const world = await findAccessibleWorld(req.userId!, body.worldId);
+      if (!world) return res.status(403).json({ error: "You don't have access to this world" });
+    }
+    data.worldId = body.worldId ?? null;
+  }
   if ("tags" in body) data.tags = JSON.stringify(Array.isArray(body.tags) ? body.tags : []);
 
   const result = await prisma.faction.updateMany({ where: { id: req.params.id, userId: req.userId }, data });

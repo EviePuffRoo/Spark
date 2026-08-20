@@ -32,7 +32,7 @@ export function InventoryPage() {
   useEffect(() => { if (!worldId) setSummary(null); }, [worldId]);
 
   const { error: liveError } = useWorldLiveChannel(worldId || null, { onLedger: setSummary });
-  useEffect(() => { if (liveError) setError(liveError); }, [liveError]);
+  useEffect(() => { setError(liveError ?? null); }, [liveError]);
 
   const selectedWorld = worlds.find((w) => w.id === worldId) ?? null;
   const isOwner = !!selectedWorld?.isOwner;

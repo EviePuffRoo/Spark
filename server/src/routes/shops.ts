@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { toShopDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
-import { getMemberWorldIds } from "../worldAccess.js";
+import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
 import type { ShopStockEntry } from "@spark/shared";
 
 export const shopsRouter = Router();
@@ -47,6 +47,10 @@ shopsRouter.post("/", async (req, res) => {
   if (!name || !Array.isArray(stock)) {
     return res.status(400).json({ error: "Missing required shop fields" });
   }
+  if (typeof worldId === "string") {
+    const world = await findAccessibleWorld(req.userId!, worldId);
+    if (!world) return res.status(403).json({ error: "You don't have access to this world" });
+  }
   const coercedStock = stock.map(coerceStockEntry).filter((s: ShopStockEntry | null): s is ShopStockEntry => s !== null);
 
   const row = await prisma.shop.create({
@@ -75,7 +79,13 @@ shopsRouter.patch("/:id", async (req, res) => {
     const coercedStock = Array.isArray(body.stock) ? body.stock.map(coerceStockEntry).filter((s: ShopStockEntry | null): s is ShopStockEntry => s !== null) : [];
     data.stock = JSON.stringify(coercedStock);
   }
-  if ("worldId" in body) data.worldId = body.worldId ?? null;
+  if ("worldId" in body) {
+    if (typeof body.worldId === "string") {
+      const world = await findAccessibleWorld(req.userId!, body.worldId);
+      if (!world) return res.status(403).json({ error: "You don't have access to this world" });
+    }
+    data.worldId = body.worldId ?? null;
+  }
   if ("tags" in body) data.tags = JSON.stringify(Array.isArray(body.tags) ? body.tags : []);
 
   const result = await prisma.shop.updateMany({ where: { id: req.params.id, userId: req.userId }, data });

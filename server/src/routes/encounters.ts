@@ -7,6 +7,24 @@ import type { LiveCombatant, LiveCombatantCondition, CombatantKind, EncounterZon
 
 export const encountersRouter = Router();
 
+// Serializes the write handlers below for a given worldId's encounter row.
+// PUT, adjust-hp, and move-zone all round-trip the same `combatants` JSON
+// blob (read the row, mutate it in JS, write the whole thing back), and a
+// Prisma `$transaction` alone doesn't prevent two concurrent requests from
+// interleaving here — SQLite via Prisma doesn't hold a write lock across
+// the read, so both can read the same pre-mutation snapshot and each write
+// back a version that silently drops the other's change. Since this app
+// runs as a single Node process (no horizontal scaling), a plain in-memory
+// per-world queue is enough to make each of these read-modify-write cycles
+// atomic relative to one another.
+const encounterLocks = new Map<string, Promise<unknown>>();
+function withEncounterLock<T>(worldId: string, fn: () => Promise<T>): Promise<T> {
+  const prior = encounterLocks.get(worldId) ?? Promise.resolve();
+  const next = prior.then(fn, fn);
+  encounterLocks.set(worldId, next.catch(() => {}));
+  return next;
+}
+
 const ABILITY_KEYS: AbilityKey[] = ["str", "dex", "con", "int", "wis", "cha"];
 
 // Conditions used to be a plain string[]; a raw string entry from an
@@ -131,7 +149,7 @@ encountersRouter.put("/:worldId", async (req, res) => {
   const activeDungeonId = typeof body.activeDungeonId === "string" ? body.activeDungeonId : null;
   const activeDungeonRoomId = typeof body.activeDungeonRoomId === "string" ? body.activeDungeonRoomId : null;
 
-  const row = await prisma.encounter.upsert({
+  const row = await withEncounterLock(worldId, () => prisma.encounter.upsert({
     where: { worldId },
     create: {
       worldId,
@@ -152,7 +170,7 @@ encountersRouter.put("/:worldId", async (req, res) => {
       activeDungeonId,
       activeDungeonRoomId,
     },
-  });
+  }));
   publishWorldChange(worldId, "encounter");
   res.json(toEncounterDTO(row, req.userId!, world.userId));
 });
@@ -172,20 +190,24 @@ encountersRouter.post("/:worldId/adjust-hp", async (req, res) => {
     return res.status(400).json({ error: "combatantId and delta are required" });
   }
 
-  const row = await prisma.encounter.findUnique({ where: { worldId } });
-  if (!row) return res.status(404).json({ error: "No active encounter for this world" });
+  const updated = await withEncounterLock(worldId, async () => {
+    const row = await prisma.encounter.findUnique({ where: { worldId } });
+    if (!row) return null;
 
-  const combatants: LiveCombatant[] = JSON.parse(row.combatants);
-  const target = combatants.find((c) => c.id === combatantId);
-  if (!target) return res.status(404).json({ error: "Combatant not found" });
+    const combatants: LiveCombatant[] = JSON.parse(row.combatants);
+    const target = combatants.find((c) => c.id === combatantId);
+    if (!target) return undefined;
 
-  const maxHp = target.maxHp ?? 0;
-  target.currentHp = Math.max(0, Math.min(maxHp, (target.currentHp ?? 0) + delta));
+    const maxHp = target.maxHp ?? 0;
+    target.currentHp = Math.max(0, Math.min(maxHp, (target.currentHp ?? 0) + delta));
 
-  const updated = await prisma.encounter.update({
-    where: { worldId },
-    data: { combatants: JSON.stringify(combatants) },
+    return prisma.encounter.update({
+      where: { worldId },
+      data: { combatants: JSON.stringify(combatants) },
+    });
   });
+  if (updated === null) return res.status(404).json({ error: "No active encounter for this world" });
+  if (updated === undefined) return res.status(404).json({ error: "Combatant not found" });
   publishWorldChange(worldId, "encounter");
   res.json(toEncounterDTO(updated, req.userId!, world.userId));
 });
@@ -208,31 +230,34 @@ encountersRouter.post("/:worldId/move-zone", async (req, res) => {
     return res.status(400).json({ error: "combatantId and zoneId are required" });
   }
 
-  const row = await prisma.encounter.findUnique({ where: { worldId } });
-  if (!row) return res.status(404).json({ error: "No active encounter for this world" });
+  const updated = await withEncounterLock(worldId, async () => {
+    const row = await prisma.encounter.findUnique({ where: { worldId } });
+    if (!row) return { error: 404 as const, message: "No active encounter for this world" };
 
-  const zones: EncounterZone[] = JSON.parse(row.zones);
-  const targetZone = zones.find((z) => z.id === zoneId);
-  if (!targetZone) return res.status(404).json({ error: "Zone not found" });
-  if (!isOwner && !targetZone.revealed) {
-    return res.status(403).json({ error: "That zone hasn't been revealed yet" });
-  }
+    const zones: EncounterZone[] = JSON.parse(row.zones);
+    const targetZone = zones.find((z) => z.id === zoneId);
+    if (!targetZone) return { error: 404 as const, message: "Zone not found" };
+    if (!isOwner && !targetZone.revealed) {
+      return { error: 403 as const, message: "That zone hasn't been revealed yet" };
+    }
 
-  const combatants: LiveCombatant[] = JSON.parse(row.combatants);
-  const target = combatants.find((c) => c.id === combatantId);
-  if (!target) return res.status(404).json({ error: "Combatant not found" });
+    const combatants: LiveCombatant[] = JSON.parse(row.combatants);
+    const target = combatants.find((c) => c.id === combatantId);
+    if (!target) return { error: 404 as const, message: "Combatant not found" };
 
-  if (target.zoneId) {
-    const currentZone = zones.find((z) => z.id === target.zoneId);
-    const adjacent = (currentZone?.connections.includes(zoneId) ?? false) || targetZone.connections.includes(target.zoneId);
-    if (!adjacent) return res.status(400).json({ error: "That zone isn't adjacent" });
-  }
+    if (target.zoneId) {
+      const currentZone = zones.find((z) => z.id === target.zoneId);
+      const adjacent = (currentZone?.connections.includes(zoneId) ?? false) || targetZone.connections.includes(target.zoneId);
+      if (!adjacent) return { error: 400 as const, message: "That zone isn't adjacent" };
+    }
 
-  target.zoneId = zoneId;
-  const updated = await prisma.encounter.update({
-    where: { worldId },
-    data: { combatants: JSON.stringify(combatants) },
+    target.zoneId = zoneId;
+    return prisma.encounter.update({
+      where: { worldId },
+      data: { combatants: JSON.stringify(combatants) },
+    });
   });
+  if ("error" in updated) return res.status(updated.error).json({ error: updated.message });
   publishWorldChange(worldId, "encounter");
   res.json(toEncounterDTO(updated, req.userId!, world.userId));
 });

@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { toRegionDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
-import { getMemberWorldIds } from "../worldAccess.js";
+import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
 
 export const regionsRouter = Router();
 
@@ -31,6 +31,10 @@ regionsRouter.post("/", async (req, res) => {
   if (!name || !terrainCategory || !description) {
     return res.status(400).json({ error: "Missing required region fields" });
   }
+  if (typeof worldId === "string") {
+    const world = await findAccessibleWorld(req.userId!, worldId);
+    if (!world) return res.status(403).json({ error: "You don't have access to this world" });
+  }
 
   const row = await prisma.region.create({
     data: {
@@ -58,7 +62,13 @@ regionsRouter.patch("/:id", async (req, res) => {
   for (const field of ["x", "y"] as const) {
     if (field in body) data[field] = Number(body[field]);
   }
-  if ("worldId" in body) data.worldId = body.worldId ?? null;
+  if ("worldId" in body) {
+    if (typeof body.worldId === "string") {
+      const world = await findAccessibleWorld(req.userId!, body.worldId);
+      if (!world) return res.status(403).json({ error: "You don't have access to this world" });
+    }
+    data.worldId = body.worldId ?? null;
+  }
   if ("tags" in body) data.tags = JSON.stringify(Array.isArray(body.tags) ? body.tags : []);
   if ("connections" in body) {
     data.connections = JSON.stringify(Array.isArray(body.connections) ? body.connections.filter((c: unknown) => typeof c === "string") : []);

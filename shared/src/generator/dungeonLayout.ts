@@ -30,7 +30,7 @@ function findFreeCellNear(gx: number, gy: number, occupied: Set<string>): GridCe
     const key = `${gx + dx},${gy + dy}`;
     if (!occupied.has(key)) return { gx: gx + dx, gy: gy + dy };
   }
-  for (let radius = 2; radius < 64; radius++) {
+  for (let radius = 1; radius < 64; radius++) {
     const ring: GridCell[] = [];
     for (let dx = -radius; dx <= radius; dx++) {
       for (let dy = -radius; dy <= radius; dy++) {

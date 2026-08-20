@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { toLocationDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
-import { getMemberWorldIds } from "../worldAccess.js";
+import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
 
 export const locationsRouter = Router();
 
@@ -31,6 +31,10 @@ locationsRouter.post("/", async (req, res) => {
   if (!name || !locationType || !category || !description || !notableFeature || !keeper || !rumor) {
     return res.status(400).json({ error: "Missing required location fields" });
   }
+  if (typeof worldId === "string") {
+    const world = await findAccessibleWorld(req.userId!, worldId);
+    if (!world) return res.status(403).json({ error: "You don't have access to this world" });
+  }
 
   const row = await prisma.location.create({
     data: {
@@ -53,7 +57,13 @@ locationsRouter.patch("/:id", async (req, res) => {
   for (const field of ["name", "locationType", "category", "description", "notableFeature", "keeper", "rumor", "notes", "hiddenFromParty"] as const) {
     if (field in body) data[field] = body[field];
   }
-  if ("worldId" in body) data.worldId = body.worldId ?? null;
+  if ("worldId" in body) {
+    if (typeof body.worldId === "string") {
+      const world = await findAccessibleWorld(req.userId!, body.worldId);
+      if (!world) return res.status(403).json({ error: "You don't have access to this world" });
+    }
+    data.worldId = body.worldId ?? null;
+  }
   if ("settlementId" in body) data.settlementId = body.settlementId ?? null;
   if ("tags" in body) data.tags = JSON.stringify(Array.isArray(body.tags) ? body.tags : []);
 

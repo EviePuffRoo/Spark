@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { toEncounterTableDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
-import { getMemberWorldIds } from "../worldAccess.js";
+import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
 
 export const encounterTablesRouter = Router();
 
@@ -31,6 +31,10 @@ encounterTablesRouter.post("/", async (req, res) => {
   if (!name || !terrain || !Array.isArray(entries) || entries.length === 0) {
     return res.status(400).json({ error: "Missing required encounter table fields" });
   }
+  if (typeof worldId === "string") {
+    const world = await findAccessibleWorld(req.userId!, worldId);
+    if (!world) return res.status(403).json({ error: "You don't have access to this world" });
+  }
 
   const row = await prisma.encounterTable.create({
     data: {
@@ -54,7 +58,13 @@ encounterTablesRouter.patch("/:id", async (req, res) => {
     if (field in body) data[field] = body[field];
   }
   if ("entries" in body) data.entries = JSON.stringify(body.entries);
-  if ("worldId" in body) data.worldId = body.worldId ?? null;
+  if ("worldId" in body) {
+    if (typeof body.worldId === "string") {
+      const world = await findAccessibleWorld(req.userId!, body.worldId);
+      if (!world) return res.status(403).json({ error: "You don't have access to this world" });
+    }
+    data.worldId = body.worldId ?? null;
+  }
   if ("tags" in body) data.tags = JSON.stringify(Array.isArray(body.tags) ? body.tags : []);
 
   const result = await prisma.encounterTable.updateMany({ where: { id: req.params.id, userId: req.userId }, data });

@@ -25,7 +25,7 @@ export function PresentationView({ worldId }: { worldId: string }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   const { error: liveError } = useWorldLiveChannel(worldId, { onEncounter: setEncounter });
-  useEffect(() => { if (liveError) setError(liveError); }, [liveError]);
+  useEffect(() => { setError(liveError ?? null); }, [liveError]);
 
   useEffect(() => {
     function onFullscreenChange() {

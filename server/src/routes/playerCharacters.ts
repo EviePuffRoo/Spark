@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { toPlayerCharacterDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
-import { getMemberWorldIds } from "../worldAccess.js";
+import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
 import type { DeathSaves, SpellSlotLevel, ClassResource } from "@spark/shared";
 
 function coerceDeathSaves(raw: unknown): DeathSaves {
@@ -75,6 +75,10 @@ playerCharactersRouter.post("/", async (req, res) => {
   if (!name || !className || !level || !race || !armorClass || !maxHp) {
     return res.status(400).json({ error: "Missing required player character fields" });
   }
+  if (typeof worldId === "string") {
+    const world = await findAccessibleWorld(req.userId!, worldId);
+    if (!world) return res.status(403).json({ error: "You don't have access to this world" });
+  }
 
   const row = await prisma.playerCharacter.create({
     data: {
@@ -105,7 +109,13 @@ playerCharactersRouter.patch("/:id", async (req, res) => {
     if (field in body) data[field] = Number(body[field]);
   }
   if ("abilityScores" in body) data.abilityScores = JSON.stringify(body.abilityScores ?? {});
-  if ("worldId" in body) data.worldId = body.worldId ?? null;
+  if ("worldId" in body) {
+    if (typeof body.worldId === "string") {
+      const world = await findAccessibleWorld(req.userId!, body.worldId);
+      if (!world) return res.status(403).json({ error: "You don't have access to this world" });
+    }
+    data.worldId = body.worldId ?? null;
+  }
   if ("tags" in body) data.tags = JSON.stringify(Array.isArray(body.tags) ? body.tags : []);
   if ("deathSaves" in body) data.deathSaves = JSON.stringify(coerceDeathSaves(body.deathSaves));
   if ("spellSlots" in body) data.spellSlots = JSON.stringify(coerceSpellSlots(body.spellSlots));

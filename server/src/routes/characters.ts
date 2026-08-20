@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { toCharacterDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
-import { getMemberWorldIds } from "../worldAccess.js";
+import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
 
 export const charactersRouter = Router();
 
@@ -34,6 +34,10 @@ charactersRouter.post("/", async (req, res) => {
   if (!kind || !name || !alignment || !templateId || !templateName || !statBlock || !backstory) {
     return res.status(400).json({ error: "Missing required character fields" });
   }
+  if (typeof worldId === "string") {
+    const world = await findAccessibleWorld(req.userId!, worldId);
+    if (!world) return res.status(403).json({ error: "You don't have access to this world" });
+  }
 
   const row = await prisma.character.create({
     data: {
@@ -58,7 +62,13 @@ charactersRouter.patch("/:id", async (req, res) => {
   for (const field of ["name", "race", "background", "alignment", "notes", "hiddenFromParty"] as const) {
     if (field in body) data[field] = body[field];
   }
-  if ("worldId" in body) data.worldId = body.worldId ?? null;
+  if ("worldId" in body) {
+    if (typeof body.worldId === "string") {
+      const world = await findAccessibleWorld(req.userId!, body.worldId);
+      if (!world) return res.status(403).json({ error: "You don't have access to this world" });
+    }
+    data.worldId = body.worldId ?? null;
+  }
   if ("tags" in body) data.tags = JSON.stringify(Array.isArray(body.tags) ? body.tags : []);
   if ("statBlock" in body) data.statBlock = JSON.stringify(body.statBlock);
   if ("backstory" in body) data.backstory = JSON.stringify(body.backstory);

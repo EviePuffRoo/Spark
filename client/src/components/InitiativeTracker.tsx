@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { SearchResult, LiveCombatant, LiveCombatantCondition, EncounterStateInput, EncounterTable, EncounterZone, HpStatus, Dungeon, Item } from "@spark/shared";
 import { computeEquipmentBonuses, CONDITIONS_COMPENDIUM, parseStatBlockAttacks } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
@@ -70,6 +70,14 @@ export function InitiativeTracker({
   const [encounter, setEncounter] = useLocalStorage<EncounterStateInput>("spark-combat-encounter", BLANK_ENCOUNTER);
   const [mode, setMode] = useState<"personal" | "party">("personal");
   const [liveEncounter, setLiveEncounter] = useState<EncounterStateInput | null>(null);
+  // Full-encounter saves are fire-and-forget PUTs with no server-side
+  // ordering guarantee; two saves issued close together (e.g. a quick
+  // "Next Turn" followed by an HP change) could otherwise arrive out of
+  // order and let the older one silently overwrite the newer one. Chaining
+  // them through this ref forces each save to wait for the previous one to
+  // settle before going out, so they always land at the server in the same
+  // order they were issued.
+  const saveQueueRef = useRef<Promise<unknown>>(Promise.resolve());
   const [liveError, setLiveError] = useState<string | null>(null);
 
   const [rosterPickType, setRosterPickType] = useState<"character" | "playerCharacter" | "encounterTable" | null>(null);
@@ -116,7 +124,7 @@ export function InitiativeTracker({
   }, [partyMode, partyWorldId]);
 
   const { error: liveConnError } = useWorldLiveChannel(partyMode ? partyWorldId : null, { onEncounter: setLiveEncounter });
-  useEffect(() => { if (liveConnError) setLiveError(liveConnError); }, [liveConnError]);
+  useEffect(() => { setLiveError(liveConnError ?? null); }, [liveConnError]);
 
   const activeEncounter: EncounterStateInput = partyMode ? (liveEncounter ?? BLANK_ENCOUNTER) : encounter;
 
@@ -155,7 +163,10 @@ export function InitiativeTracker({
     if (partyMode && isOwner && partyWorldId) {
       setLiveEncounter((e) => {
         const next = updater(e ?? BLANK_ENCOUNTER);
-        api.saveEncounter(partyWorldId, next).catch((err) => setLiveError((err as Error).message));
+        saveQueueRef.current = saveQueueRef.current.then(
+          () => api.saveEncounter(partyWorldId, next),
+          () => api.saveEncounter(partyWorldId, next),
+        ).catch((err) => setLiveError((err as Error).message));
         return next;
       });
     } else {

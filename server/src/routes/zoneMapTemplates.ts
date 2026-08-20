@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { toZoneMapTemplateDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
-import { getMemberWorldIds } from "../worldAccess.js";
+import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
 import { coerceZone } from "./encounters.js";
 import type { EncounterZone } from "@spark/shared";
 
@@ -33,6 +33,10 @@ zoneMapTemplatesRouter.post("/", async (req, res) => {
   if (!name || !Array.isArray(zones) || zones.length === 0) {
     return res.status(400).json({ error: "Missing required zone map template fields" });
   }
+  if (typeof worldId === "string") {
+    const world = await findAccessibleWorld(req.userId!, worldId);
+    if (!world) return res.status(403).json({ error: "You don't have access to this world" });
+  }
   const coercedZones = zones.map(coerceZone).filter((z: EncounterZone | null): z is EncounterZone => z !== null);
 
   const row = await prisma.zoneMapTemplate.create({
@@ -60,7 +64,13 @@ zoneMapTemplatesRouter.patch("/:id", async (req, res) => {
     const coercedZones = Array.isArray(body.zones) ? body.zones.map(coerceZone).filter((z: EncounterZone | null): z is EncounterZone => z !== null) : [];
     data.zones = JSON.stringify(coercedZones);
   }
-  if ("worldId" in body) data.worldId = body.worldId ?? null;
+  if ("worldId" in body) {
+    if (typeof body.worldId === "string") {
+      const world = await findAccessibleWorld(req.userId!, body.worldId);
+      if (!world) return res.status(403).json({ error: "You don't have access to this world" });
+    }
+    data.worldId = body.worldId ?? null;
+  }
   if ("tags" in body) data.tags = JSON.stringify(Array.isArray(body.tags) ? body.tags : []);
 
   const result = await prisma.zoneMapTemplate.updateMany({ where: { id: req.params.id, userId: req.userId }, data });

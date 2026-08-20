@@ -94,7 +94,7 @@ export function DiceRoller({
   }, [mode, selectedWorldId]);
 
   const { error: liveError } = useWorldLiveChannel(mode === "party" ? selectedWorldId : null, { onRollLog: setPartyLog });
-  useEffect(() => { if (liveError) setPartyError(liveError); }, [liveError]);
+  useEffect(() => { setPartyError(liveError ?? null); }, [liveError]);
 
   async function loadOlderRolls() {
     if (!selectedWorldId || historyLoading) return;

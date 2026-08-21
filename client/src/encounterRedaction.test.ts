@@ -91,6 +91,32 @@ describe("filterEncounterForDisplay", () => {
     expect(filterEncounterForDisplay(encounter).combatants).toHaveLength(0);
   });
 
+  it("drops a non-PC combatant outside the given visibleCells, but keeps one inside it", () => {
+    const encounter = baseEncounter({
+      combatants: [
+        combatant({ id: "in-sight", kind: "monster", gridX: 2, gridY: 2 }),
+        combatant({ id: "out-of-sight", kind: "monster", gridX: 9, gridY: 9 }),
+      ],
+    });
+    const result = filterEncounterForDisplay(encounter, new Set(["2,2"]));
+    expect(result.combatants.map((c) => c.id)).toEqual(["in-sight"]);
+  });
+
+  it("never fog-gates a playerCharacter combatant, even outside visibleCells", () => {
+    const encounter = baseEncounter({
+      combatants: [combatant({ id: "pc", kind: "playerCharacter", gridX: 9, gridY: 9 })],
+    });
+    const result = filterEncounterForDisplay(encounter, new Set(["0,0"]));
+    expect(result.combatants.map((c) => c.id)).toEqual(["pc"]);
+  });
+
+  it("does not fog-gate anything when visibleCells is omitted", () => {
+    const encounter = baseEncounter({
+      combatants: [combatant({ id: "unplaced", kind: "monster", gridX: 9, gridY: 9 })],
+    });
+    expect(filterEncounterForDisplay(encounter).combatants.map((c) => c.id)).toEqual(["unplaced"]);
+  });
+
   it("drops expired zone effects and effects in unrevealed zones", () => {
     const encounter = baseEncounter({
       round: 5,

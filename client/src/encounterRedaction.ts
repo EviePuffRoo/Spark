@@ -4,7 +4,14 @@ import type { Encounter } from "@spark/shared";
 // client-side, for the DM's own "cast to a second screen" display — a
 // convenience filter, not a security boundary, since it only ever runs on
 // data the DM's own browser already has full access to.
-export function filterEncounterForDisplay(encounter: Encounter): Encounter {
+//
+// visibleCells, when passed, mirrors the same server-side fog gate: a
+// non-PC combatant whose grid cell falls outside it is dropped, same as a
+// non-owner viewer would never receive it in the first place. The DM's own
+// fetch never gets a server-computed visibleCells (they always see
+// everything), so the caller computes it client-side — see
+// PresentationView.tsx — and passes it through here.
+export function filterEncounterForDisplay(encounter: Encounter, visibleCells?: Set<string>): Encounter {
   const visibleZones = encounter.zones.filter((z) => z.revealed);
   const visibleZoneIds = new Set(visibleZones.map((z) => z.id));
   const zones = visibleZones.map((z) => ({
@@ -28,6 +35,9 @@ export function filterEncounterForDisplay(encounter: Encounter): Encounter {
     .filter((c) => {
       if (c.hidden) return false;
       if (c.zoneId && !visibleZoneIds.has(c.zoneId)) return false;
+      if (visibleCells && c.kind !== "playerCharacter" && c.gridX !== undefined && c.gridY !== undefined) {
+        if (!visibleCells.has(`${c.gridX},${c.gridY}`)) return false;
+      }
       return true;
     });
 

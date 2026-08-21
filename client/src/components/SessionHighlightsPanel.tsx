@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { SessionHighlights, SessionNote } from "@spark/shared";
 import { api } from "../api";
+import { RecapCard } from "./RecapCard";
 
 const FALLBACK_DAYS_BACK = 7;
 
@@ -8,15 +9,17 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-export function SessionHighlightsPanel({ worldId }: { worldId: string }) {
+export function SessionHighlightsPanel({ worldId, worldName }: { worldId: string; worldName: string }) {
   const [highlights, setHighlights] = useState<SessionHighlights | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showCard, setShowCard] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
+    setShowCard(false);
     api.listSessionNotes(worldId)
       .then((notes: SessionNote[]) => {
         const latest = notes.length > 0
@@ -60,6 +63,12 @@ export function SessionHighlightsPanel({ worldId }: { worldId: string }) {
           {highlights.itemsGained.length > 0 && (
             <p><strong>Loot:</strong> {highlights.itemsGained.map((i) => `${i.label} ×${i.quantity}`).join(", ")}</p>
           )}
+          {!isEmpty && (
+            <button className="btn-secondary" aria-expanded={showCard} onClick={() => setShowCard((v) => !v)}>
+              {showCard ? "Hide Recap Card" : "Share as Recap Card"}
+            </button>
+          )}
+          {showCard && <RecapCard highlights={highlights} worldName={worldName} />}
         </>
       )}
     </div>

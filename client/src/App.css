@@ -2307,6 +2307,16 @@ textarea {
   opacity: 0.55;
 }
 
+.grid-map-template {
+  fill: var(--danger);
+  opacity: 0.25;
+}
+
+.grid-token.grid-token-in-template rect {
+  stroke: var(--danger);
+  stroke-width: 3px;
+}
+
 .grid-token {
   cursor: grab;
   user-select: none;

@@ -6,6 +6,7 @@ import { useAuth } from "../AuthContext";
 import { WorldMapView } from "../components/WorldMapView";
 import { LastSessionPanel } from "../components/LastSessionPanel";
 import { SessionHighlightsPanel } from "../components/SessionHighlightsPanel";
+import { AchievementsPanel } from "../components/AchievementsPanel";
 import { NextSessionPanel } from "../components/NextSessionPanel";
 
 export type OverviewNavTarget = "worlds" | "roster" | "codex" | "notes" | "downtime" | "shop";
@@ -164,6 +165,7 @@ export function WorldOverviewPage({ onNavigate }: { onNavigate: (subTab: Overvie
 
         <LastSessionPanel worldId={worldId} onOpenNotes={() => onNavigate("notes")} />
         <SessionHighlightsPanel worldId={worldId} />
+        <AchievementsPanel worldId={worldId} />
       </div>
 
       <div className="panel">

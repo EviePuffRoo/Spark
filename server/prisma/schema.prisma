@@ -526,6 +526,7 @@ model Encounter {
   activeDungeonId     String?
   activeDungeonRoomId String?
   activeBattleMapId   String?
+  exploredCells       String   @default("[]")
   updatedAt   DateTime @updatedAt
 }
 

@@ -362,7 +362,7 @@ export function computeHpStatus(current?: number, max?: number): HpStatus {
   return "healthy";
 }
 
-export function toEncounterDTO(row: EncounterRow, viewerId: string, worldOwnerId: string): Encounter {
+export function toEncounterDTO(row: EncounterRow, viewerId: string, worldOwnerId: string, visibleCells?: Set<string>): Encounter {
   const isOwner = viewerId === worldOwnerId;
 
   const allZones: EncounterZone[] = JSON.parse(row.zones);
@@ -399,6 +399,14 @@ export function toEncounterDTO(row: EncounterRow, viewerId: string, worldOwnerId
       if (isOwner) return true;
       if (c.hidden) return false;
       if (c.zoneId && !visibleZoneIds.has(c.zoneId)) return false;
+      // Fog-of-war: a non-PC token off the party's current grid vision is
+      // withheld the same way a hidden combatant already is. Only applies
+      // when a battle map is actually active (visibleCells passed in) —
+      // the party's own PCs are never fog-gated, same as they aren't
+      // subject to the `hidden` flag either.
+      if (visibleCells && c.kind !== "playerCharacter" && c.gridX !== undefined && c.gridY !== undefined) {
+        if (!visibleCells.has(`${c.gridX},${c.gridY}`)) return false;
+      }
       return true;
     });
 
@@ -412,6 +420,8 @@ export function toEncounterDTO(row: EncounterRow, viewerId: string, worldOwnerId
     activeDungeonId: row.activeDungeonId ?? undefined,
     activeDungeonRoomId: row.activeDungeonRoomId ?? undefined,
     activeBattleMapId: row.activeBattleMapId ?? undefined,
+    exploredCells: JSON.parse(row.exploredCells ?? "[]"),
+    visibleCells: isOwner ? undefined : (visibleCells ? [...visibleCells] : undefined),
     updatedAt: row.updatedAt.toISOString(),
   };
 }

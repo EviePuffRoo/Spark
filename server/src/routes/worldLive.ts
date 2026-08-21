@@ -3,6 +3,7 @@ import { prisma } from "../db.js";
 import { toEncounterDTO, toLedgerEntryDTO, toRollLogEntryDTO, toChatMessageDTO } from "../serialize.js";
 import { findAccessibleWorld } from "../worldAccess.js";
 import { subscribeToWorld, subscribeToTokenMoved, type WorldChangeKind, type TokenPositionBroadcast } from "../worldEvents.js";
+import { computeCurrentVisibility } from "../gridVisibility.js";
 import { RECENT_HISTORY_LIMIT } from "@spark/shared";
 import type { LedgerSummary } from "@spark/shared";
 
@@ -12,9 +13,13 @@ const PING_INTERVAL_MS = 25000;
 
 async function sendEncounter(res: Response, worldId: string, viewerId: string, worldOwnerId: string) {
   const row = await prisma.encounter.findUnique({ where: { worldId } });
-  const dto = row
-    ? toEncounterDTO(row, viewerId, worldOwnerId)
-    : { worldId, combatants: [], round: 1, turnIndex: 0, zones: [], zoneEffects: [], updatedAt: null };
+  let dto;
+  if (!row) {
+    dto = { worldId, combatants: [], round: 1, turnIndex: 0, zones: [], zoneEffects: [], updatedAt: null };
+  } else {
+    const visibleCells = await computeCurrentVisibility(row.activeBattleMapId, JSON.parse(row.combatants));
+    dto = toEncounterDTO(row, viewerId, worldOwnerId, visibleCells ?? undefined);
+  }
   res.write(`event: encounter\ndata: ${JSON.stringify(dto)}\n\n`);
 }
 

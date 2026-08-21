@@ -524,6 +524,11 @@ export interface LiveCombatant {
   // Feet per turn, snapshotted from the source stat block the same way
   // maxHp/armorClass are — drives movement-range highlighting on the grid.
   speedFeet?: number;
+  // Sight radius in feet for the vision/fog-of-war raycast — defaults to
+  // DEFAULT_VISION_RADIUS_FEET (vision.ts) when unset. Only meaningful for
+  // playerCharacter tokens; fog-of-war is driven by the party's collective
+  // sight, not every monster's.
+  visionRadiusFeet?: number;
   // Snapshotted from the source Character's stat block when added to combat
   // (see parseStatBlockAttacks) — not looked up live, same as maxHp/armorClass,
   // so combat state survives the source NPC/monster being edited or deleted.
@@ -679,11 +684,24 @@ export interface EncounterStateInput {
   // activeDungeonId/zones rather than replacing them, same "more than one
   // map system can be live at once" model as dungeon rooms vs. zones.
   activeBattleMapId?: string;
+  // "x,y" keys the party has ever seen on the current battle map — fog-of-
+  // war memory. Monotonically grows: the server unions freshly-computed
+  // current vision into whatever's already here on every write that could
+  // move a token, so this only ever gains cells (until a new battle map is
+  // loaded, which starts it fresh). A client MAY seed/extend this on PUT,
+  // but never shrinks what the server already has recorded.
+  exploredCells?: string[];
 }
 
 export interface Encounter extends EncounterStateInput {
   worldId: string;
   updatedAt: string | null;
+  // Server-computed, response-only: the party's current-instant vision
+  // (this turn's raycast, already unioned into exploredCells above) — the
+  // "full brightness" cells, as opposed to exploredCells' dimmer "seen
+  // before, not looking at it right now" memory. Absent/omitted for the
+  // world owner, who always sees everything and has no fog to render.
+  visibleCells?: string[];
 }
 
 export interface ActivitySummary {

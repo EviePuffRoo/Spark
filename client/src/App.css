@@ -2298,6 +2298,15 @@ textarea {
   stroke-width: 3px;
 }
 
+.grid-map-fog-hidden {
+  fill: #05050a;
+}
+
+.grid-map-fog-dim {
+  fill: #05050a;
+  opacity: 0.55;
+}
+
 .grid-token {
   cursor: grab;
   user-select: none;

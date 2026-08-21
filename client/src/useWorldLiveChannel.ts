@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { Encounter, LedgerSummary, RollLogEntry, ChatMessage } from "@spark/shared";
+import type { Encounter, LedgerSummary, RollLogEntry, ChatMessage, TokenMovedBroadcast } from "@spark/shared";
 import { api } from "./api";
 
 interface WorldLiveOptions {
@@ -7,6 +7,11 @@ interface WorldLiveOptions {
   onLedger?: (summary: LedgerSummary) => void;
   onRollLog?: (rows: RollLogEntry[]) => void;
   onChat?: (messages: ChatMessage[]) => void;
+  // Unlike the four above, this one has no REST counterpart to resync
+  // from on (re)connect — it's a pure, unpersisted push of an in-progress
+  // token drag (see worldEvents.ts's publishTokenMoved), so the handler
+  // just applies the tiny payload directly instead of triggering a fetch.
+  onTokenMoved?: (payload: TokenMovedBroadcast) => void;
 }
 
 // Replaces the app's old per-page 5s polling loops with one pushed SSE
@@ -72,6 +77,10 @@ export function useWorldLiveChannel(worldId: string | null | undefined, options:
     es.addEventListener("chat", (ev) => {
       if (cancelled) return;
       optionsRef.current.onChat?.(JSON.parse((ev as MessageEvent).data));
+    });
+    es.addEventListener("tokenMoved", (ev) => {
+      if (cancelled) return;
+      optionsRef.current.onTokenMoved?.(JSON.parse((ev as MessageEvent).data));
     });
 
     return () => {

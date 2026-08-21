@@ -127,7 +127,15 @@ export function InitiativeTracker({
     if (!partyMode || !partyWorldId) setLiveEncounter(null);
   }, [partyMode, partyWorldId]);
 
-  const { error: liveConnError } = useWorldLiveChannel(partyMode ? partyWorldId : null, { onEncounter: setLiveEncounter });
+  const { error: liveConnError } = useWorldLiveChannel(partyMode ? partyWorldId : null, {
+    onEncounter: setLiveEncounter,
+    onTokenMoved: (payload) => {
+      setLiveEncounter((e) => e && ({
+        ...e,
+        combatants: e.combatants.map((c) => (c.id === payload.combatantId ? { ...c, gridX: payload.gridX, gridY: payload.gridY } : c)),
+      }));
+    },
+  });
   useEffect(() => { setLiveError(liveConnError ?? null); }, [liveConnError]);
 
   const activeEncounter: EncounterStateInput = partyMode ? (liveEncounter ?? BLANK_ENCOUNTER) : encounter;
@@ -571,6 +579,15 @@ export function InitiativeTracker({
     }
   }
 
+  // Ephemeral, unpersisted — the live glide other viewers see mid-drag.
+  // Never touches applyEncounterUpdate/the save queue; the real position
+  // is still only committed by moveCombatantOnGrid above, on drop.
+  function broadcastTokenDrag(combatantId: string, gridX: number, gridY: number) {
+    if (partyMode && partyWorldId) {
+      api.broadcastTokenPosition(partyWorldId, combatantId, gridX, gridY).catch(() => {});
+    }
+  }
+
   return (
     <div className="panel result-panel initiative-tracker">
       <div className="initiative-header">
@@ -707,6 +724,7 @@ export function InitiativeTracker({
           onLeaveBattleMap={leaveBattleMap}
           onMoveCombatant={moveCombatantOnGrid}
           onPlaceCombatant={moveCombatantOnGrid}
+          onDragBroadcast={broadcastTokenDrag}
         />
       )}
 

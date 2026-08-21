@@ -7,6 +7,11 @@ import { BattleTileDefs } from "./TileIcon";
 const CELL = 32;
 const VIEWPORT_WIDTH = 800;
 const VIEWPORT_HEIGHT = 560;
+// How often a drag broadcasts its in-progress position to other viewers
+// (see onDragBroadcast below) — frequent enough to look like a smooth
+// glide, far below animation-frame rate so it stays cheap for everyone
+// watching.
+const DRAG_BROADCAST_THROTTLE_MS = 80;
 
 function footprintFor(c: LiveCombatant): number {
   return SIZE_FOOTPRINT[(c.sizeCategory ?? "medium") as SizeCategory];
@@ -19,7 +24,7 @@ interface RulerPoint {
 
 export function GridMap({
   worldId, battleMapId, combatants, activeId, canEdit,
-  onLoadBattleMap, onLeaveBattleMap, onMoveCombatant, onPlaceCombatant,
+  onLoadBattleMap, onLeaveBattleMap, onMoveCombatant, onPlaceCombatant, onDragBroadcast,
 }: {
   worldId?: string;
   battleMapId?: string;
@@ -30,6 +35,12 @@ export function GridMap({
   onLeaveBattleMap: () => void;
   onMoveCombatant: (combatantId: string, gridX: number, gridY: number) => void;
   onPlaceCombatant: (combatantId: string, gridX: number, gridY: number) => void;
+  // Fired (throttled) with a token's in-progress drag position so other
+  // connected viewers can watch it glide in real time — separate from
+  // onMoveCombatant, which only fires once, on drop, and is what actually
+  // persists. Omit to disable broadcasting (e.g. outside party mode,
+  // where there's no live channel to broadcast into anyway).
+  onDragBroadcast?: (combatantId: string, gridX: number, gridY: number) => void;
 }) {
   const [battleMap, setBattleMap] = useState<BattleMap | null>(null);
   const [loading, setLoading] = useState(false);
@@ -63,6 +74,7 @@ export function GridMap({
 
   const tokenDragRef = useRef<{ id: string; startX: number; startY: number; originGridX: number; originGridY: number; moved: boolean } | null>(null);
   const [tokenDragPos, setTokenDragPos] = useState<{ id: string; gridX: number; gridY: number } | null>(null);
+  const lastBroadcastAtRef = useRef(0);
   const panRef = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null);
 
   const [measuring, setMeasuring] = useState(false);
@@ -98,6 +110,7 @@ export function GridMap({
     e.currentTarget.setPointerCapture(e.pointerId);
     tokenDragRef.current = { id: c.id, startX: e.clientX, startY: e.clientY, originGridX: c.gridX ?? 0, originGridY: c.gridY ?? 0, moved: false };
     setTokenDragPos({ id: c.id, gridX: c.gridX ?? 0, gridY: c.gridY ?? 0 });
+    lastBroadcastAtRef.current = 0;
   }
 
   function handleTokenPointerMove(e: React.PointerEvent<SVGRectElement>, c: LiveCombatant) {
@@ -108,6 +121,14 @@ export function GridMap({
     const size = footprintFor(c);
     const clamped = clampFootprint(cellX - Math.floor(size / 2), cellY - Math.floor(size / 2), size);
     setTokenDragPos({ id: c.id, gridX: clamped.x, gridY: clamped.y });
+
+    if (onDragBroadcast && drag.moved) {
+      const now = Date.now();
+      if (now - lastBroadcastAtRef.current >= DRAG_BROADCAST_THROTTLE_MS) {
+        lastBroadcastAtRef.current = now;
+        onDragBroadcast(c.id, clamped.x, clamped.y);
+      }
+    }
   }
 
   function handleTokenPointerUp(_e: React.PointerEvent<SVGRectElement>, c: LiveCombatant) {
@@ -166,7 +187,7 @@ export function GridMap({
     return computeReachableCells(battleMap, activeCombatant.gridX, activeCombatant.gridY, activeCombatant.speedFeet ?? 30);
   }, [battleMap, activeCombatant]);
 
-  const placed = combatants.filter((c) => c.gridX !== undefined && c.gridY !== undefined && tokenDragPos?.id !== c.id);
+  const placed = combatants.filter((c) => c.gridX !== undefined && c.gridY !== undefined);
   const unplaced = combatants.filter((c) => c.gridX === undefined || c.gridY === undefined);
 
   if (!battleMapId) {
@@ -283,37 +304,40 @@ export function GridMap({
 
             {placed.map((c) => {
               const size = footprintFor(c);
+              const isDragging = tokenDragPos?.id === c.id;
+              // Same <rect> stays mounted for the whole drag — just its x/y
+              // change — rather than swapping in a separate preview element,
+              // which would drop the pointer capture set on pointerdown the
+              // instant React removed the original node (breaking anything
+              // but the very fastest single-gesture drags).
+              const gridX = isDragging ? tokenDragPos.gridX : (c.gridX ?? 0);
+              const gridY = isDragging ? tokenDragPos.gridY : (c.gridY ?? 0);
+              const origin = isDragging ? tokenDragRef.current : null;
+              const movedFeet = origin ? chebyshevDistanceFeet(origin.originGridX, origin.originGridY, gridX, gridY) : 0;
+              const overSpeed = isDragging && movedFeet > (c.speedFeet ?? 30);
               return (
-                <g key={c.id} className={`grid-token grid-token-${c.kind}${c.id === activeId ? " grid-token-active-turn" : ""}`}>
+                <g
+                  key={c.id}
+                  className={`grid-token grid-token-${c.kind}${c.id === activeId ? " grid-token-active-turn" : ""}${isDragging ? " grid-token-dragging" : ""}${overSpeed ? " grid-token-over-speed" : ""}`}
+                >
                   <rect
-                    x={(c.gridX ?? 0) * CELL} y={(c.gridY ?? 0) * CELL}
+                    x={gridX * CELL} y={gridY * CELL}
                     width={size * CELL} height={size * CELL}
                     rx={6}
                     onPointerDown={(e) => handleTokenPointerDown(e, c)}
                     onPointerMove={(e) => handleTokenPointerMove(e, c)}
                     onPointerUp={(e) => handleTokenPointerUp(e, c)}
                   />
-                  <text x={(c.gridX ?? 0) * CELL + (size * CELL) / 2} y={(c.gridY ?? 0) * CELL + size * CELL + 14} textAnchor="middle">{c.name}</text>
+                  {isDragging ? (
+                    <text x={gridX * CELL + (size * CELL) / 2} y={gridY * CELL - 8} textAnchor="middle" className="grid-token-drag-distance">
+                      {movedFeet} ft
+                    </text>
+                  ) : (
+                    <text x={gridX * CELL + (size * CELL) / 2} y={gridY * CELL + size * CELL + 14} textAnchor="middle">{c.name}</text>
+                  )}
                 </g>
               );
             })}
-
-            {tokenDragPos && (() => {
-              const dragged = combatants.find((c) => c.id === tokenDragPos.id);
-              if (!dragged) return null;
-              const size = footprintFor(dragged);
-              const origin = tokenDragRef.current;
-              const movedFeet = origin ? chebyshevDistanceFeet(origin.originGridX, origin.originGridY, tokenDragPos.gridX, tokenDragPos.gridY) : 0;
-              const overSpeed = movedFeet > (dragged.speedFeet ?? 30);
-              return (
-                <g className={`grid-token grid-token-${dragged.kind} grid-token-dragging${overSpeed ? " grid-token-over-speed" : ""}`}>
-                  <rect x={tokenDragPos.gridX * CELL} y={tokenDragPos.gridY * CELL} width={size * CELL} height={size * CELL} rx={6} />
-                  <text x={tokenDragPos.gridX * CELL + (size * CELL) / 2} y={tokenDragPos.gridY * CELL - 8} textAnchor="middle" className="grid-token-drag-distance">
-                    {movedFeet} ft
-                  </text>
-                </g>
-              );
-            })()}
           </g>
         </svg>
       </div>

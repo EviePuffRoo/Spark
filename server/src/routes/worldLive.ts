@@ -2,7 +2,7 @@ import { Router, type Response } from "express";
 import { prisma } from "../db.js";
 import { toEncounterDTO, toLedgerEntryDTO, toRollLogEntryDTO, toChatMessageDTO } from "../serialize.js";
 import { findAccessibleWorld } from "../worldAccess.js";
-import { subscribeToWorld, type WorldChangeKind } from "../worldEvents.js";
+import { subscribeToWorld, subscribeToTokenMoved, type WorldChangeKind, type TokenPositionBroadcast } from "../worldEvents.js";
 import { RECENT_HISTORY_LIMIT } from "@spark/shared";
 import type { LedgerSummary } from "@spark/shared";
 
@@ -83,10 +83,20 @@ worldLiveRouter.get("/:worldId/live", async (req, res) => {
     else if (kind === "chat") sendChat(res, worldId).catch(() => {});
   });
 
+  // A hidden combatant's live drag position is withheld from every
+  // connection but the owner's — the same redaction rule sendEncounter's
+  // toEncounterDTO applies to hidden combatants generally, just enforced
+  // here instead since this event skips that function entirely.
+  const unsubscribeTokenMoved = subscribeToTokenMoved(worldId, (payload: TokenPositionBroadcast) => {
+    if (payload.hidden && !isOwner) return;
+    res.write(`event: tokenMoved\ndata: ${JSON.stringify({ combatantId: payload.combatantId, gridX: payload.gridX, gridY: payload.gridY })}\n\n`);
+  });
+
   const pingTimer = setInterval(() => res.write(":ping\n\n"), PING_INTERVAL_MS);
 
   req.on("close", () => {
     unsubscribe();
+    unsubscribeTokenMoved();
     clearInterval(pingTimer);
   });
 });

@@ -9,6 +9,7 @@ import { useSessionReminder } from "../useSessionReminder";
 import { useLocalStorage } from "../useLocalStorage";
 import { DiceRoller } from "../components/DiceRoller";
 import { ChatPanel } from "../components/ChatPanel";
+import { GridMap } from "../components/GridMap";
 import { LastSessionPanel } from "../components/LastSessionPanel";
 import { NextSessionPanel } from "../components/NextSessionPanel";
 import { HpTrackerPanel } from "../components/HpTrackerPanel";
@@ -112,6 +113,8 @@ export function PlayerCompanionView() {
   const [sessionRemindBlocked, setSessionRemindBlocked] = useState(false);
 
   const world = worlds.find((w) => w.id === worldId) ?? null;
+  const canEdit = world?.isOwner ?? false;
+  const [showGridMap, setShowGridMap] = useState(false);
   useSessionReminder(world?.nextSessionAt, sessionRemindEnabled);
 
   function refreshCharacters() {
@@ -131,12 +134,53 @@ export function PlayerCompanionView() {
   const myPlayerCharacterIds = myCharactersHere.map((pc) => pc.id);
 
   const [encounter, setEncounter] = useState<Encounter | null>(null);
-  useWorldLiveChannel(worldId, { onEncounter: setEncounter });
+  useWorldLiveChannel(worldId, {
+    onEncounter: setEncounter,
+    onTokenMoved: (payload) => {
+      setEncounter((e) => e && ({
+        ...e,
+        combatants: e.combatants.map((c) => (c.id === payload.combatantId ? { ...c, gridX: payload.gridX, gridY: payload.gridY } : c)),
+      }));
+    },
+  });
   useMyTurnNotifier(encounter, myPlayerCharacterIds, notifyEnabled);
   const combatants = encounter?.combatants ?? [];
   const sortedCombatants = [...combatants].sort((a, b) => b.initiative - a.initiative);
   const activeCombatant = combatants.length > 0 ? sortedCombatants[(encounter?.turnIndex ?? 0) % sortedCombatants.length] ?? null : null;
   const activeId = activeCombatant?.id ?? null;
+
+  function loadBattleMap(mapId: string) {
+    if (!worldId || !encounter) return;
+    api.saveEncounter(worldId, { ...encounter, activeBattleMapId: mapId }).then(setEncounter).catch(() => {});
+  }
+
+  function leaveBattleMap() {
+    if (!worldId || !encounter) return;
+    api.saveEncounter(worldId, {
+      ...encounter,
+      activeBattleMapId: undefined,
+      combatants: encounter.combatants.map((c) => ({ ...c, gridX: undefined, gridY: undefined })),
+    }).then(setEncounter).catch(() => {});
+  }
+
+  function moveCombatantOnGrid(combatantId: string, gridX: number, gridY: number) {
+    if (!worldId) return;
+    if (canEdit && encounter) {
+      api.saveEncounter(worldId, {
+        ...encounter,
+        combatants: encounter.combatants.map((c) => (c.id === combatantId ? { ...c, gridX, gridY } : c)),
+      }).then(setEncounter).catch(() => {});
+    } else {
+      api.moveCombatantGrid(worldId, combatantId, gridX, gridY).then(setEncounter).catch(() => {});
+    }
+  }
+
+  // Ephemeral, unpersisted — see the identical note on
+  // InitiativeTracker.tsx's broadcastTokenDrag.
+  function broadcastTokenDrag(combatantId: string, gridX: number, gridY: number) {
+    if (!worldId) return;
+    api.broadcastTokenPosition(worldId, combatantId, gridX, gridY).catch(() => {});
+  }
 
   async function handleToggleNotify() {
     if (notifyEnabled) {
@@ -224,6 +268,33 @@ export function PlayerCompanionView() {
                 )}
                 <TurnOrderStrip combatants={combatants} activeId={activeId} />
               </section>
+
+              {(encounter?.activeBattleMapId || canEdit) && (
+                <section className="panel">
+                  <div className="section-heading-row">
+                    <h2 className="section-heading">Battle Grid</h2>
+                    <button className="btn-secondary" aria-expanded={showGridMap} onClick={() => setShowGridMap((v) => !v)}>
+                      {showGridMap ? "Hide" : "Show"}
+                    </button>
+                  </div>
+                  {showGridMap && (
+                    <GridMap
+                      worldId={worldId}
+                      battleMapId={encounter?.activeBattleMapId}
+                      combatants={combatants}
+                      activeId={activeId}
+                      canEdit={canEdit}
+                      exploredCells={encounter?.exploredCells}
+                      visibleCells={encounter?.visibleCells}
+                      onLoadBattleMap={loadBattleMap}
+                      onLeaveBattleMap={leaveBattleMap}
+                      onMoveCombatant={moveCombatantOnGrid}
+                      onPlaceCombatant={moveCombatantOnGrid}
+                      onDragBroadcast={broadcastTokenDrag}
+                    />
+                  )}
+                </section>
+              )}
 
               <ChatPanel worldId={worldId} worlds={worlds} />
 

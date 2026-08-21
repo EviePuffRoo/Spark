@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from "react";
-import type { Dungeon, Encounter, HpStatus } from "@spark/shared";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { BattleMap, Dungeon, Encounter, HpStatus } from "@spark/shared";
+import { computeVisionForTokens, extendWithLightSources } from "@spark/shared";
 import { api } from "../api";
 import { ZoneMap } from "../components/ZoneMap";
 import { DungeonMapView } from "../components/DungeonMapView";
+import { GridMap } from "../components/GridMap";
 import { filterEncounterForDisplay } from "../encounterRedaction";
 import { useWorldLiveChannel } from "../useWorldLiveChannel";
 
@@ -20,7 +22,8 @@ export function PresentationView({ worldId }: { worldId: string }) {
   const [encounter, setEncounter] = useState<Encounter | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeDungeon, setActiveDungeon] = useState<Dungeon | null>(null);
-  const [mapView, setMapView] = useState<"room" | "dungeon">("room");
+  const [activeBattleMap, setActiveBattleMap] = useState<BattleMap | null>(null);
+  const [mapView, setMapView] = useState<"room" | "dungeon" | "grid">("room");
   const rootRef = useRef<HTMLDivElement | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -56,6 +59,30 @@ export function PresentationView({ worldId }: { worldId: string }) {
     return () => { cancelled = true; };
   }, [encounter?.activeDungeonId]);
 
+  useEffect(() => {
+    const mapId = encounter?.activeBattleMapId;
+    if (!mapId) {
+      setActiveBattleMap(null);
+      return;
+    }
+    let cancelled = false;
+    api.getBattleMap(mapId)
+      .then((m) => { if (!cancelled) setActiveBattleMap(m); })
+      .catch(() => { if (!cancelled) setActiveBattleMap(null); });
+    return () => { cancelled = true; };
+  }, [encounter?.activeBattleMapId]);
+
+  // The DM's own fetch of the encounter never gets a server-computed
+  // visibleCells (toEncounterDTO only fogs non-owner viewers) — this is a
+  // shared display screen everyone at the table watches, so it needs the
+  // party's actual current vision computed here, the same way
+  // gridVisibility.ts does server-side for a real non-owner request.
+  const visibleCells = useMemo(() => {
+    if (!activeBattleMap || !encounter) return undefined;
+    const mapShape = { width: activeBattleMap.width, height: activeBattleMap.height, tiles: activeBattleMap.tiles };
+    return extendWithLightSources(mapShape, computeVisionForTokens(mapShape, encounter.combatants));
+  }, [activeBattleMap, encounter]);
+
   if (error) {
     return (
       <div className="presentation-view">
@@ -71,7 +98,7 @@ export function PresentationView({ worldId }: { worldId: string }) {
     );
   }
 
-  const display = filterEncounterForDisplay(encounter);
+  const display = filterEncounterForDisplay(encounter, visibleCells);
   const sorted = [...display.combatants].sort((a, b) => b.initiative - a.initiative);
   const activeId = sorted.length > 0 ? sorted[display.turnIndex % sorted.length]?.id ?? null : null;
 
@@ -99,15 +126,36 @@ export function PresentationView({ worldId }: { worldId: string }) {
         ))}
       </ol>
 
-      {activeDungeon && (
+      {(activeDungeon || encounter.activeBattleMapId) && (
         <div className="button-row">
           <button className={mapView === "room" ? "active" : ""} aria-current={mapView === "room" ? "true" : undefined} onClick={() => setMapView("room")}>Room View</button>
-          <button className={mapView === "dungeon" ? "active" : ""} aria-current={mapView === "dungeon" ? "true" : undefined} onClick={() => setMapView("dungeon")}>Dungeon Map</button>
+          {activeDungeon && (
+            <button className={mapView === "dungeon" ? "active" : ""} aria-current={mapView === "dungeon" ? "true" : undefined} onClick={() => setMapView("dungeon")}>Dungeon Map</button>
+          )}
+          {encounter.activeBattleMapId && (
+            <button className={mapView === "grid" ? "active" : ""} aria-current={mapView === "grid" ? "true" : undefined} onClick={() => setMapView("grid")}>Battle Grid</button>
+          )}
         </div>
       )}
 
       {mapView === "dungeon" && activeDungeon && (
         <DungeonMapView dungeon={activeDungeon} canEdit={false} onUpdateRoomRect={noop} />
+      )}
+
+      {mapView === "grid" && encounter.activeBattleMapId && (
+        <GridMap
+          worldId={worldId}
+          battleMapId={encounter.activeBattleMapId}
+          combatants={sorted}
+          activeId={activeId}
+          canEdit={false}
+          exploredCells={encounter.exploredCells}
+          visibleCells={visibleCells ? [...visibleCells] : undefined}
+          onLoadBattleMap={noop}
+          onLeaveBattleMap={noop}
+          onMoveCombatant={noop}
+          onPlaceCombatant={noop}
+        />
       )}
 
       {mapView === "room" && display.zones.length > 0 && (

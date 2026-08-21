@@ -17,6 +17,7 @@ import { DungeonCardView } from "../components/DungeonCardView";
 import { ShopCardView } from "../components/ShopCardView";
 import { RegionCardView } from "../components/RegionCardView";
 import { SettlementCardView } from "../components/SettlementCardView";
+import { BattleMapCardView } from "../components/BattleMapCardView";
 
 const ENTITY_TYPE_LABELS: Record<EntityType, string> = Object.fromEntries(
   ENTITY_TYPES.map((t) => [t.type, t.label])
@@ -55,6 +56,7 @@ function renderEntryDetail(entityType: EntityType, data: any) {
     case "shop": return <ShopCardView shop={data} />;
     case "region": return <RegionCardView region={data} />;
     case "settlement": return <SettlementCardView settlement={data} />;
+    case "battleMap": return <BattleMapCardView battleMap={data} />;
     default: return null;
   }
 }

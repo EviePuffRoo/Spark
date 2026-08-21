@@ -17,6 +17,7 @@ const TYPE_LABELS: Record<EntityType, string> = {
   shop: "Shop",
   region: "Region",
   settlement: "Settlement",
+  battleMap: "Battle Map",
 };
 
 export function GlobalSearch({ onSelect }: { onSelect: (type: EntityType, id: string) => void }) {

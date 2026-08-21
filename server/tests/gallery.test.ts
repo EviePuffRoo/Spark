@@ -90,6 +90,38 @@ describe("publish + report + clone", () => {
     const cloned = await prisma.character.findUnique({ where: { id: clone.body.id } });
     expect(cloned?.name).toBe("Test NPC");
   });
+
+  it("publishes, lists, fetches, and clones a BattleMap entry through the same generic adapter path", async () => {
+    const { agent: owner } = await signupAgent("mapowner1");
+    const created = await owner.post("/api/battle-maps").send({
+      name: "Goblin Ambush", width: 10, height: 8,
+      tiles: [{ x: 1, y: 1, tileId: "stone-wall" }],
+    });
+    expect(created.status).toBe(201);
+    const mapId = created.body.id as string;
+
+    const publish = await owner.post("/api/public").send({ entityType: "battleMap", entityId: mapId, title: "Goblin Ambush" });
+    expect(publish.status).toBe(201);
+    const entryId = publish.body.id as string;
+
+    const { agent: viewer } = await signupAgent("mapviewer1");
+    const gallery = await viewer.get("/api/public").query({ entityType: "battleMap" });
+    expect(gallery.status).toBe(200);
+    expect(gallery.body.entries.map((e: { id: string }) => e.id)).toContain(entryId);
+
+    const single = await viewer.get(`/api/public/${entryId}`);
+    expect(single.status).toBe(200);
+    expect(single.body.data.name).toBe("Goblin Ambush");
+    expect(single.body.data.width).toBe(10);
+    expect(single.body.data.tiles).toHaveLength(1);
+
+    const clone = await viewer.post(`/api/public/${entryId}/clone`);
+    expect(clone.status).toBe(201);
+    expect(clone.body.id).not.toBe(mapId);
+    const cloned = await prisma.battleMap.findUnique({ where: { id: clone.body.id } });
+    expect(cloned?.name).toBe("Goblin Ambush");
+    expect(cloned?.worldId).toBeNull();
+  });
 });
 
 describe("admin moderation", () => {

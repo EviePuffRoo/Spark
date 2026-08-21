@@ -35,6 +35,7 @@ function coerceRoom(raw: unknown): DungeonRoom | null {
     templateId: r.templateId,
     exits: Array.isArray(r.exits) ? r.exits.map(coerceExit).filter((e): e is DungeonExit => e !== null) : [],
     rect: coerceRect(r.rect),
+    battleMapId: typeof r.battleMapId === "string" ? r.battleMapId : undefined,
   };
 }
 

@@ -56,6 +56,11 @@ export function MapBuilderPage() {
   const [saveHidden, setSaveHidden] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const [publishOpen, setPublishOpen] = useState(false);
+  const [publishTitle, setPublishTitle] = useState("");
+  const [publishDescription, setPublishDescription] = useState("");
+  const [publishStatus, setPublishStatus] = useState<"idle" | "saving" | "published">("idle");
+
   const svgRef = useRef<SVGSVGElement>(null);
   const paintingRef = useRef(false);
 
@@ -91,6 +96,32 @@ export function MapBuilderPage() {
     setSaveNotes(map.notes ?? "");
     setSaveHidden(map.hiddenFromParty);
     setEraser(false);
+    setPublishOpen(false);
+    setPublishStatus("idle");
+  }
+
+  function openPublish() {
+    if (!activeMap) return;
+    setPublishTitle(activeMap.name);
+    setPublishDescription("");
+    setPublishStatus("idle");
+    setPublishOpen(true);
+  }
+
+  async function handlePublish() {
+    if (!activeMap || !publishTitle.trim()) return;
+    setPublishStatus("saving");
+    setError(null);
+    try {
+      await api.publishEntry({
+        entityType: "battleMap", entityId: activeMap.id,
+        title: publishTitle.trim(), description: publishDescription.trim() || undefined,
+      });
+      setPublishStatus("published");
+    } catch (e) {
+      setError((e as Error).message);
+      setPublishStatus("idle");
+    }
   }
 
   function closeMap() {
@@ -262,6 +293,31 @@ export function MapBuilderPage() {
               notes={saveNotes} setNotes={(n) => { setSaveNotes(n); setDirty(true); }}
               hiddenFromParty={saveHidden} setHiddenFromParty={(h) => { setSaveHidden(h); setDirty(true); }}
             />
+            <div className="button-row">
+              <button className="btn-secondary" onClick={openPublish} disabled={dirty}>Publish to Gallery</button>
+            </div>
+            {dirty && <p className="hint">Save your changes before publishing.</p>}
+            {publishOpen && (
+              <div className="save-panel">
+                <h3 className="section-heading">Publish to Gallery</h3>
+                <p className="hint">Anyone signed in will be able to view and clone this into their own maps.</p>
+                <label className="field">
+                  <span>Title</span>
+                  <input type="text" value={publishTitle} onChange={(e) => setPublishTitle(e.target.value)} />
+                </label>
+                <label className="field">
+                  <span>Description (optional)</span>
+                  <textarea value={publishDescription} onChange={(e) => setPublishDescription(e.target.value)} rows={2} />
+                </label>
+                <div className="button-row">
+                  <button className="btn-primary" onClick={handlePublish} disabled={publishStatus === "saving" || !publishTitle.trim()}>
+                    {publishStatus === "saving" ? "Publishing…" : "Publish"}
+                  </button>
+                  <button className="btn-secondary" onClick={() => setPublishOpen(false)}>Cancel</button>
+                </div>
+                {publishStatus === "published" && <p className="success">Published — visible in the Homebrew Gallery.</p>}
+              </div>
+            )}
           </div>
         </div>
       </div>

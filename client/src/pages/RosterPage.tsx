@@ -80,7 +80,12 @@ const ROSTER_MODE_TO_GROUP = Object.fromEntries(
   (Object.keys(ROSTER_GROUPS) as RosterGroup[]).flatMap((g) => ROSTER_GROUPS[g].map((m) => [m, g])),
 ) as Record<Mode, RosterGroup>;
 
-export const ENTITY_TYPE_TO_MODE: Record<EntityType, Mode> = {
+// Partial, not total: battleMap has its own dedicated page (Map Builder)
+// rather than a RosterPage Mode, so it's deliberately absent here — a
+// selection of that type is intercepted before it ever reaches RosterPage
+// (see App.tsx's openInRoster), but the two lookups below still guard for
+// it defensively rather than assume that interception always happens.
+export const ENTITY_TYPE_TO_MODE: Partial<Record<EntityType, Mode>> = {
   character: "characters",
   item: "items",
   location: "locations",
@@ -229,7 +234,9 @@ export function RosterPage({
 
   useEffect(() => {
     if (!pendingSelection) return;
-    setMode(ENTITY_TYPE_TO_MODE[pendingSelection.type]);
+    const targetMode = ENTITY_TYPE_TO_MODE[pendingSelection.type];
+    if (!targetMode) return;
+    setMode(targetMode);
     if (worldFilter) onWorldFilterChange("");
     setSelectedId(pendingSelection.id);
     onConsumeSelection?.();
@@ -630,8 +637,10 @@ export function RosterPage({
         <FactionWebView
           factions={factions}
           onSelectEntity={(type, id) => {
+            const targetMode = ENTITY_TYPE_TO_MODE[type];
+            if (!targetMode) return;
             setShowFactionWeb(false);
-            setMode(ENTITY_TYPE_TO_MODE[type]);
+            setMode(targetMode);
             setSelectedId(id);
           }}
           onClose={() => setShowFactionWeb(false)}

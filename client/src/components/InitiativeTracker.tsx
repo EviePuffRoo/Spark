@@ -553,6 +553,10 @@ export function InitiativeTracker({
       zoneEffects: [],
       activeDungeonId: dungeonId,
       activeDungeonRoomId: roomId,
+      // Coexists with the zone load above rather than replacing it — a
+      // room's assigned battle map (set in DungeonEditor) auto-loads the
+      // same way its zone template does, the moment the party enters.
+      activeBattleMapId: room.battleMapId,
     }));
     setActiveDungeon(dungeon);
   }

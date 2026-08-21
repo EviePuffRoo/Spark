@@ -193,6 +193,15 @@ const adapters: Record<EntityType, EntityAdapter> = {
     getMeta: (row) => row.settlementType,
     searchFields: ["name", "settlementType", "government", "description", "notes", "tags"],
   },
+  battleMap: {
+    findMany: (args) => prisma.battleMap.findMany(args),
+    findUnique: (id, userId, memberWorldIds) => prisma.battleMap.findFirst({ where: accessWhere(id, userId, memberWorldIds) }),
+    findPublic: (id) => prisma.battleMap.findUnique({ where: { id } }),
+    duplicate: genericDuplicate(prisma.battleMap),
+    getName: (row) => row.name,
+    getMeta: (row) => `${row.width}×${row.height}`,
+    searchFields: ["name", "notes", "tags"],
+  },
 };
 
 export function getAdapter(type: string): EntityAdapter | null {

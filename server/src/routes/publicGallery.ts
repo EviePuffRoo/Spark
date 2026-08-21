@@ -7,7 +7,7 @@ import { testAwareLimit } from "../rateLimitConfig.js";
 import {
   toCharacterDTO, toItemDTO, toLocationDTO, toQuestHookDTO, toFactionDTO, toEncounterTableDTO,
   toSessionNoteDTO, toAdventureDTO, toPlayerCharacterDTO, toZoneMapTemplateDTO, toDungeonDTO,
-  toShopDTO, toRegionDTO, toSettlementDTO,
+  toShopDTO, toRegionDTO, toSettlementDTO, toBattleMapDTO,
 } from "../serialize.js";
 import type { EntityType, GalleryReportReason, PublicGalleryEntry } from "@spark/shared";
 
@@ -59,6 +59,7 @@ function toEntityDTO(entityType: EntityType, row: any, viewerId: string): unknow
     case "shop": return toShopDTO(row);
     case "region": return toRegionDTO(row);
     case "settlement": return toSettlementDTO(row);
+    case "battleMap": return toBattleMapDTO(row);
     default: return null;
   }
 }

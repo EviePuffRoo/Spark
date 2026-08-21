@@ -129,6 +129,15 @@ function AppShell({ initialLandOnOverview = false }: { initialLandOnOverview?: b
   }
 
   function openInRoster(type: EntityType, id: string) {
+    // battleMap has its own dedicated page (Map Builder), not a RosterPage
+    // tab — Map Builder doesn't support deep-linking to one specific map
+    // yet, but landing there is still correct, unlike RosterPage which has
+    // no tab for this type at all.
+    if (type === "battleMap") {
+      setArea("play");
+      setSubTab("mapBuilder");
+      return;
+    }
     setRosterSelection({ type, id });
     setArea("world");
     setSubTab("roster");

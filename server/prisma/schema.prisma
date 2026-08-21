@@ -43,6 +43,7 @@ model User {
   publishedEntries PublishedEntry[]
   galleryReports  GalleryReport[]
   chatMessages    ChatMessage[]
+  battleMaps      BattleMap[]
 }
 
 model World {
@@ -77,6 +78,7 @@ model World {
   encounter       Encounter?
   chatMessages    ChatMessage[]
   base            Base?
+  battleMaps      BattleMap[]
 
   @@index([userId])
 }
@@ -556,6 +558,30 @@ model BaseUpgrade {
 
   @@unique([baseId, upgradeId])
   @@index([baseId])
+}
+
+// A hand-built battle map, painted tile-by-tile from the curated
+// BATTLE_TILES set in shared — never an uploaded image. Same shape as
+// Dungeon/ZoneMapTemplate above: a reusable, optionally world-attached
+// template a DM can save, revisit, and eventually load into an Encounter.
+model BattleMap {
+  id        String   @id @default(cuid())
+  name      String
+  width     Int
+  height    Int
+  tiles     String   @default("[]")
+  tags      String   @default("[]")
+  notes     String?
+  worldId   String?
+  hiddenFromParty Boolean @default(false)
+  world     World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([worldId])
+  @@index([userId])
 }
 
 // A user-owned entity published to the public gallery, browsable/cloneable

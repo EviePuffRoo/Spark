@@ -19,6 +19,7 @@ import type {
   Encounter, EncounterStateInput,
   ZoneMapTemplate, ZoneMapTemplateInput,
   Dungeon, DungeonInput, GenerateDungeonRequest, GeneratedDungeonOutline,
+  BattleMap, BattleMapInput,
   Shop, ShopInput, GenerateShopRequest, GeneratedShop,
   Region, GenerateRegionRequest, GeneratedRegion,
   Settlement, GenerateSettlementRequest, GeneratedSettlement,
@@ -275,6 +276,14 @@ export const api = {
   updateDungeon: (id: string, patch: Partial<Dungeon>) =>
     request<Dungeon>(`/dungeons/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   deleteDungeon: (id: string) => request<void>(`/dungeons/${id}`, { method: "DELETE" }),
+  listBattleMaps: (worldId?: string) =>
+    request<BattleMap[]>(`/battle-maps${worldId ? `?worldId=${worldId}` : ""}`),
+  getBattleMap: (id: string) => request<BattleMap>(`/battle-maps/${id}`),
+  saveBattleMap: (map: BattleMapInput & { worldId?: string | null; tags?: string[]; notes?: string; hiddenFromParty?: boolean }) =>
+    request<BattleMap>("/battle-maps", { method: "POST", body: JSON.stringify(map) }),
+  updateBattleMap: (id: string, patch: Partial<BattleMap>) =>
+    request<BattleMap>(`/battle-maps/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+  deleteBattleMap: (id: string) => request<void>(`/battle-maps/${id}`, { method: "DELETE" }),
 
   generateShop: (body: GenerateShopRequest) =>
     request<GeneratedShop>("/generate-shop", { method: "POST", body: JSON.stringify(body) }),

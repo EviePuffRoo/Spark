@@ -4,12 +4,12 @@ import type {
   Adventure as AdventureRow, PlayerCharacter as PlayerCharacterRow, RollLogEntry as RollLogEntryRow,
   Encounter as EncounterRow, CodexNote as CodexNoteRow, LedgerEntry as LedgerEntryRow,
   ZoneMapTemplate as ZoneMapTemplateRow, Dungeon as DungeonRow, DowntimeActivity as DowntimeActivityRow, Shop as ShopRow,
-  Region as RegionRow, Settlement as SettlementRow, ChatMessage as ChatMessageRow,
+  Region as RegionRow, Settlement as SettlementRow, ChatMessage as ChatMessageRow, BattleMap as BattleMapRow,
 } from "@prisma/client";
 import type {
   Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, PlayerCharacter, RollLogEntry,
   Encounter, LiveCombatant, HpStatus, CodexNote, EntityType, LedgerEntry, LedgerEntryKind, EncounterZone, EncounterZoneEffect,
-  ZoneMapTemplate, Dungeon, DowntimeActivity, DowntimeActivityType, Shop, ShopStockEntry, Region, Settlement, ChatMessage,
+  ZoneMapTemplate, Dungeon, DowntimeActivity, DowntimeActivityType, Shop, ShopStockEntry, Region, Settlement, ChatMessage, BattleMap,
 } from "@spark/shared";
 
 export function toCharacterDTO(row: CharacterRow): Character {
@@ -165,6 +165,23 @@ export function toZoneMapTemplateDTO(row: ZoneMapTemplateRow): ZoneMapTemplate {
     userId: row.userId,
     name: row.name,
     zones: JSON.parse(row.zones),
+    worldId: row.worldId,
+    hiddenFromParty: row.hiddenFromParty,
+    tags: JSON.parse(row.tags),
+    notes: row.notes ?? undefined,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+export function toBattleMapDTO(row: BattleMapRow): BattleMap {
+  return {
+    id: row.id,
+    userId: row.userId,
+    name: row.name,
+    width: row.width,
+    height: row.height,
+    tiles: JSON.parse(row.tiles),
     worldId: row.worldId,
     hiddenFromParty: row.hiddenFromParty,
     tags: JSON.parse(row.tags),

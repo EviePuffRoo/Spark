@@ -120,3 +120,14 @@ export function RosterIcon(props: SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
+export function TavernIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...BASE} {...props}>
+      <path d="M6 9h9v9a2 2 0 01-2 2H8a2 2 0 01-2-2V9z" />
+      <path d="M15 10.5h1.5a2.5 2.5 0 010 5H15" />
+      <path d="M6 9c0-2.5 1-4.5 1-6" />
+      <path d="M10 9c.6-1.8-.4-3.5 0-6" />
+    </svg>
+  );
+}

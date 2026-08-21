@@ -29,16 +29,17 @@ import { ShopPage } from "./pages/ShopPage";
 import { GlobalSearch } from "./components/GlobalSearch";
 import { PrintPane, type PrintItem } from "./components/PrintPane";
 import { PrepIcon, WorldIcon, PlayIcon, AccountIcon } from "./components/icons";
+import { TavernPage } from "./pages/TavernPage";
 
 type Area = "prep" | "world" | "play" | "account";
-type SubTab = "create" | "compendium" | "overview" | "worlds" | "roster" | "codex" | "notes" | "downtime" | "combat" | "shop" | "inventory" | "gallery" | "profile" | "myCharacter" | "billing" | "moderation" | "users" | "stats";
+type SubTab = "create" | "compendium" | "overview" | "worlds" | "roster" | "codex" | "notes" | "downtime" | "tavern" | "combat" | "shop" | "inventory" | "gallery" | "profile" | "myCharacter" | "billing" | "moderation" | "users" | "stats";
 
 const AREA_LABELS: Record<Area, string> = { prep: "Prep", world: "World", play: "Play", account: "Account" };
 const AREA_ICONS: Record<Area, typeof PrepIcon> = { prep: PrepIcon, world: WorldIcon, play: PlayIcon, account: AccountIcon };
 const AREA_DEFAULT_SUBTAB: Record<Area, SubTab> = { prep: "create", world: "overview", play: "combat", account: "profile" };
 const SUBTAB_LABELS: Record<SubTab, string> = {
   create: "Create", compendium: "Compendium", overview: "Overview", worlds: "Worlds",
-  roster: "Roster", codex: "Codex", notes: "Notes", downtime: "Downtime", combat: "Combat",
+  roster: "Roster", codex: "Codex", notes: "Notes", downtime: "Downtime", tavern: "Tavern", combat: "Combat",
   shop: "Shop", inventory: "Inventory", gallery: "Gallery", profile: "Profile",
   myCharacter: "My Character", billing: "Billing", moderation: "Moderation", users: "Users", stats: "Stats",
 };
@@ -175,6 +176,7 @@ function AppShell({ initialLandOnOverview = false }: { initialLandOnOverview?: b
               Notes{notesUnseen && <span className="nav-badge" aria-label="New notes activity" />}
             </button>
             <button className={subTab === "downtime" ? "active" : ""} aria-current={subTab === "downtime" ? "true" : undefined} onClick={() => selectSubTab("downtime")}>Downtime</button>
+            <button className={subTab === "tavern" ? "active" : ""} aria-current={subTab === "tavern" ? "true" : undefined} onClick={() => selectSubTab("tavern")}>Tavern</button>
             <button className={subTab === "gallery" ? "active" : ""} aria-current={subTab === "gallery" ? "true" : undefined} onClick={() => selectSubTab("gallery")}>Gallery</button>
           </>
         )}
@@ -249,6 +251,7 @@ function AppShell({ initialLandOnOverview = false }: { initialLandOnOverview?: b
         {subTab === "gallery" && <GalleryPage />}
         {subTab === "notes" && <SessionNotesPage onOpenInRoster={openInRoster} />}
         {subTab === "downtime" && <DowntimePage />}
+        {subTab === "tavern" && <TavernPage />}
         {subTab === "combat" && <CombatPage />}
         {subTab === "shop" && <ShopPage />}
         {subTab === "inventory" && <InventoryPage />}

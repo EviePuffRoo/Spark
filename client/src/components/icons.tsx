@@ -131,3 +131,13 @@ export function TavernIcon(props: SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
+export function BaseMapIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...BASE} {...props}>
+      <path d="M9 4L4 6v14l5-2 6 2 5-2V4l-5 2-6-2z" />
+      <line x1="9" y1="4" x2="9" y2="18" />
+      <line x1="15" y1="6" x2="15" y2="20" />
+    </svg>
+  );
+}

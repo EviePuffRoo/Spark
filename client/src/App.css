@@ -1228,6 +1228,51 @@ textarea {
   min-width: 180px;
 }
 
+.base-map {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.base-map-svg {
+  display: block;
+  width: 100%;
+  height: 55vh;
+  min-height: 380px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.base-map-slot {
+  cursor: pointer;
+}
+
+.base-map-slot-label {
+  fill: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+}
+
+.base-map-slot-label-locked {
+  fill: var(--text-faint);
+  font-weight: 500;
+}
+
+.base-map-tower rect,
+.base-map-tower path {
+  fill: var(--bg-elevated-2);
+  stroke: var(--warning);
+  stroke-width: 2px;
+}
+
+.base-map-detail {
+  max-width: 420px;
+}
+
 .base-upgrade-row .btn-secondary {
   margin-top: 8px;
   align-self: flex-start;

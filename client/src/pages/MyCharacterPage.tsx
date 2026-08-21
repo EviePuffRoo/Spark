@@ -11,6 +11,7 @@ export function MyCharacterPage({ onViewRoster }: { onViewRoster: (worldId: stri
   const [editingId, setEditingId] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "saving">("idle");
   const [error, setError] = useState<string | null>(null);
+  const [restMessage, setRestMessage] = useState<string | null>(null);
 
   function refresh() {
     setLoading(true);
@@ -47,10 +48,18 @@ export function MyCharacterPage({ onViewRoster }: { onViewRoster: (worldId: stri
   }
 
   async function handleRest(id: string, kind: "short" | "long") {
+    const before = characters.find((c) => c.id === id)?.currentHp ?? 0;
     setStatus("saving");
     setError(null);
+    setRestMessage(null);
     try {
-      await api.restPlayerCharacter(id, kind);
+      const updated = await api.restPlayerCharacter(id, kind);
+      // A short rest otherwise heals nothing on its own — any HP gained
+      // here came entirely from the world's home base comfort upgrades.
+      const gained = updated.currentHp - before;
+      if (kind === "short" && gained > 0) {
+        setRestMessage(`${updated.name} recovered ${gained} HP from resting at the base.`);
+      }
       refresh();
     } catch (e) {
       setError((e as Error).message);
@@ -70,6 +79,7 @@ export function MyCharacterPage({ onViewRoster }: { onViewRoster: (worldId: stri
           <p className="hint">You haven't created a character yet — head to Create → Player Characters to add one.</p>
         )}
         {error && <p className="error">{error}</p>}
+        {restMessage && <p className="success">{restMessage}</p>}
 
         {characters.map((pc) => {
           const world = worldFor(pc);

@@ -41,6 +41,9 @@ function describeEffect(def: BaseUpgradeDef): string | null {
     const rival = effect.rivalValue !== undefined ? `, ${effect.rivalValue} with a rival you choose` : "";
     return `${effect.value >= 0 ? "+" : ""}${effect.value} reputation with a faction you choose${rival} — applied immediately, both optional.`;
   }
+  if (effect.kind === "restBonus") {
+    return `+${effect.value} HP on every short rest taken by anyone in this world — short rests otherwise heal nothing.`;
+  }
   return null;
 }
 

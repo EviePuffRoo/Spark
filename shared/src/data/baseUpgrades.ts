@@ -4,11 +4,10 @@ import type { BaseUpgradeDef } from "../types.js";
 // the mechanic (gold sink, prerequisites, mutually-exclusive branches)
 // without building out the full sprawling tree yet.
 //
-// Effects ship in slices: Defenses, Trade, and Influence carry real,
-// coded effects (a defenseRating stat, an actually-generated Shop,
-// automated Faction.reputation deltas) as of this pass. Comfort is still
-// flavor-only, pending its own effect kind (a real rest bonus) — not left
-// that way permanently, just not built yet.
+// Every category now carries a real, coded effect: a defenseRating stat
+// (Defenses), an actually-generated Shop (Trade), automated
+// Faction.reputation deltas (Influence), and a real short-rest HP bonus
+// (Comfort) — no upgrade here is prose-only anymore.
 export const BASE_UPGRADES: BaseUpgradeDef[] = [
   { id: "palisade-fence", name: "Palisade Fence", description: "A simple wooden palisade rings the base — enough to keep out wandering beasts and casual trouble.", category: "defenses", cost: 50, effect: { kind: "defenseRating", value: 2 } },
   { id: "stone-walls", name: "Stone Walls", description: "Real stone walls replace the palisade. The base can withstand a real siege now.", category: "defenses", cost: 200, prerequisiteIds: ["palisade-fence"], exclusiveGroup: "defenses-wall", effect: { kind: "defenseRating", value: 8 } },
@@ -23,8 +22,8 @@ export const BASE_UPGRADES: BaseUpgradeDef[] = [
   { id: "city-watch-charter", name: "City Watch Charter", description: "A formal charter recognized by the City Watch — protection and legitimacy, at the cost of the Thieves' Guild's trust.", category: "influence", cost: 150, exclusiveGroup: "influence-alliance", effect: { kind: "reputationDelta", value: 20, rivalValue: -15 } },
   { id: "herald-of-renown", name: "Herald of Renown", description: "A herald carries word of the party's deeds to every settlement in the region.", category: "influence", cost: 350, effect: { kind: "reputationDelta", value: 15 } },
 
-  { id: "common-room", name: "Common Room", description: "A common room for the party to rest, plan, and recover between sessions.", category: "comfort", cost: 50 },
-  { id: "private-quarters", name: "Private Quarters", description: "Private quarters for each party member — a real bed makes a real difference.", category: "comfort", cost: 150, prerequisiteIds: ["common-room"] },
-  { id: "library-archive", name: "Library Archive", description: "A growing archive of lore, maps, and rumors the party has collected.", category: "comfort", cost: 200, prerequisiteIds: ["common-room"] },
-  { id: "training-yard", name: "Training Yard", description: "A yard for sparring, practice, and keeping sharp between adventures.", category: "comfort", cost: 175, prerequisiteIds: ["common-room"] },
+  { id: "common-room", name: "Common Room", description: "A common room for the party to rest, plan, and recover between sessions.", category: "comfort", cost: 50, effect: { kind: "restBonus", value: 2 } },
+  { id: "private-quarters", name: "Private Quarters", description: "Private quarters for each party member — a real bed makes a real difference.", category: "comfort", cost: 150, prerequisiteIds: ["common-room"], effect: { kind: "restBonus", value: 3 } },
+  { id: "library-archive", name: "Library Archive", description: "A growing archive of lore, maps, and rumors the party has collected.", category: "comfort", cost: 200, prerequisiteIds: ["common-room"], effect: { kind: "restBonus", value: 2 } },
+  { id: "training-yard", name: "Training Yard", description: "A yard for sparring, practice, and keeping sharp between adventures.", category: "comfort", cost: 175, prerequisiteIds: ["common-room"], effect: { kind: "restBonus", value: 3 } },
 ];

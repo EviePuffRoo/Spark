@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { BaseState, BaseUpgradeCategory, BaseUpgradeDef } from "@spark/shared";
+import type { BaseState, BaseUpgradeCategory, BaseUpgradeDef, Faction } from "@spark/shared";
 import { BASE_UPGRADES } from "@spark/shared";
 import { api } from "../api";
 
@@ -37,31 +37,55 @@ function describeEffect(def: BaseUpgradeDef): string | null {
       : "";
     return `Unlocks a real ${label} (~${effect.stockSize} items${discount}) — appears on the Shop tab the moment you buy this.`;
   }
+  if (effect.kind === "reputationDelta") {
+    const rival = effect.rivalValue !== undefined ? `, ${effect.rivalValue} with a rival you choose` : "";
+    return `${effect.value >= 0 ? "+" : ""}${effect.value} reputation with a faction you choose${rival} — applied immediately, both optional.`;
+  }
   return null;
 }
 
-export function BasePanel({ worldId, onNavigateToBilling }: { worldId: string; onNavigateToBilling: () => void }) {
+interface FactionSelection {
+  factionId: string;
+  rivalFactionId: string;
+}
+
+const EMPTY_SELECTION: FactionSelection = { factionId: "", rivalFactionId: "" };
+
+export function BasePanel({ worldId, onNavigateToBilling, onFactionsChanged }: { worldId: string; onNavigateToBilling: () => void; onFactionsChanged?: () => void }) {
   const [data, setData] = useState<BaseState | null>(null);
+  const [factions, setFactions] = useState<Faction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [purchasingId, setPurchasingId] = useState<string | null>(null);
+  const [selections, setSelections] = useState<Record<string, FactionSelection>>({});
 
   function refresh() {
     setLoading(true);
     setError(null);
-    api.getBase(worldId)
-      .then(setData)
+    Promise.all([api.getBase(worldId), api.listFactions(worldId)])
+      .then(([base, factionList]) => { setData(base); setFactions(factionList); })
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
   }
 
   useEffect(refresh, [worldId]);
 
+  function setSelection(upgradeId: string, patch: Partial<FactionSelection>) {
+    setSelections((prev) => ({ ...prev, [upgradeId]: { ...EMPTY_SELECTION, ...prev[upgradeId], ...patch } }));
+  }
+
   function purchase(upgradeId: string) {
+    const def = BASE_UPGRADES.find((u) => u.id === upgradeId);
+    const selection = selections[upgradeId] ?? EMPTY_SELECTION;
     setPurchasingId(upgradeId);
     setError(null);
-    api.purchaseBaseUpgrade(worldId, upgradeId)
-      .then(setData)
+    api.purchaseBaseUpgrade(worldId, upgradeId, selection.factionId || undefined, selection.rivalFactionId || undefined)
+      .then((next) => {
+        setData(next);
+        if (def?.effect?.kind === "reputationDelta" && (selection.factionId || selection.rivalFactionId)) {
+          onFactionsChanged?.();
+        }
+      })
       .catch((e) => setError((e as Error).message))
       .finally(() => setPurchasingId(null));
   }
@@ -118,6 +142,32 @@ export function BasePanel({ worldId, onNavigateToBilling }: { worldId: string; o
                     )}
                     {!owned && missingPrereqs.length === 0 && !exclusiveBlocked && !canAfford && data.isPaid && (
                       <p className="tavern-row-detail base-upgrade-blocked">Not enough gold.</p>
+                    )}
+                    {!owned && purchasable && def.effect?.kind === "reputationDelta" && factions.length > 0 && (
+                      <div className="base-faction-pickers">
+                        <label className="field">
+                          <span>Apply {def.effect.value >= 0 ? "+" : ""}{def.effect.value} to (optional)</span>
+                          <select
+                            value={selections[def.id]?.factionId ?? ""}
+                            onChange={(e) => setSelection(def.id, { factionId: e.target.value })}
+                          >
+                            <option value="">— none —</option>
+                            {factions.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+                          </select>
+                        </label>
+                        {def.effect.rivalValue !== undefined && (
+                          <label className="field">
+                            <span>Apply {def.effect.rivalValue} to (optional)</span>
+                            <select
+                              value={selections[def.id]?.rivalFactionId ?? ""}
+                              onChange={(e) => setSelection(def.id, { rivalFactionId: e.target.value })}
+                            >
+                              <option value="">— none —</option>
+                              {factions.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+                            </select>
+                          </label>
+                        )}
+                      </div>
                     )}
                     {!owned && (
                       <button

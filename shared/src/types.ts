@@ -927,6 +927,55 @@ export interface BaseState {
   unlockedShops: BaseUnlockedShop[];
 }
 
+export type TileCategory = "terrain" | "structure" | "nature" | "hazard";
+
+// A curated, first-party tile a DM paints onto a BattleMap grid — never an
+// uploaded image. Every mechanical property a tile carries (does it block
+// movement or sight, is it difficult terrain, does it hurt to stand on) is
+// stated here on the tile itself, so a map's line-of-sight and movement
+// rules can later be derived straight from what's actually been placed
+// instead of requiring a separate manual wall-drawing pass.
+export interface TileDef {
+  id: string;
+  name: string;
+  category: TileCategory;
+  blocksMovement: boolean;
+  blocksVision: boolean;
+  difficultTerrain: boolean;
+  hazard?: ZoneHazard;
+  // Radius in tiles this tile lights on its own (a torch, a lava flow) —
+  // feeds the vision system once it exists. Unlit tiles omit this.
+  lightRadius?: number;
+}
+
+export interface PlacedTile {
+  x: number;
+  y: number;
+  tileId: string;
+}
+
+export const BATTLE_MAP_MAX_WIDTH = 40;
+export const BATTLE_MAP_MAX_HEIGHT = 30;
+
+export interface BattleMapInput {
+  name: string;
+  width: number;
+  height: number;
+  // Sparse — an (x,y) with no entry is bare, walkable, unlit floor.
+  tiles: PlacedTile[];
+}
+
+export interface BattleMap extends BattleMapInput {
+  id: string;
+  userId: string;
+  worldId?: string | null;
+  hiddenFromParty: boolean;
+  tags: string[];
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface EntityLink {
   id: string;
   label?: string;

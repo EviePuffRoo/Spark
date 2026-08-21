@@ -1,0 +1,120 @@
+import { describe, it, expect, beforeEach, afterAll } from "vitest";
+import request from "supertest";
+import { app } from "../src/app.js";
+import { prisma } from "../src/db.js";
+import { resetDb } from "./resetDb.js";
+
+beforeEach(resetDb);
+afterAll(async () => {
+  await prisma.$disconnect();
+});
+
+async function signupAgent(username: string) {
+  const agent = request.agent(app);
+  const res = await agent.post("/api/auth/signup").send({ username, password: "password123" });
+  return { agent, userId: res.body.id as string };
+}
+
+describe("battle maps", () => {
+  it("400s creation with no name, or dimensions past the caps", async () => {
+    const { agent } = await signupAgent("mapuser1");
+
+    const noName = await agent.post("/api/battle-maps").send({ width: 10, height: 10 });
+    expect(noName.status).toBe(400);
+
+    const tooWide = await agent.post("/api/battle-maps").send({ name: "Too Wide", width: 999, height: 10 });
+    expect(tooWide.status).toBe(400);
+
+    const tooTall = await agent.post("/api/battle-maps").send({ name: "Too Tall", width: 10, height: 999 });
+    expect(tooTall.status).toBe(400);
+  });
+
+  it("creates a battle map with default empty tiles", async () => {
+    const { agent } = await signupAgent("mapuser2");
+    const res = await agent.post("/api/battle-maps").send({ name: "Goblin Ambush", width: 12, height: 8 });
+    expect(res.status).toBe(201);
+    expect(res.body.tiles).toEqual([]);
+    expect(res.body.width).toBe(12);
+    expect(res.body.height).toBe(8);
+  });
+
+  it("silently drops out-of-bounds tiles and unknown tile ids", async () => {
+    const { agent } = await signupAgent("mapuser3");
+    const res = await agent.post("/api/battle-maps").send({
+      name: "Bad Tiles",
+      width: 5,
+      height: 5,
+      tiles: [
+        { x: 0, y: 0, tileId: "stone-floor" },
+        { x: 10, y: 10, tileId: "stone-floor" },
+        { x: 1, y: 1, tileId: "not-a-real-tile" },
+      ],
+    });
+    expect(res.status).toBe(201);
+    expect(res.body.tiles).toEqual([{ x: 0, y: 0, tileId: "stone-floor" }]);
+  });
+
+  it("403s creating a map attached to a world you don't have access to", async () => {
+    const { agent: owner } = await signupAgent("mapowner1");
+    const world = await owner.post("/api/worlds").send({ name: "Private World" });
+
+    const { agent: outsider } = await signupAgent("mapoutsider1");
+    const res = await outsider.post("/api/battle-maps").send({ name: "Sneaky Map", width: 5, height: 5, worldId: world.body.id });
+    expect(res.status).toBe(403);
+  });
+
+  it("lists only your own maps and world-visible ones, hiding hiddenFromParty from non-owners", async () => {
+    const { agent: dm } = await signupAgent("mapdm1");
+    const world = await dm.post("/api/worlds").send({ name: "Shared World" });
+    const worldId = world.body.id as string;
+    const joinCode = await dm.post(`/api/worlds/${worldId}/join-code`);
+
+    const { agent: player } = await signupAgent("mapplayer1");
+    await player.post("/api/worlds/join").send({ code: joinCode.body.code });
+
+    await dm.post("/api/battle-maps").send({ name: "Visible Map", width: 5, height: 5, worldId });
+    await dm.post("/api/battle-maps").send({ name: "DM Secret Map", width: 5, height: 5, worldId, hiddenFromParty: true });
+
+    const list = await player.get(`/api/battle-maps?worldId=${worldId}`);
+    expect(list.status).toBe(200);
+    expect(list.body.map((m: { name: string }) => m.name)).toEqual(["Visible Map"]);
+  });
+
+  it("updates name and tiles via PATCH, re-validating against the map's own dimensions", async () => {
+    const { agent } = await signupAgent("mapuser4");
+    const created = await agent.post("/api/battle-maps").send({ name: "Original", width: 4, height: 4 });
+    const id = created.body.id as string;
+
+    const patched = await agent.patch(`/api/battle-maps/${id}`).send({
+      name: "Renamed",
+      tiles: [{ x: 0, y: 0, tileId: "grass" }, { x: 3, y: 3, tileId: "stone-wall" }, { x: 9, y: 9, tileId: "grass" }],
+    });
+    expect(patched.status).toBe(200);
+    expect(patched.body.name).toBe("Renamed");
+    expect(patched.body.tiles).toEqual([{ x: 0, y: 0, tileId: "grass" }, { x: 3, y: 3, tileId: "stone-wall" }]);
+  });
+
+  it("404s PATCH/DELETE from a non-owner", async () => {
+    const { agent: owner } = await signupAgent("mapowner2");
+    const created = await owner.post("/api/battle-maps").send({ name: "Owned Map", width: 5, height: 5 });
+    const id = created.body.id as string;
+
+    const { agent: outsider } = await signupAgent("mapoutsider2");
+    const patch = await outsider.patch(`/api/battle-maps/${id}`).send({ name: "Hijacked" });
+    expect(patch.status).toBe(404);
+    const del = await outsider.delete(`/api/battle-maps/${id}`);
+    expect(del.status).toBe(404);
+  });
+
+  it("deletes a map you own", async () => {
+    const { agent } = await signupAgent("mapuser5");
+    const created = await agent.post("/api/battle-maps").send({ name: "Doomed Map", width: 5, height: 5 });
+    const id = created.body.id as string;
+
+    const del = await agent.delete(`/api/battle-maps/${id}`);
+    expect(del.status).toBe(204);
+
+    const row = await prisma.battleMap.findUnique({ where: { id } });
+    expect(row).toBeNull();
+  });
+});

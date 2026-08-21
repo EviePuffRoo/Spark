@@ -27,6 +27,7 @@ export * from "./data/conditionsCompendium.js";
 export * from "./data/rulesReference.js";
 export * from "./data/achievements.js";
 export * from "./data/baseUpgrades.js";
+export * from "./data/battleTiles.js";
 export * from "./generator/index.js";
 export * from "./generator/items.js";
 export * from "./generator/locations.js";

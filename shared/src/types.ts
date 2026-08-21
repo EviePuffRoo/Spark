@@ -1,4 +1,5 @@
 import type { ParsedAttack } from "./statBlockAttacks.js";
+import type { SizeCategory } from "./creatureStats.js";
 
 export type AbilityKey = "str" | "dex" | "con" | "int" | "wis" | "cha";
 
@@ -513,6 +514,16 @@ export interface LiveCombatant {
   hidden?: boolean;
   equipmentAcBonus?: number;
   playerCharacterId?: string;
+  // Grid-mode position — the top-left cell of the token's footprint
+  // (see SIZE_FOOTPRINT). Undefined until placed on a loaded BattleMap;
+  // independent of zoneId, since a combatant can be positioned in either
+  // system depending on which one the DM has loaded (they coexist).
+  gridX?: number;
+  gridY?: number;
+  sizeCategory?: SizeCategory;
+  // Feet per turn, snapshotted from the source stat block the same way
+  // maxHp/armorClass are — drives movement-range highlighting on the grid.
+  speedFeet?: number;
   // Snapshotted from the source Character's stat block when added to combat
   // (see parseStatBlockAttacks) — not looked up live, same as maxHp/armorClass,
   // so combat state survives the source NPC/monster being edited or deleted.
@@ -664,6 +675,10 @@ export interface EncounterStateInput {
   zoneEffects: EncounterZoneEffect[];
   activeDungeonId?: string;
   activeDungeonRoomId?: string;
+  // The BattleMap currently loaded for grid-mode combat — coexists with
+  // activeDungeonId/zones rather than replacing them, same "more than one
+  // map system can be live at once" model as dungeon rooms vs. zones.
+  activeBattleMapId?: string;
 }
 
 export interface Encounter extends EncounterStateInput {

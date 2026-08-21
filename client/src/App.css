@@ -2247,6 +2247,122 @@ textarea {
   opacity: 0.7;
 }
 
+/* Battle Grid */
+.grid-map {
+  margin: 16px 0;
+}
+
+.grid-map-svg {
+  display: block;
+  width: 100%;
+  height: 55vh;
+  min-height: 340px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  touch-action: none;
+  cursor: grab;
+}
+
+.grid-map-svg.grid-map-measuring {
+  cursor: crosshair;
+}
+
+.grid-map-bg {
+  fill: var(--bg-panel);
+}
+
+.grid-map-line {
+  stroke: var(--border);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+
+.grid-map-reachable {
+  fill: var(--success);
+  opacity: 0.16;
+}
+
+.grid-map-ruler-line {
+  stroke: var(--warning, var(--accent));
+  stroke-width: 2px;
+  stroke-dasharray: 6 4;
+}
+
+.grid-map-ruler-label {
+  fill: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: var(--bg-panel);
+  stroke-width: 3px;
+}
+
+.grid-token {
+  cursor: grab;
+  user-select: none;
+}
+
+.grid-token rect {
+  stroke-width: 2px;
+  filter: drop-shadow(0 0 4px var(--glow));
+}
+
+.grid-token.grid-token-active-turn rect {
+  stroke-width: 3px;
+  filter: drop-shadow(0 0 10px var(--glow));
+}
+
+.grid-token text {
+  fill: var(--text);
+  font-size: 11px;
+  text-anchor: middle;
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: var(--bg-panel);
+  stroke-width: 3px;
+}
+
+.grid-token-monster rect {
+  fill: color-mix(in srgb, var(--danger) 18%, var(--bg-panel));
+  stroke: var(--danger);
+  filter: drop-shadow(0 0 5px var(--danger-glow));
+}
+
+.grid-token-playerCharacter rect {
+  fill: color-mix(in srgb, var(--success) 18%, var(--bg-panel));
+  stroke: var(--success);
+  filter: drop-shadow(0 0 5px var(--success-glow));
+}
+
+.grid-token-custom rect {
+  fill: color-mix(in srgb, var(--text-muted) 18%, var(--bg-panel));
+  stroke: var(--text-muted);
+}
+
+.grid-token-dragging {
+  opacity: 0.7;
+}
+
+.grid-token-dragging.grid-token-over-speed rect {
+  stroke: var(--danger);
+}
+
+.grid-token-drag-distance {
+  fill: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+  text-anchor: middle;
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: var(--bg-panel);
+  stroke-width: 3px;
+}
+
+.grid-token-dragging.grid-token-over-speed .grid-token-drag-distance {
+  fill: var(--danger);
+}
+
 /* Dice roller */
 .dice-presets {
   display: flex;

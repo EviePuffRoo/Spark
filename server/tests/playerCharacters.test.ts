@@ -96,3 +96,60 @@ describe("player character ownership transfer", () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe("rest and the home base's comfort bonus", () => {
+  it("heals HP on a short rest by the base's summed restBonus", async () => {
+    const { agent } = await signupAgent("restdm1");
+    const world = await agent.post("/api/worlds").send({ name: "Rest World" });
+    const worldId = world.body.id as string;
+    const pc = await agent.post("/api/player-characters").send({ ...PC_BODY, worldId, maxHp: 20 });
+    await agent.patch(`/api/player-characters/${pc.body.id}`).send({ currentHp: 5 });
+
+    const base = await prisma.base.create({ data: { worldId } });
+    await prisma.baseUpgrade.create({ data: { baseId: base.id, upgradeId: "common-room" } }); // +2
+    await prisma.baseUpgrade.create({ data: { baseId: base.id, upgradeId: "private-quarters" } }); // +3
+
+    const res = await agent.post(`/api/player-characters/${pc.body.id}/rest`).send({ kind: "short" });
+    expect(res.status).toBe(200);
+    expect(res.body.currentHp).toBe(10); // 5 + 2 + 3
+  });
+
+  it("caps the short-rest heal at maxHp instead of overhealing", async () => {
+    const { agent } = await signupAgent("restdm2");
+    const world = await agent.post("/api/worlds").send({ name: "Capped Rest World" });
+    const worldId = world.body.id as string;
+    const pc = await agent.post("/api/player-characters").send({ ...PC_BODY, worldId, maxHp: 12 });
+    await agent.patch(`/api/player-characters/${pc.body.id}`).send({ currentHp: 11 });
+
+    const base = await prisma.base.create({ data: { worldId } });
+    await prisma.baseUpgrade.create({ data: { baseId: base.id, upgradeId: "common-room" } }); // +2
+
+    const res = await agent.post(`/api/player-characters/${pc.body.id}/rest`).send({ kind: "short" });
+    expect(res.body.currentHp).toBe(12);
+  });
+
+  it("heals nothing extra on a short rest when the world has no base yet", async () => {
+    const { agent } = await signupAgent("restdm3");
+    const world = await agent.post("/api/worlds").send({ name: "No Base Rest World" });
+    const worldId = world.body.id as string;
+    const pc = await agent.post("/api/player-characters").send({ ...PC_BODY, worldId, maxHp: 20 });
+    await agent.patch(`/api/player-characters/${pc.body.id}`).send({ currentHp: 5 });
+
+    const res = await agent.post(`/api/player-characters/${pc.body.id}/rest`).send({ kind: "short" });
+    expect(res.body.currentHp).toBe(5);
+  });
+
+  it("still fully heals on a long rest regardless of the base's restBonus", async () => {
+    const { agent } = await signupAgent("restdm4");
+    const world = await agent.post("/api/worlds").send({ name: "Long Rest World" });
+    const worldId = world.body.id as string;
+    const pc = await agent.post("/api/player-characters").send({ ...PC_BODY, worldId, maxHp: 20 });
+    await agent.patch(`/api/player-characters/${pc.body.id}`).send({ currentHp: 1 });
+
+    const base = await prisma.base.create({ data: { worldId } });
+    await prisma.baseUpgrade.create({ data: { baseId: base.id, upgradeId: "common-room" } });
+
+    const res = await agent.post(`/api/player-characters/${pc.body.id}/rest`).send({ kind: "long" });
+    expect(res.body.currentHp).toBe(20);
+  });
+});

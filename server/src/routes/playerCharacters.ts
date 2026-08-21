@@ -3,7 +3,10 @@ import { prisma } from "../db.js";
 import { toPlayerCharacterDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
 import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
+import { BASE_UPGRADES } from "@spark/shared";
 import type { DeathSaves, SpellSlotLevel, ClassResource } from "@spark/shared";
+
+const BASE_UPGRADE_BY_ID = new Map(BASE_UPGRADES.map((u) => [u.id, u]));
 
 function coerceDeathSaves(raw: unknown): DeathSaves {
   const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
@@ -183,6 +186,19 @@ playerCharactersRouter.post("/:id/rest", async (req, res) => {
     data.currentHp = row.maxHp;
     data.deathSaves = JSON.stringify({ successes: 0, failures: 0 });
     data.conditions = JSON.stringify([]);
+  } else if (row.worldId) {
+    // A short rest otherwise heals 0 HP here — a Comfort-upgraded home
+    // base is the one thing that grants any back, reflecting an actually
+    // restful place to make camp between fights.
+    const base = await prisma.base.findUnique({ where: { worldId: row.worldId }, include: { upgrades: true } });
+    if (base) {
+      let restBonus = 0;
+      for (const u of base.upgrades) {
+        const effect = BASE_UPGRADE_BY_ID.get(u.upgradeId)?.effect;
+        if (effect?.kind === "restBonus") restBonus += effect.value;
+      }
+      if (restBonus > 0) data.currentHp = Math.min(row.maxHp, row.currentHp + restBonus);
+    }
   }
 
   await prisma.playerCharacter.update({ where: { id: row.id }, data });

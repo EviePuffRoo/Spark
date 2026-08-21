@@ -884,7 +884,12 @@ export type BaseUpgradeEffect =
   // faction, so "gains and losses" happens in one action instead of two.
   // Both faction choices are optional: a world with no relevant faction
   // yet still lets the upgrade through, just without a delta applied.
-  | { kind: "reputationDelta"; value: number; rivalValue?: number };
+  | { kind: "reputationDelta"; value: number; rivalValue?: number }
+  // Flat HP restored on a short rest taken by any PC in this world — a
+  // short rest otherwise heals 0 HP in this app (only a long rest does),
+  // so this is a real gap the base fills, not a top-up on something
+  // already maxed out.
+  | { kind: "restBonus"; value: number };
 
 export interface BaseUpgradeDef {
   id: string;

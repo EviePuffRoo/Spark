@@ -138,7 +138,12 @@ export function InitiativeTracker({
   });
   useEffect(() => { setLiveError(liveConnError ?? null); }, [liveConnError]);
 
-  const activeEncounter: EncounterStateInput = partyMode ? (liveEncounter ?? BLANK_ENCOUNTER) : encounter;
+  // Widened only to surface visibleCells (server-computed, response-only —
+  // see Encounter in shared/src/types.ts) for the fog-of-war rendering
+  // GridMap does below; every other field here still comes straight from
+  // EncounterStateInput, which liveEncounter's actual runtime value (an
+  // Encounter, structurally a superset) always satisfies.
+  const activeEncounter: EncounterStateInput & { visibleCells?: string[] } = partyMode ? (liveEncounter ?? BLANK_ENCOUNTER) : encounter;
 
   // Older saved encounters (before conditions/kind/hpVisible/zones existed) won't have these
   // fields, and encounters saved before duration tracking existed have plain strings in
@@ -720,6 +725,8 @@ export function InitiativeTracker({
           combatants={sorted}
           activeId={activeId}
           canEdit={canEdit}
+          exploredCells={activeEncounter.exploredCells}
+          visibleCells={activeEncounter.visibleCells}
           onLoadBattleMap={loadBattleMap}
           onLeaveBattleMap={leaveBattleMap}
           onMoveCombatant={moveCombatantOnGrid}

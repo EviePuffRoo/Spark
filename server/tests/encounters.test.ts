@@ -221,3 +221,99 @@ describe("grid combat: ephemeral drag-position broadcast", () => {
     expect(JSON.parse(after!.combatants).find((c: { id: string }) => c.id === "visible").gridX).toBe(1);
   });
 });
+
+describe("grid combat: dynamic vision and fog of war", () => {
+  async function setupWorldWithMap(dmUsername: string) {
+    const { agent: dm } = await signupAgent(dmUsername);
+    const world = await dm.post("/api/worlds").send({ name: "Vision World" });
+    const worldId = world.body.id as string;
+    const map = await dm.post("/api/battle-maps").send({ name: "Vision Room", width: 10, height: 10 });
+    return { dm, worldId, mapId: map.body.id as string };
+  }
+
+  it("hides a monster outside the party's current vision from a non-owner, but the owner still sees it", async () => {
+    const { dm, worldId, mapId } = await setupWorldWithMap("visiondm1");
+    const joinCode = await dm.post(`/api/worlds/${worldId}/join-code`);
+    const { agent: player } = await signupAgent("visionplayer1");
+    await player.post("/api/worlds/join").send({ code: joinCode.body.code });
+
+    await dm.put(`/api/encounters/${worldId}`).send({
+      combatants: [
+        { id: "pc1", name: "Fighter", kind: "playerCharacter", initiative: 10, conditions: [], notes: "", hpVisible: true, gridX: 1, gridY: 1, visionRadiusFeet: 10 },
+        { id: "near", name: "Nearby Goblin", kind: "monster", initiative: 8, conditions: [], notes: "", hpVisible: false, gridX: 1, gridY: 2 },
+        { id: "far", name: "Distant Ogre", kind: "monster", initiative: 8, conditions: [], notes: "", hpVisible: false, gridX: 8, gridY: 8 },
+      ],
+      round: 1, turnIndex: 0, activeBattleMapId: mapId,
+    });
+
+    const playerView = await player.get(`/api/encounters/${worldId}`);
+    const playerNames = playerView.body.combatants.map((c: { name: string }) => c.name);
+    expect(playerNames).toContain("Fighter");
+    expect(playerNames).toContain("Nearby Goblin");
+    expect(playerNames).not.toContain("Distant Ogre");
+
+    const ownerView = await dm.get(`/api/encounters/${worldId}`);
+    const ownerNames = ownerView.body.combatants.map((c: { name: string }) => c.name);
+    expect(ownerNames).toContain("Distant Ogre");
+  });
+
+  it("accumulates exploredCells across writes on the same map and resets when the map changes", async () => {
+    const { dm, worldId, mapId } = await setupWorldWithMap("visiondm2");
+    const map2 = await dm.post("/api/battle-maps").send({ name: "Second Room", width: 10, height: 10 });
+
+    const first = await dm.put(`/api/encounters/${worldId}`).send({
+      combatants: [{ id: "pc1", name: "Fighter", kind: "playerCharacter", initiative: 10, conditions: [], notes: "", hpVisible: true, gridX: 1, gridY: 1, visionRadiusFeet: 5 }],
+      round: 1, turnIndex: 0, activeBattleMapId: mapId,
+    });
+    expect(first.body.exploredCells.length).toBeGreaterThan(0);
+    const firstExploredCount = first.body.exploredCells.length;
+
+    // Move further on the same map — exploredCells should grow, not reset.
+    const moved = await dm.put(`/api/encounters/${worldId}`).send({
+      combatants: [{ id: "pc1", name: "Fighter", kind: "playerCharacter", initiative: 10, conditions: [], notes: "", hpVisible: true, gridX: 6, gridY: 6, visionRadiusFeet: 5 }],
+      round: 1, turnIndex: 0, activeBattleMapId: mapId,
+    });
+    expect(moved.body.exploredCells.length).toBeGreaterThan(firstExploredCount);
+
+    // Switching to a different battle map starts fog fresh.
+    const switched = await dm.put(`/api/encounters/${worldId}`).send({
+      combatants: [{ id: "pc1", name: "Fighter", kind: "playerCharacter", initiative: 10, conditions: [], notes: "", hpVisible: true, gridX: 1, gridY: 1, visionRadiusFeet: 5 }],
+      round: 1, turnIndex: 0, activeBattleMapId: map2.body.id,
+    });
+    expect(switched.body.exploredCells.length).toBe(firstExploredCount);
+  });
+
+  it("never fog-gates a playerCharacter token, only monsters/custom", async () => {
+    const { dm, worldId, mapId } = await setupWorldWithMap("visiondm3");
+    const joinCode = await dm.post(`/api/worlds/${worldId}/join-code`);
+    const { agent: player } = await signupAgent("visionplayer3");
+    await player.post("/api/worlds/join").send({ code: joinCode.body.code });
+
+    await dm.put(`/api/encounters/${worldId}`).send({
+      combatants: [
+        { id: "pc1", name: "Fighter", kind: "playerCharacter", initiative: 10, conditions: [], notes: "", hpVisible: true, gridX: 1, gridY: 1, visionRadiusFeet: 5 },
+        { id: "pc2", name: "Rogue", kind: "playerCharacter", initiative: 9, conditions: [], notes: "", hpVisible: true, gridX: 9, gridY: 9, visionRadiusFeet: 5 },
+      ],
+      round: 1, turnIndex: 0, activeBattleMapId: mapId,
+    });
+
+    const playerView = await player.get(`/api/encounters/${worldId}`);
+    const names = playerView.body.combatants.map((c: { name: string }) => c.name);
+    expect(names).toContain("Fighter");
+    expect(names).toContain("Rogue");
+  });
+
+  it("move-grid also grows exploredCells", async () => {
+    const { dm, worldId, mapId } = await setupWorldWithMap("visiondm4");
+    await dm.put(`/api/encounters/${worldId}`).send({
+      combatants: [{ id: "pc1", name: "Fighter", kind: "playerCharacter", initiative: 10, conditions: [], notes: "", hpVisible: true, gridX: 1, gridY: 1, visionRadiusFeet: 5 }],
+      round: 1, turnIndex: 0, activeBattleMapId: mapId,
+    });
+    const before = await prisma.encounter.findUnique({ where: { worldId } });
+    const beforeCount = JSON.parse(before!.exploredCells).length;
+
+    const res = await dm.post(`/api/encounters/${worldId}/move-grid`).send({ combatantId: "pc1", gridX: 7, gridY: 7 });
+    expect(res.status).toBe(200);
+    expect(res.body.exploredCells.length).toBeGreaterThan(beforeCount);
+  });
+});

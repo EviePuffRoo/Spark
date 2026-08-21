@@ -3,6 +3,7 @@ export * from "./billingLimits.js";
 export * from "./statBlockAttacks.js";
 export * from "./creatureStats.js";
 export * from "./gridMovement.js";
+export * from "./vision.js";
 export * from "./reputation.js";
 export * from "./characterImport.js";
 export * from "./equipmentStats.js";

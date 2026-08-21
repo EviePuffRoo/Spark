@@ -24,6 +24,7 @@ interface RulerPoint {
 
 export function GridMap({
   worldId, battleMapId, combatants, activeId, canEdit,
+  exploredCells, visibleCells,
   onLoadBattleMap, onLeaveBattleMap, onMoveCombatant, onPlaceCombatant, onDragBroadcast,
 }: {
   worldId?: string;
@@ -31,6 +32,13 @@ export function GridMap({
   combatants: LiveCombatant[];
   activeId: string | null;
   canEdit: boolean;
+  // "x,y" keys ever explored and the party's current-instant vision,
+  // respectively — both server-computed, and both undefined for the DM
+  // (who always sees the full map). Absent entirely when the caller has
+  // no fog data (e.g. no map active), in which case fog rendering is
+  // skipped and the map renders fully lit, same as the owner's view.
+  exploredCells?: string[];
+  visibleCells?: string[];
   onLoadBattleMap: (mapId: string) => void;
   onLeaveBattleMap: () => void;
   onMoveCombatant: (combatantId: string, gridX: number, gridY: number) => void;
@@ -187,6 +195,15 @@ export function GridMap({
     return computeReachableCells(battleMap, activeCombatant.gridX, activeCombatant.gridY, activeCombatant.speedFeet ?? 30);
   }, [battleMap, activeCombatant]);
 
+  // Fog of war only ever applies to a non-owner's own view — the DM's
+  // canvas always renders fully lit, since they're the one drawing the
+  // map. `visibleCells` is only ever populated (by the server) for a
+  // non-owner viewer in the first place, so the `!canEdit` check here is
+  // belt-and-suspenders against a stale/owner-viewed prop.
+  const fogActive = !canEdit && visibleCells !== undefined;
+  const exploredSet = useMemo(() => new Set(exploredCells ?? []), [exploredCells]);
+  const visibleSet = useMemo(() => new Set(visibleCells ?? []), [visibleCells]);
+
   const placed = combatants.filter((c) => c.gridX !== undefined && c.gridY !== undefined);
   const unplaced = combatants.filter((c) => c.gridX === undefined || c.gridY === undefined);
 
@@ -281,6 +298,7 @@ export function GridMap({
             {reachable && [...reachable].map((key) => {
               const [x, y] = key.split(",").map(Number);
               if (x === activeCombatant!.gridX && y === activeCombatant!.gridY) return null;
+              if (fogActive && !exploredSet.has(key)) return null;
               return <rect key={key} x={x * CELL} y={y * CELL} width={CELL} height={CELL} className="grid-map-reachable" pointerEvents="none" />;
             })}
 
@@ -338,6 +356,22 @@ export function GridMap({
                 </g>
               );
             })}
+
+            {fogActive && Array.from({ length: battleMap.height }, (_, y) =>
+              Array.from({ length: battleMap.width }, (_, x) => {
+                const key = `${x},${y}`;
+                if (visibleSet.has(key)) return null;
+                const explored = exploredSet.has(key);
+                return (
+                  <rect
+                    key={`fog-${key}`}
+                    x={x * CELL} y={y * CELL} width={CELL} height={CELL}
+                    className={explored ? "grid-map-fog-dim" : "grid-map-fog-hidden"}
+                    pointerEvents="none"
+                  />
+                );
+              }),
+            )}
           </g>
         </svg>
       </div>

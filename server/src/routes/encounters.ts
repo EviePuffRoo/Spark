@@ -3,8 +3,9 @@ import { prisma } from "../db.js";
 import { toEncounterDTO } from "../serialize.js";
 import { findAccessibleWorld } from "../worldAccess.js";
 import { publishWorldChange, publishTokenMoved } from "../worldEvents.js";
+import { computeCurrentVisibility } from "../gridVisibility.js";
 import type { LiveCombatant, LiveCombatantCondition, CombatantKind, EncounterZone, EncounterZoneEffect, ZoneHazard, ParsedAttack, AbilityKey, SizeCategory, PlacedTile } from "@spark/shared";
-import { SIZE_FOOTPRINT, computeReachableCells } from "@spark/shared";
+import { SIZE_FOOTPRINT, computeReachableCells, computeVisionForTokens, extendWithLightSources } from "@spark/shared";
 
 export const encountersRouter = Router();
 
@@ -89,6 +90,7 @@ function coerceCombatant(raw: unknown): LiveCombatant | null {
     gridY: typeof c.gridY === "number" ? c.gridY : undefined,
     sizeCategory: SIZE_CATEGORIES.includes(c.sizeCategory as SizeCategory) ? (c.sizeCategory as SizeCategory) : undefined,
     speedFeet: typeof c.speedFeet === "number" ? c.speedFeet : undefined,
+    visionRadiusFeet: typeof c.visionRadiusFeet === "number" ? c.visionRadiusFeet : undefined,
   };
 }
 
@@ -137,7 +139,8 @@ encountersRouter.get("/:worldId", async (req, res) => {
   if (!row) {
     return res.json({ worldId, combatants: [], round: 1, turnIndex: 0, zones: [], zoneEffects: [], updatedAt: null });
   }
-  res.json(toEncounterDTO(row, req.userId!, world.userId));
+  const visibleCells = await computeCurrentVisibility(row.activeBattleMapId, JSON.parse(row.combatants));
+  res.json(toEncounterDTO(row, req.userId!, world.userId, visibleCells ?? undefined));
 });
 
 encountersRouter.put("/:worldId", async (req, res) => {
@@ -155,33 +158,48 @@ encountersRouter.put("/:worldId", async (req, res) => {
   const activeDungeonId = typeof body.activeDungeonId === "string" ? body.activeDungeonId : null;
   const activeDungeonRoomId = typeof body.activeDungeonRoomId === "string" ? body.activeDungeonRoomId : null;
   const activeBattleMapId = typeof body.activeBattleMapId === "string" ? body.activeBattleMapId : null;
+  const clientExploredCells: string[] = Array.isArray(body.exploredCells) ? body.exploredCells.filter((x: unknown): x is string => typeof x === "string") : [];
 
-  const row = await withEncounterLock(worldId, () => prisma.encounter.upsert({
-    where: { worldId },
-    create: {
-      worldId,
-      combatants: JSON.stringify(combatants),
-      round: Number(body.round) || 1,
-      turnIndex: Number(body.turnIndex) || 0,
-      zones: JSON.stringify(zones),
-      zoneEffects: JSON.stringify(zoneEffects),
-      activeDungeonId,
-      activeDungeonRoomId,
-      activeBattleMapId,
-    },
-    update: {
-      combatants: JSON.stringify(combatants),
-      round: Number(body.round) || 1,
-      turnIndex: Number(body.turnIndex) || 0,
-      zones: JSON.stringify(zones),
-      zoneEffects: JSON.stringify(zoneEffects),
-      activeDungeonId,
-      activeDungeonRoomId,
-      activeBattleMapId,
-    },
-  }));
+  const row = await withEncounterLock(worldId, async () => {
+    const existing = await prisma.encounter.findUnique({ where: { worldId } });
+    // Switching (or first loading) a battle map starts fog fresh — the old
+    // map's explored memory has nothing to do with the new one. Staying on
+    // the same map (an ordinary HP/turn/etc. save) keeps accumulating it.
+    const mapChanged = (existing?.activeBattleMapId ?? null) !== activeBattleMapId;
+    const priorExplored: string[] = mapChanged || !existing ? [] : JSON.parse(existing.exploredCells ?? "[]");
+    const visible = await computeCurrentVisibility(activeBattleMapId, combatants);
+    const exploredCells = JSON.stringify([...new Set([...priorExplored, ...clientExploredCells, ...(visible ?? [])])]);
+
+    return prisma.encounter.upsert({
+      where: { worldId },
+      create: {
+        worldId,
+        combatants: JSON.stringify(combatants),
+        round: Number(body.round) || 1,
+        turnIndex: Number(body.turnIndex) || 0,
+        zones: JSON.stringify(zones),
+        zoneEffects: JSON.stringify(zoneEffects),
+        activeDungeonId,
+        activeDungeonRoomId,
+        activeBattleMapId,
+        exploredCells,
+      },
+      update: {
+        combatants: JSON.stringify(combatants),
+        round: Number(body.round) || 1,
+        turnIndex: Number(body.turnIndex) || 0,
+        zones: JSON.stringify(zones),
+        zoneEffects: JSON.stringify(zoneEffects),
+        activeDungeonId,
+        activeDungeonRoomId,
+        activeBattleMapId,
+        exploredCells,
+      },
+    });
+  });
   publishWorldChange(worldId, "encounter");
-  res.json(toEncounterDTO(row, req.userId!, world.userId));
+  const visibleCells = await computeCurrentVisibility(row.activeBattleMapId, JSON.parse(row.combatants));
+  res.json(toEncounterDTO(row, req.userId!, world.userId, visibleCells ?? undefined));
 });
 
 // Narrow write path open to any party member (not owner-only like PUT
@@ -218,7 +236,8 @@ encountersRouter.post("/:worldId/adjust-hp", async (req, res) => {
   if (updated === null) return res.status(404).json({ error: "No active encounter for this world" });
   if (updated === undefined) return res.status(404).json({ error: "Combatant not found" });
   publishWorldChange(worldId, "encounter");
-  res.json(toEncounterDTO(updated, req.userId!, world.userId));
+  const visibleCells = await computeCurrentVisibility(updated.activeBattleMapId, JSON.parse(updated.combatants));
+  res.json(toEncounterDTO(updated, req.userId!, world.userId, visibleCells ?? undefined));
 });
 
 // Narrow write path open to any party member: moves one combatant to a
@@ -268,7 +287,8 @@ encountersRouter.post("/:worldId/move-zone", async (req, res) => {
   });
   if ("error" in updated) return res.status(updated.error).json({ error: updated.message });
   publishWorldChange(worldId, "encounter");
-  res.json(toEncounterDTO(updated, req.userId!, world.userId));
+  const visibleCells = await computeCurrentVisibility(updated.activeBattleMapId, JSON.parse(updated.combatants));
+  res.json(toEncounterDTO(updated, req.userId!, world.userId, visibleCells ?? undefined));
 });
 
 // Narrow write path open to any party member, the grid-mode counterpart to
@@ -323,14 +343,22 @@ encountersRouter.post("/:worldId/move-grid", async (req, res) => {
 
     target.gridX = gridX;
     target.gridY = gridY;
+
+    const mapTiles: PlacedTile[] = JSON.parse(map.tiles);
+    const mapShape = { width: map.width, height: map.height, tiles: mapTiles };
+    const visible = extendWithLightSources(mapShape, computeVisionForTokens(mapShape, combatants));
+    const priorExplored: string[] = JSON.parse(row.exploredCells ?? "[]");
+    const exploredCells = JSON.stringify([...new Set([...priorExplored, ...visible])]);
+
     return prisma.encounter.update({
       where: { worldId },
-      data: { combatants: JSON.stringify(combatants) },
+      data: { combatants: JSON.stringify(combatants), exploredCells },
     });
   });
   if ("error" in updated) return res.status(updated.error).json({ error: updated.message });
   publishWorldChange(worldId, "encounter");
-  res.json(toEncounterDTO(updated, req.userId!, world.userId));
+  const visibleCells = await computeCurrentVisibility(updated.activeBattleMapId, JSON.parse(updated.combatants));
+  res.json(toEncounterDTO(updated, req.userId!, world.userId, visibleCells ?? undefined));
 });
 
 // Ephemeral, unpersisted: broadcasts a token's in-progress drag position to

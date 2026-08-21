@@ -863,6 +863,33 @@ export interface WorldAchievements {
   progress: AchievementProgress[];
 }
 
+export type BaseUpgradeCategory = "defenses" | "trade" | "influence" | "comfort";
+
+export interface BaseUpgradeDef {
+  id: string;
+  name: string;
+  description: string;
+  category: BaseUpgradeCategory;
+  cost: number;
+  // All of these must already be acquired before this upgrade is purchasable.
+  prerequisiteIds?: string[];
+  // At most one upgrade sharing a group can ever be acquired for a given
+  // base — the party's branching, mutually-exclusive choices (allying with
+  // one faction over another, stone walls vs. a hedge maze, ...).
+  exclusiveGroup?: string;
+}
+
+export interface BaseState {
+  worldId: string;
+  name: string;
+  // Derived from the number of upgrades acquired, not stored separately —
+  // one fewer place for the count to drift out of sync.
+  level: number;
+  gold: number;
+  isPaid: boolean;
+  acquiredUpgradeIds: string[];
+}
+
 export interface EntityLink {
   id: string;
   label?: string;

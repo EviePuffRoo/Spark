@@ -831,6 +831,32 @@ export interface SessionHighlights {
   itemsGained: { label: string; quantity: number }[];
 }
 
+export type AchievementCategory = "dice" | "quests" | "economy" | "social" | "legacy";
+
+export interface AchievementDef {
+  id: string;
+  name: string;
+  description: string;
+  category: AchievementCategory;
+  // Omitted for one-off achievements (effectively a target of 1) — set
+  // only when there's a meaningful count to show progress toward.
+  target?: number;
+}
+
+export interface AchievementProgress {
+  id: string;
+  unlocked: boolean;
+  current: number;
+  target: number;
+}
+
+export interface WorldAchievements {
+  worldId: string;
+  unlockedCount: number;
+  totalCount: number;
+  progress: AchievementProgress[];
+}
+
 export interface EntityLink {
   id: string;
   label?: string;

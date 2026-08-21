@@ -103,6 +103,53 @@ describe("session highlights", () => {
     expect(res.body.naturalTwenties).toEqual([]);
   });
 
+  it("reports the roller with the most rolls in the period, not the highest total", async () => {
+    const { agent } = await signupAgent("highlightsactive1");
+    const world = await agent.post("/api/worlds").send({ name: "Active Roller World" });
+    const worldId = world.body.id as string;
+
+    // Alice rolls three times (small totals); Bob rolls once with a huge total.
+    await agent.post("/api/roll-log").send(roll(worldId, "1d20", 3, { rollerName: "Alice" }));
+    await agent.post("/api/roll-log").send(roll(worldId, "1d20", 5, { rollerName: "Alice" }));
+    await agent.post("/api/roll-log").send(roll(worldId, "1d20", 8, { rollerName: "Alice" }));
+    await agent.post("/api/roll-log").send(roll(worldId, "1d20+50", 70, { rollerName: "Bob" }));
+
+    const res = await agent.get("/api/session-highlights").query({ worldId, since: YESTERDAY });
+    expect(res.body.mostActiveRoller).toEqual({ rollerName: "Alice", rollCount: 3 });
+    // Bob's roll is still the highest total — the two stats measure different things.
+    expect(res.body.topRolls[0].rollerName).toBe("Bob");
+  });
+
+  it("lists quests marked completed within the period, respecting hiddenFromParty", async () => {
+    const { agent: dm } = await signupAgent("highlightsquestdm1");
+    const world = await dm.post("/api/worlds").send({ name: "Quest Highlights World" });
+    const worldId = world.body.id as string;
+    const joinCode = await dm.post(`/api/worlds/${worldId}/join-code`);
+    const { agent: player } = await signupAgent("highlightsquestplayer1");
+    await player.post("/api/worlds/join").send({ code: joinCode.body.code });
+
+    const visible = await dm.post("/api/quests").send({
+      title: "Slay the Dragon", questType: "combat", tier: "major", hook: "h", objective: "o", complication: "c", reward: "r", worldId,
+    });
+    await dm.patch(`/api/quests/${visible.body.id}`).send({ status: "completed" });
+
+    const secret = await dm.post("/api/quests").send({
+      title: "Secret DM Plot", questType: "intrigue", tier: "minor", hook: "h", objective: "o", complication: "c", reward: "r", worldId, hiddenFromParty: true,
+    });
+    await dm.patch(`/api/quests/${secret.body.id}`).send({ status: "completed" });
+
+    const stillActive = await dm.post("/api/quests").send({
+      title: "Ongoing Quest", questType: "exploration", tier: "minor", hook: "h", objective: "o", complication: "c", reward: "r", worldId,
+    });
+    void stillActive;
+
+    const playerView = await player.get("/api/session-highlights").query({ worldId, since: YESTERDAY });
+    expect(playerView.body.questsCompleted).toEqual([{ title: "Slay the Dragon" }]);
+
+    const dmView = await dm.get("/api/session-highlights").query({ worldId, since: YESTERDAY });
+    expect(dmView.body.questsCompleted.map((q: { title: string }) => q.title).sort()).toEqual(["Secret DM Plot", "Slay the Dragon"]);
+  });
+
   it("hides a hiddenFromParty roll from a non-owner's highlights but shows it to the owner", async () => {
     const { agent: dm } = await signupAgent("highlightsdm1");
     const world = await dm.post("/api/worlds").send({ name: "Secret Highlights World" });

@@ -525,6 +525,21 @@
   font-weight: 600;
 }
 
+.recap-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.recap-card-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
 @media (max-width: 800px) {
   .generator-layout,
   .roster-layout {

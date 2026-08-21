@@ -29,7 +29,12 @@ sessionHighlightsRouter.get("/", async (req, res) => {
   const sinceDate = new Date(since);
   const rollWhere = { worldId, createdAt: { gte: sinceDate }, ...(isOwner ? {} : { hiddenFromParty: false }) };
 
-  const [rolls, rollCount, messageCount, goldAgg, itemGroups] = await Promise.all([
+  // Same visibility rule as the roll/chat queries above — a quest a DM
+  // marked hidden from the party shouldn't show up in a recap a player
+  // can see.
+  const questWhere = { worldId, status: "completed", updatedAt: { gte: sinceDate }, ...(isOwner ? {} : { hiddenFromParty: false }) };
+
+  const [rolls, rollCount, messageCount, goldAgg, itemGroups, completedQuests] = await Promise.all([
     // Every roll in the period, in memory, since nat-20/nat-1 detection
     // needs the notation shape check below rather than a DB-level filter.
     prisma.rollLogEntry.findMany({ where: rollWhere, orderBy: { createdAt: "desc" } }),
@@ -37,6 +42,11 @@ sessionHighlightsRouter.get("/", async (req, res) => {
     prisma.chatMessage.count({ where: { worldId, createdAt: { gte: sinceDate } } }),
     prisma.ledgerEntry.aggregate({ where: { worldId, kind: "gold", createdAt: { gte: sinceDate } }, _sum: { amount: true } }),
     prisma.ledgerEntry.groupBy({ by: ["label"], where: { worldId, kind: "item", createdAt: { gte: sinceDate } }, _sum: { amount: true } }),
+    // A quest's status flipping to "completed" is the closest signal we
+    // have to "finished this session" — not perfectly precise (editing
+    // another field after completion also bumps updatedAt), but the same
+    // best-effort spirit as the rest of this endpoint.
+    prisma.questHook.findMany({ where: questWhere, select: { title: true }, orderBy: { updatedAt: "desc" } }),
   ]);
 
   const naturalTwenties: SessionHighlightRoll[] = [];
@@ -55,6 +65,13 @@ sessionHighlightsRouter.get("/", async (req, res) => {
     .filter((i) => i.quantity > 0)
     .sort((a, b) => a.label.localeCompare(b.label));
 
+  const rollCountByRoller = new Map<string, number>();
+  for (const row of rolls) rollCountByRoller.set(row.rollerName, (rollCountByRoller.get(row.rollerName) ?? 0) + 1);
+  let mostActiveRoller: SessionHighlights["mostActiveRoller"] = null;
+  for (const [rollerName, count] of rollCountByRoller) {
+    if (!mostActiveRoller || count > mostActiveRoller.rollCount) mostActiveRoller = { rollerName, rollCount: count };
+  }
+
   const highlights: SessionHighlights = {
     worldId,
     since: sinceDate.toISOString(),
@@ -65,6 +82,8 @@ sessionHighlightsRouter.get("/", async (req, res) => {
     topRolls,
     goldDelta: goldAgg._sum.amount ?? 0,
     itemsGained,
+    mostActiveRoller,
+    questsCompleted: completedQuests,
   };
   res.json(highlights);
 });

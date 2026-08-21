@@ -829,6 +829,12 @@ export interface SessionHighlights {
   topRolls: SessionHighlightRoll[];
   goldDelta: number;
   itemsGained: { label: string; quantity: number }[];
+  // Most rolls logged in the period, not highest total — deliberately kept
+  // separate from topRolls so this never gets read as "who did the most
+  // damage" (roll log entries include checks/saves/initiative too, not
+  // only damage rolls).
+  mostActiveRoller: { rollerName: string; rollCount: number } | null;
+  questsCompleted: { title: string }[];
 }
 
 export type AchievementCategory = "dice" | "quests" | "economy" | "social" | "legacy";

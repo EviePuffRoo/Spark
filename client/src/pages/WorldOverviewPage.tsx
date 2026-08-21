@@ -164,7 +164,7 @@ export function WorldOverviewPage({ onNavigate }: { onNavigate: (subTab: Overvie
         </div>
 
         <LastSessionPanel worldId={worldId} onOpenNotes={() => onNavigate("notes")} />
-        <SessionHighlightsPanel worldId={worldId} />
+        <SessionHighlightsPanel worldId={worldId} worldName={world.name} />
         <AchievementsPanel worldId={worldId} />
       </div>
 

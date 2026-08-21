@@ -237,8 +237,8 @@ export const api = {
     request<SessionHighlights>(`/session-highlights?worldId=${worldId}&since=${encodeURIComponent(since)}`),
   getAchievements: (worldId: string) => request<WorldAchievements>(`/achievements?worldId=${worldId}`),
   getBase: (worldId: string) => request<BaseState>(`/base?worldId=${worldId}`),
-  purchaseBaseUpgrade: (worldId: string, upgradeId: string) =>
-    request<BaseState>("/base/purchase", { method: "POST", body: JSON.stringify({ worldId, upgradeId }) }),
+  purchaseBaseUpgrade: (worldId: string, upgradeId: string, factionId?: string, rivalFactionId?: string) =>
+    request<BaseState>("/base/purchase", { method: "POST", body: JSON.stringify({ worldId, upgradeId, factionId, rivalFactionId }) }),
   postLedgerEntry: (entry: LedgerEntryInput) =>
     request<LedgerEntry>("/ledger", { method: "POST", body: JSON.stringify(entry) }),
   deleteLedgerEntry: (id: string) => request<void>(`/ledger/${id}`, { method: "DELETE" }),

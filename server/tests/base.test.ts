@@ -170,6 +170,62 @@ describe("home base", () => {
     }
   });
 
+  it("applies a reputationDelta effect to a chosen faction, and rivalValue to a second faction", async () => {
+    const { agent, worldId } = await paidWorld("baseowner12", "Influence World");
+    await addGold(agent, worldId, 1000);
+
+    const guild = await agent.post("/api/factions").send({
+      worldId, name: "Shadow Hand", factionType: "criminal", agenda: "a", methods: "m", publicFace: "p", hook: "h",
+    });
+    const watch = await agent.post("/api/factions").send({
+      worldId, name: "City Watch", factionType: "authority", agenda: "a", methods: "m", publicFace: "p", hook: "h",
+    });
+
+    const res = await agent.post("/api/base/purchase").send({
+      worldId, upgradeId: "thieves-guild-pact", factionId: guild.body.id, rivalFactionId: watch.body.id,
+    });
+    expect(res.status).toBe(201);
+
+    const guildAfter = await agent.get(`/api/factions/${guild.body.id}`);
+    expect(guildAfter.body.reputation).toBe(20);
+    const watchAfter = await agent.get(`/api/factions/${watch.body.id}`);
+    expect(watchAfter.body.reputation).toBe(-15);
+  });
+
+  it("purchases a reputationDelta upgrade successfully with no faction chosen", async () => {
+    const { agent, worldId } = await paidWorld("baseowner13", "No Faction World");
+    await addGold(agent, worldId, 1000);
+
+    const res = await agent.post("/api/base/purchase").send({ worldId, upgradeId: "herald-of-renown" });
+    expect(res.status).toBe(201);
+    expect(res.body.acquiredUpgradeIds).toContain("herald-of-renown");
+  });
+
+  it("400s a reputationDelta purchase whose faction belongs to a different world", async () => {
+    const { agent, worldId } = await paidWorld("baseowner14", "Wrong World A");
+    await addGold(agent, worldId, 1000);
+    const other = await paidWorld("baseowner15", "Wrong World B");
+    const foreignFaction = await other.agent.post("/api/factions").send({
+      worldId: other.worldId, name: "Elsewhere Guild", factionType: "criminal", agenda: "a", methods: "m", publicFace: "p", hook: "h",
+    });
+
+    const res = await agent.post("/api/base/purchase").send({
+      worldId, upgradeId: "herald-of-renown", factionId: foreignFaction.body.id,
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("400s a factionId supplied for an upgrade with no faction effect", async () => {
+    const { agent, worldId } = await paidWorld("baseowner16", "No Effect World");
+    await addGold(agent, worldId, 1000);
+    const faction = await agent.post("/api/factions").send({
+      worldId, name: "Irrelevant Guild", factionType: "criminal", agenda: "a", methods: "m", publicFace: "p", hook: "h",
+    });
+
+    const res = await agent.post("/api/base/purchase").send({ worldId, upgradeId: "palisade-fence", factionId: faction.body.id });
+    expect(res.status).toBe(400);
+  });
+
   it("lets a paid world's member (not owner) purchase, gated on the owner's tier", async () => {
     const { agent: dm, worldId } = await paidWorld("basedm1", "Shared Base World");
     const joinCode = await dm.post(`/api/worlds/${worldId}/join-code`);

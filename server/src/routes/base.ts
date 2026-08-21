@@ -73,9 +73,15 @@ baseRouter.get("/", async (req, res) => {
 });
 
 baseRouter.post("/purchase", async (req, res) => {
-  const { worldId, upgradeId } = req.body ?? {};
+  const { worldId, upgradeId, factionId, rivalFactionId } = req.body ?? {};
   if (typeof worldId !== "string" || typeof upgradeId !== "string") {
     return res.status(400).json({ error: "worldId and upgradeId are required" });
+  }
+  if (factionId !== undefined && typeof factionId !== "string") {
+    return res.status(400).json({ error: "factionId must be a string" });
+  }
+  if (rivalFactionId !== undefined && typeof rivalFactionId !== "string") {
+    return res.status(400).json({ error: "rivalFactionId must be a string" });
   }
 
   const def = UPGRADE_BY_ID.get(upgradeId);
@@ -83,6 +89,19 @@ baseRouter.post("/purchase", async (req, res) => {
 
   const world = await findAccessibleWorld(req.userId!, worldId);
   if (!world) return res.status(403).json({ error: "You don't have access to this world" });
+
+  // Both faction choices are optional (a world might not have a relevant
+  // faction yet), but if given, they must actually belong to this world —
+  // otherwise a reputation delta could land on a faction from an entirely
+  // different campaign.
+  if (def.effect?.kind === "reputationDelta") {
+    for (const id of [factionId, rivalFactionId].filter((v): v is string => typeof v === "string")) {
+      const faction = await prisma.faction.findFirst({ where: { id, worldId } });
+      if (!faction) return res.status(400).json({ error: "That faction isn't part of this world" });
+    }
+  } else if (factionId || rivalFactionId) {
+    return res.status(400).json({ error: "This upgrade has no faction effect to apply" });
+  }
 
   // Gated on the world owner's tier, not the acting user's — this is the
   // DM's subscription paying for a perk the whole table gets, the same
@@ -141,6 +160,15 @@ baseRouter.post("/purchase", async (req, res) => {
             },
           });
           await tx.baseUpgrade.update({ where: { id: upgradeRow.id }, data: { shopId: shop.id } });
+        }
+
+        if (def.effect?.kind === "reputationDelta") {
+          if (factionId) {
+            await tx.faction.update({ where: { id: factionId }, data: { reputation: { increment: def.effect.value } } });
+          }
+          if (rivalFactionId && def.effect.rivalValue !== undefined) {
+            await tx.faction.update({ where: { id: rivalFactionId }, data: { reputation: { increment: def.effect.rivalValue } } });
+          }
         }
 
         await tx.ledgerEntry.create({

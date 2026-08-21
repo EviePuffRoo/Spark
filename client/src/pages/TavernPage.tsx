@@ -13,6 +13,10 @@ export function TavernPage({ onNavigateToBilling }: { onNavigateToBilling: () =>
   const [factions, setFactions] = useState<Faction[]>([]);
   const [npcs, setNpcs] = useState<Character[]>([]);
   const [loading, setLoading] = useState(false);
+  // Bumped after a Base purchase applies a reputation delta — Faction
+  // Standings below is a sibling of BasePanel with its own fetch, so it
+  // otherwise wouldn't know a faction's standing just changed.
+  const [refreshTick, setRefreshTick] = useState(0);
 
   useEffect(() => {
     if (!worldId) {
@@ -33,7 +37,7 @@ export function TavernPage({ onNavigateToBilling }: { onNavigateToBilling: () =>
         setNpcs(characters.filter((c) => !c.hiddenFromParty && c.kind === "npc"));
       })
       .finally(() => setLoading(false));
-  }, [worldId]);
+  }, [worldId, refreshTick]);
 
   return (
     <div className="page">
@@ -112,7 +116,7 @@ export function TavernPage({ onNavigateToBilling }: { onNavigateToBilling: () =>
             </ul>
           </div>
 
-          <BasePanel worldId={worldId} onNavigateToBilling={onNavigateToBilling} />
+          <BasePanel worldId={worldId} onNavigateToBilling={onNavigateToBilling} onFactionsChanged={() => setRefreshTick((n) => n + 1)} />
         </>
       )}
     </div>

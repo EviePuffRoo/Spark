@@ -877,7 +877,14 @@ export type BaseUpgradeEffect =
   // existing shop generator) the moment it's bought — not a description of
   // one. priceMultiplier scales the generated stock's prices (< 1 = a
   // discount from a resident vendor).
-  | { kind: "shopUnlock"; archetype: string; stockSize: number; priceMultiplier?: number };
+  | { kind: "shopUnlock"; archetype: string; stockSize: number; priceMultiplier?: number }
+  // Applies a real, immediate Faction.reputation change — value to a
+  // faction the purchaser chooses at purchase time, and (for the
+  // mutually-exclusive alliance upgrades) rivalValue to a second, optional
+  // faction, so "gains and losses" happens in one action instead of two.
+  // Both faction choices are optional: a world with no relevant faction
+  // yet still lets the upgrade through, just without a delta applied.
+  | { kind: "reputationDelta"; value: number; rivalValue?: number };
 
 export interface BaseUpgradeDef {
   id: string;

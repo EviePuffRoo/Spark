@@ -525,6 +525,7 @@ model Encounter {
   zoneEffects String   @default("[]")
   activeDungeonId     String?
   activeDungeonRoomId String?
+  activeBattleMapId   String?
   updatedAt   DateTime @updatedAt
 }
 

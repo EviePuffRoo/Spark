@@ -411,6 +411,7 @@ export function toEncounterDTO(row: EncounterRow, viewerId: string, worldOwnerId
     zoneEffects,
     activeDungeonId: row.activeDungeonId ?? undefined,
     activeDungeonRoomId: row.activeDungeonRoomId ?? undefined,
+    activeBattleMapId: row.activeBattleMapId ?? undefined,
     updatedAt: row.updatedAt.toISOString(),
   };
 }

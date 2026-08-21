@@ -3,7 +3,8 @@ import { prisma } from "../db.js";
 import { toEncounterDTO } from "../serialize.js";
 import { findAccessibleWorld } from "../worldAccess.js";
 import { publishWorldChange } from "../worldEvents.js";
-import type { LiveCombatant, LiveCombatantCondition, CombatantKind, EncounterZone, EncounterZoneEffect, ZoneHazard, ParsedAttack, AbilityKey } from "@spark/shared";
+import type { LiveCombatant, LiveCombatantCondition, CombatantKind, EncounterZone, EncounterZoneEffect, ZoneHazard, ParsedAttack, AbilityKey, SizeCategory, PlacedTile } from "@spark/shared";
+import { SIZE_FOOTPRINT, computeReachableCells } from "@spark/shared";
 
 export const encountersRouter = Router();
 
@@ -26,6 +27,7 @@ function withEncounterLock<T>(worldId: string, fn: () => Promise<T>): Promise<T>
 }
 
 const ABILITY_KEYS: AbilityKey[] = ["str", "dex", "con", "int", "wis", "cha"];
+const SIZE_CATEGORIES: SizeCategory[] = ["tiny", "small", "medium", "large", "huge", "gargantuan"];
 
 // Conditions used to be a plain string[]; a raw string entry from an
 // encounter saved before duration tracking existed is treated as an
@@ -83,6 +85,10 @@ function coerceCombatant(raw: unknown): LiveCombatant | null {
     hidden: c.hidden === true,
     playerCharacterId: typeof c.playerCharacterId === "string" ? c.playerCharacterId : undefined,
     attacks: attacks && attacks.length > 0 ? attacks : undefined,
+    gridX: typeof c.gridX === "number" ? c.gridX : undefined,
+    gridY: typeof c.gridY === "number" ? c.gridY : undefined,
+    sizeCategory: SIZE_CATEGORIES.includes(c.sizeCategory as SizeCategory) ? (c.sizeCategory as SizeCategory) : undefined,
+    speedFeet: typeof c.speedFeet === "number" ? c.speedFeet : undefined,
   };
 }
 
@@ -148,6 +154,7 @@ encountersRouter.put("/:worldId", async (req, res) => {
   const zoneEffects = Array.isArray(body.zoneEffects) ? body.zoneEffects.map(coerceZoneEffect).filter((e: EncounterZoneEffect | null): e is EncounterZoneEffect => e !== null) : [];
   const activeDungeonId = typeof body.activeDungeonId === "string" ? body.activeDungeonId : null;
   const activeDungeonRoomId = typeof body.activeDungeonRoomId === "string" ? body.activeDungeonRoomId : null;
+  const activeBattleMapId = typeof body.activeBattleMapId === "string" ? body.activeBattleMapId : null;
 
   const row = await withEncounterLock(worldId, () => prisma.encounter.upsert({
     where: { worldId },
@@ -160,6 +167,7 @@ encountersRouter.put("/:worldId", async (req, res) => {
       zoneEffects: JSON.stringify(zoneEffects),
       activeDungeonId,
       activeDungeonRoomId,
+      activeBattleMapId,
     },
     update: {
       combatants: JSON.stringify(combatants),
@@ -169,6 +177,7 @@ encountersRouter.put("/:worldId", async (req, res) => {
       zoneEffects: JSON.stringify(zoneEffects),
       activeDungeonId,
       activeDungeonRoomId,
+      activeBattleMapId,
     },
   }));
   publishWorldChange(worldId, "encounter");
@@ -252,6 +261,68 @@ encountersRouter.post("/:worldId/move-zone", async (req, res) => {
     }
 
     target.zoneId = zoneId;
+    return prisma.encounter.update({
+      where: { worldId },
+      data: { combatants: JSON.stringify(combatants) },
+    });
+  });
+  if ("error" in updated) return res.status(updated.error).json({ error: updated.message });
+  publishWorldChange(worldId, "encounter");
+  res.json(toEncounterDTO(updated, req.userId!, world.userId));
+});
+
+// Narrow write path open to any party member, the grid-mode counterpart to
+// move-zone above. Unlike move-zone's "must be adjacent," a token's whole
+// remaining movement is one continuous action — so the reachability check
+// here is against the map's actual walls/terrain and the combatant's own
+// speed (computeReachableCells), not a single-hop rule. The owner never
+// hits this endpoint at all (they PUT the whole encounter unconstrained,
+// same escape hatch move-zone's adjacency rule relies on), so this is
+// purely the trust boundary for everyone else at the table.
+encountersRouter.post("/:worldId/move-grid", async (req, res) => {
+  const { worldId } = req.params;
+  const world = await findAccessibleWorld(req.userId!, worldId);
+  if (!world) return res.status(403).json({ error: "You don't have access to this world" });
+  const isOwner = world.userId === req.userId;
+
+  const { combatantId, gridX, gridY } = req.body ?? {};
+  if (typeof combatantId !== "string" || typeof gridX !== "number" || typeof gridY !== "number") {
+    return res.status(400).json({ error: "combatantId, gridX, and gridY are required" });
+  }
+  if (!Number.isInteger(gridX) || !Number.isInteger(gridY) || gridX < 0 || gridY < 0) {
+    return res.status(400).json({ error: "gridX and gridY must be non-negative integers" });
+  }
+
+  const updated = await withEncounterLock(worldId, async () => {
+    const row = await prisma.encounter.findUnique({ where: { worldId } });
+    if (!row) return { error: 404 as const, message: "No active encounter for this world" };
+    if (!row.activeBattleMapId) return { error: 400 as const, message: "No battle map is loaded for this encounter" };
+
+    const map = await prisma.battleMap.findUnique({ where: { id: row.activeBattleMapId } });
+    if (!map) return { error: 404 as const, message: "Battle map not found" };
+
+    const combatants: LiveCombatant[] = JSON.parse(row.combatants);
+    const target = combatants.find((c) => c.id === combatantId);
+    if (!target) return { error: 404 as const, message: "Combatant not found" };
+
+    const footprint = SIZE_FOOTPRINT[target.sizeCategory ?? "medium"];
+    if (gridX + footprint > map.width || gridY + footprint > map.height) {
+      return { error: 400 as const, message: "That's off the edge of the map" };
+    }
+
+    if (!isOwner && typeof target.gridX === "number" && typeof target.gridY === "number") {
+      const mapTiles: PlacedTile[] = JSON.parse(map.tiles);
+      const reachable = computeReachableCells(
+        { width: map.width, height: map.height, tiles: mapTiles },
+        target.gridX, target.gridY, target.speedFeet ?? 30,
+      );
+      if (!reachable.has(`${gridX},${gridY}`)) {
+        return { error: 400 as const, message: "That's further than this combatant can move" };
+      }
+    }
+
+    target.gridX = gridX;
+    target.gridY = gridY;
     return prisma.encounter.update({
       where: { worldId },
       data: { combatants: JSON.stringify(combatants) },

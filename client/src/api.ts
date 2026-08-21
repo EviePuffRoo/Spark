@@ -256,6 +256,8 @@ export const api = {
     request<Encounter>(`/encounters/${worldId}/adjust-hp`, { method: "POST", body: JSON.stringify({ combatantId, delta }) }),
   moveCombatantZone: (worldId: string, combatantId: string, zoneId: string) =>
     request<Encounter>(`/encounters/${worldId}/move-zone`, { method: "POST", body: JSON.stringify({ combatantId, zoneId }) }),
+  moveCombatantGrid: (worldId: string, combatantId: string, gridX: number, gridY: number) =>
+    request<Encounter>(`/encounters/${worldId}/move-grid`, { method: "POST", body: JSON.stringify({ combatantId, gridX, gridY }) }),
 
   listZoneMapTemplates: (worldId?: string) =>
     request<ZoneMapTemplate[]>(`/zone-map-templates${worldId ? `?worldId=${worldId}` : ""}`),

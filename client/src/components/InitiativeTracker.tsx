@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import type { SearchResult, LiveCombatant, LiveCombatantCondition, EncounterStateInput, EncounterTable, EncounterZone, HpStatus, Dungeon, Item } from "@spark/shared";
-import { computeEquipmentBonuses, CONDITIONS_COMPENDIUM, parseStatBlockAttacks } from "@spark/shared";
+import type { SearchResult, LiveCombatant, LiveCombatantCondition, EncounterStateInput, EncounterTable, EncounterZone, HpStatus, Dungeon, Item, SizeCategory } from "@spark/shared";
+import { computeEquipmentBonuses, CONDITIONS_COMPENDIUM, parseStatBlockAttacks, parseSizeCategory, parseSpeedFeet } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { useAuth } from "../AuthContext";
 import { EntitySearchPicker } from "./EntitySearchPicker";
 import { ZoneMap } from "./ZoneMap";
+import { GridMap } from "./GridMap";
 import { useLocalStorage } from "../useLocalStorage";
 import { useWorldLiveChannel } from "../useWorldLiveChannel";
 import { rollTableIndex } from "../rollTable";
@@ -90,6 +91,8 @@ export function InitiativeTracker({
   const [customAc, setCustomAc] = useState<number | "">("");
   const [customXp, setCustomXp] = useState<number | "">("");
   const [customLevel, setCustomLevel] = useState<number | "">("");
+  const [customSize, setCustomSize] = useState<SizeCategory>("medium");
+  const [customSpeed, setCustomSpeed] = useState(30);
   const [hpDelta, setHpDelta] = useState<Record<string, string>>({});
   const [openConditionsFor, setOpenConditionsFor] = useState<string | null>(null);
   const [conditionDuration, setConditionDuration] = useState<Record<string, string>>({});
@@ -104,6 +107,7 @@ export function InitiativeTracker({
   const [attackDamageResult, setAttackDamageResult] = useState<{ total: number } | null>(null);
   const [attackError, setAttackError] = useState<string | null>(null);
   const [showZoneMap, setShowZoneMap] = useState(false);
+  const [showGridMap, setShowGridMap] = useState(false);
   const [showTableView, setShowTableView] = useState(false);
   const [activeDungeon, setActiveDungeon] = useState<Dungeon | null>(null);
   const [lootOpenFor, setLootOpenFor] = useState<string | null>(null);
@@ -206,6 +210,8 @@ export function InitiativeTracker({
         xp: character.statBlock.xp,
         equipmentAcBonus: acBonus > 0 ? acBonus : undefined,
         attacks: attacks.length > 0 ? attacks : undefined,
+        sizeCategory: parseSizeCategory(character.statBlock.size),
+        speedFeet: parseSpeedFeet(character.statBlock.speed),
       });
     } else if (type === "playerCharacter") {
       const pc = await api.getPlayerCharacter(result.id);
@@ -225,6 +231,12 @@ export function InitiativeTracker({
         level: pc.level,
         equipmentAcBonus: acBonus > 0 ? acBonus : undefined,
         playerCharacterId: pc.id,
+        // This app doesn't track a PC's race-derived size/speed anywhere,
+        // unlike NPC/monster stat blocks — Medium/30ft covers the large
+        // majority of PC races and is the same default a blank stat block
+        // would parse to anyway.
+        sizeCategory: "medium",
+        speedFeet: 30,
       });
     }
   }
@@ -267,6 +279,8 @@ export function InitiativeTracker({
       hpVisible: false,
       xp: customXp === "" ? undefined : Number(customXp),
       level: customLevel === "" ? undefined : Number(customLevel),
+      sizeCategory: customSize,
+      speedFeet: customSpeed,
     });
     setCustomName("");
     setCustomInitiative(10);
@@ -274,6 +288,8 @@ export function InitiativeTracker({
     setCustomAc("");
     setCustomXp("");
     setCustomLevel("");
+    setCustomSize("medium");
+    setCustomSpeed(30);
     setAddingCustom(false);
   }
 
@@ -533,6 +549,28 @@ export function InitiativeTracker({
     setActiveDungeon(null);
   }
 
+  function loadBattleMap(mapId: string) {
+    applyEncounterUpdate((e) => ({ ...e, activeBattleMapId: mapId }));
+  }
+
+  function leaveBattleMap() {
+    applyEncounterUpdate((e) => ({
+      ...e,
+      activeBattleMapId: undefined,
+      combatants: e.combatants.map((c) => ({ ...c, gridX: undefined, gridY: undefined })),
+    }));
+  }
+
+  function moveCombatantOnGrid(combatantId: string, gridX: number, gridY: number) {
+    if (canEdit) {
+      applyEncounterUpdate((e) => ({ ...e, combatants: e.combatants.map((c) => (c.id === combatantId ? { ...c, gridX, gridY } : c)) }));
+    } else if (partyMode && partyWorldId) {
+      api.moveCombatantGrid(partyWorldId, combatantId, gridX, gridY)
+        .then(setLiveEncounter)
+        .catch((err) => setLiveError((err as Error).message));
+    }
+  }
+
   return (
     <div className="panel result-panel initiative-tracker">
       <div className="initiative-header">
@@ -592,6 +630,7 @@ export function InitiativeTracker({
       <h3 className="section-heading">Map &amp; Dungeon</h3>
       <div className="button-row">
         <button className="btn-secondary" aria-expanded={showZoneMap} onClick={() => setShowZoneMap((v) => !v)}>{showZoneMap ? "Hide Zone Map" : "Show Zone Map"}</button>
+        <button className="btn-secondary" aria-expanded={showGridMap} onClick={() => setShowGridMap((v) => !v)}>{showGridMap ? "Hide Battle Grid" : "Show Battle Grid"}</button>
         {isOwner && (
           <>
             <button className="btn-secondary" aria-expanded={showTableView} onClick={() => setShowTableView((v) => !v)}>
@@ -657,6 +696,20 @@ export function InitiativeTracker({
         />
       )}
 
+      {showGridMap && (
+        <GridMap
+          worldId={partyMode ? partyWorldId : undefined}
+          battleMapId={activeEncounter.activeBattleMapId}
+          combatants={sorted}
+          activeId={activeId}
+          canEdit={canEdit}
+          onLoadBattleMap={loadBattleMap}
+          onLeaveBattleMap={leaveBattleMap}
+          onMoveCombatant={moveCombatantOnGrid}
+          onPlaceCombatant={moveCombatantOnGrid}
+        />
+      )}
+
       {showTableView && partyMode && partyWorldId && (
         <div className="inline-table-view">
           <PresentationView worldId={partyWorldId} />
@@ -719,6 +772,21 @@ export function InitiativeTracker({
             <span>Level (optional, if this is a PC)</span>
             <input type="number" value={customLevel} onChange={(e) => setCustomLevel(e.target.value === "" ? "" : Number(e.target.value))} />
           </label>
+          <label className="field">
+            <span>Size (for the battle grid)</span>
+            <select value={customSize} onChange={(e) => setCustomSize(e.target.value as SizeCategory)}>
+              <option value="tiny">Tiny</option>
+              <option value="small">Small</option>
+              <option value="medium">Medium</option>
+              <option value="large">Large</option>
+              <option value="huge">Huge</option>
+              <option value="gargantuan">Gargantuan</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>Speed, ft (for the battle grid)</span>
+            <input type="number" min={0} value={customSpeed} onChange={(e) => setCustomSpeed(Number(e.target.value) || 0)} />
+          </label>
           <button className="btn-primary" onClick={handleAddCustom}>Add Combatant</button>
         </div>
       )}
@@ -749,6 +817,7 @@ export function InitiativeTracker({
                   {!!c.equipmentAcBonus && <span className="item-stat-badge" title={`Includes +${c.equipmentAcBonus} from equipped items`}>+{c.equipmentAcBonus} equipped</span>}
                 </span>
               )}
+              {c.speedFeet !== undefined && <span className="entity-meta">Speed {c.speedFeet} ft</span>}
               {sorted.length > 1 && (
                 <button
                   className="btn-secondary"
@@ -955,6 +1024,7 @@ export function InitiativeTracker({
                   {!!c.equipmentAcBonus && <span className="item-stat-badge" title={`Includes +${c.equipmentAcBonus} from equipped items`}>+{c.equipmentAcBonus} equipped</span>}
                 </span>
               )}
+              {c.speedFeet !== undefined && <span className="entity-meta">Speed {c.speedFeet} ft</span>}
             </div>
 
             {c.conditions.length > 0 && (

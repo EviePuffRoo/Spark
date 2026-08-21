@@ -991,6 +991,20 @@ export interface BattleMap extends BattleMapInput {
   updatedAt: string;
 }
 
+// The wire shape of a live, in-progress token drag — deliberately just
+// these three fields, broadcast over its own SSE event ("tokenMoved",
+// distinct from the coarse "encounter" event) so every connected viewer
+// can see a token glide across the grid in real time without the cost of
+// a full encounter re-fetch and redaction pass on every tick. Never
+// persisted; the real position only becomes durable (and shows up in the
+// next "encounter" event) once the drag ends and commits via move-grid
+// or the full encounter PUT.
+export interface TokenMovedBroadcast {
+  combatantId: string;
+  gridX: number;
+  gridY: number;
+}
+
 export interface EntityLink {
   id: string;
   label?: string;

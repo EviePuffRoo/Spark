@@ -173,3 +173,51 @@ describe("grid combat: battle map position and move-grid", () => {
     expect(res.status).toBe(403);
   });
 });
+
+describe("grid combat: ephemeral drag-position broadcast", () => {
+  it("400s with no combatantId/gridX/gridY", async () => {
+    const { agent } = await signupAgent("broadcastdm1");
+    const world = await agent.post("/api/worlds").send({ name: "Broadcast World" });
+    const res = await agent.post(`/api/encounters/${world.body.id}/broadcast-token-position`).send({});
+    expect(res.status).toBe(400);
+  });
+
+  it("403s for a non-member", async () => {
+    const { agent: dm } = await signupAgent("broadcastdm2");
+    const world = await dm.post("/api/worlds").send({ name: "Broadcast World 2" });
+    const { agent: outsider } = await signupAgent("broadcastoutsider1");
+    const res = await outsider.post(`/api/encounters/${world.body.id}/broadcast-token-position`).send({ combatantId: "c1", gridX: 1, gridY: 1 });
+    expect(res.status).toBe(403);
+  });
+
+  it("204s with no active encounter yet (nothing to resolve hidden against)", async () => {
+    const { agent } = await signupAgent("broadcastdm3");
+    const world = await agent.post("/api/worlds").send({ name: "Broadcast World 3" });
+    const res = await agent.post(`/api/encounters/${world.body.id}/broadcast-token-position`).send({ combatantId: "c1", gridX: 1, gridY: 1 });
+    expect(res.status).toBe(204);
+  });
+
+  it("204s for both a normal and a hidden combatant, and never writes to the database", async () => {
+    const { agent } = await signupAgent("broadcastdm4");
+    const world = await agent.post("/api/worlds").send({ name: "Broadcast World 4" });
+    const worldId = world.body.id as string;
+    await agent.put(`/api/encounters/${worldId}`).send({
+      combatants: [
+        { id: "visible", name: "Fighter", kind: "playerCharacter", initiative: 8, conditions: [], notes: "", hpVisible: true, gridX: 1, gridY: 1 },
+        { id: "secret", name: "Ambusher", kind: "monster", initiative: 8, conditions: [], notes: "", hpVisible: false, hidden: true, gridX: 2, gridY: 2 },
+      ],
+      round: 1, turnIndex: 0,
+    });
+
+    const before = await prisma.encounter.findUnique({ where: { worldId } });
+
+    const visibleRes = await agent.post(`/api/encounters/${worldId}/broadcast-token-position`).send({ combatantId: "visible", gridX: 5, gridY: 5 });
+    expect(visibleRes.status).toBe(204);
+    const hiddenRes = await agent.post(`/api/encounters/${worldId}/broadcast-token-position`).send({ combatantId: "secret", gridX: 6, gridY: 6 });
+    expect(hiddenRes.status).toBe(204);
+
+    const after = await prisma.encounter.findUnique({ where: { worldId } });
+    expect(after?.updatedAt.getTime()).toBe(before?.updatedAt.getTime());
+    expect(JSON.parse(after!.combatants).find((c: { id: string }) => c.id === "visible").gridX).toBe(1);
+  });
+});

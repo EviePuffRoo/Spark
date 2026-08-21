@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { toEncounterDTO } from "../serialize.js";
 import { findAccessibleWorld } from "../worldAccess.js";
-import { publishWorldChange } from "../worldEvents.js";
+import { publishWorldChange, publishTokenMoved } from "../worldEvents.js";
 import type { LiveCombatant, LiveCombatantCondition, CombatantKind, EncounterZone, EncounterZoneEffect, ZoneHazard, ParsedAttack, AbilityKey, SizeCategory, PlacedTile } from "@spark/shared";
 import { SIZE_FOOTPRINT, computeReachableCells } from "@spark/shared";
 
@@ -331,4 +331,30 @@ encountersRouter.post("/:worldId/move-grid", async (req, res) => {
   if ("error" in updated) return res.status(updated.error).json({ error: updated.message });
   publishWorldChange(worldId, "encounter");
   res.json(toEncounterDTO(updated, req.userId!, world.userId));
+});
+
+// Ephemeral, unpersisted: broadcasts a token's in-progress drag position to
+// every other connected viewer without writing to the database at all —
+// the client throttles calls to this during a drag (see GridMap.tsx's
+// onDragBroadcast), and the real position only becomes durable once the
+// drag ends and commits through move-grid or the full encounter PUT above.
+// Deliberately a 204 with no body: nothing meaningful to return, and no
+// point paying for a response the caller (mid-drag) won't wait on anyway.
+encountersRouter.post("/:worldId/broadcast-token-position", async (req, res) => {
+  const { worldId } = req.params;
+  const world = await findAccessibleWorld(req.userId!, worldId);
+  if (!world) return res.status(403).json({ error: "You don't have access to this world" });
+
+  const { combatantId, gridX, gridY } = req.body ?? {};
+  if (typeof combatantId !== "string" || typeof gridX !== "number" || typeof gridY !== "number") {
+    return res.status(400).json({ error: "combatantId, gridX, and gridY are required" });
+  }
+
+  // A single indexed row read, not the full sendEncounter redaction pass —
+  // just enough to authoritatively resolve `hidden` server-side rather
+  // than trusting whatever the dragging client claims about it.
+  const row = await prisma.encounter.findUnique({ where: { worldId } });
+  const combatant = row ? (JSON.parse(row.combatants) as LiveCombatant[]).find((c) => c.id === combatantId) : undefined;
+  publishTokenMoved(worldId, { combatantId, gridX, gridY, hidden: combatant?.hidden === true });
+  res.status(204).end();
 });

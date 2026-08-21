@@ -16,6 +16,8 @@ export function DungeonEditor({
   const [addingRoom, setAddingRoom] = useState(false);
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(value.rooms[0]?.id ?? null);
   const [roomZones, setRoomZones] = useState<Record<string, EncounterZone[]>>({});
+  const [battleMapNames, setBattleMapNames] = useState<Record<string, string>>({});
+  const [pickingBattleMap, setPickingBattleMap] = useState(false);
   const [status, setStatus] = useState<"idle" | "saving">("idle");
 
   const selectedRoom = rooms.find((r) => r.id === selectedRoomId) ?? null;
@@ -26,6 +28,23 @@ export function DungeonEditor({
       .then((t) => setRoomZones((z) => ({ ...z, [selectedRoom.templateId]: t.zones })))
       .catch(() => {});
   }, [selectedRoom, roomZones]);
+
+  useEffect(() => {
+    const id = selectedRoom?.battleMapId;
+    if (!id || battleMapNames[id]) return;
+    api.getBattleMap(id).then((m) => setBattleMapNames((n) => ({ ...n, [id]: m.name }))).catch(() => {});
+  }, [selectedRoom, battleMapNames]);
+
+  useEffect(() => {
+    setPickingBattleMap(false);
+  }, [selectedRoomId]);
+
+  function handlePickBattleMap(result: SearchResult) {
+    if (!selectedRoom) return;
+    setPickingBattleMap(false);
+    updateRoom(selectedRoom.id, { battleMapId: result.id });
+    setBattleMapNames((n) => ({ ...n, [result.id]: result.name }));
+  }
 
   async function handleAddRoom(result: SearchResult) {
     setAddingRoom(false);
@@ -144,6 +163,22 @@ export function DungeonEditor({
               </label>
             );
           })}
+
+          <h4 className="section-heading">Battle Grid</h4>
+          <p className="hint">Auto-loads on the grid map the moment the party enters this room during a live encounter.</p>
+          {selectedRoom.battleMapId ? (
+            <div className="button-row">
+              <span className="entity-name">{battleMapNames[selectedRoom.battleMapId] ?? "Loading…"}</span>
+              <button className="btn-secondary" onClick={() => updateRoom(selectedRoom.id, { battleMapId: undefined })}>Clear</button>
+            </div>
+          ) : pickingBattleMap ? (
+            <div className="save-panel">
+              <EntitySearchPicker type="battleMap" onSelect={handlePickBattleMap} placeholder="Search battle maps…" />
+              <button className="btn-secondary" onClick={() => setPickingBattleMap(false)}>Cancel</button>
+            </div>
+          ) : (
+            <button className="btn-secondary" onClick={() => setPickingBattleMap(true)}>+ Assign Battle Map</button>
+          )}
         </div>
       )}
 

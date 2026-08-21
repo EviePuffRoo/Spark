@@ -594,6 +594,11 @@ export interface DungeonRoom {
   templateId: string;
   exits: DungeonExit[];
   rect?: DungeonRoomRect;
+  // A battle map to auto-load (as Encounter.activeBattleMapId) alongside
+  // this room's zone template, the moment the party enters it — the
+  // same "coexists, doesn't replace" relationship the zone system
+  // already has with the grid system at the Encounter level.
+  battleMapId?: string;
 }
 
 export interface DungeonInput {
@@ -747,7 +752,7 @@ export interface Adventure extends GeneratedAdventure {
   updatedAt: string;
 }
 
-export type EntityType = "character" | "item" | "location" | "quest" | "faction" | "encounterTable" | "sessionNote" | "adventure" | "playerCharacter" | "zoneMapTemplate" | "dungeon" | "shop" | "region" | "settlement";
+export type EntityType = "character" | "item" | "location" | "quest" | "faction" | "encounterTable" | "sessionNote" | "adventure" | "playerCharacter" | "zoneMapTemplate" | "dungeon" | "shop" | "region" | "settlement" | "battleMap";
 
 export interface EntityTypeDef {
   type: EntityType;
@@ -769,6 +774,7 @@ export const ENTITY_TYPES: EntityTypeDef[] = [
   { type: "shop", label: "Shop" },
   { type: "region", label: "Region" },
   { type: "settlement", label: "Settlement" },
+  { type: "battleMap", label: "Battle Map" },
 ];
 
 export interface EntityRef {

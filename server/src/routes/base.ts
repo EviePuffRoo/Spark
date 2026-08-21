@@ -2,8 +2,8 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { findAccessibleWorld } from "../worldAccess.js";
 import { publishWorldChange } from "../worldEvents.js";
-import { BASE_UPGRADES } from "@spark/shared";
-import type { BaseState } from "@spark/shared";
+import { BASE_UPGRADES, generateShop } from "@spark/shared";
+import type { BaseState, BaseUnlockedShop } from "@spark/shared";
 
 export const baseRouter = Router();
 
@@ -35,13 +35,30 @@ async function loadBaseState(worldId: string, ownerUserId: string): Promise<Base
     prisma.user.findUnique({ where: { id: ownerUserId }, select: { tier: true } }),
   ]);
 
+  let defenseRating = 0;
+  for (const row of base.upgrades) {
+    const effect = UPGRADE_BY_ID.get(row.upgradeId)?.effect;
+    if (effect?.kind === "defenseRating") defenseRating += effect.value;
+  }
+
+  const shopRows = base.upgrades.filter((u) => u.shopId);
+  const shops = shopRows.length
+    ? await prisma.shop.findMany({ where: { id: { in: shopRows.map((u) => u.shopId!) } }, select: { id: true, name: true } })
+    : [];
+  const shopNameById = new Map(shops.map((s) => [s.id, s.name]));
+  const unlockedShops: BaseUnlockedShop[] = shopRows
+    .filter((u) => shopNameById.has(u.shopId!))
+    .map((u) => ({ upgradeId: u.upgradeId, shopId: u.shopId!, shopName: shopNameById.get(u.shopId!)! }));
+
   return {
     worldId,
     name: base.name,
     level: base.upgrades.length,
     gold: goldAgg._sum.amount ?? 0,
     isPaid: owner?.tier === "paid",
+    defenseRating,
     acquiredUpgradeIds: base.upgrades.map((u) => u.upgradeId),
+    unlockedShops,
   };
 }
 
@@ -78,6 +95,17 @@ baseRouter.post("/purchase", async (req, res) => {
 
   const actor = await prisma.user.findUnique({ where: { id: req.userId! }, select: { displayName: true, username: true } });
 
+  // Generated up front (pure/random, no DB) so the transaction below only
+  // ever does writes — the shop's actual content doesn't depend on
+  // anything decided inside the locked section.
+  const shopToCreate = def.effect?.kind === "shopUnlock"
+    ? (() => {
+        const generated = generateShop({ archetype: def.effect!.archetype, stockSize: def.effect!.stockSize });
+        const multiplier = def.effect!.priceMultiplier ?? 1;
+        return { ...generated, stock: generated.stock.map((s) => ({ ...s, price: Math.max(1, Math.round(s.price * multiplier)) })) };
+      })()
+    : null;
+
   try {
     await withBaseLock(worldId, async () => {
       const base = await prisma.base.upsert({
@@ -97,15 +125,31 @@ baseRouter.post("/purchase", async (req, res) => {
       const goldAgg = await prisma.ledgerEntry.aggregate({ where: { worldId, kind: "gold" }, _sum: { amount: true } });
       if ((goldAgg._sum.amount ?? 0) < def.cost) throw new Error("insufficient_gold");
 
-      await prisma.$transaction([
-        prisma.baseUpgrade.create({ data: { baseId: base.id, upgradeId } }),
-        prisma.ledgerEntry.create({
+      await prisma.$transaction(async (tx) => {
+        const upgradeRow = await tx.baseUpgrade.create({ data: { baseId: base.id, upgradeId } });
+
+        if (shopToCreate) {
+          const shop = await tx.shop.create({
+            data: {
+              name: shopToCreate.name,
+              description: shopToCreate.description,
+              stock: JSON.stringify(shopToCreate.stock),
+              worldId,
+              tags: JSON.stringify(["base-upgrade"]),
+              hiddenFromParty: false,
+              userId: world!.userId,
+            },
+          });
+          await tx.baseUpgrade.update({ where: { id: upgradeRow.id }, data: { shopId: shop.id } });
+        }
+
+        await tx.ledgerEntry.create({
           data: {
             worldId, kind: "gold", label: `Base upgrade: ${def.name}`, amount: -def.cost,
             authorName: actor?.displayName || actor?.username || "The Base", userId: req.userId!,
           },
-        }),
-      ]);
+        });
+      });
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "";

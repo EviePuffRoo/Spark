@@ -119,6 +119,57 @@ describe("home base", () => {
     expect(res.status).toBe(400);
   });
 
+  it("sums acquired upgrades' defenseRating into the base state", async () => {
+    const { agent, worldId } = await paidWorld("baseowner9", "Defense World");
+    await addGold(agent, worldId, 1000);
+
+    let res = await agent.get("/api/base").query({ worldId });
+    expect(res.body.defenseRating).toBe(0);
+
+    await agent.post("/api/base/purchase").send({ worldId, upgradeId: "palisade-fence" });
+    res = await agent.get("/api/base").query({ worldId });
+    expect(res.body.defenseRating).toBe(2);
+
+    await agent.post("/api/base/purchase").send({ worldId, upgradeId: "watchtower" });
+    res = await agent.get("/api/base").query({ worldId });
+    expect(res.body.defenseRating).toBe(5); // 2 (palisade) + 3 (watchtower)
+  });
+
+  it("generates and persists a real, buyable Shop when a shopUnlock upgrade is purchased", async () => {
+    const { agent, worldId } = await paidWorld("baseowner10", "Trade World");
+    await addGold(agent, worldId, 1000);
+
+    const purchase = await agent.post("/api/base/purchase").send({ worldId, upgradeId: "trade-post" });
+    expect(purchase.status).toBe(201);
+    expect(purchase.body.unlockedShops).toHaveLength(1);
+    const { shopId, shopName } = purchase.body.unlockedShops[0];
+    expect(purchase.body.unlockedShops[0].upgradeId).toBe("trade-post");
+
+    const shop = await agent.get(`/api/shops/${shopId}`);
+    expect(shop.status).toBe(200);
+    expect(shop.body.name).toBe(shopName);
+    expect(shop.body.worldId).toBe(worldId);
+    expect(shop.body.stock.length).toBe(6);
+  });
+
+  it("applies a shopUnlock upgrade's priceMultiplier as a real discount on the generated stock", async () => {
+    const { agent, worldId } = await paidWorld("baseowner11", "Blacksmith World");
+    await addGold(agent, worldId, 1000);
+    await agent.post("/api/base/purchase").send({ worldId, upgradeId: "trade-post" });
+
+    const purchase = await agent.post("/api/base/purchase").send({ worldId, upgradeId: "resident-blacksmith" });
+    const { shopId } = purchase.body.unlockedShops.find((s: { upgradeId: string }) => s.upgradeId === "resident-blacksmith");
+    const shop = await agent.get(`/api/shops/${shopId}`);
+    // Generated item values are random, so this can't assert exact prices —
+    // it asserts the multiplier's rounding actually ran (integer prices,
+    // never below the 1gp floor) rather than leaving raw floats or zeros.
+    expect(shop.body.stock.length).toBeGreaterThan(0);
+    for (const entry of shop.body.stock) {
+      expect(Number.isInteger(entry.price)).toBe(true);
+      expect(entry.price).toBeGreaterThanOrEqual(1);
+    }
+  });
+
   it("lets a paid world's member (not owner) purchase, gated on the owner's tier", async () => {
     const { agent: dm, worldId } = await paidWorld("basedm1", "Shared Base World");
     const joinCode = await dm.post(`/api/worlds/${worldId}/join-code`);

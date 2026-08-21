@@ -548,6 +548,11 @@ model BaseUpgrade {
   base       Base     @relation(fields: [baseId], references: [id], onDelete: Cascade)
   upgradeId  String
   acquiredAt DateTime @default(now())
+  // Set when this upgrade's effect generated a real Shop at purchase time.
+  // No FK — same "no relation to the source row" shape as PublishedEntry
+  // below, so deleting the shop later doesn't cascade into the purchase
+  // record or vice versa.
+  shopId     String?
 
   @@unique([baseId, upgradeId])
   @@index([baseId])

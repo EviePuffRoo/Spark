@@ -1212,6 +1212,11 @@ textarea {
   color: var(--danger);
 }
 
+.base-upgrade-effect {
+  color: var(--accent);
+  font-weight: 600;
+}
+
 .base-upgrade-row .btn-secondary {
   margin-top: 8px;
   align-self: flex-start;

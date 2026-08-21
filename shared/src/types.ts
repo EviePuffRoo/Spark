@@ -865,6 +865,20 @@ export interface WorldAchievements {
 
 export type BaseUpgradeCategory = "defenses" | "trade" | "influence" | "comfort";
 
+// The mechanical payoff a purchased upgrade actually delivers — every
+// upgrade's stated effect on the player-facing panel is generated from one
+// of these, not hand-written prose, so the description can never drift out
+// of sync with what the upgrade actually does. More kinds (reputation
+// deltas for Influence, rest bonuses for Comfort) land in later slices;
+// an upgrade with no `effect` is flavor-only for now.
+export type BaseUpgradeEffect =
+  | { kind: "defenseRating"; value: number }
+  // Purchasing this upgrade generates and persists a real Shop (via the
+  // existing shop generator) the moment it's bought — not a description of
+  // one. priceMultiplier scales the generated stock's prices (< 1 = a
+  // discount from a resident vendor).
+  | { kind: "shopUnlock"; archetype: string; stockSize: number; priceMultiplier?: number };
+
 export interface BaseUpgradeDef {
   id: string;
   name: string;
@@ -877,6 +891,13 @@ export interface BaseUpgradeDef {
   // base — the party's branching, mutually-exclusive choices (allying with
   // one faction over another, stone walls vs. a hedge maze, ...).
   exclusiveGroup?: string;
+  effect?: BaseUpgradeEffect;
+}
+
+export interface BaseUnlockedShop {
+  upgradeId: string;
+  shopId: string;
+  shopName: string;
 }
 
 export interface BaseState {
@@ -887,7 +908,11 @@ export interface BaseState {
   level: number;
   gold: number;
   isPaid: boolean;
+  // Sum of every acquired upgrade's defenseRating effect — a real number
+  // for the DM to reference, not a description of sturdiness.
+  defenseRating: number;
   acquiredUpgradeIds: string[];
+  unlockedShops: BaseUnlockedShop[];
 }
 
 export interface EntityLink {

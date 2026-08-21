@@ -76,6 +76,7 @@ model World {
   settlements     Settlement[]
   encounter       Encounter?
   chatMessages    ChatMessage[]
+  base            Base?
 
   @@index([userId])
 }
@@ -523,6 +524,33 @@ model Encounter {
   activeDungeonId     String?
   activeDungeonRoomId String?
   updatedAt   DateTime @updatedAt
+}
+
+// One home base per world — a shared party resource, not owned by a single
+// user, same shape as Encounter above. Level is deliberately not stored
+// here; it's derived from the count of BaseUpgrade rows so there's no
+// separate counter that can drift out of sync with what's actually owned.
+model Base {
+  id        String   @id @default(cuid())
+  worldId   String   @unique
+  world     World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  name      String   @default("The Party's Outpost")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  upgrades  BaseUpgrade[]
+}
+
+// A purchased upgrade, referencing a curated static definition
+// (BASE_UPGRADES in shared) by id rather than duplicating its content here.
+model BaseUpgrade {
+  id         String   @id @default(cuid())
+  baseId     String
+  base       Base     @relation(fields: [baseId], references: [id], onDelete: Cascade)
+  upgradeId  String
+  acquiredAt DateTime @default(now())
+
+  @@unique([baseId, upgradeId])
+  @@index([baseId])
 }
 
 // A user-owned entity published to the public gallery, browsable/cloneable

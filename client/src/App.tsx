@@ -251,7 +251,7 @@ function AppShell({ initialLandOnOverview = false }: { initialLandOnOverview?: b
         {subTab === "gallery" && <GalleryPage />}
         {subTab === "notes" && <SessionNotesPage onOpenInRoster={openInRoster} />}
         {subTab === "downtime" && <DowntimePage />}
-        {subTab === "tavern" && <TavernPage />}
+        {subTab === "tavern" && <TavernPage onNavigateToBilling={navigateToBilling} />}
         {subTab === "combat" && <CombatPage />}
         {subTab === "shop" && <ShopPage />}
         {subTab === "inventory" && <InventoryPage />}

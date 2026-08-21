@@ -5,8 +5,9 @@ import { api } from "../api";
 import { useActiveWorld } from "../ActiveWorldContext";
 import { TavernIcon } from "../components/icons";
 import { EmptyState } from "../components/EmptyState";
+import { BasePanel } from "../components/BasePanel";
 
-export function TavernPage() {
+export function TavernPage({ onNavigateToBilling }: { onNavigateToBilling: () => void }) {
   const { worlds, worldId, setWorldId } = useActiveWorld();
   const [rumors, setRumors] = useState<QuestHook[]>([]);
   const [factions, setFactions] = useState<Faction[]>([]);
@@ -110,6 +111,8 @@ export function TavernPage() {
               ))}
             </ul>
           </div>
+
+          <BasePanel worldId={worldId} onNavigateToBilling={onNavigateToBilling} />
         </>
       )}
     </div>

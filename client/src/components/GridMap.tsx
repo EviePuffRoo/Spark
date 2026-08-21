@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { BattleMap, LiveCombatant, SizeCategory } from "@spark/shared";
-import { SIZE_FOOTPRINT, computeReachableCells, chebyshevDistanceFeet } from "@spark/shared";
+import type { BattleMap, LiveCombatant, SizeCategory, AoeShapeKind } from "@spark/shared";
+import { SIZE_FOOTPRINT, computeReachableCells, chebyshevDistanceFeet, AOE_SHAPE_KINDS, computeAoeCells, footprintIntersectsTemplate } from "@spark/shared";
 import { api } from "../api";
 import { BattleTileDefs } from "./TileIcon";
 
@@ -88,6 +88,10 @@ export function GridMap({
   const [measuring, setMeasuring] = useState(false);
   const [rulerPoints, setRulerPoints] = useState<RulerPoint[]>([]);
 
+  const [placingTemplate, setPlacingTemplate] = useState(false);
+  const [templateKind, setTemplateKind] = useState<AoeShapeKind>("circle");
+  const [templatePoints, setTemplatePoints] = useState<RulerPoint[]>([]);
+
   function toLocalCoords(clientX: number, clientY: number) {
     const svg = svgRef.current;
     if (!svg) return { x: 0, y: 0 };
@@ -113,7 +117,7 @@ export function GridMap({
   }
 
   function handleTokenPointerDown(e: React.PointerEvent<SVGRectElement>, c: LiveCombatant) {
-    if (measuring) return;
+    if (measuring || placingTemplate) return;
     e.stopPropagation();
     e.currentTarget.setPointerCapture(e.pointerId);
     tokenDragRef.current = { id: c.id, startX: e.clientX, startY: e.clientY, originGridX: c.gridX ?? 0, originGridY: c.gridY ?? 0, moved: false };
@@ -150,7 +154,7 @@ export function GridMap({
   }
 
   function handleBackgroundPointerDown(e: React.PointerEvent<SVGRectElement>) {
-    if (measuring) return;
+    if (measuring || placingTemplate) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     panRef.current = { startX: e.clientX, startY: e.clientY, originX: transform.x, originY: transform.y };
   }
@@ -164,12 +168,19 @@ export function GridMap({
   }
 
   function handleBackgroundClick(e: React.MouseEvent<SVGRectElement>) {
-    if (!measuring) return;
-    const { cellX, cellY } = toCell(e.clientX, e.clientY);
-    setRulerPoints((pts) => {
-      const next = [...pts, { x: cellX, y: cellY }];
-      return next.length > 2 ? next.slice(next.length - 2) : next;
-    });
+    if (measuring) {
+      const { cellX, cellY } = toCell(e.clientX, e.clientY);
+      setRulerPoints((pts) => {
+        const next = [...pts, { x: cellX, y: cellY }];
+        return next.length > 2 ? next.slice(next.length - 2) : next;
+      });
+    } else if (placingTemplate) {
+      const { cellX, cellY } = toCell(e.clientX, e.clientY);
+      setTemplatePoints((pts) => {
+        const next = [...pts, { x: cellX, y: cellY }];
+        return next.length > 2 ? next.slice(next.length - 2) : next;
+      });
+    }
   }
 
   function handleWheel(e: React.WheelEvent<SVGSVGElement>) {
@@ -203,6 +214,12 @@ export function GridMap({
   const fogActive = !canEdit && visibleCells !== undefined;
   const exploredSet = useMemo(() => new Set(exploredCells ?? []), [exploredCells]);
   const visibleSet = useMemo(() => new Set(visibleCells ?? []), [visibleCells]);
+
+  const templateCells = useMemo(() => {
+    if (!battleMap || templatePoints.length !== 2) return null;
+    const [origin, target] = templatePoints;
+    return computeAoeCells(battleMap, { kind: templateKind, originX: origin.x, originY: origin.y, targetX: target.x, targetY: target.y });
+  }, [battleMap, templateKind, templatePoints]);
 
   const placed = combatants.filter((c) => c.gridX !== undefined && c.gridY !== undefined);
   const unplaced = combatants.filter((c) => c.gridX === undefined || c.gridY === undefined);
@@ -255,13 +272,24 @@ export function GridMap({
         <button
           className="btn-secondary"
           aria-pressed={measuring}
-          onClick={() => { setMeasuring((v) => !v); setRulerPoints([]); }}
+          onClick={() => { setMeasuring((v) => !v); setRulerPoints([]); if (!measuring) { setPlacingTemplate(false); setTemplatePoints([]); } }}
         >
           {measuring ? "Done Measuring" : "Measure"}
+        </button>
+        <select value={templateKind} onChange={(e) => { setTemplateKind(e.target.value as AoeShapeKind); setTemplatePoints([]); }}>
+          {AOE_SHAPE_KINDS.map((k) => <option key={k} value={k}>{k[0].toUpperCase() + k.slice(1)}</option>)}
+        </select>
+        <button
+          className="btn-secondary"
+          aria-pressed={placingTemplate}
+          onClick={() => { setPlacingTemplate((v) => !v); setTemplatePoints([]); if (!placingTemplate) { setMeasuring(false); setRulerPoints([]); } }}
+        >
+          {placingTemplate ? "Done Templating" : "Place Template"}
         </button>
         {canEdit && <button className="btn-secondary" onClick={onLeaveBattleMap}>Leave Battle Map</button>}
       </div>
       {measuring && <p className="hint">Click a cell, then another, to measure the distance between them.</p>}
+      {placingTemplate && <p className="hint">Click the template's origin, then click again to aim and size it.</p>}
 
       <div className="zone-map-canvas">
         <div className="zone-map-zoom-controls">
@@ -272,7 +300,7 @@ export function GridMap({
         <svg
           ref={svgRef}
           viewBox={`0 0 ${VIEWPORT_WIDTH} ${VIEWPORT_HEIGHT}`}
-          className={`grid-map-svg${measuring ? " grid-map-measuring" : ""}`}
+          className={`grid-map-svg${measuring || placingTemplate ? " grid-map-measuring" : ""}`}
           onWheel={handleWheel}
         >
           <BattleTileDefs />
@@ -320,6 +348,11 @@ export function GridMap({
               </g>
             )}
 
+            {templateCells && [...templateCells].map((key) => {
+              const [x, y] = key.split(",").map(Number);
+              return <rect key={`tmpl-${key}`} x={x * CELL} y={y * CELL} width={CELL} height={CELL} className="grid-map-template" pointerEvents="none" />;
+            })}
+
             {placed.map((c) => {
               const size = footprintFor(c);
               const isDragging = tokenDragPos?.id === c.id;
@@ -333,10 +366,11 @@ export function GridMap({
               const origin = isDragging ? tokenDragRef.current : null;
               const movedFeet = origin ? chebyshevDistanceFeet(origin.originGridX, origin.originGridY, gridX, gridY) : 0;
               const overSpeed = isDragging && movedFeet > (c.speedFeet ?? 30);
+              const inTemplate = !!templateCells && footprintIntersectsTemplate(gridX, gridY, size, templateCells);
               return (
                 <g
                   key={c.id}
-                  className={`grid-token grid-token-${c.kind}${c.id === activeId ? " grid-token-active-turn" : ""}${isDragging ? " grid-token-dragging" : ""}${overSpeed ? " grid-token-over-speed" : ""}`}
+                  className={`grid-token grid-token-${c.kind}${c.id === activeId ? " grid-token-active-turn" : ""}${isDragging ? " grid-token-dragging" : ""}${overSpeed ? " grid-token-over-speed" : ""}${inTemplate ? " grid-token-in-template" : ""}`}
                 >
                   <rect
                     x={gridX * CELL} y={gridY * CELL}

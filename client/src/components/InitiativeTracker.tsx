@@ -122,6 +122,11 @@ export function InitiativeTracker({
   const [concentrationOpenFor, setConcentrationOpenFor] = useState<string | null>(null);
   const [concentrationInput, setConcentrationInput] = useState("");
   const [concentrationPrompt, setConcentrationPrompt] = useState<{ id: string; name: string; spell: string; dc: number } | null>(null);
+  const [templateTargetIds, setTemplateTargetIds] = useState<string[]>([]);
+  const [templateDamage, setTemplateDamage] = useState("");
+  const [templateCondition, setTemplateCondition] = useState("");
+
+  useEffect(() => { if (!showGridMap) setTemplateTargetIds([]); }, [showGridMap]);
 
   const partyMode = mode === "party";
   const selectedWorld = worlds.find((w) => w.id === partyWorldId) ?? null;
@@ -373,6 +378,31 @@ export function InitiativeTracker({
     if (!hpDelta[id] || Number.isNaN(amount) || amount <= 0) return;
     adjustHp(id, sign * amount);
     setHpDelta((d) => ({ ...d, [id]: "" }));
+  }
+
+  function applyDamageToTemplateTargets() {
+    const amount = Number(templateDamage);
+    if (!templateDamage || Number.isNaN(amount) || amount <= 0) return;
+    applyEncounterUpdate((e) => ({
+      ...e,
+      combatants: e.combatants.map((c) =>
+        templateTargetIds.includes(c.id)
+          ? { ...c, currentHp: Math.max(0, Math.min(c.maxHp ?? 0, (c.currentHp ?? 0) - amount)) }
+          : c
+      ),
+    }));
+    setTemplateDamage("");
+  }
+
+  function applyConditionToTemplateTargets() {
+    if (!templateCondition) return;
+    applyEncounterUpdate((e) => ({
+      ...e,
+      combatants: e.combatants.map((c) => {
+        if (!templateTargetIds.includes(c.id) || c.conditions.some((cond) => cond.name === templateCondition)) return c;
+        return { ...c, conditions: [...c.conditions, { name: templateCondition, expiresAtRound: null }] };
+      }),
+    }));
   }
 
   function removeCombatant(id: string) {
@@ -777,7 +807,30 @@ export function InitiativeTracker({
           onMoveCombatant={moveCombatantOnGrid}
           onPlaceCombatant={moveCombatantOnGrid}
           onDragBroadcast={broadcastTokenDrag}
+          onTemplateTargetsChange={setTemplateTargetIds}
         />
+      )}
+
+      {canEdit && showGridMap && templateTargetIds.length > 0 && (
+        <div className="save-panel template-batch-panel">
+          <h3 className="section-heading">In Template ({templateTargetIds.length})</h3>
+          <p className="hint">
+            {templateTargetIds.map((id) => sorted.find((c) => c.id === id)?.name).filter(Boolean).join(", ")}
+          </p>
+          <label className="field">
+            <span>Damage to apply to all</span>
+            <input type="number" min={1} value={templateDamage} onChange={(e) => setTemplateDamage(e.target.value)} />
+          </label>
+          <button className="btn-danger" onClick={applyDamageToTemplateTargets}>Apply Damage to All</button>
+          <label className="field">
+            <span>Condition to apply to all</span>
+            <select value={templateCondition} onChange={(e) => setTemplateCondition(e.target.value)}>
+              <option value="">Select…</option>
+              {CONDITIONS.map((cond) => <option key={cond} value={cond}>{cond}</option>)}
+            </select>
+          </label>
+          <button className="btn-secondary" onClick={applyConditionToTemplateTargets}>Apply Condition to All</button>
+        </div>
       )}
 
       {showTableView && partyMode && partyWorldId && (

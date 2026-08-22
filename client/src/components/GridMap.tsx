@@ -25,7 +25,7 @@ interface RulerPoint {
 export function GridMap({
   worldId, battleMapId, combatants, activeId, canEdit,
   exploredCells, visibleCells,
-  onLoadBattleMap, onLeaveBattleMap, onMoveCombatant, onPlaceCombatant, onDragBroadcast,
+  onLoadBattleMap, onLeaveBattleMap, onMoveCombatant, onPlaceCombatant, onDragBroadcast, onTemplateTargetsChange,
 }: {
   worldId?: string;
   battleMapId?: string;
@@ -49,6 +49,12 @@ export function GridMap({
   // persists. Omit to disable broadcasting (e.g. outside party mode,
   // where there's no live channel to broadcast into anyway).
   onDragBroadcast?: (combatantId: string, gridX: number, gridY: number) => void;
+  // Fired with the ids of every placed combatant currently caught by the
+  // active AoE template (by committed grid position, not an in-progress
+  // drag preview) — [] whenever no template is placed. Lets the caller
+  // offer a batch action ("apply to all in template") without GridMap
+  // itself needing to know about damage/conditions.
+  onTemplateTargetsChange?: (ids: string[]) => void;
 }) {
   const [battleMap, setBattleMap] = useState<BattleMap | null>(null);
   const [loading, setLoading] = useState(false);
@@ -223,6 +229,23 @@ export function GridMap({
 
   const placed = combatants.filter((c) => c.gridX !== undefined && c.gridY !== undefined);
   const unplaced = combatants.filter((c) => c.gridX === undefined || c.gridY === undefined);
+
+  // Joined into a string so the effect below only re-fires when the actual
+  // set of targeted ids changes, not on every render (placed/templateCells
+  // are fresh array/object references each render even when unchanged).
+  const templateTargetKey = useMemo(() => {
+    if (!templateCells) return "";
+    return placed
+      .filter((c) => footprintIntersectsTemplate(c.gridX ?? 0, c.gridY ?? 0, footprintFor(c), templateCells))
+      .map((c) => c.id)
+      .join(",");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [combatants, templateCells]);
+
+  useEffect(() => {
+    onTemplateTargetsChange?.(templateTargetKey ? templateTargetKey.split(",") : []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templateTargetKey]);
 
   if (!battleMapId) {
     return (

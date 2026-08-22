@@ -2647,6 +2647,10 @@ textarea {
   border: 1px solid color-mix(in srgb, var(--warning) 40%, transparent);
 }
 
+.template-batch-panel {
+  border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent);
+}
+
 .condition-duration-field {
   width: 100%;
   margin-bottom: 6px;

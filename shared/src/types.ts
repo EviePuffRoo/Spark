@@ -314,6 +314,48 @@ export interface Faction extends GeneratedFaction {
   updatedAt: string;
 }
 
+// An append-only history of why a faction's reputation changed — the same
+// idea as NPC disposition's DispositionLogEntry, closing the same gap for
+// factions: created automatically by POST /factions/:id/adjust-reputation;
+// a raw PATCH of `reputation` (still always available) does not create one.
+export interface FactionLogEntry {
+  id: string;
+  factionId: string;
+  userId: string;
+  authorName: string;
+  delta: number;
+  reason?: string;
+  createdAt: string;
+}
+
+export const FACTION_RELATIONSHIP_STANCES = ["ally", "rival", "war", "neutral"] as const;
+export type FactionRelationshipStance = typeof FACTION_RELATIONSHIP_STANCES[number];
+export const FACTION_RELATIONSHIP_STANCE_LABELS: Record<FactionRelationshipStance, string> = {
+  ally: "Ally",
+  rival: "Rival",
+  war: "At War",
+  neutral: "Neutral",
+};
+
+// An undirected stance between two factions in the same world. The server
+// normalizes which faction is stored as factionAId/factionBId (lexically
+// by id) so there's never a duplicate row for the same pair in the
+// opposite order — callers can pass either faction first.
+export interface FactionRelationshipInput {
+  worldId: string;
+  factionAId: string;
+  factionBId: string;
+  stance: FactionRelationshipStance;
+  notes?: string;
+}
+
+export interface FactionRelationship extends FactionRelationshipInput {
+  id: string;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PlayerCharacterInput {
   name: string;
   className: string;

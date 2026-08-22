@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
-import { toFactionDTO } from "../serialize.js";
+import { toFactionDTO, toFactionLogEntryDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
 import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
 
@@ -76,4 +76,39 @@ factionsRouter.delete("/:id", async (req, res) => {
   if (result.count === 0) return res.status(404).json({ error: "Faction not found" });
   await deleteLinksForEntity("faction", req.params.id, req.userId!);
   res.status(204).end();
+});
+
+// Applies a reputation change atomically and appends an audit-log entry —
+// the "smart" convenience action layered over a raw PATCH of `reputation`,
+// mirroring how Character's adjust-disposition endpoint is layered over
+// its own plain PATCH.
+factionsRouter.post("/:id/adjust-reputation", async (req, res) => {
+  const delta = typeof req.body?.delta === "number" ? Math.trunc(req.body.delta) : NaN;
+  const reason = typeof req.body?.reason === "string" && req.body.reason.trim() ? req.body.reason.trim() : undefined;
+  if (!Number.isFinite(delta) || delta === 0) {
+    return res.status(400).json({ error: "delta must be a nonzero number" });
+  }
+
+  const row = await prisma.faction.findFirst({ where: { id: req.params.id, userId: req.userId } });
+  if (!row) return res.status(404).json({ error: "Faction not found" });
+
+  const user = await prisma.user.findUnique({ where: { id: req.userId } });
+  const authorName = user?.displayName || user?.username || "The DM";
+
+  const [updated] = await prisma.$transaction([
+    prisma.faction.update({ where: { id: row.id }, data: { reputation: { increment: delta } } }),
+    prisma.factionLogEntry.create({
+      data: { factionId: row.id, authorName, delta, reason: reason ?? null, userId: req.userId! },
+    }),
+  ]);
+  res.json(toFactionDTO(updated));
+});
+
+factionsRouter.get("/:id/reputation-log", async (req, res) => {
+  const memberWorldIds = await getMemberWorldIds(req.userId!);
+  const row = await prisma.faction.findFirst({ where: { id: req.params.id, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }] } });
+  if (!row) return res.status(404).json({ error: "Faction not found" });
+
+  const rows = await prisma.factionLogEntry.findMany({ where: { factionId: row.id }, orderBy: { createdAt: "desc" }, take: 100 });
+  res.json(rows.map(toFactionLogEntryDTO));
 });

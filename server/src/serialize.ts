@@ -6,12 +6,13 @@ import type {
   ZoneMapTemplate as ZoneMapTemplateRow, Dungeon as DungeonRow, DowntimeActivity as DowntimeActivityRow, Shop as ShopRow,
   Region as RegionRow, Settlement as SettlementRow, ChatMessage as ChatMessageRow, BattleMap as BattleMapRow,
   DispositionLogEntry as DispositionLogEntryRow, ShopCommission as ShopCommissionRow,
+  FactionLogEntry as FactionLogEntryRow, FactionRelationship as FactionRelationshipRow,
 } from "@prisma/client";
 import type {
   Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, PlayerCharacter, RollLogEntry,
   Encounter, LiveCombatant, HpStatus, CodexNote, EntityType, LedgerEntry, LedgerEntryKind, EncounterZone, EncounterZoneEffect,
   ZoneMapTemplate, Dungeon, DowntimeActivity, DowntimeActivityType, Shop, ShopStockEntry, Region, Settlement, ChatMessage, BattleMap,
-  DispositionLogEntry, ShopCommission,
+  DispositionLogEntry, ShopCommission, FactionLogEntry, FactionRelationship, FactionRelationshipStance,
 } from "@spark/shared";
 
 export function toCharacterDTO(row: CharacterRow): Character {
@@ -154,6 +155,32 @@ export function toFactionDTO(row: FactionRow): Faction {
     reputation: row.reputation,
     tags: JSON.parse(row.tags),
     notes: row.notes ?? undefined,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+export function toFactionLogEntryDTO(row: FactionLogEntryRow): FactionLogEntry {
+  return {
+    id: row.id,
+    factionId: row.factionId,
+    userId: row.userId,
+    authorName: row.authorName,
+    delta: row.delta,
+    reason: row.reason ?? undefined,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+export function toFactionRelationshipDTO(row: FactionRelationshipRow): FactionRelationship {
+  return {
+    id: row.id,
+    worldId: row.worldId,
+    factionAId: row.factionAId,
+    factionBId: row.factionBId,
+    stance: row.stance as FactionRelationshipStance,
+    notes: row.notes ?? undefined,
+    userId: row.userId,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };

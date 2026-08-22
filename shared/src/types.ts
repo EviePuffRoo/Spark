@@ -480,6 +480,26 @@ export interface SessionNote extends SessionNoteInput {
   updatedAt: string;
 }
 
+// An off-screen "world tick" a DM posts between sessions — territory
+// shifts, battles, treaties, anything that happened without the party
+// present. Purely a log entry (create/list/delete, no editing), the same
+// shape as roll-log/downtime entries; factionId is a loose, optional tag
+// (no FK) so the event's history survives that faction later being
+// deleted. Surfaces on the Campaign Timeline alongside session notes,
+// quests, and adventures.
+export interface CampaignEventInput {
+  worldId: string;
+  title: string;
+  description: string;
+  factionId?: string;
+}
+
+export interface CampaignEvent extends CampaignEventInput {
+  id: string;
+  userId: string;
+  createdAt: string;
+}
+
 export interface RollLogEntryInput {
   worldId: string;
   rollerName: string;

@@ -1,6 +1,6 @@
-import type { SessionNote, QuestHook, Adventure, EntityType } from "@spark/shared";
+import type { SessionNote, QuestHook, Adventure, EntityType, CampaignEvent } from "@spark/shared";
 
-export type TimelineEntryKind = "note" | "quest" | "adventure";
+export type TimelineEntryKind = "note" | "quest" | "adventure" | "campaignEvent";
 
 export interface TimelineEntry {
   id: string;
@@ -11,11 +11,15 @@ export interface TimelineEntry {
   meta?: string;
   worldId?: string | null;
   userId: string;
-  entityType: EntityType;
-  entityId: string;
+  // Absent for "campaignEvent" entries — they're a pure log row with no
+  // corresponding Roster entity to open, unlike every other kind here.
+  entityType?: EntityType;
+  entityId?: string;
 }
 
-export function buildTimelineEntries(notes: SessionNote[], quests: QuestHook[], adventures: Adventure[]): TimelineEntry[] {
+export function buildTimelineEntries(
+  notes: SessionNote[], quests: QuestHook[], adventures: Adventure[], campaignEvents: CampaignEvent[] = [],
+): TimelineEntry[] {
   const noteEntries: TimelineEntry[] = notes.map((n) => ({
     id: `note-${n.id}`,
     kind: "note",
@@ -55,7 +59,17 @@ export function buildTimelineEntries(notes: SessionNote[], quests: QuestHook[], 
     entityId: a.id,
   }));
 
-  return [...noteEntries, ...questEntries, ...adventureEntries].sort(
+  const campaignEventEntries: TimelineEntry[] = campaignEvents.map((c) => ({
+    id: `campaignEvent-${c.id}`,
+    kind: "campaignEvent",
+    date: c.createdAt,
+    title: c.title,
+    summary: c.description,
+    worldId: c.worldId,
+    userId: c.userId,
+  }));
+
+  return [...noteEntries, ...questEntries, ...adventureEntries, ...campaignEventEntries].sort(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
   );
 }

@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import type { SessionNote, QuestHook, Adventure, EntityType } from "@spark/shared";
+import type { SessionNote, QuestHook, Adventure, EntityType, CampaignEvent, SearchResult } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { useAuth } from "../AuthContext";
 import { useLocalStorage } from "../useLocalStorage";
 import { SessionTimelineView } from "../components/SessionTimelineView";
 import { SessionPrepView } from "../components/SessionPrepView";
+import { EntitySearchPicker } from "../components/EntitySearchPicker";
 import { buildTimelineEntries } from "../campaignTimeline";
 import { NotesIcon } from "../components/icons";
 import { EmptyState } from "../components/EmptyState";
@@ -34,6 +35,13 @@ export function SessionNotesPage({ onOpenInRoster }: { onOpenInRoster: (type: En
   const [timelineWorldFilter, setTimelineWorldFilter] = useState("");
   const [timelineQuests, setTimelineQuests] = useState<QuestHook[]>([]);
   const [timelineAdventures, setTimelineAdventures] = useState<Adventure[]>([]);
+  const [timelineCampaignEvents, setTimelineCampaignEvents] = useState<CampaignEvent[]>([]);
+  const [eventTitle, setEventTitle] = useState("");
+  const [eventDescription, setEventDescription] = useState("");
+  const [eventFactionId, setEventFactionId] = useState<string | null>(null);
+  const [eventFactionName, setEventFactionName] = useState<string | null>(null);
+  const [pickingEventFaction, setPickingEventFaction] = useState(false);
+  const [eventStatus, setEventStatus] = useState<"idle" | "saving">("idle");
 
   function refresh() {
     api.listSessionNotes().then(setNotes).catch((e) => setError(e.message)).finally(() => setLoading(false));
@@ -42,15 +50,46 @@ export function SessionNotesPage({ onOpenInRoster }: { onOpenInRoster: (type: En
 
   useEffect(refresh, []);
 
-  useEffect(() => {
+  function refreshTimelineExtras() {
     if (viewMode !== "timeline" || !timelineWorldFilter) {
       setTimelineQuests([]);
       setTimelineAdventures([]);
+      setTimelineCampaignEvents([]);
       return;
     }
     api.listQuests(timelineWorldFilter).then(setTimelineQuests).catch(() => {});
     api.listAdventures(timelineWorldFilter).then(setTimelineAdventures).catch(() => {});
-  }, [viewMode, timelineWorldFilter]);
+    api.listCampaignEvents(timelineWorldFilter).then(setTimelineCampaignEvents).catch(() => {});
+  }
+
+  useEffect(refreshTimelineExtras, [viewMode, timelineWorldFilter]);
+
+  async function logCampaignEvent() {
+    if (!timelineWorldFilter || !eventTitle.trim() || !eventDescription.trim()) return;
+    setEventStatus("saving");
+    setError(null);
+    try {
+      await api.postCampaignEvent({
+        worldId: timelineWorldFilter, title: eventTitle.trim(), description: eventDescription.trim(),
+        factionId: eventFactionId ?? undefined,
+      });
+      setEventTitle("");
+      setEventDescription("");
+      setEventFactionId(null);
+      setEventFactionName(null);
+      refreshTimelineExtras();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setEventStatus("idle");
+    }
+  }
+
+  async function pickEventFaction(result: SearchResult) {
+    setPickingEventFaction(false);
+    setEventFactionId(result.id);
+    setEventFactionName(result.name);
+  }
 
   function startNew() {
     setEditingId(null);
@@ -126,21 +165,58 @@ export function SessionNotesPage({ onOpenInRoster }: { onOpenInRoster: (type: En
       </div>
 
       {viewMode === "timeline" && (
-        <SessionTimelineView
-          entries={buildTimelineEntries(
-            timelineWorldFilter ? notes.filter((n) => n.worldId === timelineWorldFilter) : notes,
-            timelineQuests,
-            timelineAdventures,
+        <div className="generator-layout">
+          <SessionTimelineView
+            entries={buildTimelineEntries(
+              timelineWorldFilter ? notes.filter((n) => n.worldId === timelineWorldFilter) : notes,
+              timelineQuests,
+              timelineAdventures,
+              timelineCampaignEvents,
+            )}
+            worlds={worlds}
+            worldFilter={timelineWorldFilter}
+            onWorldFilterChange={setTimelineWorldFilter}
+            onSelectEntry={(entry) => {
+              const note = notes.find((n) => n.id === entry.entityId);
+              if (note) openInEditor(note);
+            }}
+            onOpenInRoster={onOpenInRoster}
+          />
+
+          {timelineWorldFilter && (
+            <div className="panel">
+              <h3 className="section-heading">Log a World Event</h3>
+              <p className="hint">Something that happened off-screen between sessions — a territory shift, a battle, a treaty.</p>
+              <label className="field">
+                <span>Title</span>
+                <input type="text" value={eventTitle} onChange={(e) => setEventTitle(e.target.value)} placeholder="The Docks Change Hands" />
+              </label>
+              <label className="field">
+                <span>Description</span>
+                <textarea value={eventDescription} onChange={(e) => setEventDescription(e.target.value)} rows={3} placeholder="The Thieves' Guild seized the docks from the Merchants Guild…" />
+              </label>
+              <div className="field">
+                <span>Faction (optional)</span>
+                {eventFactionName ? (
+                  <div className="button-row">
+                    <span>{eventFactionName}</span>
+                    <button className="btn-secondary" onClick={() => { setEventFactionId(null); setEventFactionName(null); }}>Clear</button>
+                  </div>
+                ) : pickingEventFaction ? (
+                  <div className="save-panel">
+                    <EntitySearchPicker type="faction" onSelect={pickEventFaction} placeholder="Search factions…" />
+                    <button className="btn-secondary" onClick={() => setPickingEventFaction(false)}>Cancel</button>
+                  </div>
+                ) : (
+                  <button className="btn-secondary" onClick={() => setPickingEventFaction(true)}>+ Tag a Faction</button>
+                )}
+              </div>
+              <button className="btn-primary" onClick={logCampaignEvent} disabled={eventStatus === "saving"}>
+                {eventStatus === "saving" ? "Logging…" : "Log Event"}
+              </button>
+            </div>
           )}
-          worlds={worlds}
-          worldFilter={timelineWorldFilter}
-          onWorldFilterChange={setTimelineWorldFilter}
-          onSelectEntry={(entry) => {
-            const note = notes.find((n) => n.id === entry.entityId);
-            if (note) openInEditor(note);
-          }}
-          onOpenInRoster={onOpenInRoster}
-        />
+        </div>
       )}
 
       {viewMode === "prep" && (

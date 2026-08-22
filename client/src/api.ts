@@ -21,7 +21,7 @@ import type {
   Dungeon, DungeonInput, GenerateDungeonRequest, GeneratedDungeonOutline,
   BattleMap, BattleMapInput,
   Shop, ShopInput, GenerateShopRequest, GeneratedShop, ShopCommission, ShopCommissionInput,
-  FactionLogEntry, FactionRelationship, FactionRelationshipInput,
+  FactionLogEntry, FactionRelationship, FactionRelationshipInput, CampaignEvent, CampaignEventInput,
   Region, GenerateRegionRequest, GeneratedRegion,
   Settlement, GenerateSettlementRequest, GeneratedSettlement,
   ActivitySummary,
@@ -197,6 +197,11 @@ export const api = {
   updateSessionNote: (id: string, patch: Partial<SessionNote>) =>
     request<SessionNote>(`/session-notes/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   deleteSessionNote: (id: string) => request<void>(`/session-notes/${id}`, { method: "DELETE" }),
+
+  listCampaignEvents: (worldId: string) => request<CampaignEvent[]>(`/campaign-events?worldId=${worldId}`),
+  postCampaignEvent: (event: CampaignEventInput) =>
+    request<CampaignEvent>("/campaign-events", { method: "POST", body: JSON.stringify(event) }),
+  deleteCampaignEvent: (id: string) => request<void>(`/campaign-events/${id}`, { method: "DELETE" }),
 
   listAdventures: (worldId?: string) =>
     request<Adventure[]>(`/adventures${worldId ? `?worldId=${worldId}` : ""}`),

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import type { GenerateItemRequest, GeneratedItem } from "@spark/shared";
-import { ITEM_RARITY_TIER_INFO } from "@spark/shared";
+import type { GenerateItemRequest, GeneratedItem, Item } from "@spark/shared";
+import { ITEM_RARITY_TIER_INFO, computeCraftingCost } from "@spark/shared";
 import { api, type ReferenceData } from "../api";
 import { useActiveWorld } from "../ActiveWorldContext";
 import { ItemCardView } from "../components/ItemCardView";
@@ -14,7 +14,7 @@ const BLANK_ITEM: GeneratedItem = {
   value: Math.round((TIER_0.valueRange[0] + TIER_0.valueRange[1]) / 2),
 };
 
-export function ItemForgePage() {
+export function ItemForgePage({ onSendToDowntime }: { onSendToDowntime?: (item: Item, worldId: string) => void }) {
   const [reference, setReference] = useState<ReferenceData | null>(null);
   const { worlds, worldId } = useActiveWorld();
   const [creationMode, setCreationMode] = useState<"generate" | "manual">("generate");
@@ -92,11 +92,11 @@ export function ItemForgePage() {
     }
   }
 
-  async function handleSaveManual() {
+  async function handleSaveManual(sendToDowntime = false) {
     if (!manualResult) return;
     setSaveStatus("saving");
     try {
-      await api.saveItem({
+      const saved = await api.saveItem({
         ...manualResult,
         worldId: saveWorldId || null,
         tags: saveTags.split(",").map((t) => t.trim()).filter(Boolean),
@@ -104,6 +104,7 @@ export function ItemForgePage() {
         hiddenFromParty: saveHidden,
       });
       setSaveStatus("saved");
+      if (sendToDowntime && saveWorldId) onSendToDowntime?.(saved, saveWorldId);
     } catch (e) {
       setError((e as Error).message);
       setSaveStatus("idle");
@@ -138,6 +139,9 @@ export function ItemForgePage() {
               ) : (
                 <>
                   <ItemCardView item={item} />
+                  <p className="hint">
+                    Craft it yourself: {computeCraftingCost(item).goldCost} gp, {computeCraftingCost(item).daysRequired}d
+                  </p>
                   {saveStatus !== "saved" && (
                     <div className="batch-result-actions">
                       <button className="btn-secondary" onClick={() => setEditingIndex(index)}>Edit</button>
@@ -258,6 +262,9 @@ export function ItemForgePage() {
           </div>
           <div className="panel result-panel">
             <ItemCardView item={manualResult} />
+            <p className="hint">
+              Craft it yourself: {computeCraftingCost(manualResult).goldCost} gp, {computeCraftingCost(manualResult).daysRequired}d
+            </p>
 
             {!saveOpen && saveStatus !== "saved" && (
               <button className="btn-secondary" onClick={() => setSaveOpen(true)}>Save to Roster</button>
@@ -267,9 +274,16 @@ export function ItemForgePage() {
             {saveOpen && saveStatus !== "saved" && (
               <div className="save-panel">
                 {savePanelFields}
-                <button className="btn-primary" onClick={handleSaveManual} disabled={saveStatus === "saving"}>
-                  {saveStatus === "saving" ? "Saving…" : "Confirm Save"}
-                </button>
+                <div className="button-row">
+                  <button className="btn-primary" onClick={() => handleSaveManual(false)} disabled={saveStatus === "saving"}>
+                    {saveStatus === "saving" ? "Saving…" : "Confirm Save"}
+                  </button>
+                  {saveWorldId && (
+                    <button className="btn-secondary" onClick={() => handleSaveManual(true)} disabled={saveStatus === "saving"}>
+                      Save &amp; Send to Downtime Log
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </div>

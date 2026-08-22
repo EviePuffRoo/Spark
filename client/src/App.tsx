@@ -1,6 +1,6 @@
 import { useState } from "react";
 import "./App.css";
-import type { EntityType } from "@spark/shared";
+import type { EntityType, Item } from "@spark/shared";
 import { useAuth } from "./AuthContext";
 import { ActiveWorldProvider, useActiveWorld } from "./ActiveWorldContext";
 import { useActivityBadges } from "./useActivityBadges";
@@ -98,6 +98,7 @@ function AppShell({ initialLandOnOverview = false }: { initialLandOnOverview?: b
   const [rosterWorldFilter, setRosterWorldFilter] = useState("");
   const [rosterSelection, setRosterSelection] = useState<RosterSelection | null>(null);
   const [printItems, setPrintItems] = useState<PrintItem[] | null>(null);
+  const [craftedItemHandoff, setCraftedItemHandoff] = useState<{ item: Item; worldId: string } | null>(null);
 
   function selectArea(next: Area) {
     setArea(next);
@@ -116,6 +117,17 @@ function AppShell({ initialLandOnOverview = false }: { initialLandOnOverview?: b
     setRosterWorldFilter(worldIdToView);
     setArea("world");
     setSubTab("roster");
+  }
+
+  // A just-forged item has no downtime activity of its own yet — this
+  // hands it to DowntimePage pre-selected as the thing being crafted, the
+  // same "pass a target across pages" pattern viewRosterForWorld already
+  // uses, just carrying an Item instead of a world filter.
+  function sendToDowntimeLog(item: Item, itemWorldId: string) {
+    setWorldId(itemWorldId);
+    setCraftedItemHandoff({ item, worldId: itemWorldId });
+    setArea("world");
+    setSubTab("downtime");
   }
 
   function navigateToBilling() {
@@ -246,7 +258,7 @@ function AppShell({ initialLandOnOverview = false }: { initialLandOnOverview?: b
 
       <main>
         <h1 className="sr-only">Spark — {SUBTAB_LABELS[subTab]}</h1>
-        {subTab === "create" && <CreatePage />}
+        {subTab === "create" && <CreatePage onSendToDowntime={sendToDowntimeLog} />}
         {subTab === "compendium" && <CompendiumPage />}
         {subTab === "profile" && <ProfilePage />}
         {subTab === "myCharacter" && <MyCharacterPage onViewRoster={viewRosterForWorld} />}
@@ -268,7 +280,9 @@ function AppShell({ initialLandOnOverview = false }: { initialLandOnOverview?: b
         {subTab === "codex" && <CodexPage />}
         {subTab === "gallery" && <GalleryPage />}
         {subTab === "notes" && <SessionNotesPage onOpenInRoster={openInRoster} />}
-        {subTab === "downtime" && <DowntimePage />}
+        {subTab === "downtime" && (
+          <DowntimePage craftedItemHandoff={craftedItemHandoff} onConsumeCraftedItemHandoff={() => setCraftedItemHandoff(null)} />
+        )}
         {subTab === "tavern" && <TavernPage onNavigateToBilling={navigateToBilling} />}
         {subTab === "baseMap" && <BaseMapPage onNavigateToTavern={navigateToTavern} />}
         {subTab === "combat" && <CombatPage />}

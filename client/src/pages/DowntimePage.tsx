@@ -18,7 +18,12 @@ interface TravelCheck {
   addedToCombat: boolean;
 }
 
-export function DowntimePage() {
+export function DowntimePage({
+  craftedItemHandoff, onConsumeCraftedItemHandoff,
+}: {
+  craftedItemHandoff?: { item: Item; worldId: string } | null;
+  onConsumeCraftedItemHandoff?: () => void;
+}) {
   const { user } = useAuth();
   const { worldId } = useActiveWorld();
   const [viewMode, setViewMode] = useState<"log" | "travel">("log");
@@ -60,6 +65,18 @@ export function DowntimePage() {
   }
 
   useEffect(refresh, [worldId]);
+
+  // A freshly forged item handed off from Item Forge (see App.tsx's
+  // sendToDowntimeLog) pre-fills the crafting form exactly as if the DM
+  // had picked it here themself, then clears itself so it doesn't
+  // re-trigger on remount or a stray worldId change.
+  useEffect(() => {
+    if (!craftedItemHandoff || craftedItemHandoff.worldId !== worldId) return;
+    setActivityType("crafting");
+    setCraftedItem(craftedItemHandoff.item);
+    setDescription(`Crafting ${craftedItemHandoff.item.name}`);
+    onConsumeCraftedItemHandoff?.();
+  }, [craftedItemHandoff, worldId]);
 
   const suggestedDays = (() => {
     if (!originRegion || !destinationRegion) return null;

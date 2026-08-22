@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { Item } from "@spark/shared";
 import { WelcomePanel } from "../components/WelcomePanel";
 import { GroupedTabs } from "../components/GroupedTabs";
 import { GeneratorPage } from "./GeneratorPage";
@@ -50,7 +51,7 @@ const CREATE_TYPE_TO_GROUP = Object.fromEntries(
   (Object.keys(CREATE_GROUPS) as CreateGroup[]).flatMap((g) => CREATE_GROUPS[g].map((t) => [t, g])),
 ) as Record<CreateType, CreateGroup>;
 
-export function CreatePage() {
+export function CreatePage({ onSendToDowntime }: { onSendToDowntime?: (item: Item, worldId: string) => void }) {
   const [createType, setCreateType] = useState<CreateType>("npc");
 
   return (
@@ -67,7 +68,7 @@ export function CreatePage() {
       />
 
       {createType === "npc" && <GeneratorPage />}
-      {createType === "item" && <ItemForgePage />}
+      {createType === "item" && <ItemForgePage onSendToDowntime={onSendToDowntime} />}
       {createType === "location" && <LocationForgePage />}
       {createType === "quest" && <QuestForgePage />}
       {createType === "faction" && <FactionForgePage />}

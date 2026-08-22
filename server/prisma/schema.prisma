@@ -48,6 +48,7 @@ model User {
   shopCommissions ShopCommission[]
   factionLogEntries FactionLogEntry[]
   factionRelationships FactionRelationship[]
+  campaignEvents  CampaignEvent[]
 }
 
 model World {
@@ -85,6 +86,7 @@ model World {
   battleMaps      BattleMap[]
   shopCommissions ShopCommission[]
   factionRelationships FactionRelationship[]
+  campaignEvents  CampaignEvent[]
 
   @@index([userId])
 }
@@ -518,6 +520,25 @@ model Adventure {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  @@index([worldId])
+  @@index([userId])
+}
+
+// See CampaignEvent in shared types for the full rationale. worldId is a
+// real cascade FK (an event with no world makes no sense); factionId is
+// a loose, optional tag with no FK, matching LedgerEntry.itemId's
+// convention for references whose target may later be deleted.
+model CampaignEvent {
+  id          String   @id @default(cuid())
+  worldId     String
+  world       World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  title       String
+  description String
+  factionId   String?
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
 
   @@index([worldId])
   @@index([userId])

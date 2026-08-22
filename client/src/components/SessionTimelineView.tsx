@@ -6,6 +6,7 @@ const KIND_LABELS: Record<TimelineEntry["kind"], string> = {
   note: "Note",
   quest: "Quest",
   adventure: "Adventure",
+  campaignEvent: "World Event",
 };
 
 function formatDate(entry: TimelineEntry): string {
@@ -25,14 +26,14 @@ export function SessionTimelineView({
   worldFilter: string;
   onWorldFilterChange: (worldId: string) => void;
   onSelectEntry: (entry: TimelineEntry) => void;
-  onOpenInRoster: (type: TimelineEntry["entityType"], id: string) => void;
+  onOpenInRoster: (type: NonNullable<TimelineEntry["entityType"]>, id: string) => void;
 }) {
   const { user } = useAuth();
 
   return (
     <div className="panel session-timeline">
       <h2>Campaign Timeline</h2>
-      <p className="hint">Your campaign's story so far, oldest to newest — session notes, quests, and adventures together.</p>
+      <p className="hint">Your campaign's story so far, oldest to newest — session notes, quests, adventures, and world events together.</p>
 
       {worlds.length > 0 && (
         <label className="field">
@@ -61,13 +62,13 @@ export function SessionTimelineView({
               <span className="timeline-summary">{entry.summary}</span>
             </>
           );
-          const clickable = entry.kind === "note" ? isOwn : true;
+          const clickable = entry.kind === "note" ? isOwn : entry.kind !== "campaignEvent";
           return (
             <li key={entry.id} className="timeline-entry">
               {clickable ? (
                 <button
                   className="timeline-entry-button"
-                  onClick={() => (entry.kind === "note" ? onSelectEntry(entry) : onOpenInRoster(entry.entityType, entry.entityId))}
+                  onClick={() => (entry.kind === "note" ? onSelectEntry(entry) : onOpenInRoster(entry.entityType!, entry.entityId!))}
                 >
                   {content}
                 </button>

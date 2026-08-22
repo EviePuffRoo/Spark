@@ -3011,6 +3011,11 @@ textarea {
   color: var(--danger);
 }
 
+.timeline-kind-chip.timeline-kind-campaignEvent {
+  background: color-mix(in srgb, var(--warning) 16%, transparent);
+  color: var(--warning);
+}
+
 .presentation-view {
   min-height: 100vh;
   padding: 2.5rem;

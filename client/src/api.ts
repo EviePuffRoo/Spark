@@ -21,6 +21,7 @@ import type {
   Dungeon, DungeonInput, GenerateDungeonRequest, GeneratedDungeonOutline,
   BattleMap, BattleMapInput,
   Shop, ShopInput, GenerateShopRequest, GeneratedShop, ShopCommission, ShopCommissionInput,
+  FactionLogEntry, FactionRelationship, FactionRelationshipInput,
   Region, GenerateRegionRequest, GeneratedRegion,
   Settlement, GenerateSettlementRequest, GeneratedSettlement,
   ActivitySummary,
@@ -171,6 +172,13 @@ export const api = {
   updateFaction: (id: string, patch: Partial<Faction>) =>
     request<Faction>(`/factions/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   deleteFaction: (id: string) => request<void>(`/factions/${id}`, { method: "DELETE" }),
+  adjustFactionReputation: (id: string, delta: number, reason?: string) =>
+    request<Faction>(`/factions/${id}/adjust-reputation`, { method: "POST", body: JSON.stringify({ delta, reason }) }),
+  getFactionReputationLog: (id: string) => request<FactionLogEntry[]>(`/factions/${id}/reputation-log`),
+  listFactionRelationships: (worldId: string) => request<FactionRelationship[]>(`/faction-relationships?worldId=${worldId}`),
+  saveFactionRelationship: (relationship: FactionRelationshipInput) =>
+    request<FactionRelationship>("/faction-relationships", { method: "POST", body: JSON.stringify(relationship) }),
+  deleteFactionRelationship: (id: string) => request<void>(`/faction-relationships/${id}`, { method: "DELETE" }),
 
   listEncounterTables: (worldId?: string) =>
     request<EncounterTable[]>(`/encounter-tables${worldId ? `?worldId=${worldId}` : ""}`),

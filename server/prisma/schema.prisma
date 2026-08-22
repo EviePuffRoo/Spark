@@ -46,6 +46,8 @@ model User {
   battleMaps      BattleMap[]
   dispositionLogEntries DispositionLogEntry[]
   shopCommissions ShopCommission[]
+  factionLogEntries FactionLogEntry[]
+  factionRelationships FactionRelationship[]
 }
 
 model World {
@@ -82,6 +84,7 @@ model World {
   base            Base?
   battleMaps      BattleMap[]
   shopCommissions ShopCommission[]
+  factionRelationships FactionRelationship[]
 
   @@index([userId])
 }
@@ -326,9 +329,51 @@ model Faction {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   characters  Character[]
+  logEntries  FactionLogEntry[]
+  relationshipsAsA FactionRelationship[] @relation("FactionRelationshipA")
+  relationshipsAsB FactionRelationship[] @relation("FactionRelationshipB")
 
   @@index([worldId])
   @@index([userId])
+}
+
+// Mirrors DispositionLogEntry for factions — see FactionLogEntry in
+// shared types for the full rationale.
+model FactionLogEntry {
+  id         String   @id @default(cuid())
+  factionId  String
+  faction    Faction  @relation(fields: [factionId], references: [id], onDelete: Cascade)
+  authorName String
+  delta      Int
+  reason     String?
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@index([factionId])
+}
+
+// An undirected ally/rival/war/neutral stance between two factions in the
+// same world — see FactionRelationship in shared types for the
+// normalization rule that keeps one row per pair.
+model FactionRelationship {
+  id         String   @id @default(cuid())
+  worldId    String
+  world      World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  factionAId String
+  factionA   Faction  @relation("FactionRelationshipA", fields: [factionAId], references: [id], onDelete: Cascade)
+  factionBId String
+  factionB   Faction  @relation("FactionRelationshipB", fields: [factionBId], references: [id], onDelete: Cascade)
+  stance     String
+  notes      String?
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([factionAId, factionBId])
+  @@index([worldId])
+  @@index([factionBId])
 }
 
 model EncounterTable {

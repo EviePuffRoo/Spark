@@ -1,15 +1,78 @@
-import { useState } from "react";
-import type { GeneratedFaction } from "@spark/shared";
-import { computeReputationTier, REPUTATION_TIER_LABELS } from "@spark/shared";
+import { useEffect, useState } from "react";
+import type { GeneratedFaction, FactionLogEntry, FactionRelationship, FactionRelationshipStance, SearchResult } from "@spark/shared";
+import { computeReputationTier, REPUTATION_TIER_LABELS, FACTION_RELATIONSHIP_STANCES, FACTION_RELATIONSHIP_STANCE_LABELS } from "@spark/shared";
+import { api } from "../api";
+import { EntitySearchPicker } from "./EntitySearchPicker";
+import { timeAgo } from "./DiceRoller";
 
 export function FactionCardView({
-  faction, canEdit, onAdjustReputation,
+  faction, canEdit, onChanged,
 }: {
-  faction: GeneratedFaction & { reputation?: number };
+  faction: GeneratedFaction & { id?: string; reputation?: number; worldId?: string | null };
   canEdit?: boolean;
-  onAdjustReputation?: (delta: number) => void;
+  onChanged?: () => void;
 }) {
   const [delta, setDelta] = useState("");
+  const [reason, setReason] = useState("");
+  const [log, setLog] = useState<FactionLogEntry[]>([]);
+  const [relationships, setRelationships] = useState<FactionRelationship[]>([]);
+  const [otherFactionNames, setOtherFactionNames] = useState<Record<string, string>>({});
+  const [picking, setPicking] = useState(false);
+  const [pendingStance, setPendingStance] = useState<FactionRelationshipStance>("ally");
+
+  const factionId = faction.id;
+  const worldId = faction.worldId;
+
+  useEffect(() => {
+    if (!factionId) { setLog([]); return; }
+    let cancelled = false;
+    api.getFactionReputationLog(factionId).then((entries) => { if (!cancelled) setLog(entries); }).catch(() => { if (!cancelled) setLog([]); });
+    return () => { cancelled = true; };
+  }, [factionId, faction.reputation]);
+
+  async function refreshRelationships() {
+    if (!factionId || !worldId) { setRelationships([]); return; }
+    const rows = await api.listFactionRelationships(worldId);
+    setRelationships(rows.filter((r) => r.factionAId === factionId || r.factionBId === factionId));
+  }
+
+  useEffect(() => {
+    refreshRelationships();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [factionId, worldId]);
+
+  useEffect(() => {
+    const otherIds = relationships.map((r) => (r.factionAId === factionId ? r.factionBId : r.factionAId));
+    const missing = [...new Set(otherIds)].filter((id) => !(id in otherFactionNames));
+    if (missing.length === 0) return;
+    let cancelled = false;
+    Promise.all(missing.map((id) => api.getFaction(id).then((f) => [id, f.name] as const).catch(() => [id, "Unknown faction"] as const)))
+      .then((pairs) => { if (!cancelled) setOtherFactionNames((prev) => ({ ...prev, ...Object.fromEntries(pairs) })); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [relationships, factionId]);
+
+  async function adjust() {
+    if (!factionId) return;
+    const amount = Number(delta);
+    if (!delta || Number.isNaN(amount) || amount === 0) return;
+    await api.adjustFactionReputation(factionId, amount, reason || undefined);
+    setDelta("");
+    setReason("");
+    onChanged?.();
+  }
+
+  async function pickRelationshipTarget(result: SearchResult) {
+    if (!factionId || !worldId) return;
+    setPicking(false);
+    await api.saveFactionRelationship({ worldId, factionAId: factionId, factionBId: result.id, stance: pendingStance });
+    refreshRelationships();
+  }
+
+  async function deleteRelationship(id: string) {
+    await api.deleteFactionRelationship(id);
+    refreshRelationships();
+  }
 
   return (
     <div className="statblock item-card">
@@ -31,7 +94,7 @@ export function FactionCardView({
           <p className={`reputation-readout reputation-${computeReputationTier(faction.reputation)}`}>
             {REPUTATION_TIER_LABELS[computeReputationTier(faction.reputation)]} ({faction.reputation})
           </p>
-          {canEdit && onAdjustReputation && (
+          {canEdit && factionId && (
             <div className="button-row">
               <input
                 type="number"
@@ -41,18 +104,74 @@ export function FactionCardView({
                 placeholder="amount"
                 aria-label="Reputation change amount"
               />
-              <button
-                className="btn-secondary"
-                onClick={() => {
-                  const amount = Number(delta);
-                  if (!delta || Number.isNaN(amount) || amount === 0) return;
-                  onAdjustReputation(amount);
-                  setDelta("");
-                }}
-              >
-                Adjust
-              </button>
+              <input
+                type="text"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="Reason (optional)"
+                aria-label="Reputation change reason"
+              />
+              <button className="btn-secondary" onClick={adjust}>Adjust</button>
             </div>
+          )}
+
+          {log.length > 0 && (
+            <ul className="dice-history">
+              {log.map((entry) => (
+                <li key={entry.id} className="dice-history-row">
+                  <div className="dice-history-main">
+                    <span>
+                      {entry.delta > 0 ? "+" : ""}{entry.delta} by {entry.authorName}
+                      {entry.reason ? ` — ${entry.reason}` : ""}
+                    </span>
+                    <span className="dice-history-time">{timeAgo(new Date(entry.createdAt).getTime())}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+
+      {factionId && worldId && (
+        <>
+          <h3 className="section-heading">Relationships</h3>
+          {relationships.length === 0 && <p className="hint">No known relationships with other factions yet.</p>}
+          {relationships.length > 0 && (
+            <ul className="entity-list">
+              {relationships.map((r) => {
+                const otherId = r.factionAId === factionId ? r.factionBId : r.factionAId;
+                return (
+                  <li key={r.id} className="world-row">
+                    <div>
+                      <span className="entity-name">{otherFactionNames[otherId] ?? "…"}</span>
+                      <div className="entity-meta">{FACTION_RELATIONSHIP_STANCE_LABELS[r.stance]}</div>
+                    </div>
+                    {canEdit && (
+                      <button className="btn-danger" onClick={() => deleteRelationship(r.id)} aria-label={`Remove relationship with ${otherFactionNames[otherId] ?? "faction"}`}>
+                        Remove
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {canEdit && (
+            picking ? (
+              <div className="save-panel">
+                <label className="field">
+                  <span>Stance</span>
+                  <select value={pendingStance} onChange={(e) => setPendingStance(e.target.value as FactionRelationshipStance)}>
+                    {FACTION_RELATIONSHIP_STANCES.map((s) => <option key={s} value={s}>{FACTION_RELATIONSHIP_STANCE_LABELS[s]}</option>)}
+                  </select>
+                </label>
+                <EntitySearchPicker type="faction" onSelect={pickRelationshipTarget} placeholder="Search factions…" />
+                <button className="btn-secondary" onClick={() => setPicking(false)}>Cancel</button>
+              </div>
+            ) : (
+              <button className="btn-secondary" onClick={() => setPicking(true)}>+ Add Relationship</button>
+            )
           )}
         </>
       )}

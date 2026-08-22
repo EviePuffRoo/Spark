@@ -4,6 +4,7 @@ import { api, type WorldSummary } from "../api";
 import { PlayerCharacterCardView } from "../components/PlayerCharacterCardView";
 import { PlayerCharacterEditor, type PlayerCharacterLivingStatePatch } from "../components/PlayerCharacterEditor";
 import { LevelUpPanel } from "../components/LevelUpPanel";
+import { EquipmentPanel } from "../components/EquipmentPanel";
 
 export function MyCharacterPage({ onViewRoster }: { onViewRoster: (worldId: string) => void }) {
   const [characters, setCharacters] = useState<PlayerCharacter[]>([]);
@@ -89,6 +90,8 @@ export function MyCharacterPage({ onViewRoster }: { onViewRoster: (worldId: stri
               {editingId === pc.id ? (
                 <PlayerCharacterEditor
                   value={pc}
+                  equippedItems={pc.equippedItems}
+                  attunedItems={pc.attunedItems}
                   currentHp={pc.currentHp}
                   deathSaves={pc.deathSaves}
                   spellSlots={pc.spellSlots}
@@ -101,6 +104,7 @@ export function MyCharacterPage({ onViewRoster }: { onViewRoster: (worldId: stri
                 <>
                   <PlayerCharacterCardView pc={pc} />
                   <LevelUpPanel pc={pc} onUpdated={refresh} />
+                  <EquipmentPanel equippedItems={pc.equippedItems} attunedItems={pc.attunedItems} baseArmorClass={pc.armorClass} />
                   <div className="button-row">
                     <button className="btn-secondary" onClick={() => setEditingId(pc.id)} disabled={status === "saving"}>Edit</button>
                     <button className="btn-secondary" onClick={() => handleRest(pc.id, "short")} disabled={status === "saving"}>Short Rest</button>

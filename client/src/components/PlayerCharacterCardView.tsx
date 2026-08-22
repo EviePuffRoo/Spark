@@ -29,6 +29,9 @@ export function PlayerCharacterCardView({ pc }: { pc: PlayerCharacterInput & Liv
       <p><strong>Armor Class</strong> {pc.armorClass}</p>
       <p><strong>Hit Points</strong> {pc.currentHp !== undefined ? `${pc.currentHp} / ${pc.maxHp}` : pc.maxHp}</p>
       {pc.proficiencyBonus !== undefined && <p><strong>Proficiency Bonus</strong> +{pc.proficiencyBonus}</p>}
+      {/* 10 + WIS modifier only — this app doesn't track per-skill proficiencies,
+          so a flat proficiency bonus for Perception specifically can't be assumed. */}
+      <p><strong>Passive Perception</strong> {10 + Math.floor((pc.abilityScores.wis - 10) / 2)}</p>
       {pc.xp !== undefined && (
         <p><strong>XP</strong> {pc.xp.toLocaleString()}{pc.level < 20 ? ` / ${XP_THRESHOLDS[pc.level].toLocaleString()} for next level` : " (max level)"}</p>
       )}

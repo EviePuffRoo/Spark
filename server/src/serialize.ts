@@ -338,6 +338,7 @@ export function toDowntimeActivityDTO(row: DowntimeActivityRow): DowntimeActivit
     description: row.description,
     daysSpent: row.daysSpent,
     outcome: row.outcome ?? undefined,
+    craftedItemId: row.craftedItemId ?? undefined,
     createdAt: row.createdAt.toISOString(),
   };
 }

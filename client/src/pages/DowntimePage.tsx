@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import type { DowntimeActivity, DowntimeActivityType, EncounterTable, LiveCombatant, EncounterStateInput, SearchResult, Region, PlayerCharacter } from "@spark/shared";
-import { DOWNTIME_ACTIVITY_TYPES, DOWNTIME_ACTIVITY_TYPE_LABELS } from "@spark/shared";
+import type { DowntimeActivity, DowntimeActivityType, EncounterTable, LiveCombatant, EncounterStateInput, SearchResult, Region, PlayerCharacter, Item } from "@spark/shared";
+import { DOWNTIME_ACTIVITY_TYPES, DOWNTIME_ACTIVITY_TYPE_LABELS, computeCraftingCost } from "@spark/shared";
 import { api } from "../api";
 import { useAuth } from "../AuthContext";
 import { useActiveWorld } from "../ActiveWorldContext";
@@ -31,6 +31,9 @@ export function DowntimePage() {
   const [outcome, setOutcome] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "saving">("idle");
+
+  const [craftedItem, setCraftedItem] = useState<Item | null>(null);
+  const [pickingCraftedItem, setPickingCraftedItem] = useState(false);
 
   const [pickedTable, setPickedTable] = useState<EncounterTable | null>(null);
   const [pickingTable, setPickingTable] = useState(false);
@@ -87,16 +90,23 @@ export function DowntimePage() {
         description: description.trim(),
         daysSpent: days,
         outcome: outcome.trim() || undefined,
+        craftedItemId: craftedItem?.id,
       });
       setDescription("");
       setOutcome("");
       setDaysSpent("1");
+      setCraftedItem(null);
       refresh();
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setStatus("idle");
     }
+  }
+
+  async function pickCraftedItem(result: SearchResult) {
+    setPickingCraftedItem(false);
+    setCraftedItem(await api.getItem(result.id));
   }
 
   async function deleteActivity(id: string) {
@@ -197,6 +207,33 @@ export function DowntimePage() {
               <span>Outcome (optional)</span>
               <input type="text" value={outcome} onChange={(e) => setOutcome(e.target.value)} placeholder="Gained proficiency, made a contact…" />
             </label>
+
+            {activityType === "crafting" && (
+              <div className="field">
+                <span>Item being crafted (optional)</span>
+                {craftedItem ? (
+                  <div className="button-row">
+                    <span>
+                      {craftedItem.name} — {computeCraftingCost(craftedItem).goldCost} gp,{" "}
+                      {computeCraftingCost(craftedItem).daysRequired}d suggested
+                    </span>
+                    <button className="btn-secondary" onClick={() => setCraftedItem(null)}>Clear</button>
+                  </div>
+                ) : pickingCraftedItem ? (
+                  <div className="save-panel">
+                    <EntitySearchPicker type="item" onSelect={pickCraftedItem} placeholder="Search items…" />
+                    <button className="btn-secondary" onClick={() => setPickingCraftedItem(false)}>Cancel</button>
+                  </div>
+                ) : (
+                  <button className="btn-secondary" onClick={() => setPickingCraftedItem(true)}>+ Pick Item</button>
+                )}
+                {craftedItem && (
+                  <p className="hint">
+                    Logging this will debit {computeCraftingCost(craftedItem).goldCost} gp from the party ledger and credit one {craftedItem.name} to the party inventory.
+                  </p>
+                )}
+              </div>
+            )}
 
             {error && <p className="error">{error}</p>}
             <button className="btn-primary" onClick={logActivity} disabled={status === "saving"}>

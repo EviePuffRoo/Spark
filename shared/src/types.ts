@@ -529,6 +529,12 @@ export interface DowntimeActivityInput {
   description: string;
   daysSpent: number;
   outcome?: string;
+  // An Item being crafted during this activity. Purely additive: logging a
+  // "crafting" activity without one still works exactly as before (free-text
+  // description/outcome only). When set, the server automatically debits the
+  // item's crafting cost in gold and credits one of the item to the party's
+  // ledger — see computeCraftingCost.
+  craftedItemId?: string;
 }
 
 export interface DowntimeActivity extends DowntimeActivityInput {

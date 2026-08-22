@@ -11,6 +11,7 @@ import { ItemCardView } from "../components/ItemCardView";
 import { LocationCardView } from "../components/LocationCardView";
 import { QuestHookCardView } from "../components/QuestHookCardView";
 import { FactionCardView } from "../components/FactionCardView";
+import { NpcDispositionView } from "../components/NpcDispositionView";
 import { EncounterTableCardView } from "../components/EncounterTableCardView";
 import { ZoneMapTemplateCardView } from "../components/ZoneMapTemplateCardView";
 import { DungeonCardView } from "../components/DungeonCardView";
@@ -755,6 +756,16 @@ export function RosterPage({
               attunedItems={selectedCharacter.attunedItems}
               baseArmorClass={selectedCharacter.statBlock.armorClass}
             />
+            {selectedCharacter.kind === "npc" && (
+              <NpcDispositionView
+                disposition={selectedCharacter.disposition}
+                canEdit={canEditSelected}
+                onAdjust={async (delta) => {
+                  await api.updateCharacter(selectedCharacter.id, { disposition: selectedCharacter.disposition + delta });
+                  refresh();
+                }}
+              />
+            )}
           </>
         )}
         {selectedCharacter && editingContent && (

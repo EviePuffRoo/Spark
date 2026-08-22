@@ -67,6 +67,12 @@ export interface Character {
   notes?: string;
   equippedItems: string[];
   attunedItems: string[];
+  // How this NPC currently feels about the party — reuses the exact same
+  // scale and tier math as Faction.reputation (see reputation.ts) rather
+  // than inventing a parallel system. Meaningful for kind:"npc"; present
+  // but generally left at its default for kind:"monster" entries, which
+  // don't have ongoing relationships with the party the way NPCs do.
+  disposition: number;
   createdAt: string;
   updatedAt: string;
 }

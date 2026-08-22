@@ -3,8 +3,8 @@ import {
   forceSimulation, forceManyBody, forceLink, forceCenter, forceCollide,
   type Simulation, type SimulationNodeDatum, type SimulationLinkDatum,
 } from "d3-force";
-import type { Faction, EntityType } from "@spark/shared";
-import { computeReputationTier } from "@spark/shared";
+import type { Faction, EntityType, FactionRelationshipStance } from "@spark/shared";
+import { computeReputationTier, FACTION_RELATIONSHIP_STANCE_LABELS } from "@spark/shared";
 import { api } from "../api";
 
 interface WebNode extends SimulationNodeDatum {
@@ -17,6 +17,10 @@ interface WebNode extends SimulationNodeDatum {
 interface WebEdge extends SimulationLinkDatum<WebNode> {
   id: string;
   label?: string;
+  // Present only for a FactionRelationship-backed edge — distinguishes it
+  // from a generic Link edge so it can render with stance-based styling
+  // instead of the neutral gray used for links.
+  stance?: FactionRelationshipStance;
 }
 
 const WIDTH = 800;
@@ -55,9 +59,11 @@ export function FactionWebView({
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    Promise.all(
-      factions.map((f) => api.getLinks("faction", f.id).then((links) => ({ factionId: f.id, links }))),
-    ).then((results) => {
+    const worldIds = Array.from(new Set(factions.map((f) => f.worldId).filter((id): id is string => !!id)));
+    Promise.all([
+      Promise.all(factions.map((f) => api.getLinks("faction", f.id).then((links) => ({ factionId: f.id, links })))),
+      Promise.all(worldIds.map((worldId) => api.listFactionRelationships(worldId))),
+    ]).then(([results, relationshipsByWorld]) => {
       if (cancelled) return;
 
       const nodeById = new Map<string, WebNode>();
@@ -74,6 +80,17 @@ export function FactionWebView({
             nodeById.set(link.other.id, { id: link.other.id, entityType: link.other.type, name: link.other.name, ...jitteredCenter() });
           }
           edgeById.set(link.id, { id: link.id, label: link.label, source: factionId, target: link.other.id });
+        }
+      }
+
+      for (const relationships of relationshipsByWorld) {
+        for (const rel of relationships) {
+          if (!nodeById.has(rel.factionAId) || !nodeById.has(rel.factionBId)) continue;
+          const id = `rel-${rel.id}`;
+          edgeById.set(id, {
+            id, source: rel.factionAId, target: rel.factionBId, stance: rel.stance,
+            label: rel.notes ? `${FACTION_RELATIONSHIP_STANCE_LABELS[rel.stance]} — ${rel.notes}` : FACTION_RELATIONSHIP_STANCE_LABELS[rel.stance],
+          });
         }
       }
 
@@ -197,7 +214,7 @@ export function FactionWebView({
                   <line
                     key={edge.id}
                     x1={source.x ?? 0} y1={source.y ?? 0} x2={target.x ?? 0} y2={target.y ?? 0}
-                    className={`faction-web-edge${dimmed ? " dimmed" : ""}${hoveredEdge?.id === edge.id ? " hovered" : ""}`}
+                    className={`faction-web-edge${edge.stance ? ` relationship stance-${edge.stance}` : ""}${dimmed ? " dimmed" : ""}${hoveredEdge?.id === edge.id ? " hovered" : ""}`}
                     onPointerEnter={() => setHoveredEdge(edge)}
                     onPointerLeave={() => setHoveredEdge((cur) => (cur?.id === edge.id ? null : cur))}
                   />
@@ -238,11 +255,18 @@ export function FactionWebView({
             <span><i className="faction-web-swatch rep-friendly" />Friendly</span>
             <span><i className="faction-web-swatch rep-allied" />Allied</span>
           </div>
+          <div className="faction-web-legend faction-web-relationship-legend">
+            <span>Relations:</span>
+            <span><i className="faction-web-line-swatch stance-ally" />Ally</span>
+            <span><i className="faction-web-line-swatch stance-rival" />Rival</span>
+            <span><i className="faction-web-line-swatch stance-war" />At War</span>
+            <span><i className="faction-web-line-swatch stance-neutral" />Neutral</span>
+          </div>
 
           {hoveredEdge && (
             <div className="faction-web-tooltip">
-              {(hoveredEdge.source as WebNode).name} → {(hoveredEdge.target as WebNode).name}
-              {hoveredEdge.label ? `: ${hoveredEdge.label}` : ": no label yet"}
+              {(hoveredEdge.source as WebNode).name} {hoveredEdge.stance ? "↔" : "→"} {(hoveredEdge.target as WebNode).name}
+              {hoveredEdge.label ? `: ${hoveredEdge.label}` : hoveredEdge.stance ? "" : ": no label yet"}
             </div>
           )}
         </div>

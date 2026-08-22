@@ -499,6 +499,7 @@ model DowntimeActivity {
   description       String
   daysSpent         Int
   outcome           String?
+  craftedItemId     String?
   createdAt         DateTime @default(now())
 
   @@index([worldId])

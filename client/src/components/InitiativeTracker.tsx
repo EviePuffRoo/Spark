@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { SearchResult, LiveCombatant, LiveCombatantCondition, EncounterStateInput, EncounterTable, EncounterZone, HpStatus, Dungeon, Item, SizeCategory } from "@spark/shared";
-import { computeEquipmentBonuses, computeConcentrationDc, CONDITIONS_COMPENDIUM, parseStatBlockAttacks, parseSizeCategory, parseSpeedFeet } from "@spark/shared";
+import { computeEquipmentBonuses, computeConcentrationDc, isHostilePair, leftReach, CONDITIONS_COMPENDIUM, parseStatBlockAttacks, parseSizeCategory, parseSpeedFeet } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { useAuth } from "../AuthContext";
 import { EntitySearchPicker } from "./EntitySearchPicker";
@@ -128,6 +128,8 @@ export function InitiativeTracker({
 
   useEffect(() => { if (!showGridMap) setTemplateTargetIds([]); }, [showGridMap]);
 
+  const [opportunityPrompt, setOpportunityPrompt] = useState<{ moverName: string; leftName: string } | null>(null);
+
   const partyMode = mode === "party";
   const selectedWorld = worlds.find((w) => w.id === partyWorldId) ?? null;
   const isOwner = partyMode && !!selectedWorld?.isOwner;
@@ -200,6 +202,36 @@ export function InitiativeTracker({
     prevHpRef.current = nextHp;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sorted.map((c) => `${c.id}:${c.currentHp ?? 0}:${c.concentratingOn ?? ""}`).join("|"), canEdit]);
+
+  // Same diff-against-last-render approach as the concentration check above —
+  // catches a move regardless of whether it came from this tracker's own
+  // grid drag or another party member's move arriving over the live
+  // channel. Reach is approximated as grid adjacency (see leftReach); this
+  // is a reminder for the DM to prompt a player, not an enforced rule, so
+  // it doesn't need to be exact.
+  const prevGridPosRef = useRef<Map<string, { x: number; y: number; kind: string }>>(new Map());
+  useEffect(() => {
+    const prevPos = prevGridPosRef.current;
+    const nextPos = new Map<string, { x: number; y: number; kind: string }>();
+    const placed = sorted.filter((c) => c.gridX !== undefined && c.gridY !== undefined);
+    for (const c of placed) nextPos.set(c.id, { x: c.gridX!, y: c.gridY!, kind: c.kind ?? "custom" });
+
+    if (canEdit) {
+      for (const c of placed) {
+        const before = prevPos.get(c.id);
+        if (!before || (before.x === c.gridX && before.y === c.gridY)) continue;
+        for (const other of placed) {
+          if (other.id === c.id || !isHostilePair(c, other)) continue;
+          if (leftReach(before, { x: c.gridX!, y: c.gridY! }, other.gridX!, other.gridY!)) {
+            setOpportunityPrompt({ moverName: c.name, leftName: other.name });
+            break;
+          }
+        }
+      }
+    }
+    prevGridPosRef.current = nextPos;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sorted.map((c) => `${c.id}:${c.gridX ?? ""}:${c.gridY ?? ""}:${c.kind ?? ""}`).join("|"), canEdit]);
 
   useEffect(() => {
     const dungeonId = activeEncounter.activeDungeonId;
@@ -756,6 +788,15 @@ export function InitiativeTracker({
           {" "}
           <button className="btn-secondary" onClick={leaveDungeon}>Leave Dungeon</button>
         </p>
+      )}
+
+      {canEdit && opportunityPrompt && (
+        <div className="button-row opportunity-prompt">
+          <span>
+            ⚔ {opportunityPrompt.moverName} left {opportunityPrompt.leftName}'s reach — Attack of Opportunity?
+          </span>
+          <button className="btn-secondary" onClick={() => setOpportunityPrompt(null)}>Dismiss</button>
+        </div>
       )}
 
       {showConditionRules && (

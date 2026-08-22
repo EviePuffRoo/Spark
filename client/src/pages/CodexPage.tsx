@@ -146,7 +146,7 @@ export function CodexPage() {
             />
             <BackstoryView backstory={selectedCharacter.backstory} />
             {selectedCharacter.kind === "npc" && (
-              <NpcDispositionView disposition={selectedCharacter.disposition} factionId={selectedCharacter.factionId} />
+              <NpcDispositionView characterId={selectedCharacter.id} disposition={selectedCharacter.disposition} factionId={selectedCharacter.factionId} />
             )}
           </>
         )}

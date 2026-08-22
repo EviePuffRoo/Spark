@@ -5,11 +5,13 @@ import type {
   Encounter as EncounterRow, CodexNote as CodexNoteRow, LedgerEntry as LedgerEntryRow,
   ZoneMapTemplate as ZoneMapTemplateRow, Dungeon as DungeonRow, DowntimeActivity as DowntimeActivityRow, Shop as ShopRow,
   Region as RegionRow, Settlement as SettlementRow, ChatMessage as ChatMessageRow, BattleMap as BattleMapRow,
+  DispositionLogEntry as DispositionLogEntryRow,
 } from "@prisma/client";
 import type {
   Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, PlayerCharacter, RollLogEntry,
   Encounter, LiveCombatant, HpStatus, CodexNote, EntityType, LedgerEntry, LedgerEntryKind, EncounterZone, EncounterZoneEffect,
   ZoneMapTemplate, Dungeon, DowntimeActivity, DowntimeActivityType, Shop, ShopStockEntry, Region, Settlement, ChatMessage, BattleMap,
+  DispositionLogEntry,
 } from "@spark/shared";
 
 export function toCharacterDTO(row: CharacterRow): Character {
@@ -35,6 +37,18 @@ export function toCharacterDTO(row: CharacterRow): Character {
     factionId: row.factionId,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+export function toDispositionLogEntryDTO(row: DispositionLogEntryRow): DispositionLogEntry {
+  return {
+    id: row.id,
+    characterId: row.characterId,
+    userId: row.userId,
+    authorName: row.authorName,
+    delta: row.delta,
+    reason: row.reason ?? undefined,
+    createdAt: row.createdAt.toISOString(),
   };
 }
 

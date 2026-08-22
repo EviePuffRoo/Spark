@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
-import { toCharacterDTO } from "../serialize.js";
+import { toCharacterDTO, toDispositionLogEntryDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
 import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
 
@@ -101,4 +101,39 @@ charactersRouter.delete("/:id", async (req, res) => {
   if (result.count === 0) return res.status(404).json({ error: "Character not found" });
   await deleteLinksForEntity("character", req.params.id, req.userId!);
   res.status(204).end();
+});
+
+// Applies a disposition change atomically and appends an audit-log entry —
+// the "smart" convenience action layered over a raw PATCH of `disposition`,
+// exactly like level-up/rest are layered over PlayerCharacter's PATCH. The
+// plain PATCH remains available with no side effects for hand edits.
+charactersRouter.post("/:id/adjust-disposition", async (req, res) => {
+  const delta = typeof req.body?.delta === "number" ? Math.trunc(req.body.delta) : NaN;
+  const reason = typeof req.body?.reason === "string" && req.body.reason.trim() ? req.body.reason.trim() : undefined;
+  if (!Number.isFinite(delta) || delta === 0) {
+    return res.status(400).json({ error: "delta must be a nonzero number" });
+  }
+
+  const row = await prisma.character.findFirst({ where: { id: req.params.id, userId: req.userId } });
+  if (!row) return res.status(404).json({ error: "Character not found" });
+
+  const user = await prisma.user.findUnique({ where: { id: req.userId } });
+  const authorName = user?.displayName || user?.username || "The DM";
+
+  const [updated] = await prisma.$transaction([
+    prisma.character.update({ where: { id: row.id }, data: { disposition: { increment: delta } } }),
+    prisma.dispositionLogEntry.create({
+      data: { characterId: row.id, authorName, delta, reason: reason ?? null, userId: req.userId! },
+    }),
+  ]);
+  res.json(toCharacterDTO(updated));
+});
+
+charactersRouter.get("/:id/disposition-log", async (req, res) => {
+  const memberWorldIds = await getMemberWorldIds(req.userId!);
+  const row = await prisma.character.findFirst({ where: { id: req.params.id, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }] } });
+  if (!row) return res.status(404).json({ error: "Character not found" });
+
+  const rows = await prisma.dispositionLogEntry.findMany({ where: { characterId: row.id }, orderBy: { createdAt: "desc" }, take: 100 });
+  res.json(rows.map(toDispositionLogEntryDTO));
 });

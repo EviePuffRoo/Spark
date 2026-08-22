@@ -59,7 +59,7 @@ charactersRouter.patch("/:id", async (req, res) => {
   const body = req.body ?? {};
   const data: Record<string, unknown> = {};
 
-  for (const field of ["name", "race", "background", "alignment", "notes", "hiddenFromParty"] as const) {
+  for (const field of ["name", "race", "background", "alignment", "notes", "hiddenFromParty", "disposition"] as const) {
     if (field in body) data[field] = body[field];
   }
   if ("worldId" in body) {

@@ -31,6 +31,7 @@ export function toCharacterDTO(row: CharacterRow): Character {
     notes: row.notes ?? undefined,
     equippedItems: JSON.parse(row.equippedItems),
     attunedItems: JSON.parse(row.attunedItems),
+    disposition: row.disposition,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };

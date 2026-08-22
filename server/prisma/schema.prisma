@@ -144,6 +144,7 @@ model Character {
   notes        String?
   equippedItems String  @default("[]")
   attunedItems  String  @default("[]")
+  disposition  Int      @default(0)
   worldId      String?
   hiddenFromParty Boolean @default(false)
   world        World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)

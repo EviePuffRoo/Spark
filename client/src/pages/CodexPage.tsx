@@ -6,6 +6,7 @@ import { StatBlockView } from "../components/StatBlockView";
 import { BackstoryView } from "../components/BackstoryView";
 import { LocationCardView } from "../components/LocationCardView";
 import { FactionCardView } from "../components/FactionCardView";
+import { NpcDispositionView } from "../components/NpcDispositionView";
 import { QuestHookCardView } from "../components/QuestHookCardView";
 import { LinkedEntities } from "../components/LinkedEntities";
 import { CodexNotesPanel } from "../components/CodexNotesPanel";
@@ -144,6 +145,7 @@ export function CodexPage() {
               statBlock={selectedCharacter.statBlock}
             />
             <BackstoryView backstory={selectedCharacter.backstory} />
+            {selectedCharacter.kind === "npc" && <NpcDispositionView disposition={selectedCharacter.disposition} />}
           </>
         )}
         {selectedLocation && <LocationCardView location={selectedLocation} />}

@@ -120,4 +120,18 @@ describe("characters CRUD + ownership — representative entity-router template"
     const ok = await agent.patch(`/api/characters/${id}`).send({ equippedItems: ["a", "b"], attunedItems: ["a"] });
     expect(ok.status).toBe(200);
   });
+
+  it("defaults disposition to 0 and lets the owner adjust it", async () => {
+    const { agent } = await signupAgent("cruduser8");
+    const create = await agent.post("/api/characters").send(charPayload());
+    expect(create.body.disposition).toBe(0);
+    const id = create.body.id as string;
+
+    const patch = await agent.patch(`/api/characters/${id}`).send({ disposition: 15 });
+    expect(patch.status).toBe(200);
+    expect(patch.body.disposition).toBe(15);
+
+    const get = await agent.get(`/api/characters/${id}`);
+    expect(get.body.disposition).toBe(15);
+  });
 });

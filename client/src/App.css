@@ -2630,6 +2630,23 @@ textarea {
   opacity: 0.55;
 }
 
+.concentration-chip {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+}
+
+.combatant-concentration {
+  margin-top: 6px;
+}
+
+.concentration-prompt {
+  margin-top: 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--warning) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warning) 40%, transparent);
+}
+
 .condition-duration-field {
   width: 100%;
   margin-bottom: 6px;

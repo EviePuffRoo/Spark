@@ -91,6 +91,7 @@ function coerceCombatant(raw: unknown): LiveCombatant | null {
     sizeCategory: SIZE_CATEGORIES.includes(c.sizeCategory as SizeCategory) ? (c.sizeCategory as SizeCategory) : undefined,
     speedFeet: typeof c.speedFeet === "number" ? c.speedFeet : undefined,
     visionRadiusFeet: typeof c.visionRadiusFeet === "number" ? c.visionRadiusFeet : undefined,
+    concentratingOn: typeof c.concentratingOn === "string" && c.concentratingOn ? c.concentratingOn : undefined,
   };
 }
 

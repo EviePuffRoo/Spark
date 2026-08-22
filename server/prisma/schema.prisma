@@ -145,6 +145,8 @@ model Character {
   equippedItems String  @default("[]")
   attunedItems  String  @default("[]")
   disposition  Int      @default(0)
+  factionId    String?
+  faction      Faction? @relation(fields: [factionId], references: [id], onDelete: SetNull)
   worldId      String?
   hiddenFromParty Boolean @default(false)
   world        World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
@@ -155,6 +157,7 @@ model Character {
 
   @@index([worldId])
   @@index([userId])
+  @@index([factionId])
 }
 
 model Item {
@@ -304,6 +307,7 @@ model Faction {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  characters  Character[]
 
   @@index([worldId])
   @@index([userId])

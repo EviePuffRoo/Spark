@@ -145,7 +145,9 @@ export function CodexPage() {
               statBlock={selectedCharacter.statBlock}
             />
             <BackstoryView backstory={selectedCharacter.backstory} />
-            {selectedCharacter.kind === "npc" && <NpcDispositionView disposition={selectedCharacter.disposition} />}
+            {selectedCharacter.kind === "npc" && (
+              <NpcDispositionView disposition={selectedCharacter.disposition} factionId={selectedCharacter.factionId} />
+            )}
           </>
         )}
         {selectedLocation && <LocationCardView location={selectedLocation} />}

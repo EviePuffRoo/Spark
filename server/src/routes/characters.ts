@@ -69,6 +69,13 @@ charactersRouter.patch("/:id", async (req, res) => {
     }
     data.worldId = body.worldId ?? null;
   }
+  if ("factionId" in body) {
+    if (typeof body.factionId === "string") {
+      const faction = await prisma.faction.findFirst({ where: { id: body.factionId, userId: req.userId } });
+      if (!faction) return res.status(403).json({ error: "You don't have access to this faction" });
+    }
+    data.factionId = body.factionId ?? null;
+  }
   if ("tags" in body) data.tags = JSON.stringify(Array.isArray(body.tags) ? body.tags : []);
   if ("statBlock" in body) data.statBlock = JSON.stringify(body.statBlock);
   if ("backstory" in body) data.backstory = JSON.stringify(body.backstory);

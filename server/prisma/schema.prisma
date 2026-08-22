@@ -510,6 +510,7 @@ model LedgerEntry {
   label      String
   amount     Int
   authorName String
+  itemId     String?
   createdAt  DateTime @default(now())
 
   @@index([worldId])

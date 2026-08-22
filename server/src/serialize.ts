@@ -348,6 +348,7 @@ export function toLedgerEntryDTO(row: LedgerEntryRow): LedgerEntry {
     label: row.label,
     amount: row.amount,
     authorName: row.authorName,
+    itemId: row.itemId ?? undefined,
     createdAt: row.createdAt.toISOString(),
   };
 }

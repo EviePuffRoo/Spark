@@ -113,6 +113,8 @@ export function InitiativeTracker({
   const [lootOpenFor, setLootOpenFor] = useState<string | null>(null);
   const [lootKind, setLootKind] = useState<"gold" | "item">("gold");
   const [lootLabel, setLootLabel] = useState("");
+  const [lootItemId, setLootItemId] = useState<string | null>(null);
+  const [lootPickingItem, setLootPickingItem] = useState(false);
   const [lootAmount, setLootAmount] = useState("");
   const [lootAuthorName, setLootAuthorName] = useState(user?.displayName || user?.username || "");
   const [lootStatus, setLootStatus] = useState<"idle" | "saving">("idle");
@@ -506,8 +508,15 @@ export function InitiativeTracker({
     setLootOpenFor(c.id);
     setLootKind("gold");
     setLootLabel(`Loot from ${c.name}`);
+    setLootItemId(null);
     setLootAmount("");
     setLootError(null);
+  }
+
+  function pickLootItem(result: SearchResult) {
+    setLootLabel(result.name);
+    setLootItemId(result.id);
+    setLootPickingItem(false);
   }
 
   async function submitLoot(c: LiveCombatant) {
@@ -522,6 +531,7 @@ export function InitiativeTracker({
         amount,
         label: lootLabel.trim() || (lootKind === "gold" ? `Loot from ${c.name}` : c.name),
         authorName: lootAuthorName.trim() || user!.displayName || user!.username,
+        itemId: lootKind === "item" ? (lootItemId ?? undefined) : undefined,
       });
       setLootOpenFor(null);
       setLootAmount("");
@@ -1020,13 +1030,23 @@ export function InitiativeTracker({
             {lootOpenFor === c.id && (
               <div className="save-panel">
                 <div className="tabs" role="tablist">
-                  <button role="tab" className={lootKind === "gold" ? "active" : ""} aria-selected={lootKind === "gold"} onClick={() => { setLootKind("gold"); setLootLabel(`Loot from ${c.name}`); }}>Gold</button>
-                  <button role="tab" className={lootKind === "item" ? "active" : ""} aria-selected={lootKind === "item"} onClick={() => { setLootKind("item"); setLootLabel(""); }}>Item</button>
+                  <button role="tab" className={lootKind === "gold" ? "active" : ""} aria-selected={lootKind === "gold"} onClick={() => { setLootKind("gold"); setLootLabel(`Loot from ${c.name}`); setLootItemId(null); }}>Gold</button>
+                  <button role="tab" className={lootKind === "item" ? "active" : ""} aria-selected={lootKind === "item"} onClick={() => { setLootKind("item"); setLootLabel(""); setLootItemId(null); }}>Item</button>
                 </div>
                 <label className="field">
                   <span>{lootKind === "gold" ? "Reason" : "Item name"}</span>
-                  <input type="text" value={lootLabel} onChange={(e) => setLootLabel(e.target.value)} />
+                  <input type="text" value={lootLabel} onChange={(e) => { setLootLabel(e.target.value); setLootItemId(null); }} />
                 </label>
+                {lootKind === "item" && (
+                  lootPickingItem ? (
+                    <div className="save-panel">
+                      <EntitySearchPicker type="item" onSelect={pickLootItem} placeholder="Search items…" />
+                      <button className="btn-secondary" onClick={() => setLootPickingItem(false)}>Cancel</button>
+                    </div>
+                  ) : (
+                    <button className="btn-secondary" onClick={() => setLootPickingItem(true)}>Pick from Compendium…</button>
+                  )
+                )}
                 <label className="field">
                   <span>{lootKind === "gold" ? "Gold amount" : "Quantity"}</span>
                   <input type="number" min={1} value={lootAmount} onChange={(e) => setLootAmount(e.target.value)} />

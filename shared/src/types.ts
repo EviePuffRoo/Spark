@@ -449,6 +449,13 @@ export interface LedgerEntryInput {
   label: string;
   amount: number;
   authorName: string;
+  // Links a kind:"item" entry to a real Item record (e.g. a loot drop
+  // picked from the Compendium rather than typed as free text) — what
+  // makes claiming it onto a specific PlayerCharacter's equippedItems
+  // possible. Absent for gold entries and for quick free-text item
+  // entries with no formal Item behind them; either kind still works the
+  // same as before for tracking the party's shared holdings.
+  itemId?: string;
 }
 
 export interface LedgerEntry extends LedgerEntryInput {
@@ -460,6 +467,10 @@ export interface LedgerEntry extends LedgerEntryInput {
 export interface LedgerItemTotal {
   label: string;
   quantity: number;
+  // Present only when every entry contributing to this total (so far)
+  // shares one real Item id — see LedgerEntryInput.itemId. Its presence
+  // is what the client uses to decide whether to offer a Claim action.
+  itemId?: string;
 }
 
 export interface LedgerSummary {

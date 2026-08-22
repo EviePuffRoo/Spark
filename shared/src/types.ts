@@ -730,6 +730,28 @@ export interface Shop extends ShopInput {
   updatedAt: string;
 }
 
+// A custom-crafted item ordered from a shop's artisan rather than bought
+// off the shelf — the gold is paid up front (see computeCraftingCost) and
+// the item sits pending until the DM marks it delivered, representing the
+// in-fiction turnaround. Coexists with Shop.stock's instant buy/sell; this
+// is for anything not already sitting in stock.
+export interface ShopCommissionInput {
+  worldId: string;
+  shopId: string;
+  itemId: string;
+  characterName: string;
+}
+
+export interface ShopCommission extends ShopCommissionInput {
+  id: string;
+  userId: string;
+  itemName: string;
+  price: number;
+  daysRequired: number;
+  deliveredAt?: string;
+  createdAt: string;
+}
+
 export interface GenerateShopRequest {
   archetype?: string;
   stockSize?: number;

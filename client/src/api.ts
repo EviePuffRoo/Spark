@@ -20,7 +20,7 @@ import type {
   ZoneMapTemplate, ZoneMapTemplateInput,
   Dungeon, DungeonInput, GenerateDungeonRequest, GeneratedDungeonOutline,
   BattleMap, BattleMapInput,
-  Shop, ShopInput, GenerateShopRequest, GeneratedShop,
+  Shop, ShopInput, GenerateShopRequest, GeneratedShop, ShopCommission, ShopCommissionInput,
   Region, GenerateRegionRequest, GeneratedRegion,
   Settlement, GenerateSettlementRequest, GeneratedSettlement,
   ActivitySummary,
@@ -306,6 +306,10 @@ export const api = {
   updateShop: (id: string, patch: Partial<Shop>) =>
     request<Shop>(`/shops/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   deleteShop: (id: string) => request<void>(`/shops/${id}`, { method: "DELETE" }),
+  listShopCommissions: (worldId: string) => request<ShopCommission[]>(`/shop-commissions?worldId=${worldId}`),
+  postShopCommission: (commission: ShopCommissionInput) =>
+    request<ShopCommission>("/shop-commissions", { method: "POST", body: JSON.stringify(commission) }),
+  deliverShopCommission: (id: string) => request<ShopCommission>(`/shop-commissions/${id}/deliver`, { method: "POST" }),
 
   generateRegion: (body: GenerateRegionRequest) =>
     request<GeneratedRegion>("/generate-region", { method: "POST", body: JSON.stringify(body) }),

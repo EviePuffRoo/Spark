@@ -2651,6 +2651,14 @@ textarea {
   border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent);
 }
 
+.opportunity-prompt {
+  margin: 6px 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--warning) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warning) 40%, transparent);
+}
+
 .condition-duration-field {
   width: 100%;
   margin-bottom: 6px;

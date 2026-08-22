@@ -6,6 +6,7 @@ export * from "./gridMovement.js";
 export * from "./vision.js";
 export * from "./aoeTemplates.js";
 export * from "./concentration.js";
+export * from "./opportunityAttack.js";
 export * from "./reputation.js";
 export * from "./characterImport.js";
 export * from "./equipmentStats.js";

@@ -1,5 +1,5 @@
 import type {
-  Character, GenerateRequest, GeneratedCharacter, World,
+  Character, GenerateRequest, GeneratedCharacter, World, DispositionLogEntry,
   Item, GenerateItemRequest, GeneratedItem,
   Location, GenerateLocationRequest, GeneratedLocation,
   QuestHook, GenerateQuestHookRequest, GeneratedQuestHook,
@@ -132,6 +132,9 @@ export const api = {
   updateCharacter: (id: string, patch: Partial<Character>) =>
     request<Character>(`/characters/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   deleteCharacter: (id: string) => request<void>(`/characters/${id}`, { method: "DELETE" }),
+  adjustCharacterDisposition: (id: string, delta: number, reason?: string) =>
+    request<Character>(`/characters/${id}/adjust-disposition`, { method: "POST", body: JSON.stringify({ delta, reason }) }),
+  getDispositionLog: (id: string) => request<DispositionLogEntry[]>(`/characters/${id}/disposition-log`),
 
   listItems: (worldId?: string) =>
     request<Item[]>(`/items${worldId ? `?worldId=${worldId}` : ""}`),

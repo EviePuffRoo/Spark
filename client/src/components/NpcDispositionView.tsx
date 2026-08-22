@@ -1,22 +1,25 @@
 import { useEffect, useState } from "react";
-import type { Faction, SearchResult } from "@spark/shared";
+import type { Faction, SearchResult, DispositionLogEntry } from "@spark/shared";
 import { computeReputationTier, REPUTATION_TIER_LABELS } from "@spark/shared";
 import { api } from "../api";
 import { EntitySearchPicker } from "./EntitySearchPicker";
+import { timeAgo } from "./DiceRoller";
 
 export function NpcDispositionView({
-  disposition, factionId, canEdit, onAdjust, onLinkFaction, onSyncToFaction,
+  characterId, disposition, factionId, canEdit, onChanged, onLinkFaction,
 }: {
+  characterId: string;
   disposition: number;
   factionId?: string | null;
   canEdit?: boolean;
-  onAdjust?: (delta: number) => void;
+  onChanged?: () => void;
   onLinkFaction?: (factionId: string | null) => void;
-  onSyncToFaction?: (reputation: number) => void;
 }) {
   const [delta, setDelta] = useState("");
+  const [reason, setReason] = useState("");
   const [faction, setFaction] = useState<Faction | null>(null);
   const [picking, setPicking] = useState(false);
+  const [log, setLog] = useState<DispositionLogEntry[]>([]);
 
   useEffect(() => {
     if (!factionId) {
@@ -28,13 +31,24 @@ export function NpcDispositionView({
     return () => { cancelled = true; };
   }, [factionId]);
 
+  useEffect(() => {
+    let cancelled = false;
+    api.getDispositionLog(characterId).then((entries) => { if (!cancelled) setLog(entries); }).catch(() => { if (!cancelled) setLog([]); });
+    return () => { cancelled = true; };
+  }, [characterId, disposition]);
+
+  async function adjust(amount: number, adjustReason?: string) {
+    await api.adjustCharacterDisposition(characterId, amount, adjustReason);
+    onChanged?.();
+  }
+
   return (
     <>
       <h3 className="section-heading">Disposition</h3>
       <p className={`reputation-readout reputation-${computeReputationTier(disposition)}`}>
         {REPUTATION_TIER_LABELS[computeReputationTier(disposition)]} ({disposition})
       </p>
-      {canEdit && onAdjust && (
+      {canEdit && (
         <div className="button-row">
           <input
             type="number"
@@ -44,18 +58,42 @@ export function NpcDispositionView({
             placeholder="amount"
             aria-label="Disposition change amount"
           />
+          <input
+            type="text"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Reason (optional)"
+            aria-label="Disposition change reason"
+          />
           <button
             className="btn-secondary"
-            onClick={() => {
+            onClick={async () => {
               const amount = Number(delta);
               if (!delta || Number.isNaN(amount) || amount === 0) return;
-              onAdjust(amount);
+              await adjust(amount, reason || undefined);
               setDelta("");
+              setReason("");
             }}
           >
             Adjust
           </button>
         </div>
+      )}
+
+      {log.length > 0 && (
+        <ul className="dice-history">
+          {log.map((entry) => (
+            <li key={entry.id} className="dice-history-row">
+              <div className="dice-history-main">
+                <span>
+                  {entry.delta > 0 ? "+" : ""}{entry.delta} by {entry.authorName}
+                  {entry.reason ? ` — ${entry.reason}` : ""}
+                </span>
+                <span className="dice-history-time">{timeAgo(new Date(entry.createdAt).getTime())}</span>
+              </div>
+            </li>
+          ))}
+        </ul>
       )}
 
       {(faction || (canEdit && onLinkFaction)) && <h3 className="section-heading">Faction</h3>}
@@ -64,8 +102,8 @@ export function NpcDispositionView({
           <span>
             {faction.name} — {REPUTATION_TIER_LABELS[computeReputationTier(faction.reputation)]} ({faction.reputation})
           </span>
-          {canEdit && onSyncToFaction && (
-            <button className="btn-secondary" onClick={() => onSyncToFaction(faction.reputation)}>
+          {canEdit && faction.reputation !== disposition && (
+            <button className="btn-secondary" onClick={() => adjust(faction.reputation - disposition, `Synced to ${faction.name}'s reputation`)}>
               Sync Disposition to Faction
             </button>
           )}

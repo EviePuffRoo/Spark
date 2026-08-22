@@ -44,6 +44,7 @@ model User {
   galleryReports  GalleryReport[]
   chatMessages    ChatMessage[]
   battleMaps      BattleMap[]
+  dispositionLogEntries DispositionLogEntry[]
 }
 
 model World {
@@ -154,10 +155,25 @@ model Character {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  dispositionLog DispositionLogEntry[]
 
   @@index([worldId])
   @@index([userId])
   @@index([factionId])
+}
+
+model DispositionLogEntry {
+  id          String   @id @default(cuid())
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  authorName  String
+  delta       Int
+  reason      String?
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@index([characterId])
 }
 
 model Item {

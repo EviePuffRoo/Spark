@@ -174,4 +174,77 @@ describe("characters CRUD + ownership — representative entity-router template"
     const get = await agent.get(`/api/characters/${id}`);
     expect(get.body.factionId).toBeNull();
   });
+
+  it("adjusts disposition incrementally and logs delta/reason/author", async () => {
+    const { agent } = await signupAgent("cruduser12");
+    const create = await agent.post("/api/characters").send(charPayload());
+    const id = create.body.id as string;
+
+    const adjust = await agent.post(`/api/characters/${id}/adjust-disposition`).send({ delta: 10, reason: "Saved their village" });
+    expect(adjust.status).toBe(200);
+    expect(adjust.body.disposition).toBe(10);
+
+    const again = await agent.post(`/api/characters/${id}/adjust-disposition`).send({ delta: -3 });
+    expect(again.status).toBe(200);
+    expect(again.body.disposition).toBe(7);
+
+    const log = await agent.get(`/api/characters/${id}/disposition-log`);
+    expect(log.status).toBe(200);
+    expect(log.body).toHaveLength(2);
+    expect(log.body[0].delta).toBe(-3);
+    expect(log.body[0].reason).toBeUndefined();
+    expect(log.body[1].delta).toBe(10);
+    expect(log.body[1].reason).toBe("Saved their village");
+    expect(log.body[1].authorName).toBe("cruduser12");
+  });
+
+  it("400s adjust-disposition with a zero or missing delta", async () => {
+    const { agent } = await signupAgent("cruduser13");
+    const create = await agent.post("/api/characters").send(charPayload());
+    const id = create.body.id as string;
+
+    const zero = await agent.post(`/api/characters/${id}/adjust-disposition`).send({ delta: 0 });
+    expect(zero.status).toBe(400);
+    const missing = await agent.post(`/api/characters/${id}/adjust-disposition`).send({});
+    expect(missing.status).toBe(400);
+  });
+
+  it("404s adjust-disposition and the disposition log for a non-owner", async () => {
+    const { agent: owner } = await signupAgent("cruduser14");
+    const create = await owner.post("/api/characters").send(charPayload());
+    const id = create.body.id as string;
+
+    const { agent: other } = await signupAgent("cruduser15");
+    const adjust = await other.post(`/api/characters/${id}/adjust-disposition`).send({ delta: 5 });
+    expect(adjust.status).toBe(404);
+  });
+
+  it("lets a world member (not just the owner) read the disposition log", async () => {
+    const { agent: dm } = await signupAgent("cruduser16");
+    const world = await dm.post("/api/worlds").send({ name: "Shared World 2" });
+    const worldId = world.body.id as string;
+    const create = await dm.post("/api/characters").send(charPayload({ worldId }));
+    const id = create.body.id as string;
+    await dm.post(`/api/characters/${id}/adjust-disposition`).send({ delta: 4, reason: "Helped at the gate" });
+
+    const joinCode = await dm.post(`/api/worlds/${worldId}/join-code`);
+    const { agent: player } = await signupAgent("cruduser17");
+    await player.post("/api/worlds/join").send({ code: joinCode.body.code });
+
+    const log = await player.get(`/api/characters/${id}/disposition-log`);
+    expect(log.status).toBe(200);
+    expect(log.body).toHaveLength(1);
+    expect(log.body[0].reason).toBe("Helped at the gate");
+  });
+
+  it("cascade-deletes disposition log entries when the character is deleted", async () => {
+    const { agent } = await signupAgent("cruduser18");
+    const create = await agent.post("/api/characters").send(charPayload());
+    const id = create.body.id as string;
+    await agent.post(`/api/characters/${id}/adjust-disposition`).send({ delta: 2 });
+
+    await agent.delete(`/api/characters/${id}`);
+    const count = await prisma.dispositionLogEntry.count({ where: { characterId: id } });
+    expect(count).toBe(0);
+  });
 });

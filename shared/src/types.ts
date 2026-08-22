@@ -85,6 +85,22 @@ export interface Character {
   updatedAt: string;
 }
 
+// An append-only history of why an NPC's disposition changed — same idea
+// as the party ledger's entry list, but scoped to one Character instead
+// of a whole world. Created automatically by POST
+// /characters/:id/adjust-disposition; a raw PATCH of `disposition` (still
+// always available, per this app's "trust the DM" convention) does not
+// create one, since there's no delta/reason to record for a hand edit.
+export interface DispositionLogEntry {
+  id: string;
+  characterId: string;
+  userId: string;
+  authorName: string;
+  delta: number;
+  reason?: string;
+  createdAt: string;
+}
+
 export interface World {
   id: string;
   name: string;

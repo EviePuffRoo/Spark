@@ -1012,10 +1012,19 @@ textarea {
 .death-saves-panel,
 .spell-slots-panel,
 .prepared-spells-panel,
-.class-resource-panel {
+.class-resource-panel,
+.level-up-panel {
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px dashed var(--border);
+}
+
+.level-up-panel .button-row {
+  align-items: center;
+}
+
+.level-up-panel input[type="number"] {
+  max-width: 120px;
 }
 
 .hp-tracker-value {

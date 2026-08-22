@@ -450,6 +450,8 @@ export function toPlayerCharacterDTO(row: PlayerCharacterRow): PlayerCharacter {
     preparedSpells: JSON.parse(row.preparedSpells),
     classResources: JSON.parse(row.classResources),
     conditions: JSON.parse(row.conditions),
+    xp: row.xp,
+    proficiencyBonus: row.proficiencyBonus,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };

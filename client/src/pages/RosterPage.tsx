@@ -26,6 +26,7 @@ import { EmptyState } from "../components/EmptyState";
 import { EquipmentPanel } from "../components/EquipmentPanel";
 import { AdventureCardView } from "../components/AdventureCardView";
 import { PlayerCharacterCardView } from "../components/PlayerCharacterCardView";
+import { LevelUpPanel } from "../components/LevelUpPanel";
 import type { PrintItem } from "../components/PrintPane";
 import { CharacterEditor } from "../components/CharacterEditor";
 import { ItemEditor } from "../components/ItemEditor";
@@ -837,6 +838,7 @@ export function RosterPage({
         {selectedPlayerCharacter && !editingContent && (
           <>
             <PlayerCharacterCardView pc={selectedPlayerCharacter} />
+            <LevelUpPanel pc={selectedPlayerCharacter} onUpdated={refresh} />
             <EquipmentPanel
               equippedItems={selectedPlayerCharacter.equippedItems}
               attunedItems={selectedPlayerCharacter.attunedItems}

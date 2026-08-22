@@ -1,5 +1,5 @@
 import {
-  PC_CLASSES, PC_STANDARD_ARRAY, FULL_CASTER_SLOTS, HALF_CASTER_SLOTS, PACT_MAGIC_SLOTS,
+  PC_CLASSES, PC_STANDARD_ARRAY, FULL_CASTER_SLOTS, HALF_CASTER_SLOTS, PACT_MAGIC_SLOTS, PC_PROFICIENCY_BONUS_BY_LEVEL,
   type ArmorTier, type PcClassDef,
 } from "../data/classes.js";
 import { RACES } from "../data/races.js";
@@ -52,6 +52,40 @@ export function computeClassResource(pcClass: PcClassDef, level: number): ClassR
   const max = pcClass.resource.countByLevel[idx];
   if (max <= 0) return undefined;
   return { name: pcClass.resource.name, max, current: max, rechargeOn: pcClass.resource.rechargeOn };
+}
+
+// A stored PlayerCharacter's className is free text (it's whatever the
+// generator's pcClass.name was, or whatever a homebrew/imported character
+// typed) rather than a PC_CLASSES id — a level-up on a class that doesn't
+// match any known entry falls back to a flat d8 hit die for the HP math
+// and leaves spellSlots/classResources untouched (classMatched: false),
+// rather than guessing at rules the app has no table for.
+const FALLBACK_HIT_DIE = 8;
+
+export interface LevelUpChanges {
+  hpGain: number;
+  spellSlots: SpellSlotLevel[];
+  classResource: ClassResource | undefined;
+  proficiencyBonus: number;
+  classMatched: boolean;
+}
+
+// The delta this level-up applies on top of whatever a character's current
+// maxHp/spellSlots/etc. already are — never a from-scratch recompute, so a
+// manually-tweaked current HP or homebrewed slot count from before this
+// level-up is preserved rather than overwritten. Spell slots and the class
+// resource, when the class is known, refresh to their new full values
+// (leveling up is assumed to happen between sessions/after a rest).
+export function computeLevelUpChanges(pcClass: PcClassDef | undefined, fromLevel: number, toLevel: number, conMod: number): LevelUpChanges {
+  const hitDie = pcClass?.hitDie ?? FALLBACK_HIT_DIE;
+  const proficiencyBonus = PC_PROFICIENCY_BONUS_BY_LEVEL[Math.min(19, Math.max(0, Math.trunc(toLevel) - 1))];
+  return {
+    hpGain: computeHp(hitDie, toLevel, conMod) - computeHp(hitDie, fromLevel, conMod),
+    spellSlots: pcClass ? computeSpellSlots(pcClass, toLevel) : [],
+    classResource: pcClass ? computeClassResource(pcClass, toLevel) : undefined,
+    proficiencyBonus,
+    classMatched: !!pcClass,
+  };
 }
 
 export function generatePlayerCharacter(request: GeneratePlayerCharacterRequest = {}): GeneratedPlayerCharacter {

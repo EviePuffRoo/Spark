@@ -134,4 +134,44 @@ describe("characters CRUD + ownership — representative entity-router template"
     const get = await agent.get(`/api/characters/${id}`);
     expect(get.body.disposition).toBe(15);
   });
+
+  it("lets the owner link an NPC to their own faction, but not someone else's", async () => {
+    const { agent } = await signupAgent("cruduser9");
+    const faction = await agent.post("/api/factions").send({
+      name: "Thieves Guild", factionType: "criminal", agenda: "a", methods: "m", publicFace: "p", hook: "h",
+    });
+    const create = await agent.post("/api/characters").send(charPayload());
+    expect(create.body.factionId).toBeNull();
+    const id = create.body.id as string;
+
+    const link = await agent.patch(`/api/characters/${id}`).send({ factionId: faction.body.id });
+    expect(link.status).toBe(200);
+    expect(link.body.factionId).toBe(faction.body.id);
+
+    const { agent: other } = await signupAgent("cruduser10");
+    const otherFaction = await other.post("/api/factions").send({
+      name: "Rival Guild", factionType: "criminal", agenda: "a", methods: "m", publicFace: "p", hook: "h",
+    });
+    const badLink = await agent.patch(`/api/characters/${id}`).send({ factionId: otherFaction.body.id });
+    expect(badLink.status).toBe(403);
+
+    const unlink = await agent.patch(`/api/characters/${id}`).send({ factionId: null });
+    expect(unlink.status).toBe(200);
+    expect(unlink.body.factionId).toBeNull();
+  });
+
+  it("clears an NPC's factionId when the linked faction is deleted", async () => {
+    const { agent } = await signupAgent("cruduser11");
+    const faction = await agent.post("/api/factions").send({
+      name: "Doomed Guild", factionType: "criminal", agenda: "a", methods: "m", publicFace: "p", hook: "h",
+    });
+    const create = await agent.post("/api/characters").send(charPayload());
+    const id = create.body.id as string;
+    await agent.patch(`/api/characters/${id}`).send({ factionId: faction.body.id });
+
+    await agent.delete(`/api/factions/${faction.body.id}`);
+
+    const get = await agent.get(`/api/characters/${id}`);
+    expect(get.body.factionId).toBeNull();
+  });
 });

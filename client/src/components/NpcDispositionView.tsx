@@ -1,14 +1,32 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import type { Faction, SearchResult } from "@spark/shared";
 import { computeReputationTier, REPUTATION_TIER_LABELS } from "@spark/shared";
+import { api } from "../api";
+import { EntitySearchPicker } from "./EntitySearchPicker";
 
 export function NpcDispositionView({
-  disposition, canEdit, onAdjust,
+  disposition, factionId, canEdit, onAdjust, onLinkFaction, onSyncToFaction,
 }: {
   disposition: number;
+  factionId?: string | null;
   canEdit?: boolean;
   onAdjust?: (delta: number) => void;
+  onLinkFaction?: (factionId: string | null) => void;
+  onSyncToFaction?: (reputation: number) => void;
 }) {
   const [delta, setDelta] = useState("");
+  const [faction, setFaction] = useState<Faction | null>(null);
+  const [picking, setPicking] = useState(false);
+
+  useEffect(() => {
+    if (!factionId) {
+      setFaction(null);
+      return;
+    }
+    let cancelled = false;
+    api.getFaction(factionId).then((f) => { if (!cancelled) setFaction(f); }).catch(() => { if (!cancelled) setFaction(null); });
+    return () => { cancelled = true; };
+  }, [factionId]);
 
   return (
     <>
@@ -38,6 +56,37 @@ export function NpcDispositionView({
             Adjust
           </button>
         </div>
+      )}
+
+      {(faction || (canEdit && onLinkFaction)) && <h3 className="section-heading">Faction</h3>}
+      {faction && (
+        <div className="button-row">
+          <span>
+            {faction.name} — {REPUTATION_TIER_LABELS[computeReputationTier(faction.reputation)]} ({faction.reputation})
+          </span>
+          {canEdit && onSyncToFaction && (
+            <button className="btn-secondary" onClick={() => onSyncToFaction(faction.reputation)}>
+              Sync Disposition to Faction
+            </button>
+          )}
+          {canEdit && onLinkFaction && (
+            <button className="btn-secondary" onClick={() => onLinkFaction(null)}>Unlink</button>
+          )}
+        </div>
+      )}
+      {canEdit && onLinkFaction && !faction && (
+        picking ? (
+          <div className="save-panel">
+            <EntitySearchPicker
+              type="faction"
+              onSelect={(result: SearchResult) => { onLinkFaction(result.id); setPicking(false); }}
+              placeholder="Search factions…"
+            />
+            <button className="btn-secondary" onClick={() => setPicking(false)}>Cancel</button>
+          </div>
+        ) : (
+          <button className="btn-secondary" onClick={() => setPicking(true)}>+ Link Faction</button>
+        )
       )}
     </>
   );

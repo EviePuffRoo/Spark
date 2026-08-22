@@ -759,9 +759,18 @@ export function RosterPage({
             {selectedCharacter.kind === "npc" && (
               <NpcDispositionView
                 disposition={selectedCharacter.disposition}
+                factionId={selectedCharacter.factionId}
                 canEdit={canEditSelected}
                 onAdjust={async (delta) => {
                   await api.updateCharacter(selectedCharacter.id, { disposition: selectedCharacter.disposition + delta });
+                  refresh();
+                }}
+                onLinkFaction={async (factionId) => {
+                  await api.updateCharacter(selectedCharacter.id, { factionId });
+                  refresh();
+                }}
+                onSyncToFaction={async (reputation) => {
+                  await api.updateCharacter(selectedCharacter.id, { disposition: reputation });
                   refresh();
                 }}
               />

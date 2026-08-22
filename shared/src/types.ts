@@ -73,6 +73,14 @@ export interface Character {
   // but generally left at its default for kind:"monster" entries, which
   // don't have ongoing relationships with the party the way NPCs do.
   disposition: number;
+  // Optional faction membership — coexists with disposition rather than
+  // replacing it (same "coexists, doesn't replace" pattern as
+  // Location.settlementId): an affiliated NPC's disposition is still a
+  // fully independent, freely-adjustable value, not derived from the
+  // faction's reputation. The client may offer a one-click "sync to
+  // faction" convenience action, but nothing keeps the two in lockstep
+  // automatically.
+  factionId?: string | null;
   createdAt: string;
   updatedAt: string;
 }

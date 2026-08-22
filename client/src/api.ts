@@ -200,6 +200,8 @@ export const api = {
     request<GeneratedPlayerCharacter>("/generate-player-character", { method: "POST", body: JSON.stringify(body) }),
   restPlayerCharacter: (id: string, kind: "short" | "long") =>
     request<PlayerCharacter>(`/player-characters/${id}/rest`, { method: "POST", body: JSON.stringify({ kind }) }),
+  levelUpPlayerCharacter: (id: string, toLevel?: number) =>
+    request<PlayerCharacter>(`/player-characters/${id}/level-up`, { method: "POST", body: JSON.stringify(toLevel !== undefined ? { toLevel } : {}) }),
   listPlayerCharacters: (worldId?: string) =>
     request<PlayerCharacter[]>(`/player-characters${worldId ? `?worldId=${worldId}` : ""}`),
   listMyPlayerCharacters: () => request<PlayerCharacter[]>("/player-characters?mine=true"),

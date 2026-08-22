@@ -1,4 +1,5 @@
 import type { PlayerCharacterInput, PlayerCharacter, AbilityKey } from "@spark/shared";
+import { XP_THRESHOLDS } from "@spark/shared";
 
 const ABILITY_ORDER: { key: AbilityKey; label: string }[] = [
   { key: "str", label: "STR" },
@@ -14,7 +15,7 @@ function modifier(score: number): string {
   return mod >= 0 ? `+${mod}` : `${mod}`;
 }
 
-type LivingStateProps = Partial<Pick<PlayerCharacter, "currentHp" | "deathSaves" | "spellSlots" | "preparedSpells" | "classResources">>;
+type LivingStateProps = Partial<Pick<PlayerCharacter, "currentHp" | "deathSaves" | "spellSlots" | "preparedSpells" | "classResources" | "xp" | "proficiencyBonus">>;
 
 export function PlayerCharacterCardView({ pc }: { pc: PlayerCharacterInput & LivingStateProps }) {
   return (
@@ -27,6 +28,10 @@ export function PlayerCharacterCardView({ pc }: { pc: PlayerCharacterInput & Liv
       <hr className="rule gold" />
       <p><strong>Armor Class</strong> {pc.armorClass}</p>
       <p><strong>Hit Points</strong> {pc.currentHp !== undefined ? `${pc.currentHp} / ${pc.maxHp}` : pc.maxHp}</p>
+      {pc.proficiencyBonus !== undefined && <p><strong>Proficiency Bonus</strong> +{pc.proficiencyBonus}</p>}
+      {pc.xp !== undefined && (
+        <p><strong>XP</strong> {pc.xp.toLocaleString()}{pc.level < 20 ? ` / ${XP_THRESHOLDS[pc.level].toLocaleString()} for next level` : " (max level)"}</p>
+      )}
       {pc.deathSaves && (pc.deathSaves.successes > 0 || pc.deathSaves.failures > 0) && (
         <p><strong>Death Saves</strong> {pc.deathSaves.successes} successes, {pc.deathSaves.failures} failures</p>
       )}

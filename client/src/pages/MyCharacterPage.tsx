@@ -3,6 +3,7 @@ import type { PlayerCharacter, PlayerCharacterInput } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { PlayerCharacterCardView } from "../components/PlayerCharacterCardView";
 import { PlayerCharacterEditor, type PlayerCharacterLivingStatePatch } from "../components/PlayerCharacterEditor";
+import { LevelUpPanel } from "../components/LevelUpPanel";
 
 export function MyCharacterPage({ onViewRoster }: { onViewRoster: (worldId: string) => void }) {
   const [characters, setCharacters] = useState<PlayerCharacter[]>([]);
@@ -99,6 +100,7 @@ export function MyCharacterPage({ onViewRoster }: { onViewRoster: (worldId: stri
               ) : (
                 <>
                   <PlayerCharacterCardView pc={pc} />
+                  <LevelUpPanel pc={pc} onUpdated={refresh} />
                   <div className="button-row">
                     <button className="btn-secondary" onClick={() => setEditingId(pc.id)} disabled={status === "saving"}>Edit</button>
                     <button className="btn-secondary" onClick={() => handleRest(pc.id, "short")} disabled={status === "saving"}>Short Rest</button>

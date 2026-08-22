@@ -97,6 +97,84 @@ describe("player character ownership transfer", () => {
   });
 });
 
+describe("level-up", () => {
+  it("recomputes HP incrementally, refreshes spell slots, and bumps proficiency bonus for a recognized class", async () => {
+    const { agent } = await signupAgent("leveldm1");
+    const pc = await agent.post("/api/player-characters").send({
+      name: "Vex", className: "Wizard", level: 1, race: "Human", armorClass: 12, maxHp: 6,
+      abilityScores: { str: 8, dex: 14, con: 12, int: 15, wis: 10, cha: 10 },
+    });
+    expect(pc.body.proficiencyBonus).toBe(2);
+    expect(pc.body.spellSlots).toEqual([]); // level 1 wizard: no slots snapshotted at creation by this route
+
+    const res = await agent.post(`/api/player-characters/${pc.body.id}/level-up`).send({ toLevel: 2 });
+    expect(res.status).toBe(200);
+    expect(res.body.level).toBe(2);
+    // Wizard hit die 6, conMod +1: perLevelAverage = floor(6/2)+1+1 = 5.
+    expect(res.body.maxHp).toBe(11);
+    expect(res.body.currentHp).toBe(11);
+    expect(res.body.proficiencyBonus).toBe(2);
+    expect(res.body.spellSlots).toEqual([{ level: 1, max: 3, current: 3 }]);
+  });
+
+  it("adds the HP gain on top of current HP rather than resetting to full", async () => {
+    const { agent } = await signupAgent("leveldm2");
+    const pc = await agent.post("/api/player-characters").send({
+      name: "Bram", className: "Fighter", level: 1, race: "Dwarf", armorClass: 16, maxHp: 12,
+      abilityScores: { str: 15, dex: 10, con: 14, int: 8, wis: 10, cha: 8 },
+    });
+    await agent.patch(`/api/player-characters/${pc.body.id}`).send({ currentHp: 3 });
+
+    const res = await agent.post(`/api/player-characters/${pc.body.id}/level-up`).send({ toLevel: 2 });
+    // Fighter hit die 10, conMod +2: perLevelAverage = floor(10/2)+1+2 = 8.
+    expect(res.body.maxHp).toBe(20);
+    expect(res.body.currentHp).toBe(11); // 3 + 8, not reset to 20
+  });
+
+  it("infers the target level from xp when toLevel is omitted", async () => {
+    const { agent } = await signupAgent("leveldm3");
+    const pc = await agent.post("/api/player-characters").send({ ...PC_BODY, maxHp: 12 });
+    await agent.patch(`/api/player-characters/${pc.body.id}`).send({ xp: 300 });
+
+    const res = await agent.post(`/api/player-characters/${pc.body.id}/level-up`).send({});
+    expect(res.status).toBe(200);
+    expect(res.body.level).toBe(2);
+  });
+
+  it("400s a target level that doesn't exceed the current level", async () => {
+    const { agent } = await signupAgent("leveldm4");
+    const pc = await agent.post("/api/player-characters").send({ ...PC_BODY, level: 3 });
+
+    const res = await agent.post(`/api/player-characters/${pc.body.id}/level-up`).send({ toLevel: 3 });
+    expect(res.status).toBe(400);
+  });
+
+  it("404s a level-up attempt from a non-owner", async () => {
+    const { agent: dm } = await signupAgent("leveldm5");
+    const { agent: other } = await signupAgent("levelother5");
+    const pc = await dm.post("/api/player-characters").send(PC_BODY);
+
+    const res = await other.post(`/api/player-characters/${pc.body.id}/level-up`).send({ toLevel: 2 });
+    expect(res.status).toBe(404);
+  });
+
+  it("falls back gracefully for an unrecognized class name, still updating HP/proficiency but leaving existing spell slots untouched", async () => {
+    const { agent } = await signupAgent("leveldm6");
+    const pc = await agent.post("/api/player-characters").send({
+      name: "Zeth", className: "Homebrew Artificer", level: 4, race: "Gnome", armorClass: 14, maxHp: 30,
+    });
+    await agent.patch(`/api/player-characters/${pc.body.id}`).send({ spellSlots: [{ level: 1, max: 2, current: 1 }] });
+
+    const res = await agent.post(`/api/player-characters/${pc.body.id}/level-up`).send({ toLevel: 5 });
+    expect(res.status).toBe(200);
+    expect(res.body.level).toBe(5);
+    expect(res.body.proficiencyBonus).toBe(3);
+    // d8 fallback, conMod 0: perLevelAverage = floor(8/2)+1+0 = 5.
+    expect(res.body.maxHp).toBe(35);
+    expect(res.body.spellSlots).toEqual([{ level: 1, max: 2, current: 1 }]); // untouched, not reset/wiped
+  });
+});
+
 describe("rest and the home base's comfort bonus", () => {
   it("heals HP on a short rest by the base's summed restBonus", async () => {
     const { agent } = await signupAgent("restdm1");

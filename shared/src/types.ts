@@ -333,6 +333,16 @@ export interface PlayerCharacter extends PlayerCharacterInput {
   preparedSpells: string[];
   classResources: ClassResource[];
   conditions: string[];
+  // Two leveling styles coexist here, same as the rest of this app's
+  // "trust the DM to hand-edit anything" philosophy: a table using
+  // milestone leveling just ignores xp and PATCHes level directly (as it
+  // always could); a table tracking XP awards it here and calls the
+  // level-up endpoint once levelForXp(xp) exceeds the stored level. Either
+  // way, level-up is what actually recomputes maxHp/spellSlots/
+  // classResources/proficiencyBonus together — editing level via a plain
+  // PATCH (still supported) has no such side effects, exactly as before.
+  xp: number;
+  proficiencyBonus: number;
   createdAt: string;
   updatedAt: string;
 }

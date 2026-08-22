@@ -3,8 +3,12 @@ import { prisma } from "../db.js";
 import { toPlayerCharacterDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
 import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
-import { BASE_UPGRADES } from "@spark/shared";
+import { BASE_UPGRADES, PC_CLASSES, PC_PROFICIENCY_BONUS_BY_LEVEL, levelForXp, computeLevelUpChanges } from "@spark/shared";
 import type { DeathSaves, SpellSlotLevel, ClassResource } from "@spark/shared";
+
+function proficiencyBonusForLevel(level: number): number {
+  return PC_PROFICIENCY_BONUS_BY_LEVEL[Math.min(19, Math.max(0, Math.trunc(level) - 1))];
+}
 
 const BASE_UPGRADE_BY_ID = new Map(BASE_UPGRADES.map((u) => [u.id, u]));
 
@@ -94,6 +98,7 @@ playerCharactersRouter.post("/", async (req, res) => {
       notes: notes ?? null,
       spellSlots: JSON.stringify(coerceSpellSlots(body.spellSlots)),
       classResources: JSON.stringify(coerceClassResources(body.classResources)),
+      proficiencyBonus: proficiencyBonusForLevel(Number(level)),
       hiddenFromParty: !!hiddenFromParty,
       userId: req.userId!,
     },
@@ -108,7 +113,7 @@ playerCharactersRouter.patch("/:id", async (req, res) => {
   for (const field of ["name", "className", "race", "playerName", "notes", "hiddenFromParty"] as const) {
     if (field in body) data[field] = body[field];
   }
-  for (const field of ["level", "armorClass", "maxHp", "currentHp"] as const) {
+  for (const field of ["level", "armorClass", "maxHp", "currentHp", "xp", "proficiencyBonus"] as const) {
     if (field in body) data[field] = Number(body[field]);
   }
   if ("abilityScores" in body) data.abilityScores = JSON.stringify(body.abilityScores ?? {});
@@ -199,6 +204,42 @@ playerCharactersRouter.post("/:id/rest", async (req, res) => {
       }
       if (restBonus > 0) data.currentHp = Math.min(row.maxHp, row.currentHp + restBonus);
     }
+  }
+
+  await prisma.playerCharacter.update({ where: { id: row.id }, data });
+  const updated = await prisma.playerCharacter.findUnique({ where: { id: row.id } });
+  res.json(toPlayerCharacterDTO(updated!));
+});
+
+// Applies a level-up atomically: recomputes maxHp/currentHp (incremental
+// gain, not a from-scratch total — see computeLevelUpChanges), spell slots,
+// class resource, and proficiency bonus together. A plain PATCH still lets
+// the level field be hand-edited with none of these side effects, exactly
+// as before — this endpoint is the "smart" convenience action layered on
+// top, not a replacement for it.
+playerCharactersRouter.post("/:id/level-up", async (req, res) => {
+  const row = await prisma.playerCharacter.findFirst({ where: { id: req.params.id, userId: req.userId } });
+  if (!row) return res.status(404).json({ error: "Player character not found" });
+
+  const toLevel = typeof req.body?.toLevel === "number" ? Math.trunc(req.body.toLevel) : levelForXp(row.xp);
+  if (!Number.isFinite(toLevel) || toLevel <= row.level || toLevel > 20) {
+    return res.status(400).json({ error: "Target level must be greater than the current level, up to 20" });
+  }
+
+  const pcClass = PC_CLASSES.find((c) => c.name === row.className);
+  const abilityScores = JSON.parse(row.abilityScores) as Record<string, number>;
+  const conMod = Math.floor(((abilityScores.con ?? 10) - 10) / 2);
+  const changes = computeLevelUpChanges(pcClass, row.level, toLevel, conMod);
+
+  const data: Record<string, unknown> = {
+    level: toLevel,
+    maxHp: row.maxHp + changes.hpGain,
+    currentHp: row.currentHp + changes.hpGain,
+    proficiencyBonus: changes.proficiencyBonus,
+  };
+  if (changes.classMatched) {
+    data.spellSlots = JSON.stringify(changes.spellSlots);
+    data.classResources = JSON.stringify(changes.classResource ? [changes.classResource] : []);
   }
 
   await prisma.playerCharacter.update({ where: { id: row.id }, data });

@@ -114,3 +114,32 @@ export const PACT_MAGIC_SLOTS: PactMagicLevel[] = [
   { slotLevel: 5, count: 3 }, { slotLevel: 5, count: 3 }, { slotLevel: 5, count: 3 }, { slotLevel: 5, count: 3 },
   { slotLevel: 5, count: 4 }, { slotLevel: 5, count: 4 }, { slotLevel: 5, count: 4 }, { slotLevel: 5, count: 4 },
 ];
+
+// Standard PC proficiency-bonus-by-level progression, indexed by level - 1.
+// Monster/NPC stat blocks carry their own flat proficiencyBonus field
+// instead (see StatBlock) — this table is PC-specific.
+export const PC_PROFICIENCY_BONUS_BY_LEVEL: number[] = [
+  2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6,
+];
+
+// Standard 5e XP-to-level thresholds, indexed by level - 1 (index 0 = the
+// 0 XP needed for level 1). This app's own simplified leveling convention —
+// see computeLevelUpChanges in generator/playerCharacters.ts, and
+// PlayerCharacter.xp/level in types.ts's doc comment for how the two
+// leveling styles (XP-threshold vs. DM milestone) coexist.
+export const XP_THRESHOLDS: number[] = [
+  0, 300, 900, 2700, 6500, 14000, 23000, 34000, 48000, 64000,
+  85000, 100000, 120000, 140000, 165000, 195000, 225000, 265000, 305000, 355000,
+];
+
+// The highest level whose XP threshold the given xp total meets or
+// exceeds — the level a character's accumulated xp currently qualifies
+// for, independent of whatever level is actually stored (a milestone
+// table may never look at this at all).
+export function levelForXp(xp: number): number {
+  let level = 1;
+  for (let i = 0; i < XP_THRESHOLDS.length; i++) {
+    if (xp >= XP_THRESHOLDS[i]) level = i + 1;
+  }
+  return level;
+}

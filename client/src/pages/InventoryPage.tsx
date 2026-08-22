@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import type { LedgerSummary } from "@spark/shared";
+import type { LedgerSummary, PlayerCharacter, SearchResult } from "@spark/shared";
 import { api } from "../api";
 import { useAuth } from "../AuthContext";
 import { useActiveWorld } from "../ActiveWorldContext";
 import { useWorldLiveChannel } from "../useWorldLiveChannel";
 import { InventoryIcon } from "../components/icons";
+import { EntitySearchPicker } from "../components/EntitySearchPicker";
 
 function timeAgo(iso: string): string {
   const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
@@ -28,8 +29,16 @@ export function InventoryPage() {
   const [goldReason, setGoldReason] = useState("");
   const [itemName, setItemName] = useState("");
   const [itemQuantity, setItemQuantity] = useState("1");
+  const [pickedItemId, setPickedItemId] = useState<string | null>(null);
+  const [pickingItem, setPickingItem] = useState(false);
+
+  const [myCharacters, setMyCharacters] = useState<PlayerCharacter[]>([]);
+  const [claimingKey, setClaimingKey] = useState<string | null>(null);
 
   useEffect(() => { if (!worldId) setSummary(null); }, [worldId]);
+  useEffect(() => {
+    api.listMyPlayerCharacters().then(setMyCharacters).catch(() => {});
+  }, []);
 
   const { error: liveError } = useWorldLiveChannel(worldId || null, { onLedger: setSummary });
   useEffect(() => { setError(liveError ?? null); }, [liveError]);
@@ -73,18 +82,38 @@ export function InventoryPage() {
         worldId, kind: "item", amount: Math.trunc(quantity),
         label: itemName.trim(),
         authorName: authorName.trim() || user!.displayName || user!.username,
+        itemId: pickedItemId ?? undefined,
       });
       setItemName("");
       setItemQuantity("1");
+      setPickedItemId(null);
       refresh();
     } catch (e) {
       setError((e as Error).message);
     }
   }
 
+  function pickItem(result: SearchResult) {
+    setItemName(result.name);
+    setPickedItemId(result.id);
+    setPickingItem(false);
+  }
+
   async function deleteEntry(id: string) {
     try {
       await api.deleteLedgerEntry(id);
+      refresh();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+
+  async function claimItem(itemId: string, playerCharacterId: string) {
+    if (!worldId) return;
+    setError(null);
+    try {
+      await api.claimLedgerItem(worldId, itemId, playerCharacterId);
+      setClaimingKey(null);
       refresh();
     } catch (e) {
       setError((e as Error).message);
@@ -136,8 +165,22 @@ export function InventoryPage() {
               <h3 className="section-heading">Add Item</h3>
               <label className="field">
                 <span>Item name</span>
-                <input type="text" value={itemName} onChange={(e) => setItemName(e.target.value)} placeholder="Potion of Healing" />
+                <input
+                  type="text"
+                  value={itemName}
+                  onChange={(e) => { setItemName(e.target.value); setPickedItemId(null); }}
+                  placeholder="Potion of Healing"
+                />
               </label>
+              {pickedItemId && <p className="hint">Linked to a Compendium item — claimable onto a character later.</p>}
+              {pickingItem ? (
+                <div className="save-panel">
+                  <EntitySearchPicker type="item" onSelect={pickItem} placeholder="Search your items…" />
+                  <button className="btn-secondary" onClick={() => setPickingItem(false)}>Cancel</button>
+                </div>
+              ) : (
+                <button className="btn-secondary" onClick={() => setPickingItem(true)}>Pick from Compendium…</button>
+              )}
               <label className="field">
                 <span>Quantity (+/-)</span>
                 <input type="number" value={itemQuantity} onChange={(e) => setItemQuantity(e.target.value)} />
@@ -161,12 +204,29 @@ export function InventoryPage() {
               <p className="hint">No items yet.</p>
             ) : (
               <ul className="entity-list">
-                {summary.items.map((item) => (
-                  <li key={item.label} className="world-row">
-                    <span className="entity-name">{item.label}</span>
-                    <span className="entity-meta">× {item.quantity}</span>
-                  </li>
-                ))}
+                {summary.items.map((item) => {
+                  const key = item.itemId ?? `label:${item.label}`;
+                  const myCharsHere = myCharacters.filter((c) => c.worldId === worldId);
+                  return (
+                    <li key={key} className="world-row">
+                      <span className="entity-name">{item.label}</span>
+                      <span className="entity-meta">× {item.quantity}</span>
+                      {item.itemId && myCharsHere.length > 0 && (
+                        claimingKey === key ? (
+                          <select
+                            defaultValue=""
+                            onChange={(e) => { if (e.target.value) claimItem(item.itemId!, e.target.value); }}
+                          >
+                            <option value="" disabled>Claim onto…</option>
+                            {myCharsHere.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                          </select>
+                        ) : (
+                          <button className="btn-secondary" onClick={() => setClaimingKey(key)}>Claim</button>
+                        )
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             )}
 

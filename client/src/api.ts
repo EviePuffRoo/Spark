@@ -245,6 +245,8 @@ export const api = {
   postLedgerEntry: (entry: LedgerEntryInput) =>
     request<LedgerEntry>("/ledger", { method: "POST", body: JSON.stringify(entry) }),
   deleteLedgerEntry: (id: string) => request<void>(`/ledger/${id}`, { method: "DELETE" }),
+  claimLedgerItem: (worldId: string, itemId: string, playerCharacterId: string) =>
+    request<PlayerCharacter>("/ledger/claim", { method: "POST", body: JSON.stringify({ worldId, itemId, playerCharacterId }) }),
 
   listDowntimeActivities: (worldId: string) => request<DowntimeActivity[]>(`/downtime?worldId=${worldId}`),
   postDowntimeActivity: (entry: DowntimeActivityInput) =>

@@ -45,6 +45,7 @@ model User {
   chatMessages    ChatMessage[]
   battleMaps      BattleMap[]
   dispositionLogEntries DispositionLogEntry[]
+  shopCommissions ShopCommission[]
 }
 
 model World {
@@ -80,6 +81,7 @@ model World {
   chatMessages    ChatMessage[]
   base            Base?
   battleMaps      BattleMap[]
+  shopCommissions ShopCommission[]
 
   @@index([userId])
 }
@@ -398,8 +400,36 @@ model Shop {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  commissions ShopCommission[]
 
   @@index([worldId])
+  @@index([userId])
+}
+
+// A custom-crafted item ordered from a shop's artisan, paid up front and
+// pending until the DM marks it delivered — see ShopCommission in shared
+// types for the full rationale. itemId is a loose reference (no FK), same
+// convention as LedgerEntry.itemId, so a later item deletion doesn't erase
+// this record's history; itemName/price/daysRequired are snapshotted at
+// commission time for the same reason.
+model ShopCommission {
+  id            String    @id @default(cuid())
+  worldId       String
+  world         World     @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  shopId        String
+  shop          Shop      @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  itemId        String
+  itemName      String
+  price         Int
+  daysRequired  Int
+  characterName String
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deliveredAt   DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([worldId])
+  @@index([shopId])
   @@index([userId])
 }
 

@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import type { Shop } from "@spark/shared";
+import type { Shop, ShopCommission, Item, SearchResult } from "@spark/shared";
+import { computeCraftingCost } from "@spark/shared";
 import { api } from "../api";
 import { useAuth } from "../AuthContext";
 import { useActiveWorld } from "../ActiveWorldContext";
 import { ShopIcon } from "../components/icons";
 import { EmptyState } from "../components/EmptyState";
+import { EntitySearchPicker } from "../components/EntitySearchPicker";
 
 const SELL_RATE = 0.5;
 
@@ -18,23 +20,69 @@ export function ShopPage() {
   const [error, setError] = useState<string | null>(null);
   const [busyStockId, setBusyStockId] = useState<string | null>(null);
 
+  const [commissions, setCommissions] = useState<ShopCommission[]>([]);
+  const [commissionItem, setCommissionItem] = useState<Item | null>(null);
+  const [pickingCommissionItem, setPickingCommissionItem] = useState(false);
+  const [busyCommission, setBusyCommission] = useState(false);
+  const [busyCommissionId, setBusyCommissionId] = useState<string | null>(null);
+
+  const isOwner = !!worlds.find((w) => w.id === worldId)?.isOwner;
+
   useEffect(() => {
     if (!worldId) {
       setShops([]);
       setSelectedShopId("");
+      setCommissions([]);
       return;
     }
     api.listShops(worldId).then((rows) => {
       setShops(rows);
       setSelectedShopId((current) => (rows.some((s) => s.id === current) ? current : rows[0]?.id ?? ""));
     }).catch(() => {});
+    api.listShopCommissions(worldId).then(setCommissions).catch(() => {});
   }, [worldId]);
 
   const selectedShop = shops.find((s) => s.id === selectedShopId) ?? null;
+  const shopCommissions = commissions.filter((c) => c.shopId === selectedShopId);
 
   function refresh() {
     if (!worldId) return;
     api.listShops(worldId).then(setShops).catch(() => {});
+    api.listShopCommissions(worldId).then(setCommissions).catch(() => {});
+  }
+
+  async function pickCommissionItem(result: SearchResult) {
+    setPickingCommissionItem(false);
+    setCommissionItem(await api.getItem(result.id));
+  }
+
+  async function commission(shop: Shop) {
+    if (!worldId || !commissionItem) return;
+    setBusyCommission(true);
+    setError(null);
+    try {
+      const name = authorName.trim() || user!.displayName || user!.username;
+      await api.postShopCommission({ worldId, shopId: shop.id, itemId: commissionItem.id, characterName: name });
+      setCommissionItem(null);
+      refresh();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusyCommission(false);
+    }
+  }
+
+  async function deliver(commissionId: string) {
+    setBusyCommissionId(commissionId);
+    setError(null);
+    try {
+      await api.deliverShopCommission(commissionId);
+      refresh();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusyCommissionId(null);
+    }
   }
 
   function quantityFor(stockId: string): number {
@@ -164,6 +212,51 @@ export function ShopPage() {
                 </li>
               ))}
             </ul>
+
+            <h3 className="section-heading">Commission a Custom Item</h3>
+            <p className="hint">Not everything a crafter can make is sitting on the shelf — pay up front and the DM marks it delivered once the work is done.</p>
+            {commissionItem ? (
+              <div className="button-row">
+                <span>
+                  {commissionItem.name} — {computeCraftingCost(commissionItem).goldCost} gp,{" "}
+                  {computeCraftingCost(commissionItem).daysRequired}d turnaround
+                </span>
+                <button className="btn-primary" disabled={busyCommission} onClick={() => commission(selectedShop)}>
+                  {busyCommission ? "Commissioning…" : "Commission"}
+                </button>
+                <button className="btn-secondary" onClick={() => setCommissionItem(null)}>Clear</button>
+              </div>
+            ) : pickingCommissionItem ? (
+              <div className="save-panel">
+                <EntitySearchPicker type="item" onSelect={pickCommissionItem} placeholder="Search items…" />
+                <button className="btn-secondary" onClick={() => setPickingCommissionItem(false)}>Cancel</button>
+              </div>
+            ) : (
+              <button className="btn-secondary" onClick={() => setPickingCommissionItem(true)}>+ Pick Item to Commission</button>
+            )}
+
+            {shopCommissions.length > 0 && (
+              <>
+                <h3 className="section-heading">Commissions</h3>
+                <ul className="entity-list">
+                  {shopCommissions.map((c) => (
+                    <li key={c.id} className="world-row">
+                      <div>
+                        <span className="entity-name">{c.itemName} for {c.characterName}</span>
+                        <div className="entity-meta">
+                          {c.price} gp · {c.daysRequired}d turnaround · {c.deliveredAt ? "Delivered" : "Pending"}
+                        </div>
+                      </div>
+                      {!c.deliveredAt && isOwner && (
+                        <button className="btn-primary" disabled={busyCommissionId === c.id} onClick={() => deliver(c.id)}>
+                          Mark Delivered
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
           </>
         )}
       </div>

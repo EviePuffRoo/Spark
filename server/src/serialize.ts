@@ -5,13 +5,13 @@ import type {
   Encounter as EncounterRow, CodexNote as CodexNoteRow, LedgerEntry as LedgerEntryRow,
   ZoneMapTemplate as ZoneMapTemplateRow, Dungeon as DungeonRow, DowntimeActivity as DowntimeActivityRow, Shop as ShopRow,
   Region as RegionRow, Settlement as SettlementRow, ChatMessage as ChatMessageRow, BattleMap as BattleMapRow,
-  DispositionLogEntry as DispositionLogEntryRow,
+  DispositionLogEntry as DispositionLogEntryRow, ShopCommission as ShopCommissionRow,
 } from "@prisma/client";
 import type {
   Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, PlayerCharacter, RollLogEntry,
   Encounter, LiveCombatant, HpStatus, CodexNote, EntityType, LedgerEntry, LedgerEntryKind, EncounterZone, EncounterZoneEffect,
   ZoneMapTemplate, Dungeon, DowntimeActivity, DowntimeActivityType, Shop, ShopStockEntry, Region, Settlement, ChatMessage, BattleMap,
-  DispositionLogEntry,
+  DispositionLogEntry, ShopCommission,
 } from "@spark/shared";
 
 export function toCharacterDTO(row: CharacterRow): Character {
@@ -235,6 +235,22 @@ export function toShopDTO(row: ShopRow): Shop {
     notes: row.notes ?? undefined,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+export function toShopCommissionDTO(row: ShopCommissionRow): ShopCommission {
+  return {
+    id: row.id,
+    worldId: row.worldId,
+    shopId: row.shopId,
+    itemId: row.itemId,
+    itemName: row.itemName,
+    price: row.price,
+    daysRequired: row.daysRequired,
+    characterName: row.characterName,
+    userId: row.userId,
+    deliveredAt: row.deliveredAt?.toISOString(),
+    createdAt: row.createdAt.toISOString(),
   };
 }
 

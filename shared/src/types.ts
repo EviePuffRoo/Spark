@@ -554,6 +554,14 @@ export interface LiveCombatant {
   // (see parseStatBlockAttacks) — not looked up live, same as maxHp/armorClass,
   // so combat state survives the source NPC/monster being edited or deleted.
   attacks?: ParsedAttack[];
+  // Free-text name of the spell this combatant is currently concentrating
+  // on, if any. Deliberately free-text rather than a lookup into the spell
+  // compendium — homebrew and reflavored spells need to work too, and this
+  // is a reminder aid, not an enforced mechanic (same "trust the table"
+  // stance as conditions above). Cleared automatically when the combatant
+  // drops to 0 HP; taking damage while set surfaces a CON-save reminder
+  // (see computeConcentrationDc) but nothing rolls or clears it for you.
+  concentratingOn?: string;
 }
 
 export interface ZoneHazard {

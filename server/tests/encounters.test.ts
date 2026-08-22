@@ -51,6 +51,42 @@ describe("combat automation: attacks and condition durations", () => {
     expect(get.body.combatants[0].attacks).toHaveLength(1);
   });
 
+  it("round-trips concentratingOn through PUT and preserves it across adjust-hp", async () => {
+    const { agent: dm } = await signupAgent("concentration-dm");
+    const world = await dm.post("/api/worlds").send({ name: "Concentration Test World" });
+    const worldId = world.body.id as string;
+
+    const combatants = [
+      { id: "wizard-1", name: "Elowen", kind: "playerCharacter", initiative: 15, maxHp: 20, currentHp: 20, conditions: [], notes: "", hpVisible: true, concentratingOn: "Web" },
+    ];
+    const put = await dm.put(`/api/encounters/${worldId}`).send({ combatants, round: 1, turnIndex: 0 });
+    expect(put.status).toBe(200);
+    expect(put.body.combatants[0].concentratingOn).toBe("Web");
+
+    const adjust = await dm.post(`/api/encounters/${worldId}/adjust-hp`).send({ combatantId: "wizard-1", delta: -8 });
+    expect(adjust.status).toBe(200);
+    expect(adjust.body.combatants[0].currentHp).toBe(12);
+    expect(adjust.body.combatants[0].concentratingOn).toBe("Web");
+
+    const get = await dm.get(`/api/encounters/${worldId}`);
+    expect(get.body.combatants[0].concentratingOn).toBe("Web");
+  });
+
+  it("drops a blank or non-string concentratingOn rather than persisting it", async () => {
+    const { agent: dm } = await signupAgent("concentration-dm2");
+    const world = await dm.post("/api/worlds").send({ name: "Concentration Test World 2" });
+    const worldId = world.body.id as string;
+
+    const combatants = [
+      { id: "fighter-1", name: "Bram", kind: "playerCharacter", initiative: 10, maxHp: 15, currentHp: 15, conditions: [], notes: "", hpVisible: true, concentratingOn: "" },
+      { id: "fighter-2", name: "Torin", kind: "playerCharacter", initiative: 8, maxHp: 15, currentHp: 15, conditions: [], notes: "", hpVisible: true, concentratingOn: 42 },
+    ];
+    const put = await dm.put(`/api/encounters/${worldId}`).send({ combatants, round: 1, turnIndex: 0 });
+    expect(put.status).toBe(200);
+    expect(put.body.combatants[0].concentratingOn).toBeUndefined();
+    expect(put.body.combatants[1].concentratingOn).toBeUndefined();
+  });
+
   it("hides attacks and drops expired conditions for a non-owner party member", async () => {
     const { agent: dm } = await signupAgent("dm2");
     const world = await dm.post("/api/worlds").send({ name: "Redaction World" });

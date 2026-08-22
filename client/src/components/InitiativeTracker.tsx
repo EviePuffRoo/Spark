@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { SearchResult, LiveCombatant, LiveCombatantCondition, EncounterStateInput, EncounterTable, EncounterZone, HpStatus, Dungeon, Item, SizeCategory } from "@spark/shared";
-import { computeEquipmentBonuses, CONDITIONS_COMPENDIUM, parseStatBlockAttacks, parseSizeCategory, parseSpeedFeet } from "@spark/shared";
+import { computeEquipmentBonuses, computeConcentrationDc, CONDITIONS_COMPENDIUM, parseStatBlockAttacks, parseSizeCategory, parseSpeedFeet } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { useAuth } from "../AuthContext";
 import { EntitySearchPicker } from "./EntitySearchPicker";
@@ -119,6 +119,9 @@ export function InitiativeTracker({
   const [lootAuthorName, setLootAuthorName] = useState(user?.displayName || user?.username || "");
   const [lootStatus, setLootStatus] = useState<"idle" | "saving">("idle");
   const [lootError, setLootError] = useState<string | null>(null);
+  const [concentrationOpenFor, setConcentrationOpenFor] = useState<string | null>(null);
+  const [concentrationInput, setConcentrationInput] = useState("");
+  const [concentrationPrompt, setConcentrationPrompt] = useState<{ id: string; name: string; spell: string; dc: number } | null>(null);
 
   const partyMode = mode === "party";
   const selectedWorld = worlds.find((w) => w.id === partyWorldId) ?? null;
@@ -164,6 +167,34 @@ export function InitiativeTracker({
   const difficulty = computeDifficulty(sorted);
   const zones = activeEncounter.zones ?? [];
   const zoneEffects = activeEncounter.zoneEffects ?? [];
+
+  // Detects damage to a concentrating combatant regardless of which control
+  // applied it (this tracker's own Damage/Heal buttons, a hazard, an
+  // auto-applied attack roll, or another party member's "Apply to Combat"
+  // in DiceRoller reaching the same encounter over the live channel) by
+  // diffing currentHp against the last render's snapshot, rather than
+  // instrumenting every call site that can reduce HP.
+  const prevHpRef = useRef<Map<string, number>>(new Map());
+  useEffect(() => {
+    const prevHp = prevHpRef.current;
+    const nextHp = new Map<string, number>();
+    for (const c of sorted) {
+      const currentHp = c.currentHp ?? 0;
+      const priorHp = prevHp.get(c.id);
+      if (canEdit && c.concentratingOn && priorHp !== undefined && currentHp < priorHp) {
+        if (currentHp <= 0) {
+          // Concentration ends automatically at 0 HP — no save to prompt.
+          updateCombatant(c.id, { concentratingOn: undefined });
+          setConcentrationPrompt((p) => (p?.id === c.id ? null : p));
+        } else {
+          setConcentrationPrompt({ id: c.id, name: c.name, spell: c.concentratingOn, dc: computeConcentrationDc(priorHp - currentHp) });
+        }
+      }
+      nextHp.set(c.id, currentHp);
+    }
+    prevHpRef.current = nextHp;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sorted.map((c) => `${c.id}:${c.currentHp ?? 0}:${c.concentratingOn ?? ""}`).join("|"), canEdit]);
 
   useEffect(() => {
     const dungeonId = activeEncounter.activeDungeonId;
@@ -965,6 +996,55 @@ export function InitiativeTracker({
                     </button>
                   ))}
                 </div>
+              )}
+            </div>
+
+            {concentrationPrompt?.id === c.id && (
+              <div className="button-row concentration-prompt">
+                <span>
+                  🎯 {concentrationPrompt.name} takes damage while concentrating on {concentrationPrompt.spell} — CON save DC {concentrationPrompt.dc} to maintain it.
+                </span>
+                <button
+                  className="btn-danger"
+                  onClick={() => { updateCombatant(c.id, { concentratingOn: undefined }); setConcentrationPrompt(null); }}
+                >
+                  Broke Concentration
+                </button>
+                <button className="btn-secondary" onClick={() => setConcentrationPrompt(null)}>Kept It</button>
+              </div>
+            )}
+
+            <div className="combatant-concentration">
+              {c.concentratingOn ? (
+                <span className="condition-chip concentration-chip">
+                  🎯 Concentrating: {c.concentratingOn}
+                  <button onClick={() => updateCombatant(c.id, { concentratingOn: undefined })} aria-label={`Clear ${c.name}'s concentration`}>×</button>
+                </span>
+              ) : concentrationOpenFor === c.id ? (
+                <div className="condition-picker">
+                  <input
+                    type="text"
+                    value={concentrationInput}
+                    onChange={(e) => setConcentrationInput(e.target.value)}
+                    placeholder="Spell name…"
+                  />
+                  <button
+                    className="btn-primary"
+                    onClick={() => {
+                      if (!concentrationInput.trim()) return;
+                      updateCombatant(c.id, { concentratingOn: concentrationInput.trim() });
+                      setConcentrationInput("");
+                      setConcentrationOpenFor(null);
+                    }}
+                  >
+                    Set
+                  </button>
+                  <button className="btn-secondary" onClick={() => { setConcentrationOpenFor(null); setConcentrationInput(""); }}>Cancel</button>
+                </div>
+              ) : (
+                <button className="btn-secondary condition-toggle" onClick={() => { setConcentrationOpenFor(c.id); setConcentrationInput(""); }}>
+                  + Concentration
+                </button>
               )}
             </div>
 

@@ -13,7 +13,8 @@ function coerceTile(raw: unknown, width: number, height: number): PlacedTile | n
   if (typeof t.x !== "number" || typeof t.y !== "number" || typeof t.tileId !== "string") return null;
   if (!Number.isInteger(t.x) || !Number.isInteger(t.y) || t.x < 0 || t.y < 0 || t.x >= width || t.y >= height) return null;
   if (!BATTLE_TILE_BY_ID[t.tileId]) return null;
-  return { x: t.x, y: t.y, tileId: t.tileId };
+  const layer = t.layer === "decor" ? "decor" : undefined;
+  return { x: t.x, y: t.y, tileId: t.tileId, ...(layer ? { layer } : {}) };
 }
 
 function coerceDimension(value: unknown, max: number): number | null {

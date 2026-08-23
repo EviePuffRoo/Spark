@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { BattleMap, PlacedTile, TileCategory } from "@spark/shared";
-import { BATTLE_TILES, BATTLE_MAP_MAX_WIDTH, BATTLE_MAP_MAX_HEIGHT } from "@spark/shared";
+import { BATTLE_TILES, BATTLE_TILE_BY_ID, BATTLE_MAP_MAX_WIDTH, BATTLE_MAP_MAX_HEIGHT } from "@spark/shared";
 import { api } from "../api";
 import { useActiveWorld } from "../ActiveWorldContext";
 import { MapBuilderIcon } from "../components/icons";
@@ -15,6 +15,7 @@ const CATEGORY_LABELS: Record<TileCategory, string> = {
   structure: "Structure",
   nature: "Nature",
   hazard: "Hazard",
+  decor: "Decor",
 };
 const CATEGORIES = Object.keys(CATEGORY_LABELS) as TileCategory[];
 
@@ -22,15 +23,27 @@ function tileKey(x: number, y: number) {
   return `${x},${y}`;
 }
 
-function tilesToMap(tiles: PlacedTile[]): Map<string, string> {
-  return new Map(tiles.map((t) => [tileKey(t.x, t.y), t.tileId]));
+// A cell can hold at most one floor tile and one decor tile — split into
+// two maps so the decor overlay (rugs, moss, bloodstains) never collides
+// with or overwrites the mechanically-authoritative floor tile beneath it.
+function tilesToLayerMaps(tiles: PlacedTile[]): { floor: Map<string, string>; decor: Map<string, string> } {
+  const floor = new Map<string, string>();
+  const decor = new Map<string, string>();
+  for (const t of tiles) (t.layer === "decor" ? decor : floor).set(tileKey(t.x, t.y), t.tileId);
+  return { floor, decor };
 }
 
-function mapToTiles(map: Map<string, string>): PlacedTile[] {
-  return [...map.entries()].map(([key, tileId]) => {
+function layerMapsToTiles(floor: Map<string, string>, decor: Map<string, string>): PlacedTile[] {
+  const out: PlacedTile[] = [];
+  for (const [key, tileId] of floor) {
     const [x, y] = key.split(",").map(Number);
-    return { x, y, tileId };
-  });
+    out.push({ x, y, tileId });
+  }
+  for (const [key, tileId] of decor) {
+    const [x, y] = key.split(",").map(Number);
+    out.push({ x, y, tileId, layer: "decor" });
+  }
+  return out;
 }
 
 export function MapBuilderPage() {
@@ -45,7 +58,8 @@ export function MapBuilderPage() {
   const [newHeight, setNewHeight] = useState(10);
 
   const [activeMap, setActiveMap] = useState<BattleMap | null>(null);
-  const [tiles, setTiles] = useState<Map<string, string>>(new Map());
+  const [floorTiles, setFloorTiles] = useState<Map<string, string>>(new Map());
+  const [decorTiles, setDecorTiles] = useState<Map<string, string>>(new Map());
   const [dirty, setDirty] = useState(false);
   const [selectedTileId, setSelectedTileId] = useState(BATTLE_TILES[0].id);
   const [eraser, setEraser] = useState(false);
@@ -88,7 +102,9 @@ export function MapBuilderPage() {
 
   function openMap(map: BattleMap) {
     setActiveMap(map);
-    setTiles(tilesToMap(map.tiles));
+    const { floor, decor } = tilesToLayerMaps(map.tiles);
+    setFloorTiles(floor);
+    setDecorTiles(decor);
     setDirty(false);
     setName(map.name);
     setSaveWorldId(map.worldId ?? "");
@@ -146,6 +162,8 @@ export function MapBuilderPage() {
     return { x: screenPt.x, y: screenPt.y };
   }
 
+  const selectedIsDecor = BATTLE_TILE_BY_ID[selectedTileId]?.category === "decor";
+
   function paintAt(clientX: number, clientY: number) {
     if (!activeMap) return;
     const { x, y } = localCoords(clientX, clientY);
@@ -153,12 +171,19 @@ export function MapBuilderPage() {
     const cellY = Math.floor(y / CELL);
     if (cellX < 0 || cellY < 0 || cellX >= activeMap.width || cellY >= activeMap.height) return;
     const key = tileKey(cellX, cellY);
-    setTiles((prev) => {
-      const next = new Map(prev);
-      if (eraser) next.delete(key);
-      else next.set(key, selectedTileId);
-      return next;
-    });
+    if (eraser) {
+      // Erase the top layer first (decor, if any is painted here), same as
+      // most map tools — a second click on a bare floor tile then clears it.
+      if (decorTiles.has(key)) {
+        setDecorTiles((prev) => { const next = new Map(prev); next.delete(key); return next; });
+      } else {
+        setFloorTiles((prev) => { const next = new Map(prev); next.delete(key); return next; });
+      }
+    } else if (selectedIsDecor) {
+      setDecorTiles((prev) => new Map(prev).set(key, selectedTileId));
+    } else {
+      setFloorTiles((prev) => new Map(prev).set(key, selectedTileId));
+    }
     setDirty(true);
   }
 
@@ -182,7 +207,7 @@ export function MapBuilderPage() {
     try {
       const updated = await api.updateBattleMap(activeMap.id, {
         name,
-        tiles: mapToTiles(tiles),
+        tiles: layerMapsToTiles(floorTiles, decorTiles),
         worldId: saveWorldId || null,
         tags: saveTags.split(",").map((t) => t.trim()).filter(Boolean),
         notes: saveNotes || undefined,
@@ -200,10 +225,14 @@ export function MapBuilderPage() {
   const gridWidth = activeMap ? activeMap.width * CELL : 0;
   const gridHeight = activeMap ? activeMap.height * CELL : 0;
 
-  const placedTiles = useMemo(() => [...tiles.entries()].map(([key, tileId]) => {
-    const [x, y] = key.split(",").map(Number);
-    return { key, x, y, tileId };
-  }), [tiles]);
+  function toPlacedList(map: Map<string, string>) {
+    return [...map.entries()].map(([key, tileId]) => {
+      const [x, y] = key.split(",").map(Number);
+      return { key, x, y, tileId };
+    });
+  }
+  const placedFloorTiles = useMemo(() => toPlacedList(floorTiles), [floorTiles]);
+  const placedDecorTiles = useMemo(() => toPlacedList(decorTiles), [decorTiles]);
 
   if (activeMap) {
     return (
@@ -213,7 +242,10 @@ export function MapBuilderPage() {
             <MapBuilderIcon className="page-title-icon" aria-hidden="true" />
             <h2>{activeMap.name}</h2>
           </div>
-          <p className="hint">{activeMap.width}×{activeMap.height} tiles. Click, or click-and-drag, to paint. No uploaded images — every map here is hand-built from the tileset below.</p>
+          <p className="hint">
+            {activeMap.width}×{activeMap.height} tiles. Click, or click-and-drag, to paint. No uploaded images — every map here is hand-built from the tileset below.
+            {" "}Decor tiles paint over a floor tile without replacing it, and never block movement or sight — good for rugs, moss, bloodstains.
+          </p>
           {error && <p className="error">{error}</p>}
           <div className="map-builder-actions">
             <button className="btn-secondary" onClick={closeMap}>← Back to My Maps</button>
@@ -274,8 +306,11 @@ export function MapBuilderPage() {
                 {Array.from({ length: activeMap.height + 1 }, (_, i) => (
                   <line key={`h${i}`} x1={0} y1={i * CELL} x2={gridWidth} y2={i * CELL} className="map-builder-grid-line" />
                 ))}
-                {placedTiles.map((t) => (
+                {placedFloorTiles.map((t) => (
                   <use key={t.key} href={`#tile-${t.tileId}`} x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL} />
+                ))}
+                {placedDecorTiles.map((t) => (
+                  <use key={`decor-${t.key}`} href={`#tile-${t.tileId}`} x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL} pointerEvents="none" />
                 ))}
               </svg>
             </div>

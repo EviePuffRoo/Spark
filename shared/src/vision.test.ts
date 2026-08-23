@@ -26,6 +26,15 @@ describe("computeVisibleCells", () => {
     expect(visible.has("5,1")).toBe(false); // straight behind it is not
   });
 
+  it("ignores a blocking tile placed on the decor layer", () => {
+    // A decor-layer placement is purely cosmetic — even a tile that would
+    // normally block sight (stone-wall) must never affect vision when it's
+    // layered over a cell rather than being that cell's floor.
+    const map = emptyMap(10, 10, [{ x: 5, y: 3, tileId: "stone-wall", layer: "decor" }]);
+    const visible = computeVisibleCells(map, 5, 5, 5);
+    expect(visible.has("5,1")).toBe(true);
+  });
+
   it("is symmetric: A sees B iff B sees A", () => {
     const map = emptyMap(12, 12, [
       { x: 6, y: 4, tileId: "stone-wall" },

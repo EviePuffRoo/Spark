@@ -10,7 +10,7 @@ import { FEET_PER_TILE } from "./gridMovement.js";
 export const DEFAULT_VISION_RADIUS_FEET = 60;
 
 function tileAt(map: Pick<BattleMap, "tiles">, x: number, y: number): TileDef | undefined {
-  const placed = map.tiles.find((t) => t.x === x && t.y === y);
+  const placed = map.tiles.find((t) => t.x === x && t.y === y && (t.layer ?? "floor") === "floor");
   return placed ? BATTLE_TILE_BY_ID[placed.tileId] : undefined;
 }
 
@@ -93,6 +93,7 @@ export function computeVisionForTokens(map: Pick<BattleMap, "width" | "height" |
 export function extendWithLightSources(map: Pick<BattleMap, "width" | "height" | "tiles">, baseVisible: Set<string>): Set<string> {
   const extended = new Set(baseVisible);
   for (const tile of map.tiles) {
+    if ((tile.layer ?? "floor") !== "floor") continue;
     const def = BATTLE_TILE_BY_ID[tile.tileId];
     if (!def?.lightRadius || !baseVisible.has(key(tile.x, tile.y))) continue;
     for (const k of computeVisibleCells(map, tile.x, tile.y, def.lightRadius)) extended.add(k);

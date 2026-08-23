@@ -7,6 +7,7 @@ import { downloadJson } from "../downloadJson";
 import { useScrollDetailOnSelect } from "../useScrollDetailOnSelect";
 import { LinkedEntities } from "../components/LinkedEntities";
 import { FactionWebView } from "../components/FactionWebView";
+import { SettlementHubView } from "../components/SettlementHubView";
 import { RosterIcon } from "../components/icons";
 import { EmptyState } from "../components/EmptyState";
 import type { PrintItem } from "../components/PrintPane";
@@ -157,6 +158,7 @@ export function RosterPage({
   const [searchFilter, setSearchFilter] = useState("");
   const [questStatus, setQuestStatus] = useState<QuestStatus>("active");
   const [showFactionWeb, setShowFactionWeb] = useState(false);
+  const [showSettlementHub, setShowSettlementHub] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
   const [publishTitle, setPublishTitle] = useState("");
   const [publishDescription, setPublishDescription] = useState("");
@@ -644,6 +646,28 @@ export function RosterPage({
     );
   }
 
+  if (showSettlementHub && selectedSettlement) {
+    return (
+      <div className="page">
+        <SettlementHubView
+          settlement={selectedSettlement}
+          controllingFaction={selectedSettlement.controllingFactionId ? factions.find((f) => f.id === selectedSettlement.controllingFactionId) ?? null : null}
+          locations={locations.filter((l) => l.settlementId === selectedSettlement.id)}
+          characters={characters.filter((c) => c.settlementId === selectedSettlement.id)}
+          shops={shops.filter((s) => s.settlementId === selectedSettlement.id)}
+          onSelectEntity={(type, id) => {
+            const targetMode = ENTITY_TYPE_TO_MODE[type];
+            if (!targetMode) return;
+            setShowSettlementHub(false);
+            setMode(targetMode);
+            setSelectedId(id);
+          }}
+          onClose={() => setShowSettlementHub(false)}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="page roster-layout">
       <RosterListPanel
@@ -839,6 +863,9 @@ export function RosterPage({
                   <button className="btn-primary" onClick={handleUpdate} disabled={status === "saving"}>
                     {status === "saving" ? "Saving…" : "Save Changes"}
                   </button>
+                  {mode === "settlements" && (
+                    <button className="btn-secondary" onClick={() => setShowSettlementHub(true)}>Open Settlement Hub</button>
+                  )}
                   <button className="btn-secondary" onClick={handleDuplicate} disabled={status === "saving"}>Duplicate</button>
                   <button className="btn-secondary" onClick={openPublish}>Publish to Gallery</button>
                   <button className="btn-danger" onClick={handleDelete}>Delete</button>

@@ -54,4 +54,28 @@ export const SHOP_ARCHETYPES: ShopArchetypeDef[] = [
     itemCategories: ["tool", "armor", "weapon"],
     description: "Packs, rope, and gear for anyone about to do something unwise.",
   },
+  {
+    id: "cartographer",
+    name: "Cartographer's Shop",
+    itemCategories: ["tool", "trinket"],
+    description: "Maps of every quality paper the walls, some clearly more honest than others.",
+  },
+  {
+    id: "herbalist",
+    name: "Herbalist",
+    itemCategories: ["potion", "tool"],
+    description: "Bundles of drying plants crowd every surface, filling the air with a dozen competing scents.",
+  },
+  {
+    id: "leatherworker",
+    name: "Leatherworker",
+    itemCategories: ["armor", "tool"],
+    description: "Hides in every stage of tanning hang from the racks, and the smell takes some getting used to.",
+  },
+  {
+    id: "bookbinder",
+    name: "Bookbinder & Scrivener",
+    itemCategories: ["trinket", "tool"],
+    description: "Ink-stained fingers and the smell of fresh binding glue greet anyone who walks in.",
+  },
 ];

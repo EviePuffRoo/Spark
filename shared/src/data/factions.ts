@@ -1,16 +1,19 @@
 export const FACTION_TYPES: string[] = [
   "Guild", "Noble House", "Cult", "Mercenary Company", "Criminal Syndicate",
   "Religious Order", "Rebel Cell", "Merchant Consortium", "Secret Society", "Militia",
+  "Trade League", "Spy Network",
 ];
 
 export const FACTION_NAME_ADJECTIVES: string[] = [
   "Ashen", "Gilded", "Iron", "Silent", "Crimson", "Hollow", "Silver", "Veiled",
   "Broken", "Sable", "Radiant", "Grey", "Thorned", "Unseen", "Amber",
+  "Obsidian", "Pale", "Wandering", "Bound", "Hushed", "Fractured",
 ];
 
 export const FACTION_NAME_NOUNS: string[] = [
   "Concord", "Compact", "Vow", "Circle", "Consortium", "Accord", "League", "Covenant",
   "Syndicate", "Order", "Table", "Ledger", "Banner", "Choir", "Court",
+  "Cabal", "Assembly", "Brotherhood", "Chorus", "Mantle", "Wardens",
 ];
 
 export const FACTION_AGENDAS: string[] = [
@@ -29,6 +32,16 @@ export const FACTION_AGENDAS: string[] = [
   "Expand their territory, one quiet acquisition at a time.",
   "Prove their loyalty to a power that may not even know they exist.",
   "Survive, by any means, now that their old patron is gone.",
+  "Reclaim a holding lost generations ago, through legal means if possible.",
+  "Break a monopoly that's been strangling independent trade for years.",
+  "Install a sympathetic figurehead in a position of real influence.",
+  "Silence a rumor before it becomes something worse than a rumor.",
+  "Build enough leverage that no one can move against them without cost.",
+  "Locate every surviving member of a bloodline everyone assumes is extinct.",
+  "Secure a monopoly on something the region doesn't yet know it needs.",
+  "Repay an ancient debt in a currency only they understand.",
+  "Position themselves to profit no matter which side wins the coming conflict.",
+  "Ensure a particular secret dies with the last person who remembers it, unless it's them.",
 ];
 
 export const FACTION_METHODS: string[] = [
@@ -47,6 +60,16 @@ export const FACTION_METHODS: string[] = [
   "Uses ritual and tradition to bind its members' loyalty.",
   "Keeps meticulous records that would incriminate half the city.",
   "Answers to a leader whose identity is known to almost no one.",
+  "Buys silence readily, and buys loyalty even more readily.",
+  "Communicates almost entirely through trusted intermediaries who never meet each other.",
+  "Tests new recruits with tasks designed to see how far they'll go.",
+  "Prefers legal pressure and paperwork to anything resembling violence.",
+  "Keeps its true numbers deliberately unclear, even to its own members.",
+  "Rewards results and asks few questions about the method.",
+  "Maintains alliances of convenience it has no intention of honoring long-term.",
+  "Uses proxies and cutouts so its own hands stay clean.",
+  "Runs on favors owed rather than coin paid.",
+  "Deals honestly with everyone, which makes people trust it far more than they should.",
 ];
 
 export const FACTION_PUBLIC_FACES: string[] = [
@@ -65,6 +88,16 @@ export const FACTION_PUBLIC_FACES: string[] = [
   "Treated with wary respect by the local authorities.",
   "Mistaken for a rival faction they've deliberately let take the blame.",
   "Barely known outside their own membership.",
+  "Viewed as an old family concern, quaint and mostly harmless.",
+  "Assumed to be nothing more than a trade association.",
+  "Known locally for surprisingly generous charity work.",
+  "Regarded with quiet suspicion nobody can quite justify.",
+  "Treated as a minor nuisance by authorities who've never looked closely.",
+  "Considered a rival to a much larger organization they secretly answer to.",
+  "Seen as newcomers, though they've quietly operated here for decades.",
+  "Publicly disavowed by the very people who founded it.",
+  "Believed to be led by someone who died years ago.",
+  "Trusted as neutral arbiters in disputes they often have a stake in.",
 ];
 
 export const FACTION_HOOKS: string[] = [
@@ -83,4 +116,14 @@ export const FACTION_HOOKS: string[] = [
   "Has eyes on a new, ambitious project that could change everything.",
   "Is closer to collapse than anyone outside its leadership realizes.",
   "Has just gained a powerful new ally, for a price not yet revealed.",
+  "Just discovered a rival has been feeding information to an outside power.",
+  "Is negotiating a merger with an old enemy neither side is happy about.",
+  "Has a founding member who wants out and knows too much to simply leave.",
+  "Is quietly buying up debts across the settlement for reasons no one's confirmed.",
+  "Has split into two factions that still share the same name.",
+  "Is being blackmailed by someone inside its own leadership.",
+  "Just lost a shipment that was never supposed to be traceable.",
+  "Is one bad season away from losing everything it's built.",
+  "Has a prophecy, omen, or old promise driving decisions no one outside fully understands.",
+  "Is being courted by a foreign power offering more than it should be able to afford.",
 ];

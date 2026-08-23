@@ -2256,6 +2256,11 @@ textarea {
   font-weight: 400 !important;
 }
 
+.region-weather-label {
+  font-style: italic;
+  opacity: 0.8;
+}
+
 .zone-effect-badge {
   fill: var(--danger);
   font-size: 11px;

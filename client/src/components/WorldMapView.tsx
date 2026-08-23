@@ -1,16 +1,18 @@
 import { useRef, useState } from "react";
 import type { Region, Settlement } from "@spark/shared";
+import { describeWeather } from "@spark/shared";
 
 const WIDTH = 720;
 const HEIGHT = 480;
 const REGION_RADIUS = 56;
 
 export function WorldMapView({
-  regions, settlements, canEdit, onUpdateRegion, onToggleConnection, onSelectRegion,
+  regions, settlements, canEdit, currentDay, onUpdateRegion, onToggleConnection, onSelectRegion,
 }: {
   regions: Region[];
   settlements: Settlement[];
   canEdit: boolean;
+  currentDay: number;
   onUpdateRegion: (id: string, patch: Partial<Region>) => void;
   onToggleConnection: (aId: string, bId: string) => void;
   onSelectRegion?: (id: string) => void;
@@ -161,6 +163,7 @@ export function WorldMapView({
           {regions.map((region) => {
             const pos = displayPos(region);
             const settlementCount = settlements.filter((s) => s.regionId === region.id).length;
+            const weather = describeWeather(region.terrainCategory, region.id, currentDay);
             return (
               <g key={region.id}>
                 <g
@@ -175,6 +178,7 @@ export function WorldMapView({
                   <text y={REGION_RADIUS + 32} className="zone-tags-label">
                     {region.terrainCategory}{settlementCount > 0 ? ` · ${settlementCount} settlement${settlementCount === 1 ? "" : "s"}` : ""}
                   </text>
+                  <text y={REGION_RADIUS + 46} className="zone-tags-label region-weather-label">{weather.condition}</text>
                 </g>
               </g>
             );
@@ -187,6 +191,10 @@ export function WorldMapView({
           <h3 className="section-heading">{selectedRegion.name}</h3>
           <p>{selectedRegion.terrainCategory}{selectedRegion.dangerLevel ? ` · ${selectedRegion.dangerLevel}` : ""}</p>
           <p>{selectedRegion.description}</p>
+          {(() => {
+            const weather = describeWeather(selectedRegion.terrainCategory, selectedRegion.id, currentDay);
+            return <p className="hint">Today's weather: <strong>{weather.condition}</strong> — {weather.description}</p>;
+          })()}
           {selectedRegionSettlements.length > 0 && (
             <>
               <h4 className="section-heading">Settlements</h4>

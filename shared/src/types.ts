@@ -81,6 +81,9 @@ export interface Character {
   // faction" convenience action, but nothing keeps the two in lockstep
   // automatically.
   factionId?: string | null;
+  // Optional home settlement — a "notable NPC" tag, same loose pattern as
+  // Location.settlementId/factionId above. Meaningful mostly for kind:"npc".
+  settlementId?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -834,6 +837,9 @@ export interface Shop extends ShopInput {
   userId: string;
   worldId?: string | null;
   hiddenFromParty: boolean;
+  // Optional settlement anchor — same "local roster" pattern as
+  // Character.settlementId/Location.settlementId.
+  settlementId?: string | null;
   tags: string[];
   notes?: string;
   createdAt: string;

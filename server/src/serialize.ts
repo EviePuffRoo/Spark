@@ -38,6 +38,7 @@ export function toCharacterDTO(row: CharacterRow): Character {
     attunedItems: JSON.parse(row.attunedItems),
     disposition: row.disposition,
     factionId: row.factionId,
+    settlementId: row.settlementId,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -273,6 +274,7 @@ export function toShopDTO(row: ShopRow): Shop {
     hiddenFromParty: row.hiddenFromParty,
     tags: JSON.parse(row.tags),
     notes: row.notes ?? undefined,
+    settlementId: row.settlementId,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };

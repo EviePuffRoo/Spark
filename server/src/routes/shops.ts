@@ -42,7 +42,7 @@ shopsRouter.get("/:id", async (req, res) => {
 
 shopsRouter.post("/", async (req, res) => {
   const body = req.body ?? {};
-  const { name, description, stock, worldId, tags, notes, hiddenFromParty } = body;
+  const { name, description, stock, worldId, tags, notes, hiddenFromParty, settlementId } = body;
 
   if (!name || !Array.isArray(stock)) {
     return res.status(400).json({ error: "Missing required shop fields" });
@@ -50,6 +50,10 @@ shopsRouter.post("/", async (req, res) => {
   if (typeof worldId === "string") {
     const world = await findAccessibleWorld(req.userId!, worldId);
     if (!world) return res.status(403).json({ error: "You don't have access to this world" });
+  }
+  if (typeof settlementId === "string") {
+    const settlement = await prisma.settlement.findFirst({ where: { id: settlementId, userId: req.userId } });
+    if (!settlement) return res.status(403).json({ error: "You don't have access to this settlement" });
   }
   const coercedStock = stock.map(coerceStockEntry).filter((s: ShopStockEntry | null): s is ShopStockEntry => s !== null);
 
@@ -62,6 +66,7 @@ shopsRouter.post("/", async (req, res) => {
       tags: JSON.stringify(Array.isArray(tags) ? tags : []),
       notes: notes ?? null,
       hiddenFromParty: !!hiddenFromParty,
+      settlementId: settlementId ?? null,
       userId: req.userId!,
     },
   });
@@ -85,6 +90,13 @@ shopsRouter.patch("/:id", async (req, res) => {
       if (!world) return res.status(403).json({ error: "You don't have access to this world" });
     }
     data.worldId = body.worldId ?? null;
+  }
+  if ("settlementId" in body) {
+    if (typeof body.settlementId === "string") {
+      const settlement = await prisma.settlement.findFirst({ where: { id: body.settlementId, userId: req.userId } });
+      if (!settlement) return res.status(403).json({ error: "You don't have access to this settlement" });
+    }
+    data.settlementId = body.settlementId ?? null;
   }
   if ("tags" in body) data.tags = JSON.stringify(Array.isArray(body.tags) ? body.tags : []);
 

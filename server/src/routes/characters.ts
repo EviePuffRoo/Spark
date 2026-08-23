@@ -76,6 +76,13 @@ charactersRouter.patch("/:id", async (req, res) => {
     }
     data.factionId = body.factionId ?? null;
   }
+  if ("settlementId" in body) {
+    if (typeof body.settlementId === "string") {
+      const settlement = await prisma.settlement.findFirst({ where: { id: body.settlementId, userId: req.userId } });
+      if (!settlement) return res.status(403).json({ error: "You don't have access to this settlement" });
+    }
+    data.settlementId = body.settlementId ?? null;
+  }
   if ("tags" in body) data.tags = JSON.stringify(Array.isArray(body.tags) ? body.tags : []);
   if ("statBlock" in body) data.statBlock = JSON.stringify(body.statBlock);
   if ("backstory" in body) data.backstory = JSON.stringify(body.backstory);

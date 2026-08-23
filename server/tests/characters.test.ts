@@ -237,6 +237,40 @@ describe("characters CRUD + ownership — representative entity-router template"
     expect(log.body[0].reason).toBe("Helped at the gate");
   });
 
+  it("lets the owner link an NPC to their own settlement, but not someone else's", async () => {
+    const { agent } = await signupAgent("cruduser19");
+    const settlement = await agent.post("/api/settlements").send({ name: "Stonegatehaven", settlementType: "Town", description: "A trade town." });
+    const create = await agent.post("/api/characters").send(charPayload());
+    expect(create.body.settlementId).toBeNull();
+    const id = create.body.id as string;
+
+    const link = await agent.patch(`/api/characters/${id}`).send({ settlementId: settlement.body.id });
+    expect(link.status).toBe(200);
+    expect(link.body.settlementId).toBe(settlement.body.id);
+
+    const { agent: other } = await signupAgent("cruduser20");
+    const otherSettlement = await other.post("/api/settlements").send({ name: "Rival Town", settlementType: "Town", description: "A rival trade town." });
+    const badLink = await agent.patch(`/api/characters/${id}`).send({ settlementId: otherSettlement.body.id });
+    expect(badLink.status).toBe(403);
+
+    const unlink = await agent.patch(`/api/characters/${id}`).send({ settlementId: null });
+    expect(unlink.status).toBe(200);
+    expect(unlink.body.settlementId).toBeNull();
+  });
+
+  it("clears an NPC's settlementId when the linked settlement is deleted", async () => {
+    const { agent } = await signupAgent("cruduser21");
+    const settlement = await agent.post("/api/settlements").send({ name: "Doomed Town", settlementType: "Town", description: "Not long for this world." });
+    const create = await agent.post("/api/characters").send(charPayload());
+    const id = create.body.id as string;
+    await agent.patch(`/api/characters/${id}`).send({ settlementId: settlement.body.id });
+
+    await agent.delete(`/api/settlements/${settlement.body.id}`);
+
+    const get = await agent.get(`/api/characters/${id}`);
+    expect(get.body.settlementId).toBeNull();
+  });
+
   it("cascade-deletes disposition log entries when the character is deleted", async () => {
     const { agent } = await signupAgent("cruduser18");
     const create = await agent.post("/api/characters").send(charPayload());

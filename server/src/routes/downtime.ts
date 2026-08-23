@@ -1,9 +1,14 @@
 import { Router } from "express";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "../db.js";
 import { toDowntimeActivityDTO } from "../serialize.js";
 import { getMemberWorldIds } from "../worldAccess.js";
 import { publishWorldChange } from "../worldEvents.js";
-import { DOWNTIME_ACTIVITY_TYPES, computeCraftingCost } from "@spark/shared";
+import {
+  DOWNTIME_ACTIVITY_TYPES, DOWNTIME_ACTIVITY_TYPE_LABELS, DOWNTIME_OUTCOME_ACTIVITY_TYPES,
+  DOWNTIME_OUTCOMES, computeCraftingCost,
+} from "@spark/shared";
+import type { DowntimeOutcomeActivityType } from "@spark/shared";
 
 export const downtimeRouter = Router();
 
@@ -25,7 +30,7 @@ downtimeRouter.get("/", async (req, res) => {
 
 downtimeRouter.post("/", async (req, res) => {
   const body = req.body ?? {};
-  const { worldId, playerCharacterId, characterName, activityType, description, daysSpent, outcome, craftedItemId } = body;
+  const { worldId, playerCharacterId, characterName, activityType, description, daysSpent, outcome, craftedItemId, outcomeId } = body;
 
   if (
     typeof worldId !== "string" ||
@@ -33,7 +38,8 @@ downtimeRouter.post("/", async (req, res) => {
     typeof activityType !== "string" || !(DOWNTIME_ACTIVITY_TYPES as readonly string[]).includes(activityType) ||
     typeof description !== "string" || !description.trim() ||
     typeof daysSpent !== "number" || !Number.isFinite(daysSpent) || daysSpent <= 0 ||
-    (craftedItemId !== undefined && typeof craftedItemId !== "string")
+    (craftedItemId !== undefined && typeof craftedItemId !== "string") ||
+    (outcomeId !== undefined && typeof outcomeId !== "string")
   ) {
     return res.status(400).json({ error: "Missing or invalid downtime activity fields" });
   }
@@ -53,6 +59,31 @@ downtimeRouter.post("/", async (req, res) => {
       select: { id: true, name: true, value: true },
     });
     if (!craftedItem) return res.status(403).json({ error: "You don't have access to this item" });
+  }
+
+  // A rolled outcome is looked up server-side by id, never trusted from the
+  // client — the client only ever saw the text/preview, not raw numbers it
+  // could tamper with. Same "smart layer over a plain log entry" shape as
+  // craftedItem above.
+  let resolvedOutcome: { goldDelta?: number; hpRestorePercent?: number } | null = null;
+  if (typeof outcomeId === "string") {
+    if (!(DOWNTIME_OUTCOME_ACTIVITY_TYPES as readonly string[]).includes(activityType)) {
+      return res.status(400).json({ error: "This activity type doesn't support rolled outcomes" });
+    }
+    resolvedOutcome = DOWNTIME_OUTCOMES[activityType as DowntimeOutcomeActivityType].find((o) => o.id === outcomeId) ?? null;
+    if (!resolvedOutcome) return res.status(400).json({ error: "Invalid outcomeId" });
+  }
+
+  // Recovery's HP restore only applies to a player character the caller
+  // owns — mirrors the same ownership check the ledger's loot-claim
+  // endpoint uses for its own currentHp-adjacent write.
+  let targetPC: { id: string; currentHp: number; maxHp: number } | null = null;
+  if (resolvedOutcome?.hpRestorePercent && typeof playerCharacterId === "string") {
+    targetPC = await prisma.playerCharacter.findFirst({
+      where: { id: playerCharacterId, userId: req.userId },
+      select: { id: true, currentHp: true, maxHp: true },
+    });
+    if (!targetPC) return res.status(403).json({ error: "You don't have access to this player character" });
   }
 
   const activityData = {
@@ -81,6 +112,29 @@ downtimeRouter.post("/", async (req, res) => {
       }),
     ]);
     publishWorldChange(worldId, "ledger");
+  } else if (resolvedOutcome && (resolvedOutcome.goldDelta || (resolvedOutcome.hpRestorePercent && targetPC))) {
+    const authorName = characterName.trim();
+    const ops: Prisma.PrismaPromise<unknown>[] = [prisma.downtimeActivity.create({ data: activityData })];
+    if (resolvedOutcome.goldDelta) {
+      ops.push(
+        prisma.ledgerEntry.create({
+          data: {
+            worldId, kind: "gold", label: `${DOWNTIME_ACTIVITY_TYPE_LABELS[activityType as DowntimeOutcomeActivityType]}: ${authorName}`,
+            amount: Math.trunc(resolvedOutcome.goldDelta), authorName, userId: req.userId!,
+          },
+        }),
+      );
+    }
+    if (resolvedOutcome.hpRestorePercent && targetPC) {
+      const missing = targetPC.maxHp - targetPC.currentHp;
+      const heal = Math.max(0, Math.ceil(missing * resolvedOutcome.hpRestorePercent));
+      if (heal > 0) {
+        ops.push(prisma.playerCharacter.update({ where: { id: targetPC.id }, data: { currentHp: Math.min(targetPC.maxHp, targetPC.currentHp + heal) } }));
+      }
+    }
+    const results = await prisma.$transaction(ops);
+    row = results[0] as Awaited<ReturnType<typeof prisma.downtimeActivity.create>>;
+    if (resolvedOutcome.goldDelta) publishWorldChange(worldId, "ledger");
   } else {
     row = await prisma.downtimeActivity.create({ data: activityData });
   }

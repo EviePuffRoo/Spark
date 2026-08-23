@@ -19,6 +19,7 @@ import { generateItemRouter } from "./routes/generateItem.js";
 import { generateLocationRouter } from "./routes/generateLocation.js";
 import { generateQuestRouter } from "./routes/generateQuest.js";
 import { generateFactionRouter } from "./routes/generateFaction.js";
+import { generateDowntimeOutcomeRouter } from "./routes/generateDowntimeOutcome.js";
 import { generateEncounterTableRouter } from "./routes/generateEncounterTable.js";
 import { generateAdventureRouter } from "./routes/generateAdventure.js";
 import { generateDungeonRouter } from "./routes/generateDungeon.js";
@@ -170,6 +171,7 @@ app.use("/api/generate-player-character", generateLimiter, generatePlayerCharact
 app.use("/api/generate-shop", generateLimiter, generateShopRouter);
 app.use("/api/generate-region", generateLimiter, generateRegionRouter);
 app.use("/api/generate-settlement", generateLimiter, generateSettlementRouter);
+app.use("/api/generate-downtime-outcome", generateLimiter, generateDowntimeOutcomeRouter);
 app.use("/api/characters", charactersRouter);
 app.use("/api/items", itemsRouter);
 app.use("/api/locations", locationsRouter);

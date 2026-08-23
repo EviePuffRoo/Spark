@@ -583,6 +583,28 @@ export const DOWNTIME_ACTIVITY_TYPE_LABELS: Record<DowntimeActivityType, string>
   custom: "Custom",
 };
 
+// The subset of activity types with a rollable outcome table (see
+// data/downtimeOutcomes.ts) — everything except "crafting" (which already
+// has its own item-based cost/reward flow) and "custom" (free text only,
+// by design).
+export const DOWNTIME_OUTCOME_ACTIVITY_TYPES = ["training", "carousing", "research", "recovery"] as const;
+export type DowntimeOutcomeActivityType = typeof DOWNTIME_OUTCOME_ACTIVITY_TYPES[number];
+
+export interface DowntimeOutcomeDef {
+  id: string;
+  text: string;
+  // Applied to the party ledger as a gold entry when the outcome is rolled
+  // and logged. Positive = the party gains gold, negative = it costs them.
+  goldDelta?: number;
+  // Recovery only: fraction (0-1) of the target character's missing HP
+  // restored when the outcome is rolled and logged with a playerCharacterId.
+  hpRestorePercent?: number;
+}
+
+export interface GenerateDowntimeOutcomeRequest {
+  activityType: DowntimeOutcomeActivityType;
+}
+
 export interface DowntimeActivityInput {
   worldId: string;
   playerCharacterId?: string;
@@ -597,6 +619,12 @@ export interface DowntimeActivityInput {
   // item's crafting cost in gold and credits one of the item to the party's
   // ledger — see computeCraftingCost.
   craftedItemId?: string;
+  // A rolled DowntimeOutcomeDef.id from data/downtimeOutcomes.ts. Purely
+  // additive, same as craftedItemId: logging an activity without one still
+  // works exactly as before. When set, the server looks up the outcome's
+  // gold/HP effects itself (never trusting client-supplied numbers) and
+  // applies them alongside the log entry.
+  outcomeId?: string;
 }
 
 export interface DowntimeActivity extends DowntimeActivityInput {

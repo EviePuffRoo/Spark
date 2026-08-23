@@ -65,6 +65,14 @@ export const BATTLE_TILES: TileDef[] = [
   { id: "bones", name: "Bones", category: "decor", blocksMovement: false, blocksVision: false, difficultTerrain: false },
   { id: "scorch-mark", name: "Scorch Mark", category: "decor", blocksMovement: false, blocksVision: false, difficultTerrain: false },
   { id: "cracked-tile", name: "Cracked Tile", category: "decor", blocksMovement: false, blocksVision: false, difficultTerrain: false },
+
+  // GM Only — markers painted on the gmOnly layer, stripped server-side
+  // before ever reaching a non-owner viewer (see PlacedTile.layer). Mark
+  // these mechanically inert too, as a second line of defense.
+  { id: "secret-door", name: "Secret Door", category: "gmOnly", blocksMovement: false, blocksVision: false, difficultTerrain: false },
+  { id: "hidden-trap", name: "Hidden Trap", category: "gmOnly", blocksMovement: false, blocksVision: false, difficultTerrain: false },
+  { id: "ambush-point", name: "Ambush Point", category: "gmOnly", blocksMovement: false, blocksVision: false, difficultTerrain: false },
+  { id: "treasure-cache", name: "Treasure Cache", category: "gmOnly", blocksMovement: false, blocksVision: false, difficultTerrain: false },
 ];
 
 export const BATTLE_TILE_BY_ID: Record<string, TileDef> = Object.fromEntries(BATTLE_TILES.map((t) => [t.id, t]));

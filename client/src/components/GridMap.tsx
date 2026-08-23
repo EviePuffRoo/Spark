@@ -342,6 +342,12 @@ export function GridMap({
             {battleMap.tiles.filter((t) => t.layer === "decor").map((t) => (
               <use key={`decor-${t.x},${t.y}`} href={`#tile-${t.tileId}`} x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL} pointerEvents="none" />
             ))}
+            {/* The server already strips gmOnly tiles before they ever reach a
+                non-owner viewer (see toBattleMapDTO) — canEdit here is
+                belt-and-suspenders, same pattern as fogActive above. */}
+            {canEdit && battleMap.tiles.filter((t) => t.layer === "gmOnly").map((t) => (
+              <use key={`gm-${t.x},${t.y}`} href={`#tile-${t.tileId}`} x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL} pointerEvents="none" />
+            ))}
             {Array.from({ length: battleMap.width + 1 }, (_, i) => (
               <line key={`v${i}`} x1={i * CELL} y1={0} x2={i * CELL} y2={gridHeight} className="grid-map-line" pointerEvents="none" />
             ))}

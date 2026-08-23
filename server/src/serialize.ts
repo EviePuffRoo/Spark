@@ -14,6 +14,7 @@ import type {
   Encounter, LiveCombatant, HpStatus, CodexNote, EntityType, LedgerEntry, LedgerEntryKind, EncounterZone, EncounterZoneEffect,
   ZoneMapTemplate, Dungeon, DowntimeActivity, DowntimeActivityType, Shop, ShopStockEntry, Region, Settlement, ChatMessage, BattleMap,
   DispositionLogEntry, ShopCommission, FactionLogEntry, FactionRelationship, FactionRelationshipStance, CampaignEvent,
+  PlacedTile,
 } from "@spark/shared";
 
 export function toCharacterDTO(row: CharacterRow): Character {
@@ -218,14 +219,22 @@ export function toZoneMapTemplateDTO(row: ZoneMapTemplateRow): ZoneMapTemplate {
   };
 }
 
-export function toBattleMapDTO(row: BattleMapRow): BattleMap {
+// A viewer who isn't the map's owner never sees gmOnly-layer placements —
+// they're the DM's secret door / trap warning markers, stripped here
+// rather than trusted to the client to hide, same trust boundary as every
+// other "owner sees everything, everyone else gets the redacted view"
+// DTO in this file. Omit viewerId for a context that's always the owner
+// (a POST/PATCH response returned straight to the actor who just wrote it).
+export function toBattleMapDTO(row: BattleMapRow, viewerId?: string): BattleMap {
+  const tiles: PlacedTile[] = JSON.parse(row.tiles);
+  const visibleTiles = viewerId && viewerId !== row.userId ? tiles.filter((t) => t.layer !== "gmOnly") : tiles;
   return {
     id: row.id,
     userId: row.userId,
     name: row.name,
     width: row.width,
     height: row.height,
-    tiles: JSON.parse(row.tiles),
+    tiles: visibleTiles,
     worldId: row.worldId,
     hiddenFromParty: row.hiddenFromParty,
     tags: JSON.parse(row.tags),

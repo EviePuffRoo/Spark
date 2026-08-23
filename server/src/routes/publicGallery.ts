@@ -59,7 +59,7 @@ function toEntityDTO(entityType: EntityType, row: any, viewerId: string): unknow
     case "shop": return toShopDTO(row);
     case "region": return toRegionDTO(row);
     case "settlement": return toSettlementDTO(row);
-    case "battleMap": return toBattleMapDTO(row);
+    case "battleMap": return toBattleMapDTO(row, viewerId);
     default: return null;
   }
 }

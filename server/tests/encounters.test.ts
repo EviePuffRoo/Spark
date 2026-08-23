@@ -339,6 +339,46 @@ describe("grid combat: dynamic vision and fog of war", () => {
     expect(names).toContain("Rogue");
   });
 
+  it("persists a combatant's lightRadiusFeet and lets it reveal a monster beyond their vision radius to a non-owner", async () => {
+    const { dm, worldId, mapId } = await setupWorldWithMap("visiondm5");
+    const joinCode = await dm.post(`/api/worlds/${worldId}/join-code`);
+    const { agent: player } = await signupAgent("visionplayer5");
+    await player.post("/api/worlds/join").send({ code: joinCode.body.code });
+
+    const put = await dm.put(`/api/encounters/${worldId}`).send({
+      combatants: [
+        { id: "pc1", name: "Torchbearer", kind: "playerCharacter", initiative: 10, conditions: [], notes: "", hpVisible: true, gridX: 1, gridY: 1, visionRadiusFeet: 5, lightRadiusFeet: 25 },
+        { id: "far", name: "Lit Ogre", kind: "monster", initiative: 8, conditions: [], notes: "", hpVisible: false, gridX: 5, gridY: 1 },
+      ],
+      round: 1, turnIndex: 0, activeBattleMapId: mapId,
+    });
+    expect(put.status).toBe(200);
+    expect(put.body.combatants.find((c: { id: string }) => c.id === "pc1").lightRadiusFeet).toBe(25);
+
+    const playerView = await player.get(`/api/encounters/${worldId}`);
+    const playerNames = playerView.body.combatants.map((c: { name: string }) => c.name);
+    expect(playerNames).toContain("Lit Ogre");
+  });
+
+  it("does not reveal a monster from a combatant's light while that combatant's own cell is still unseen", async () => {
+    const { dm, worldId, mapId } = await setupWorldWithMap("visiondm6");
+    const joinCode = await dm.post(`/api/worlds/${worldId}/join-code`);
+    const { agent: player } = await signupAgent("visionplayer6");
+    await player.post("/api/worlds/join").send({ code: joinCode.body.code });
+
+    await dm.put(`/api/encounters/${worldId}`).send({
+      combatants: [
+        { id: "pc1", name: "Fighter", kind: "playerCharacter", initiative: 10, conditions: [], notes: "", hpVisible: true, gridX: 0, gridY: 0, visionRadiusFeet: 5 },
+        { id: "torchNpc", name: "Torch NPC", kind: "monster", initiative: 5, conditions: [], notes: "", hpVisible: false, gridX: 9, gridY: 9, lightRadiusFeet: 25 },
+      ],
+      round: 1, turnIndex: 0, activeBattleMapId: mapId,
+    });
+
+    const playerView = await player.get(`/api/encounters/${worldId}`);
+    const playerNames = playerView.body.combatants.map((c: { name: string }) => c.name);
+    expect(playerNames).not.toContain("Torch NPC");
+  });
+
   it("move-grid also grows exploredCells", async () => {
     const { dm, worldId, mapId } = await setupWorldWithMap("visiondm4");
     await dm.put(`/api/encounters/${worldId}`).send({

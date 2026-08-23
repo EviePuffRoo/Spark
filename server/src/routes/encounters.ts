@@ -91,6 +91,7 @@ function coerceCombatant(raw: unknown): LiveCombatant | null {
     sizeCategory: SIZE_CATEGORIES.includes(c.sizeCategory as SizeCategory) ? (c.sizeCategory as SizeCategory) : undefined,
     speedFeet: typeof c.speedFeet === "number" ? c.speedFeet : undefined,
     visionRadiusFeet: typeof c.visionRadiusFeet === "number" ? c.visionRadiusFeet : undefined,
+    lightRadiusFeet: typeof c.lightRadiusFeet === "number" ? c.lightRadiusFeet : undefined,
     concentratingOn: typeof c.concentratingOn === "string" && c.concentratingOn ? c.concentratingOn : undefined,
   };
 }
@@ -347,7 +348,7 @@ encountersRouter.post("/:worldId/move-grid", async (req, res) => {
 
     const mapTiles: PlacedTile[] = JSON.parse(map.tiles);
     const mapShape = { width: map.width, height: map.height, tiles: mapTiles };
-    const visible = extendWithLightSources(mapShape, computeVisionForTokens(mapShape, combatants));
+    const visible = extendWithLightSources(mapShape, computeVisionForTokens(mapShape, combatants), combatants);
     const priorExplored: string[] = JSON.parse(row.exploredCells ?? "[]");
     const exploredCells = JSON.stringify([...new Set([...priorExplored, ...visible])]);
 

@@ -90,13 +90,27 @@ export function computeVisionForTokens(map: Pick<BattleMap, "width" | "height" |
 // further away) — simple, predictable, and enough of a "wow" on its own:
 // a lit torch down a dark hallway genuinely lets the party see past
 // their own vision radius, exactly the way a real light source would.
-export function extendWithLightSources(map: Pick<BattleMap, "width" | "height" | "tiles">, baseVisible: Set<string>): Set<string> {
+//
+// `carriers` is optional and covers the same mechanic for a combatant
+// carrying their own light (a torch, a lantern) rather than one painted
+// into the map — same "already visible" gate, same single pass, just
+// sourced from a token's current position instead of a fixed tile.
+export function extendWithLightSources(
+  map: Pick<BattleMap, "width" | "height" | "tiles">,
+  baseVisible: Set<string>,
+  carriers?: Pick<LiveCombatant, "gridX" | "gridY" | "lightRadiusFeet">[],
+): Set<string> {
   const extended = new Set(baseVisible);
   for (const tile of map.tiles) {
     if ((tile.layer ?? "floor") !== "floor") continue;
     const def = BATTLE_TILE_BY_ID[tile.tileId];
     if (!def?.lightRadius || !baseVisible.has(key(tile.x, tile.y))) continue;
     for (const k of computeVisibleCells(map, tile.x, tile.y, def.lightRadius)) extended.add(k);
+  }
+  for (const c of carriers ?? []) {
+    if (!c.lightRadiusFeet || c.gridX === undefined || c.gridY === undefined) continue;
+    if (!baseVisible.has(key(c.gridX, c.gridY))) continue;
+    for (const k of computeVisibleCells(map, c.gridX, c.gridY, feetToTiles(c.lightRadiusFeet))) extended.add(k);
   }
   return extended;
 }

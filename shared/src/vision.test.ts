@@ -104,4 +104,25 @@ describe("extendWithLightSources", () => {
     const extended = extendWithLightSources(map, base);
     expect(extended.has("13,10")).toBe(true); // torch-sconce has lightRadius: 4
   });
+
+  it("extends sight from a combatant carrying light, once their cell is already visible", () => {
+    const map = emptyMap(20, 20);
+    const base = new Set(["10,10"]);
+    const extended = extendWithLightSources(map, base, [{ gridX: 10, gridY: 10, lightRadiusFeet: 20 }]);
+    expect(extended.has("14,10")).toBe(true); // 20ft / 5ft-per-tile = 4 tiles
+  });
+
+  it("does not extend from a carried light source outside the base visible set", () => {
+    const map = emptyMap(20, 20);
+    const base = new Set(["5,5"]);
+    const extended = extendWithLightSources(map, base, [{ gridX: 15, gridY: 15, lightRadiusFeet: 20 }]);
+    expect(extended.has("15,16")).toBe(false);
+  });
+
+  it("ignores a carrier with no lightRadiusFeet or no grid position", () => {
+    const map = emptyMap(20, 20);
+    const base = new Set(["10,10"]);
+    const extended = extendWithLightSources(map, base, [{ gridX: 10, gridY: 10 }, { gridX: undefined, gridY: undefined, lightRadiusFeet: 30 }]);
+    expect(extended).toEqual(base);
+  });
 });

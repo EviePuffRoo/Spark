@@ -13,5 +13,5 @@ export async function computeCurrentVisibility(activeBattleMapId: string | null,
   if (!map) return null;
   const tiles: PlacedTile[] = JSON.parse(map.tiles);
   const mapShape = { width: map.width, height: map.height, tiles };
-  return extendWithLightSources(mapShape, computeVisionForTokens(mapShape, combatants));
+  return extendWithLightSources(mapShape, computeVisionForTokens(mapShape, combatants), combatants);
 }

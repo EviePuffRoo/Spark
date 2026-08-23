@@ -28,7 +28,7 @@ import type {
   EntityType, EntityLink, SearchResult,
   PublicGalleryEntry, PublishEntryInput, GalleryReportReason, ModerationQueueEntry, AdminUserSummary, AdminStats,
   AuthUser, SignupResult, RecoveryCodeResult,
-  SpellDef, ConditionDef, RuleDef,
+  SpellDef, ConditionDef, RuleDef, StatBlockTemplate,
 } from "@spark/shared";
 
 let onSessionExpired: (() => void) | null = null;
@@ -79,6 +79,7 @@ export interface CompendiumData {
   spells: SpellDef[];
   conditions: ConditionDef[];
   rules: RuleDef[];
+  monsters: StatBlockTemplate[];
 }
 
 export interface ImportResult {

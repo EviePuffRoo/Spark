@@ -1,17 +1,28 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { SpellDef, ConditionDef, RuleDef } from "@spark/shared";
+import type { SpellDef, ConditionDef, RuleDef, StatBlockTemplate } from "@spark/shared";
 import { api, type CompendiumData } from "../api";
 import { CompendiumIcon } from "../components/icons";
 import { EmptyState } from "../components/EmptyState";
+import { StatBlockView } from "../components/StatBlockView";
 import { useScrollDetailOnSelect } from "../useScrollDetailOnSelect";
 
-type CompendiumTab = "spells" | "conditions" | "rules";
+type CompendiumTab = "spells" | "conditions" | "rules" | "bestiary";
 
 const TAB_LABELS: Record<CompendiumTab, string> = {
   spells: "Spells",
   conditions: "Conditions",
   rules: "Rules",
+  bestiary: "Bestiary",
 };
+
+// "1/8" / "1/4" / "1/2" sort and compare below their numeric CR neighbors.
+function crToNumber(cr: string): number {
+  if (cr.includes("/")) {
+    const [num, den] = cr.split("/").map(Number);
+    return num / den;
+  }
+  return Number(cr);
+}
 
 const LEVEL_LABELS: Record<number, string> = {
   0: "Cantrip", 1: "1st", 2: "2nd", 3: "3rd", 4: "4th",
@@ -34,6 +45,7 @@ export function CompendiumPage() {
   const [levelFilter, setLevelFilter] = useState<number | "all">("all");
   const [classFilter, setClassFilter] = useState<string>("all");
   const [ruleCategoryFilter, setRuleCategoryFilter] = useState<string>("all");
+  const [crFilter, setCrFilter] = useState<string>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const detailRef = useRef<HTMLDivElement>(null);
   useScrollDetailOnSelect(detailRef, selectedId);
@@ -82,9 +94,29 @@ export function CompendiumPage() {
     });
   }, [data, search, ruleCategoryFilter]);
 
+  const monsterChallengeRatings = useMemo(() => {
+    if (!data) return [];
+    const set = new Set<string>();
+    for (const m of data.monsters) set.add(m.challengeRating);
+    return Array.from(set).sort((a, b) => crToNumber(a) - crToNumber(b));
+  }, [data]);
+
+  const filteredMonsters = useMemo(() => {
+    if (!data) return [];
+    const q = search.trim().toLowerCase();
+    return data.monsters
+      .filter((m) => {
+        if (crFilter !== "all" && m.challengeRating !== crFilter) return false;
+        if (q && !m.name.toLowerCase().includes(q)) return false;
+        return true;
+      })
+      .sort((a, b) => crToNumber(a.challengeRating) - crToNumber(b.challengeRating));
+  }, [data, search, crFilter]);
+
   const selectedSpell: SpellDef | null = tab === "spells" ? filteredSpells.find((s) => s.id === selectedId) ?? data?.spells.find((s) => s.id === selectedId) ?? null : null;
   const selectedCondition: ConditionDef | null = tab === "conditions" ? data?.conditions.find((c) => c.id === selectedId) ?? null : null;
   const selectedRule: RuleDef | null = tab === "rules" ? data?.rules.find((r) => r.id === selectedId) ?? null : null;
+  const selectedMonster: StatBlockTemplate | null = tab === "bestiary" ? data?.monsters.find((m) => m.id === selectedId) ?? null : null;
 
   return (
     <div className="page roster-layout">
@@ -93,7 +125,7 @@ export function CompendiumPage() {
           <CompendiumIcon className="page-title-icon" aria-hidden="true" />
           <h2>Compendium</h2>
         </div>
-        <p className="hint">SRD spells, conditions, and quick-reference rules — searchable, no tabbing out mid-session.</p>
+        <p className="hint">SRD spells, conditions, quick-reference rules, and monster stat blocks — searchable, no tabbing out mid-session.</p>
 
         <div className="tabs roster-mode-tabs">
           {(Object.keys(TAB_LABELS) as CompendiumTab[]).map((t) => (
@@ -133,6 +165,16 @@ export function CompendiumPage() {
               <option value="action">Actions</option>
               <option value="cover">Cover</option>
               <option value="exhaustion">Exhaustion</option>
+            </select>
+          </label>
+        )}
+
+        {tab === "bestiary" && (
+          <label className="field">
+            <span>Challenge Rating</span>
+            <select value={crFilter} onChange={(e) => setCrFilter(e.target.value)}>
+              <option value="all">All ratings</option>
+              {monsterChallengeRatings.map((cr) => <option key={cr} value={cr}>{cr}</option>)}
             </select>
           </label>
         )}
@@ -185,14 +227,30 @@ export function CompendiumPage() {
             </ul>
           </>
         )}
+
+        {!loading && tab === "bestiary" && (
+          <>
+            {filteredMonsters.length === 0 && <p className="hint">No monsters match.</p>}
+            <ul className="entity-list">
+              {filteredMonsters.map((m) => (
+                <li key={m.id}>
+                  <button className={`entity-item ${m.id === selectedId ? "active" : ""}`} aria-current={m.id === selectedId ? "true" : undefined} onClick={() => setSelectedId(m.id)}>
+                    <span className="entity-name">{m.name}</span>
+                    <span className="entity-meta">CR {m.challengeRating} · {m.statBlock.creatureType}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
       </div>
 
       <div className="panel result-panel" ref={detailRef}>
-        {!selectedSpell && !selectedCondition && !selectedRule && (
+        {!selectedSpell && !selectedCondition && !selectedRule && !selectedMonster && (
           <EmptyState
             icon={<CompendiumIcon />}
             heading="No entry selected"
-            hint="Select a spell, condition, or rule from the list to view its details."
+            hint="Select a spell, condition, rule, or monster from the list to view its details."
           />
         )}
 
@@ -224,6 +282,14 @@ export function CompendiumPage() {
             <p className="statblock-subtitle">{selectedRule.category}</p>
             <p>{selectedRule.description}</p>
           </div>
+        )}
+
+        {selectedMonster && (
+          <StatBlockView
+            name={selectedMonster.name}
+            subtitle={`${selectedMonster.statBlock.size} ${selectedMonster.statBlock.creatureType}, ${selectedMonster.typicalAlignment}`}
+            statBlock={{ ...selectedMonster.statBlock, alignment: selectedMonster.typicalAlignment }}
+          />
         )}
       </div>
     </div>

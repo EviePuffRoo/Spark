@@ -13,7 +13,7 @@ export function chebyshevDistanceFeet(ax: number, ay: number, bx: number, by: nu
 }
 
 function tileAt(map: Pick<BattleMap, "tiles">, x: number, y: number): TileDef | undefined {
-  const placed = map.tiles.find((t) => t.x === x && t.y === y);
+  const placed = map.tiles.find((t) => t.x === x && t.y === y && (t.layer ?? "floor") === "floor");
   return placed ? BATTLE_TILE_BY_ID[placed.tileId] : undefined;
 }
 

@@ -48,6 +48,12 @@ describe("computeReachableCells", () => {
     expect(reachable.has("6,4")).toBe(true);
   });
 
+  it("ignores a blocksMovement tile placed on the decor layer", () => {
+    const map = emptyMap(10, 10, [{ x: 6, y: 5, tileId: "stone-wall", layer: "decor" }]);
+    const reachable = computeReachableCells(map, 5, 5, 30);
+    expect(reachable.has("6,5")).toBe(true);
+  });
+
   it("charges double cost for difficult terrain, halving effective range", () => {
     // Wall off the diagonals around the difficult tile so the only route
     // east is straight through it — otherwise an 8-directional flood fill

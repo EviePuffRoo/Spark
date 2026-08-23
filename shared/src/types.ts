@@ -1115,7 +1115,7 @@ export interface BaseState {
   unlockedShops: BaseUnlockedShop[];
 }
 
-export type TileCategory = "terrain" | "structure" | "nature" | "hazard";
+export type TileCategory = "terrain" | "structure" | "nature" | "hazard" | "decor";
 
 // A curated, first-party tile a DM paints onto a BattleMap grid — never an
 // uploaded image. Every mechanical property a tile carries (does it block
@@ -1140,6 +1140,12 @@ export interface PlacedTile {
   x: number;
   y: number;
   tileId: string;
+  // A cosmetic tile drawn on top of this cell's floor tile — a rug on
+  // stone, moss over grass. Omitted (or "floor") means this placement IS
+  // the cell's floor. Never consulted by vision.ts/gridMovement.ts, which
+  // only ever read the floor-layer placement for a cell, so a decor tile
+  // can never accidentally change a cell's movement or sight rules.
+  layer?: "floor" | "decor";
 }
 
 export const BATTLE_MAP_MAX_WIDTH = 40;

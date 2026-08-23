@@ -304,6 +304,9 @@ export interface QuestHook extends GeneratedQuestHook {
   hiddenFromParty: boolean;
   tags: string[];
   notes?: string;
+  // The quest that must be completed before this one unlocks — a chain,
+  // not a DAG (see the server's cycle check on this field).
+  prerequisiteQuestId?: string | null;
   createdAt: string;
   updatedAt: string;
 }

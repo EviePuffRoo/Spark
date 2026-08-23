@@ -6,6 +6,23 @@ import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
 
 export const questsRouter = Router();
 
+// Walking the chain here (rather than just checking direct self-reference)
+// keeps the invariant that a quest's prerequisite chain never loops —
+// Phase B's chain readout walks this same link forward and would spin
+// forever on a cycle. Bounded to guard against any pre-existing bad data.
+async function wouldCreateCycle(questId: string, candidatePrereqId: string): Promise<boolean> {
+  let currentId: string | null = candidatePrereqId;
+  for (let i = 0; i < 100 && currentId; i++) {
+    if (currentId === questId) return true;
+    const row: { prerequisiteQuestId: string | null } | null = await prisma.questHook.findUnique({
+      where: { id: currentId },
+      select: { prerequisiteQuestId: true },
+    });
+    currentId = row?.prerequisiteQuestId ?? null;
+  }
+  return false;
+}
+
 questsRouter.get("/", async (req, res) => {
   const { worldId } = req.query;
   const memberWorldIds = await getMemberWorldIds(req.userId!);
@@ -26,7 +43,7 @@ questsRouter.get("/:id", async (req, res) => {
 
 questsRouter.post("/", async (req, res) => {
   const body = req.body ?? {};
-  const { title, questType, tier, hook, objective, complication, reward, worldId, tags, notes, hiddenFromParty } = body;
+  const { title, questType, tier, hook, objective, complication, reward, worldId, tags, notes, hiddenFromParty, prerequisiteQuestId } = body;
 
   if (!title || !questType || !tier || !hook || !objective || !complication || !reward) {
     return res.status(400).json({ error: "Missing required quest hook fields" });
@@ -34,6 +51,10 @@ questsRouter.post("/", async (req, res) => {
   if (typeof worldId === "string") {
     const world = await findAccessibleWorld(req.userId!, worldId);
     if (!world) return res.status(403).json({ error: "You don't have access to this world" });
+  }
+  if (typeof prerequisiteQuestId === "string") {
+    const prereq = await prisma.questHook.findFirst({ where: { id: prerequisiteQuestId, userId: req.userId } });
+    if (!prereq) return res.status(403).json({ error: "You don't have access to this quest" });
   }
 
   const row = await prisma.questHook.create({
@@ -43,6 +64,7 @@ questsRouter.post("/", async (req, res) => {
       tags: JSON.stringify(Array.isArray(tags) ? tags : []),
       notes: notes ?? null,
       hiddenFromParty: !!hiddenFromParty,
+      prerequisiteQuestId: prerequisiteQuestId ?? null,
       userId: req.userId!,
     },
   });
@@ -64,6 +86,19 @@ questsRouter.patch("/:id", async (req, res) => {
     data.worldId = body.worldId ?? null;
   }
   if ("tags" in body) data.tags = JSON.stringify(Array.isArray(body.tags) ? body.tags : []);
+  if ("prerequisiteQuestId" in body) {
+    if (typeof body.prerequisiteQuestId === "string") {
+      if (body.prerequisiteQuestId === req.params.id) {
+        return res.status(400).json({ error: "A quest cannot be its own prerequisite" });
+      }
+      const prereq = await prisma.questHook.findFirst({ where: { id: body.prerequisiteQuestId, userId: req.userId } });
+      if (!prereq) return res.status(403).json({ error: "You don't have access to this quest" });
+      if (await wouldCreateCycle(req.params.id, body.prerequisiteQuestId)) {
+        return res.status(400).json({ error: "This would create a prerequisite cycle" });
+      }
+    }
+    data.prerequisiteQuestId = body.prerequisiteQuestId ?? null;
+  }
 
   const result = await prisma.questHook.updateMany({ where: { id: req.params.id, userId: req.userId }, data });
   if (result.count === 0) return res.status(404).json({ error: "Quest hook not found" });

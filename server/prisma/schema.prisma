@@ -319,8 +319,16 @@ model QuestHook {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  // The quest that must be completed before this one unlocks — a chain, not
+  // a DAG: a quest has at most one prerequisite (see quests.ts's cycle
+  // check for why a longer chain never loops back on itself).
+  prerequisiteQuestId String?
+  prerequisiteQuest   QuestHook?  @relation("QuestPrerequisite", fields: [prerequisiteQuestId], references: [id], onDelete: SetNull)
+  dependentQuests     QuestHook[] @relation("QuestPrerequisite")
+
   @@index([worldId])
   @@index([userId])
+  @@index([prerequisiteQuestId])
 }
 
 model Faction {

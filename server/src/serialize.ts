@@ -344,6 +344,7 @@ export function toQuestHookDTO(row: QuestHookRow): QuestHook {
     hiddenFromParty: row.hiddenFromParty,
     tags: JSON.parse(row.tags),
     notes: row.notes ?? undefined,
+    prerequisiteQuestId: row.prerequisiteQuestId,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };

@@ -15,7 +15,7 @@ import type {
   SessionHighlights,
   WorldAchievements,
   BaseState,
-  DowntimeActivity, DowntimeActivityInput,
+  DowntimeActivity, DowntimeActivityInput, DowntimeOutcomeActivityType, DowntimeOutcomeDef,
   Encounter, EncounterStateInput,
   ZoneMapTemplate, ZoneMapTemplateInput,
   Dungeon, DungeonInput, GenerateDungeonRequest, GeneratedDungeonOutline,
@@ -270,6 +270,8 @@ export const api = {
   postDowntimeActivity: (entry: DowntimeActivityInput) =>
     request<DowntimeActivity>("/downtime", { method: "POST", body: JSON.stringify(entry) }),
   deleteDowntimeActivity: (id: string) => request<void>(`/downtime/${id}`, { method: "DELETE" }),
+  generateDowntimeOutcome: (activityType: DowntimeOutcomeActivityType) =>
+    request<DowntimeOutcomeDef>("/generate-downtime-outcome", { method: "POST", body: JSON.stringify({ activityType }) }),
 
   getEncounter: (worldId: string) => request<Encounter>(`/encounters/${worldId}`),
   saveEncounter: (worldId: string, state: EncounterStateInput) =>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import type { DowntimeActivity, DowntimeActivityType, EncounterTable, LiveCombatant, EncounterStateInput, SearchResult, Region, PlayerCharacter, Item } from "@spark/shared";
-import { DOWNTIME_ACTIVITY_TYPES, DOWNTIME_ACTIVITY_TYPE_LABELS, computeCraftingCost } from "@spark/shared";
+import type { DowntimeActivity, DowntimeActivityType, DowntimeOutcomeActivityType, DowntimeOutcomeDef, EncounterTable, LiveCombatant, EncounterStateInput, SearchResult, Region, PlayerCharacter, Item } from "@spark/shared";
+import { DOWNTIME_ACTIVITY_TYPES, DOWNTIME_ACTIVITY_TYPE_LABELS, DOWNTIME_OUTCOME_ACTIVITY_TYPES, computeCraftingCost } from "@spark/shared";
 import { api } from "../api";
 import { useAuth } from "../AuthContext";
 import { useActiveWorld } from "../ActiveWorldContext";
@@ -39,6 +39,9 @@ export function DowntimePage({
 
   const [craftedItem, setCraftedItem] = useState<Item | null>(null);
   const [pickingCraftedItem, setPickingCraftedItem] = useState(false);
+
+  const [rolledOutcome, setRolledOutcome] = useState<DowntimeOutcomeDef | null>(null);
+  const [rollingOutcome, setRollingOutcome] = useState(false);
 
   const [pickedTable, setPickedTable] = useState<EncounterTable | null>(null);
   const [pickingTable, setPickingTable] = useState(false);
@@ -97,27 +100,51 @@ export function DowntimePage({
   async function logActivity() {
     if (!worldId || !characterName.trim() || !description.trim()) return;
     const days = Math.max(1, Math.trunc(Number(daysSpent)) || 1);
+    const matchedPC = playerCharacters.find((pc) => pc.name.trim().toLowerCase() === characterName.trim().toLowerCase());
     setStatus("saving");
     setError(null);
     try {
       await api.postDowntimeActivity({
         worldId,
+        playerCharacterId: matchedPC?.id,
         characterName: characterName.trim(),
         activityType,
         description: description.trim(),
         daysSpent: days,
         outcome: outcome.trim() || undefined,
         craftedItemId: craftedItem?.id,
+        outcomeId: rolledOutcome?.id,
       });
       setDescription("");
       setOutcome("");
       setDaysSpent("1");
       setCraftedItem(null);
+      setRolledOutcome(null);
       refresh();
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setStatus("idle");
+    }
+  }
+
+  function changeActivityType(next: DowntimeActivityType) {
+    setActivityType(next);
+    setRolledOutcome(null);
+  }
+
+  async function rollOutcome() {
+    if (!DOWNTIME_OUTCOME_ACTIVITY_TYPES.includes(activityType as DowntimeOutcomeActivityType)) return;
+    setRollingOutcome(true);
+    setError(null);
+    try {
+      const result = await api.generateDowntimeOutcome(activityType as DowntimeOutcomeActivityType);
+      setRolledOutcome(result);
+      setOutcome(result.text);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setRollingOutcome(false);
     }
   }
 
@@ -208,7 +235,7 @@ export function DowntimePage({
             </label>
             <label className="field">
               <span>Activity type</span>
-              <select value={activityType} onChange={(e) => setActivityType(e.target.value as DowntimeActivityType)}>
+              <select value={activityType} onChange={(e) => changeActivityType(e.target.value as DowntimeActivityType)}>
                 {DOWNTIME_ACTIVITY_TYPES.map((t) => <option key={t} value={t}>{DOWNTIME_ACTIVITY_TYPE_LABELS[t]}</option>)}
               </select>
             </label>
@@ -222,8 +249,24 @@ export function DowntimePage({
             </label>
             <label className="field">
               <span>Outcome (optional)</span>
-              <input type="text" value={outcome} onChange={(e) => setOutcome(e.target.value)} placeholder="Gained proficiency, made a contact…" />
+              <input type="text" value={outcome} onChange={(e) => { setOutcome(e.target.value); setRolledOutcome(null); }} placeholder="Gained proficiency, made a contact…" />
             </label>
+
+            {DOWNTIME_OUTCOME_ACTIVITY_TYPES.includes(activityType as DowntimeOutcomeActivityType) && (
+              <div className="field">
+                <span>Roll an outcome (optional)</span>
+                <button className="btn-secondary" onClick={rollOutcome} disabled={rollingOutcome}>
+                  {rollingOutcome ? "Rolling…" : rolledOutcome ? "Reroll" : "Roll Outcome"}
+                </button>
+                {rolledOutcome && (
+                  <p className="hint">
+                    {rolledOutcome.goldDelta ? (rolledOutcome.goldDelta > 0 ? `+${rolledOutcome.goldDelta} gp to the party ledger. ` : `${rolledOutcome.goldDelta} gp from the party ledger. `) : ""}
+                    {rolledOutcome.hpRestorePercent ? `Restores about ${Math.round(rolledOutcome.hpRestorePercent * 100)}% of missing HP if a matching character is picked above. ` : ""}
+                    Logging this activity will apply it.
+                  </p>
+                )}
+              </div>
+            )}
 
             {activityType === "crafting" && (
               <div className="field">

@@ -14,7 +14,7 @@ const COUNT_SELECT = {
 };
 
 function toSummary(
-  row: { id: string; name: string; description: string | null; nextSessionAt: Date | null; createdAt: Date; updatedAt: Date; _count: Record<string, number> },
+  row: { id: string; name: string; description: string | null; nextSessionAt: Date | null; currentDay: number; createdAt: Date; updatedAt: Date; _count: Record<string, number> },
   isOwner: boolean,
   ownerUsername?: string
 ) {
@@ -23,6 +23,7 @@ function toSummary(
     name: row.name,
     description: row.description ?? undefined,
     nextSessionAt: row.nextSessionAt?.toISOString(),
+    currentDay: row.currentDay,
     isOwner,
     ownerUsername,
     characterCount: row._count.characters,
@@ -68,6 +69,7 @@ worldsRouter.get("/:id", async (req, res) => {
     name: row.name,
     description: row.description ?? undefined,
     nextSessionAt: row.nextSessionAt?.toISOString(),
+    currentDay: row.currentDay,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   });
@@ -105,7 +107,7 @@ worldsRouter.post("/starter", async (req, res) => {
 });
 
 worldsRouter.patch("/:id", async (req, res) => {
-  const { name, description, nextSessionAt } = req.body ?? {};
+  const { name, description, nextSessionAt, currentDay } = req.body ?? {};
   const data: Record<string, unknown> = {};
   if (name !== undefined) data.name = name;
   if (description !== undefined) data.description = description;
@@ -118,10 +120,31 @@ worldsRouter.patch("/:id", async (req, res) => {
       data.nextSessionAt = parsed;
     }
   }
+  if (currentDay !== undefined) {
+    if (typeof currentDay !== "number" || !Number.isInteger(currentDay) || currentDay < 1) {
+      return res.status(400).json({ error: "currentDay must be a positive integer" });
+    }
+    data.currentDay = currentDay;
+  }
 
   const result = await prisma.world.updateMany({ where: { id: req.params.id, userId: req.userId }, data });
   if (result.count === 0) return res.status(404).json({ error: "World not found" });
   const row = await prisma.world.findUnique({ where: { id: req.params.id } });
+  res.json(row);
+});
+
+// Owner-only: moves the in-world calendar forward by a DM-chosen number of
+// days — never automatic (see World.currentDay's comment in shared/types.ts
+// for why). Downtime/Travel only ever suggest a day count; this is the one
+// place that actually advances it.
+worldsRouter.post("/:id/advance-day", async (req, res) => {
+  const days = req.body?.days;
+  if (typeof days !== "number" || !Number.isInteger(days) || days < 1) {
+    return res.status(400).json({ error: "days must be a positive integer" });
+  }
+  const world = await prisma.world.findFirst({ where: { id: req.params.id, userId: req.userId } });
+  if (!world) return res.status(404).json({ error: "World not found" });
+  const row = await prisma.world.update({ where: { id: world.id }, data: { currentDay: { increment: days } } });
   res.json(row);
 });
 

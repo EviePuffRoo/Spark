@@ -360,6 +360,8 @@ export const api = {
   updateWorld: (id: string, patch: Partial<Omit<World, "nextSessionAt">> & { nextSessionAt?: string | null }) =>
     request<World>(`/worlds/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   deleteWorld: (id: string) => request<void>(`/worlds/${id}`, { method: "DELETE" }),
+  advanceWorldDay: (id: string, days: number) =>
+    request<World>(`/worlds/${id}/advance-day`, { method: "POST", body: JSON.stringify({ days }) }),
 
   generateWorldJoinCode: (worldId: string) =>
     request<{ code: string }>(`/worlds/${worldId}/join-code`, { method: "POST" }),

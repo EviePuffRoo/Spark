@@ -25,7 +25,7 @@ export function DowntimePage({
   onConsumeCraftedItemHandoff?: () => void;
 }) {
   const { user } = useAuth();
-  const { worldId } = useActiveWorld();
+  const { worldId, worlds, refreshWorlds } = useActiveWorld();
   const [viewMode, setViewMode] = useState<"log" | "travel">("log");
 
   const [activities, setActivities] = useState<DowntimeActivity[]>([]);
@@ -54,6 +54,24 @@ export function DowntimePage({
   const [destinationRegion, setDestinationRegion] = useState<Region | null>(null);
   const [pickingOrigin, setPickingOrigin] = useState(false);
   const [pickingDestination, setPickingDestination] = useState(false);
+
+  const [lastLoggedDays, setLastLoggedDays] = useState<number | null>(null);
+  const [advancingCalendar, setAdvancingCalendar] = useState(false);
+
+  const world = worlds.find((w) => w.id === worldId) ?? null;
+
+  async function advanceCalendar(days: number) {
+    if (!worldId || !Number.isInteger(days) || days < 1) return;
+    setAdvancingCalendar(true);
+    try {
+      await api.advanceWorldDay(worldId, days);
+      await refreshWorlds();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setAdvancingCalendar(false);
+    }
+  }
 
   function refresh() {
     if (!worldId) {
@@ -120,6 +138,7 @@ export function DowntimePage({
       setDaysSpent("1");
       setCraftedItem(null);
       setRolledOutcome(null);
+      setLastLoggedDays(days);
       refresh();
     } catch (e) {
       setError((e as Error).message);
@@ -299,6 +318,14 @@ export function DowntimePage({
             <button className="btn-primary" onClick={logActivity} disabled={status === "saving"}>
               {status === "saving" ? "Logging…" : "Log Activity"}
             </button>
+            {lastLoggedDays !== null && world && (
+              <p className="hint">
+                Logged {lastLoggedDays} day{lastLoggedDays === 1 ? "" : "s"}.{" "}
+                <button className="link-button" onClick={() => { advanceCalendar(lastLoggedDays); setLastLoggedDays(null); }} disabled={advancingCalendar}>
+                  Advance calendar by {lastLoggedDays} day{lastLoggedDays === 1 ? "" : "s"}
+                </button>
+              </p>
+            )}
           </div>
 
           <div className="panel result-panel">
@@ -388,6 +415,13 @@ export function DowntimePage({
                 <div className="button-row">
                   <button className="btn-primary" onClick={checkForEncounter}>Check for Encounter (Day {dayCount})</button>
                 </div>
+                {dayCount > 1 && world && (
+                  <p className="hint">
+                    <button className="link-button" onClick={() => advanceCalendar(dayCount - 1)} disabled={advancingCalendar}>
+                      Advance calendar by {dayCount - 1} day{dayCount - 1 === 1 ? "" : "s"}
+                    </button>
+                  </p>
+                )}
               </>
             )}
             {error && <p className="error">{error}</p>}

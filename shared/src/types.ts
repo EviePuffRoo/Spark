@@ -109,6 +109,13 @@ export interface World {
   name: string;
   description?: string;
   nextSessionAt?: string;
+  // The in-world calendar's current day count, starting at 1 — see
+  // calendar.ts's describeCalendarDay for how this becomes a readable date.
+  // Advanced manually by the DM (via PATCH or /advance-day), never
+  // automatically: Downtime/Travel only ever suggest a day count, since
+  // auto-advancing on every logged activity would double-count when
+  // multiple PCs act in parallel.
+  currentDay: number;
   createdAt: string;
   updatedAt: string;
 }

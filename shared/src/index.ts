@@ -9,6 +9,7 @@ export * from "./concentration.js";
 export * from "./opportunityAttack.js";
 export * from "./craftingRules.js";
 export * from "./reputation.js";
+export * from "./calendar.js";
 export * from "./characterImport.js";
 export * from "./equipmentStats.js";
 export * from "./data/races.js";

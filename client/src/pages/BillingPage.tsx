@@ -56,9 +56,10 @@ export function BillingPage() {
       <div className="panel">
         <h2>Billing</h2>
         <p className="hint">
-          Every feature in Spark is free, forever — no exceptions. The paid plan only raises usage caps: how
-          many worlds you can have, how fast you can generate content, and how far back you can browse roll
-          log and chat history.
+          Almost everything in Spark is free, forever. The paid plan raises usage caps — how many worlds you
+          can have, how fast you can generate content, and how far back you can browse roll log and chat
+          history — and unlocks the Home Base upgrade system for worlds you own. Paying isn't required to play
+          in someone else's world: a DM's subscription unlocks their Home Base for the whole table.
         </p>
 
         <table className="plan-comparison">
@@ -84,6 +85,11 @@ export function BillingPage() {
               <th scope="row">Roll log &amp; chat history</th>
               <td>Last {RECENT_HISTORY_LIMIT}</td>
               <td>Full history</td>
+            </tr>
+            <tr>
+              <th scope="row">Home Base upgrades</th>
+              <td>Locked</td>
+              <td>Unlocked</td>
             </tr>
           </tbody>
         </table>

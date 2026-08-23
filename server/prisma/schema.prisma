@@ -57,6 +57,7 @@ model World {
   description String?
   joinCodeHash String?
   nextSessionAt DateTime?
+  currentDay  Int         @default(1)
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   userId      String

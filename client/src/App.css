@@ -1838,6 +1838,11 @@ textarea {
   margin-bottom: 12px;
 }
 
+.calendar-days-input {
+  width: 3.5em;
+  margin: 0 6px;
+}
+
 .link-button {
   background: none;
   border: none;

@@ -68,3 +68,74 @@ describe("worlds nextSessionAt", () => {
     expect(stillSet.body.nextSessionAt).toBe(iso);
   });
 });
+
+describe("world calendar", () => {
+  it("defaults currentDay to 1 for a new world", async () => {
+    const { agent } = await signupAgent("calendarowner1");
+    const world = await agent.post("/api/worlds").send({ name: "Calendar World" });
+    expect(world.body.currentDay).toBe(1);
+
+    const single = await agent.get(`/api/worlds/${world.body.id}`);
+    expect(single.body.currentDay).toBe(1);
+
+    const list = await agent.get("/api/worlds");
+    expect(list.body.find((w: { id: string }) => w.id === world.body.id).currentDay).toBe(1);
+  });
+
+  it("advances currentDay by a positive integer via /advance-day", async () => {
+    const { agent } = await signupAgent("calendarowner2");
+    const world = await agent.post("/api/worlds").send({ name: "Advancing World" });
+    const worldId = world.body.id as string;
+
+    const first = await agent.post(`/api/worlds/${worldId}/advance-day`).send({ days: 3 });
+    expect(first.status).toBe(200);
+    expect(first.body.currentDay).toBe(4);
+
+    const second = await agent.post(`/api/worlds/${worldId}/advance-day`).send({ days: 1 });
+    expect(second.status).toBe(200);
+    expect(second.body.currentDay).toBe(5);
+  });
+
+  it("400s advance-day with a non-positive or non-integer days value", async () => {
+    const { agent } = await signupAgent("calendarowner3");
+    const world = await agent.post("/api/worlds").send({ name: "Bad Advance World" });
+    const worldId = world.body.id as string;
+
+    for (const days of [0, -1, 1.5, "two", null, undefined]) {
+      const res = await agent.post(`/api/worlds/${worldId}/advance-day`).send({ days });
+      expect(res.status).toBe(400);
+    }
+  });
+
+  it("404s advance-day for a non-owner", async () => {
+    const { agent: owner } = await signupAgent("calendarowner4");
+    const world = await owner.post("/api/worlds").send({ name: "Owned Calendar World" });
+    const worldId = world.body.id as string;
+    const joinCode = await owner.post(`/api/worlds/${worldId}/join-code`);
+
+    const { agent: member } = await signupAgent("calendarmember1");
+    await member.post("/api/worlds/join").send({ code: joinCode.body.code });
+
+    const res = await member.post(`/api/worlds/${worldId}/advance-day`).send({ days: 1 });
+    expect(res.status).toBe(404);
+
+    const still = await owner.get(`/api/worlds/${worldId}`);
+    expect(still.body.currentDay).toBe(1);
+  });
+
+  it("lets the owner set currentDay directly via PATCH, with validation", async () => {
+    const { agent } = await signupAgent("calendarowner5");
+    const world = await agent.post("/api/worlds").send({ name: "Direct Set World" });
+    const worldId = world.body.id as string;
+
+    const ok = await agent.patch(`/api/worlds/${worldId}`).send({ currentDay: 42 });
+    expect(ok.status).toBe(200);
+    expect(ok.body.currentDay).toBe(42);
+
+    const bad = await agent.patch(`/api/worlds/${worldId}`).send({ currentDay: 0 });
+    expect(bad.status).toBe(400);
+
+    const stillOk = await agent.get(`/api/worlds/${worldId}`);
+    expect(stillOk.body.currentDay).toBe(42);
+  });
+});

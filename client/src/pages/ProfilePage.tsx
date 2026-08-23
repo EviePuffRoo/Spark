@@ -165,7 +165,7 @@ export function ProfilePage() {
           {notifyBlocked && (
             <p className="hint">Notifications are blocked in your browser — allow them for this site to enable turn alerts.</p>
           )}
-          <p className="hint">Turn notifications fire while you're in the Player Companion view (Player View) during live combat.</p>
+          <p className="hint">Turn notifications fire while you're in Player View during live combat.</p>
         </div>
 
         <div className="danger-zone">

@@ -12,11 +12,13 @@ export const QUEST_TIERS: string[] = [
 export const QUEST_TITLE_ADJECTIVES: string[] = [
   "Missing", "Silent", "Forgotten", "Last", "Hidden", "Broken", "Unspoken", "Final",
   "Buried", "Stolen", "Quiet", "Long", "Unfinished", "Bitter", "Unlikely",
+  "Cursed", "Drowned", "Nameless", "Crooked", "Vanished", "Withered", "Sworn", "Waylaid",
 ];
 
 export const QUEST_TITLE_NOUNS: string[] = [
   "Cartographer", "Ledger", "Promise", "Heir", "Shipment", "Confession", "Inheritance",
   "Watch", "Bargain", "Letter", "Debt", "Song", "Verdict", "Return", "Reckoning",
+  "Contract", "Oath", "Caravan", "Signet", "Prophecy", "Warrant", "Kinship", "Passage",
 ];
 
 export const QUEST_HOOKS: string[] = [
@@ -35,6 +37,16 @@ export const QUEST_HOOKS: string[] = [
   "A local celebration is disrupted by news that changes everyone's mood in an instant.",
   "An old acquaintance the party hasn't seen in years turns up asking for help, and won't say why now.",
   "A stranger buys the whole table a round, then quietly explains what they actually want.",
+  "A rival adventuring party beats the group to the job posting, then offers to split the take if they help finish it.",
+  "The party's contact goes silent mid-conversation, and the letter they were writing is left unfinished on the table.",
+  "A caravan guard bursts into the tavern demanding to know if anyone here can actually fight.",
+  "The party wakes to find a warning carved into their own door, in a hand none of them recognize.",
+  "A local shrine reports its offerings have been replaced with something far stranger than coin.",
+  "An old rival resurfaces with an offer that sounds too generous to be honest.",
+  "A courier collapses outside the party's door, more concerned with a sealed pouch than their own wounds.",
+  "The town crier reads a bounty notice that names someone the party already knows.",
+  "A ship's captain refuses to sail until someone deals with what's been heard scratching in the hold.",
+  "An unfamiliar coat of arms turns up nailed to the notice board, offering more coin than the job should be worth.",
 ];
 
 export const QUEST_OBJECTIVES: string[] = [
@@ -53,6 +65,16 @@ export const QUEST_OBJECTIVES: string[] = [
   "Settle the score without starting a war over it.",
   "Find safe passage through a place that isn't supposed to be dangerous anymore.",
   "Learn the truth, then decide if anyone should be told.",
+  "Clear the debt before the collector decides to make an example of someone.",
+  "Identify the traitor before the next meeting goes the same way as the last.",
+  "Buy enough time for the real plan to work, whatever it costs to stall.",
+  "Reach the negotiation table before either side decides talking is pointless.",
+  "Keep the cargo intact until it reaches someone who can actually use it.",
+  "Prove the accusation false before the trial makes it permanent.",
+  "Locate the source of the disturbance before it reaches the settlement.",
+  "Hold the line long enough for everyone else to get clear.",
+  "Track the shipment back to whoever's actually behind it.",
+  "Get a straight answer out of someone who has every reason to lie.",
 ];
 
 export const QUEST_COMPLICATIONS: string[] = [
@@ -71,6 +93,16 @@ export const QUEST_COMPLICATIONS: string[] = [
   "A previous job comes back to complicate this one.",
   "The solution everyone expects will make things worse, not better.",
   "Success requires breaking a promise the party already made to someone else.",
+  "The map the party was given leaves out a detail that turns out to matter enormously.",
+  "A storm, flood, or landslide cuts off the route everyone was counting on.",
+  "The person who needs saving doesn't want to leave without something they insist on bringing.",
+  "Word of the party's involvement reaches someone who wanted this kept quiet.",
+  "The 'simple' job requires a skill nobody in the party actually has.",
+  "An informant demands a much steeper price after already sharing half the information.",
+  "The item everyone's after isn't where the last clue said it would be.",
+  "A rival faction shows up with the exact same job in hand.",
+  "The client changes the terms after the party has already committed.",
+  "What was supposed to be abandoned very much isn't.",
 ];
 
 export const QUEST_REWARDS: string[] = [
@@ -89,4 +121,14 @@ export const QUEST_REWARDS: string[] = [
   "A private word of warning about a danger still to come.",
   "Nothing material, but the quiet, lasting gratitude of someone who needed it.",
   "An old favor finally called in on the party's behalf, elsewhere.",
+  "A deed to a small property, questionable condition, undisputed ownership.",
+  "Training or tutelage from someone genuinely skilled, offered without the usual fee.",
+  "A seat at a table the party wouldn't otherwise be invited to.",
+  "An enchantment or blessing performed personally, at no cost, by someone who rarely bothers.",
+  "A binding contract that guarantees fair treatment from a notoriously unfair guild.",
+  "First refusal on anything valuable this contact finds from now on.",
+  "A name cleared, publicly and permanently, of an old and unfair rumor.",
+  "Passage aboard a vessel or caravan that doesn't normally take passengers.",
+  "A written confession that settles a dispute in the party's favor.",
+  "Whatever the party can carry from a stash no one else knows still exists.",
 ];

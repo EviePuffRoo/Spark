@@ -11,26 +11,29 @@ export const LOCATION_CATEGORIES: LocationCategoryDef[] = [
 ];
 
 export const LOCATION_TYPES_BY_CATEGORY: Record<string, string[]> = {
-  settlement: ["Tavern", "Inn", "Temple", "Marketplace", "Blacksmith's Forge", "Apothecary", "Manor House", "Prison", "Library", "Bathhouse"],
-  wilderness: ["Hidden Grove", "Campsite", "Standing Stones", "Ferry Crossing", "Hunting Lodge", "Abandoned Farmstead", "Overgrown Orchard", "Sunken Bog", "Windswept Bluff", "Forgotten Shrine", "Hermit's Clearing", "Old Quarry"],
-  dungeon: ["Ruined Keep", "Cave Entrance", "Abandoned Mine", "Sewer Junction", "Collapsed Temple", "Forgotten Crypt", "Sunken Cistern", "Old Catacombs", "Buried Vault", "Cracked Cellar", "Overrun Barracks", "Flooded Tunnel"],
-  landmark: ["Lighthouse", "Windmill", "Watchtower", "Old Stone Bridge", "Graveyard", "Bell Tower", "Ancient Obelisk", "Ruined Aqueduct", "Sundial Plaza", "Toppled Statue", "Weathered Monument", "Abandoned Mill"],
+  settlement: ["Tavern", "Inn", "Temple", "Marketplace", "Blacksmith's Forge", "Apothecary", "Manor House", "Prison", "Library", "Bathhouse", "Cobbler's Shop", "Scriptorium", "Physician's House", "Weaver's Hall"],
+  wilderness: ["Hidden Grove", "Campsite", "Standing Stones", "Ferry Crossing", "Hunting Lodge", "Abandoned Farmstead", "Overgrown Orchard", "Sunken Bog", "Windswept Bluff", "Forgotten Shrine", "Hermit's Clearing", "Old Quarry", "Frozen Waterfall", "Thorned Hedge Maze", "Tidal Cave", "Drifting Fen"],
+  dungeon: ["Ruined Keep", "Cave Entrance", "Abandoned Mine", "Sewer Junction", "Collapsed Temple", "Forgotten Crypt", "Sunken Cistern", "Old Catacombs", "Buried Vault", "Cracked Cellar", "Overrun Barracks", "Flooded Tunnel", "Drowned Undercroft", "Cracked Reliquary", "Forsaken Garrison", "Root-Choked Warren"],
+  landmark: ["Lighthouse", "Windmill", "Watchtower", "Old Stone Bridge", "Graveyard", "Bell Tower", "Ancient Obelisk", "Ruined Aqueduct", "Sundial Plaza", "Toppled Statue", "Weathered Monument", "Abandoned Mill", "Sunken Bell Garden", "Old Toll Gate", "Crumbling Signal Fire", "Fossilized Grove"],
 };
 
 export const LOCATION_DESCRIPTORS: string[] = [
   "fog-wrapped", "sun-bleached", "ivy-choked", "lantern-lit", "wind-battered", "moss-covered",
   "smoke-stained", "half-flooded", "eerily quiet", "surprisingly cheerful", "crumbling",
   "freshly painted", "overgrown", "salt-worn", "candlelit",
+  "rain-slicked", "amber-lit", "threadbare", "wave-worn", "dust-veiled", "vine-strangled",
 ];
 
 export const LOCATION_NAME_ADJECTIVES: string[] = [
   "Wandering", "Hollow", "Silver", "Drowsy", "Broken", "Gilded", "Weeping", "Laughing",
   "Quiet", "Restless", "Painted", "Forgotten", "Salty", "Whispering", "Crooked",
+  "Dappled", "Sable", "Rustling", "Weathered", "Drifting", "Faded",
 ];
 
 export const LOCATION_NAME_NOUNS: string[] = [
   "Lantern", "Bell", "Anchor", "Raven", "Oak", "Stag", "Kettle", "Compass", "Candle",
   "Wheel", "Crown", "Well", "Hearth", "Fox", "Tide",
+  "Millstone", "Cauldron", "Spire", "Harbor", "Willow", "Ember",
 ];
 
 export const LOCATION_FEATURES: string[] = [
@@ -49,6 +52,14 @@ export const LOCATION_FEATURES: string[] = [
   "The nearest water source tastes faintly of copper.",
   "Every clock in the building reads a different time.",
   "A carved inscription over the entrance has been worn smooth by centuries of hands touching it for luck.",
+  "The ceiling beams are carved with names, but none of them match anyone locals can name.",
+  "A single window is bricked over from the inside, for reasons no one currently living remembers.",
+  "The stairs have an extra step that doesn't seem to appear until you've counted wrong at least once.",
+  "A collection of keys hangs by the door, none of which fit any lock still standing.",
+  "Every mirror in the building has been turned to face the wall.",
+  "The floor tilts just enough that spilled drinks always run toward the same corner.",
+  "A patch of the garden refuses to grow anything but the same stubborn weed.",
+  "Scorch marks on the ceiling trace a shape no one has managed to explain.",
 ];
 
 export const LOCATION_KEEPERS: string[] = [
@@ -62,6 +73,12 @@ export const LOCATION_KEEPERS: string[] = [
   "Managed by twins who finish each other's sentences and prices.",
   "Guarded, loosely, by a dog no one claims to own but everyone feeds.",
   "Left in the care of an apprentice whose master hasn't been seen in weeks.",
+  "Kept by a former soldier who still salutes anyone who startles them.",
+  "Cared for by siblings who inherited it and can't agree on what to do with it.",
+  "Watched by a retired sailor who talks to the building as much as to visitors.",
+  "Left to a caretaker hired sight-unseen by an owner no one has ever met.",
+  "Minded by a scholar who took the job to fund research nobody will explain.",
+  "Run, badly, by someone clearly better suited to a different line of work.",
 ];
 
 export const LOCATION_RUMORS: string[] = [
@@ -80,4 +97,12 @@ export const LOCATION_RUMORS: string[] = [
   "An old debt is said to still be owed to whoever built this place.",
   "A locked chest was found here decades ago and, as far as anyone knows, was never opened.",
   "Something about this place makes animals refuse to enter.",
+  "A previous tenant is said to have paid a full year's rent in advance and never once stayed the night.",
+  "Some claim the building was moved, stone by stone, from somewhere else entirely.",
+  "A local historian insists the place appears on no map older than a decade, despite looking far older.",
+  "Whoever built it is said to have vanished the same week it was finished.",
+  "A traveling performer once refused to set foot inside, and never explained why.",
+  "The previous owner's will is rumored to include a condition no one has met yet.",
+  "Some nights, light is seen inside long after everyone swears the doors were locked.",
+  "A rival business owner has tried, and failed, to buy the place three separate times.",
 ];

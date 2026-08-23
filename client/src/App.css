@@ -2742,6 +2742,19 @@ textarea {
   margin-top: 6px;
 }
 
+.light-chip {
+  background: color-mix(in srgb, var(--warning) 20%, transparent);
+  color: var(--warning);
+}
+
+.combatant-light {
+  margin-top: 6px;
+}
+
+.condition-picker input[type="number"] {
+  width: 90px;
+}
+
 .concentration-prompt {
   margin-top: 6px;
   padding: 8px 12px;

@@ -80,7 +80,7 @@ export function PresentationView({ worldId }: { worldId: string }) {
   const visibleCells = useMemo(() => {
     if (!activeBattleMap || !encounter) return undefined;
     const mapShape = { width: activeBattleMap.width, height: activeBattleMap.height, tiles: activeBattleMap.tiles };
-    return extendWithLightSources(mapShape, computeVisionForTokens(mapShape, encounter.combatants));
+    return extendWithLightSources(mapShape, computeVisionForTokens(mapShape, encounter.combatants), encounter.combatants);
   }, [activeBattleMap, encounter]);
 
   if (error) {

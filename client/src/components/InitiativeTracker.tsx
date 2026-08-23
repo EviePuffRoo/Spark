@@ -15,6 +15,12 @@ import { EmptyState } from "./EmptyState";
 import { PresentationView } from "../pages/PresentationView";
 import { parseNotation, rollDice } from "./DiceRoller";
 
+const LIGHT_PRESETS: { label: string; feet: number }[] = [
+  { label: "Candle", feet: 5 },
+  { label: "Torch", feet: 20 },
+  { label: "Lantern", feet: 30 },
+];
+
 const CONDITIONS = CONDITIONS_COMPENDIUM.map((c) => c.name);
 const CONDITION_RULES: Record<string, string> = Object.fromEntries(
   CONDITIONS_COMPENDIUM.map((c) => [c.name, c.description]),
@@ -121,6 +127,8 @@ export function InitiativeTracker({
   const [lootError, setLootError] = useState<string | null>(null);
   const [concentrationOpenFor, setConcentrationOpenFor] = useState<string | null>(null);
   const [concentrationInput, setConcentrationInput] = useState("");
+  const [lightOpenFor, setLightOpenFor] = useState<string | null>(null);
+  const [lightInput, setLightInput] = useState("");
   const [concentrationPrompt, setConcentrationPrompt] = useState<{ id: string; name: string; spell: string; dc: number } | null>(null);
   const [templateTargetIds, setTemplateTargetIds] = useState<string[]>([]);
   const [templateDamage, setTemplateDamage] = useState("");
@@ -1141,6 +1149,49 @@ export function InitiativeTracker({
                 </button>
               )}
             </div>
+
+            {activeEncounter.activeBattleMapId && (
+              <div className="combatant-light">
+                {c.lightRadiusFeet ? (
+                  <span className="condition-chip light-chip">
+                    🔥 Light {c.lightRadiusFeet} ft
+                    <button onClick={() => updateCombatant(c.id, { lightRadiusFeet: undefined })} aria-label={`Clear ${c.name}'s carried light`}>×</button>
+                  </span>
+                ) : lightOpenFor === c.id ? (
+                  <div className="condition-picker">
+                    {LIGHT_PRESETS.map((p) => (
+                      <button key={p.label} className="btn-secondary" onClick={() => { updateCombatant(c.id, { lightRadiusFeet: p.feet }); setLightOpenFor(null); }}>
+                        {p.label} ({p.feet} ft)
+                      </button>
+                    ))}
+                    <input
+                      type="number"
+                      min={5}
+                      value={lightInput}
+                      onChange={(e) => setLightInput(e.target.value)}
+                      placeholder="Custom ft"
+                    />
+                    <button
+                      className="btn-primary"
+                      onClick={() => {
+                        const feet = Number(lightInput);
+                        if (!feet || feet <= 0) return;
+                        updateCombatant(c.id, { lightRadiusFeet: feet });
+                        setLightInput("");
+                        setLightOpenFor(null);
+                      }}
+                    >
+                      Set
+                    </button>
+                    <button className="btn-secondary" onClick={() => { setLightOpenFor(null); setLightInput(""); }}>Cancel</button>
+                  </div>
+                ) : (
+                  <button className="btn-secondary condition-toggle" onClick={() => { setLightOpenFor(c.id); setLightInput(""); }}>
+                    + Carried Light
+                  </button>
+                )}
+              </div>
+            )}
 
             <div className="combatant-notes-row">
               <input

@@ -660,6 +660,14 @@ export interface LiveCombatant {
   // drops to 0 HP; taking damage while set surfaces a CON-save reminder
   // (see computeConcentrationDc) but nothing rolls or clears it for you.
   concentratingOn?: string;
+  // Radius in feet of light this combatant carries (a torch, a lantern,
+  // a lit spell) — extends the party's fog-of-war vision from wherever
+  // this token currently stands on the grid, the same "already-visible
+  // cell only" rule as a tile's own lightRadius (see
+  // extendWithLightSources in vision.ts). Any combatant kind can carry
+  // light, not just player characters — an ally NPC or even a monster
+  // holding a torch still casts real light.
+  lightRadiusFeet?: number;
 }
 
 export interface ZoneHazard {

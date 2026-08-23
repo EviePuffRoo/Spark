@@ -141,6 +141,7 @@ export function WorldOverviewPage({ onNavigate }: { onNavigate: (subTab: Overvie
               regions={regions}
               settlements={settlements}
               canEdit={!!user}
+              currentDay={world.currentDay}
               onUpdateRegion={updateRegionPosition}
               onToggleConnection={toggleRegionConnection}
             />

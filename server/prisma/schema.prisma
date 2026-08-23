@@ -269,6 +269,10 @@ model Settlement {
   settlementType String
   population     String?
   government     String?
+  prosperity     String?
+  dangerLevel    String?
+  controllingFactionId String?
+  controllingFaction Faction? @relation(fields: [controllingFactionId], references: [id], onDelete: SetNull)
   description    String
   regionId       String?
   region         Region?  @relation(fields: [regionId], references: [id], onDelete: SetNull)
@@ -285,6 +289,7 @@ model Settlement {
 
   @@index([worldId])
   @@index([userId])
+  @@index([controllingFactionId])
   @@index([regionId])
 }
 
@@ -332,6 +337,7 @@ model Faction {
   updatedAt   DateTime @updatedAt
   characters  Character[]
   logEntries  FactionLogEntry[]
+  controlledSettlements Settlement[]
   relationshipsAsA FactionRelationship[] @relation("FactionRelationshipA")
   relationshipsAsB FactionRelationship[] @relation("FactionRelationshipB")
 

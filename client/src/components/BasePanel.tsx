@@ -11,7 +11,17 @@ interface FactionSelection {
 
 const EMPTY_SELECTION: FactionSelection = { factionId: "", rivalFactionId: "" };
 
-export function BasePanel({ worldId, onNavigateToBilling, onFactionsChanged }: { worldId: string; onNavigateToBilling: () => void; onFactionsChanged?: () => void }) {
+export function BasePanel({
+  worldId, onNavigateToBilling, onFactionsChanged, onDataChange,
+}: {
+  worldId: string;
+  onNavigateToBilling: () => void;
+  onFactionsChanged?: () => void;
+  // Fired with the latest BaseState on every load and every purchase — lets
+  // a parent (Tavern's base map scene) stay in sync without a second fetch
+  // of its own.
+  onDataChange?: (base: BaseState) => void;
+}) {
   const [data, setData] = useState<BaseState | null>(null);
   const [factions, setFactions] = useState<Faction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,7 +33,7 @@ export function BasePanel({ worldId, onNavigateToBilling, onFactionsChanged }: {
     setLoading(true);
     setError(null);
     Promise.all([api.getBase(worldId), api.listFactions(worldId)])
-      .then(([base, factionList]) => { setData(base); setFactions(factionList); })
+      .then(([base, factionList]) => { setData(base); setFactions(factionList); onDataChange?.(base); })
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
   }
@@ -42,6 +52,7 @@ export function BasePanel({ worldId, onNavigateToBilling, onFactionsChanged }: {
     api.purchaseBaseUpgrade(worldId, upgradeId, selection.factionId || undefined, selection.rivalFactionId || undefined)
       .then((next) => {
         setData(next);
+        onDataChange?.(next);
         if (def?.effect?.kind === "reputationDelta" && (selection.factionId || selection.rivalFactionId)) {
           onFactionsChanged?.();
         }

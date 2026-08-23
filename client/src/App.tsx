@@ -30,18 +30,17 @@ import { GlobalSearch } from "./components/GlobalSearch";
 import { PrintPane, type PrintItem } from "./components/PrintPane";
 import { PrepIcon, WorldIcon, PlayIcon, AccountIcon } from "./components/icons";
 import { TavernPage } from "./pages/TavernPage";
-import { BaseMapPage } from "./pages/BaseMapPage";
 import { MapBuilderPage } from "./pages/MapBuilderPage";
 
 type Area = "prep" | "world" | "play" | "account";
-type SubTab = "create" | "compendium" | "overview" | "worlds" | "roster" | "codex" | "notes" | "downtime" | "tavern" | "baseMap" | "combat" | "mapBuilder" | "shop" | "inventory" | "gallery" | "profile" | "myCharacter" | "billing" | "moderation" | "users" | "stats";
+type SubTab = "create" | "compendium" | "overview" | "worlds" | "roster" | "codex" | "notes" | "downtime" | "tavern" | "combat" | "mapBuilder" | "shop" | "inventory" | "gallery" | "profile" | "myCharacter" | "billing" | "moderation" | "users" | "stats";
 
 const AREA_LABELS: Record<Area, string> = { prep: "Prep", world: "World", play: "Play", account: "Account" };
 const AREA_ICONS: Record<Area, typeof PrepIcon> = { prep: PrepIcon, world: WorldIcon, play: PlayIcon, account: AccountIcon };
 const AREA_DEFAULT_SUBTAB: Record<Area, SubTab> = { prep: "create", world: "overview", play: "combat", account: "profile" };
 const SUBTAB_LABELS: Record<SubTab, string> = {
   create: "Create", compendium: "Compendium", overview: "Overview", worlds: "Worlds",
-  roster: "Roster", codex: "Codex", notes: "Notes", downtime: "Downtime", tavern: "Tavern", baseMap: "Base Map", combat: "Combat", mapBuilder: "Map Builder",
+  roster: "Roster", codex: "Codex", notes: "Notes", downtime: "Downtime", tavern: "Tavern", combat: "Combat", mapBuilder: "Map Builder",
   shop: "Shop", inventory: "Inventory", gallery: "Gallery", profile: "Profile",
   myCharacter: "My Character", billing: "Billing", moderation: "Moderation", users: "Users", stats: "Stats",
 };
@@ -135,11 +134,6 @@ function AppShell({ initialLandOnOverview = false }: { initialLandOnOverview?: b
     setSubTab("billing");
   }
 
-  function navigateToTavern() {
-    setArea("world");
-    setSubTab("tavern");
-  }
-
   function openInRoster(type: EntityType, id: string) {
     // battleMap has its own dedicated page (Map Builder), not a RosterPage
     // tab — Map Builder doesn't support deep-linking to one specific map
@@ -207,7 +201,6 @@ function AppShell({ initialLandOnOverview = false }: { initialLandOnOverview?: b
             <span className="area-sidebar-group-label">Downtime</span>
             <button className={subTab === "downtime" ? "active" : ""} aria-current={subTab === "downtime" ? "true" : undefined} onClick={() => selectSubTab("downtime")}>Downtime</button>
             <button className={subTab === "tavern" ? "active" : ""} aria-current={subTab === "tavern" ? "true" : undefined} onClick={() => selectSubTab("tavern")}>Tavern</button>
-            <button className={subTab === "baseMap" ? "active" : ""} aria-current={subTab === "baseMap" ? "true" : undefined} onClick={() => selectSubTab("baseMap")}>Base Map</button>
             <button className={subTab === "gallery" ? "active" : ""} aria-current={subTab === "gallery" ? "true" : undefined} onClick={() => selectSubTab("gallery")}>Gallery</button>
           </>
         )}
@@ -286,7 +279,6 @@ function AppShell({ initialLandOnOverview = false }: { initialLandOnOverview?: b
           <DowntimePage craftedItemHandoff={craftedItemHandoff} onConsumeCraftedItemHandoff={() => setCraftedItemHandoff(null)} />
         )}
         {subTab === "tavern" && <TavernPage onNavigateToBilling={navigateToBilling} />}
-        {subTab === "baseMap" && <BaseMapPage onNavigateToTavern={navigateToTavern} />}
         {subTab === "combat" && <CombatPage />}
         {subTab === "mapBuilder" && <MapBuilderPage />}
         {subTab === "shop" && <ShopPage />}

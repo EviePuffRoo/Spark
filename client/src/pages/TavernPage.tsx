@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import type { Character, Faction, QuestHook } from "@spark/shared";
+import type { BaseState, Character, Faction, QuestHook } from "@spark/shared";
 import { computeReputationTier, REPUTATION_TIER_LABELS } from "@spark/shared";
 import { api } from "../api";
 import { useActiveWorld } from "../ActiveWorldContext";
 import { TavernIcon } from "../components/icons";
 import { EmptyState } from "../components/EmptyState";
 import { BasePanel } from "../components/BasePanel";
+import { BaseMapView } from "../components/BaseMapView";
 
 export function TavernPage({ onNavigateToBilling }: { onNavigateToBilling: () => void }) {
   const { worlds, worldId, setWorldId } = useActiveWorld();
@@ -13,6 +14,9 @@ export function TavernPage({ onNavigateToBilling }: { onNavigateToBilling: () =>
   const [factions, setFactions] = useState<Faction[]>([]);
   const [npcs, setNpcs] = useState<Character[]>([]);
   const [loading, setLoading] = useState(false);
+  // Fed by BasePanel's onDataChange below, rather than a second fetch of
+  // its own — the map scene is just a different view of the same BaseState.
+  const [baseData, setBaseData] = useState<BaseState | null>(null);
   // Bumped after a Base purchase applies a reputation delta — Faction
   // Standings below is a sibling of BasePanel with its own fetch, so it
   // otherwise wouldn't know a faction's standing just changed.
@@ -23,6 +27,7 @@ export function TavernPage({ onNavigateToBilling }: { onNavigateToBilling: () =>
       setRumors([]);
       setFactions([]);
       setNpcs([]);
+      setBaseData(null);
       return;
     }
     setLoading(true);
@@ -116,7 +121,20 @@ export function TavernPage({ onNavigateToBilling }: { onNavigateToBilling: () =>
             </ul>
           </div>
 
-          <BasePanel worldId={worldId} onNavigateToBilling={onNavigateToBilling} onFactionsChanged={() => setRefreshTick((n) => n + 1)} />
+          {baseData && (
+            <div className="panel">
+              <h3 className="section-heading">{baseData.name} — Level {baseData.level}</h3>
+              <p className="hint">A living map of the party's outpost — it grows as you invest in it. Click a structure for details.</p>
+              <BaseMapView base={baseData} />
+            </div>
+          )}
+
+          <BasePanel
+            worldId={worldId}
+            onNavigateToBilling={onNavigateToBilling}
+            onFactionsChanged={() => setRefreshTick((n) => n + 1)}
+            onDataChange={setBaseData}
+          />
         </>
       )}
     </div>

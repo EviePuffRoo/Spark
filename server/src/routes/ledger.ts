@@ -94,7 +94,7 @@ ledgerRouter.post("/claim", async (req, res) => {
 
   const agg = await prisma.ledgerEntry.aggregate({ where: { worldId, kind: "item", itemId }, _sum: { amount: true } });
   const available = agg._sum.amount ?? 0;
-  if (available <= 0) return res.status(400).json({ error: "None of this item remain in the party inventory" });
+  if (available <= 0) return res.status(400).json({ error: "None of this item remains in the party inventory" });
 
   const item = await prisma.item.findUnique({ where: { id: itemId } });
   const label = item?.name ?? "Item";

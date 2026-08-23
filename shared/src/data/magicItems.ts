@@ -1,0 +1,144 @@
+import type { GeneratedItem } from "../types.js";
+
+// A hand-curated magic item library for the Compendium — named, one-off
+// treasures a DM can browse and hand out directly, distinct from the
+// procedural generator's adjective+noun items (which stay anonymous by
+// design). Same rarity scale as ITEM_RARITY_TIER_INFO in items.ts.
+export interface MagicItemDef extends GeneratedItem {
+  id: string;
+}
+
+function m(id: string, item: Omit<GeneratedItem, "id">): MagicItemDef {
+  return { id, ...item };
+}
+
+export const MAGIC_ITEMS: MagicItemDef[] = [
+  m("thistledown-boots", {
+    name: "Thistledown Boots", itemType: "Boots", category: "Armor & Wearables",
+    rarity: "Everyday Curiosity", rarityTier: 0,
+    description: "A pair of soft, ash-gray boots that seem to weigh nothing at all, laced with pale fibers that never fray.",
+    property: "Leaves no footprints when its bearer walks softly.",
+    history: "Won in a wager whose stakes nobody now recalls.",
+    bonusType: "none", bonusValue: 0, requiresAttunement: false, charges: null, rechargeRule: null, value: 35,
+  }),
+  m("farwatchers-spyglass", {
+    name: "Farwatcher's Spyglass", itemType: "Spyglass", category: "Tool & Kit",
+    rarity: "Everyday Curiosity", rarityTier: 0,
+    description: "A brass folding spyglass, its lens etched with a spiral of tiny, unreadable script.",
+    property: "Its shadow doesn't quite match its shape in dim light.",
+    history: "Carried by a soldier who deserted the night before the battle.",
+    bonusType: "none", bonusValue: 0, requiresAttunement: false, charges: null, rechargeRule: null, value: 40,
+  }),
+  m("foxglove-vial", {
+    name: "Foxglove Vial", itemType: "Vial of Shimmering Liquid", category: "Potion & Consumable",
+    rarity: "Everyday Curiosity", rarityTier: 0,
+    description: "A small glass vial of faintly glowing violet liquid that swirls even when perfectly still.",
+    property: "Tastes faintly of a memory the taster has never had. Drinking it restores 2d4+2 hit points.",
+    history: "Found sealed behind a false wall in a condemned tavern.",
+    bonusType: "none", bonusValue: 0, requiresAttunement: false, charges: null, rechargeRule: null, value: 50,
+  }),
+  m("old-kettlebrights-tinderbox", {
+    name: "Old Kettlebright's Tinderbox", itemType: "Tinderbox", category: "Tool & Kit",
+    rarity: "Everyday Curiosity", rarityTier: 0,
+    description: "A dented tin tinderbox, warm to the touch, that has clearly seen decades of use.",
+    property: "Its flame, once lit, never gutters in the wind.",
+    history: "Left behind by a traveling performer who never returned for it.",
+    bonusType: "none", bonusValue: 0, requiresAttunement: false, charges: null, rechargeRule: null, value: 25,
+  }),
+  m("nightsong-lute", {
+    name: "The Nightsong Lute", itemType: "Lute", category: "Instrument",
+    rarity: "Minor Wonder", rarityTier: 1,
+    description: "A dark-wood lute strung with what looks like spun silver, its body carved with a sleeping owl.",
+    property: "Rings like a distant bell when it strikes something hollow. Grants a bonus to Performance checks made while playing it.",
+    history: "Once displayed in a noble's collection, quietly stolen and never missed.",
+    bonusType: "abilityChecks", bonusValue: 1, requiresAttunement: true, charges: null, rechargeRule: null, value: 250,
+  }),
+  m("last-ember-lantern", {
+    name: "The Last Ember Lantern", itemType: "Lantern", category: "Wondrous Item",
+    rarity: "Minor Wonder", rarityTier: 1,
+    description: "A traveler's hooded lantern of blackened iron, its glass panes always faintly warm.",
+    property: "Can be commanded to shed torchlight for one minute without oil, once per use of its charges.",
+    history: "Pulled from the ashes of a temple that burned in a single night.",
+    bonusType: "none", bonusValue: 0, requiresAttunement: false, charges: 10, rechargeRule: "Regains all charges at dawn.", value: 180,
+  }),
+  m("loomwhisper-pendant", {
+    name: "Loomwhisper Pendant", itemType: "Pendant", category: "Wondrous Item",
+    rarity: "Minor Wonder", rarityTier: 1,
+    description: "A teardrop of smoky quartz on a braided cord, faintly cool no matter the weather.",
+    property: "Whispers the last words spoken near it, if held to the ear at midnight. Grants a bonus to Insight checks.",
+    history: "Discovered stitched into the lining of a dead courier's coat.",
+    bonusType: "abilityChecks", bonusValue: 1, requiresAttunement: true, charges: null, rechargeRule: null, value: 300,
+  }),
+  m("quiet-oath-dagger", {
+    name: "Quiet Oath Dagger", itemType: "Dagger", category: "Weapon",
+    rarity: "Uncommon Treasure", rarityTier: 2,
+    description: "A slim, unadorned dagger with a blade that never seems to catch the light.",
+    property: "Leaves no footprints when its bearer walks softly, and never rings against armor when it strikes true.",
+    history: "Found in the nest of a magpie with an unusual eye for treasure.",
+    bonusType: "attackAndDamage", bonusValue: 1, requiresAttunement: false, charges: null, rechargeRule: null, value: 800,
+  }),
+  m("graywater-cloak", {
+    name: "Graywater Cloak", itemType: "Cloak", category: "Armor & Wearables",
+    rarity: "Uncommon Treasure", rarityTier: 2,
+    description: "A traveling cloak the color of storm clouds, its hem always faintly damp.",
+    property: "Never quite dries, no matter how long it sits in the sun, and turns aside the first blow of any fight.",
+    history: "Buried with someone who, when the grave was later opened, was gone.",
+    bonusType: "armorClass", bonusValue: 1, requiresAttunement: true, charges: null, rechargeRule: null, value: 1200,
+  }),
+  m("widows-grace", {
+    name: "Widow's Grace", itemType: "Ring", category: "Wondrous Item",
+    rarity: "Uncommon Treasure", rarityTier: 2,
+    description: "A thin silver band set with a single dark pearl, cold to every hand but its owner's.",
+    property: "Grows faintly warm in the presence of its true owner's blood kin, and steels the wearer's resolve.",
+    history: "Given as a wedding gift by a groom who never showed.",
+    bonusType: "savingThrows", bonusValue: 1, requiresAttunement: true, charges: null, rechargeRule: null, value: 1500,
+  }),
+  m("hollowmark-amulet", {
+    name: "The Hollowmark Amulet", itemType: "Amulet", category: "Wondrous Item",
+    rarity: "Rare Relic", rarityTier: 3,
+    description: "A heavy pendant of black iron stamped with a sigil no living scholar can name.",
+    property: "Any ink applied to it never fades, no matter how old the page. Sharpens the wearer's grip on their own magic.",
+    history: "Said to have belonged to a hedge wizard who vanished mid-spell.",
+    bonusType: "spellSaveDc", bonusValue: 1, requiresAttunement: true, charges: null, rechargeRule: null, value: 8000,
+  }),
+  m("emberkeep-gauntlets", {
+    name: "Emberkeep Gauntlets", itemType: "Gauntlets", category: "Armor & Wearables",
+    rarity: "Rare Relic", rarityTier: 3,
+    description: "Heavy iron gauntlets, their knuckles etched with interlocking flame motifs that never tarnish.",
+    property: "Draws small, harmless sparks when struck against stone. Lends unnatural strength to the wearer's grip.",
+    history: "Recovered from a shipwreck no living sailor remembers sinking.",
+    bonusType: "abilityChecks", bonusValue: 2, requiresAttunement: true, charges: null, rechargeRule: null, value: 12000,
+  }),
+  m("cinderfall", {
+    name: "Cinderfall, the Ember Blade", itemType: "Longsword", category: "Weapon",
+    rarity: "Rare Relic", rarityTier: 3,
+    description: "A longsword forged from storm-black iron, its edge perpetually rimmed in a thread of dull red heat.",
+    property: "Its flame, once lit, never gutters in the wind — and neither does the blade's edge dull.",
+    history: "Forged by an apprentice the night before their master disappeared.",
+    bonusType: "attackAndDamage", bonusValue: 2, requiresAttunement: true, charges: null, rechargeRule: null, value: 15000,
+  }),
+  m("second-chance-locket", {
+    name: "The Second Chance Locket", itemType: "Locket", category: "Wondrous Item",
+    rarity: "Legendary Heirloom", rarityTier: 4,
+    description: "A tarnished silver locket, its hinge worn smooth by generations of nervous thumbs.",
+    property: "Keeps perfect time, but only for its bonded owner. Once per long rest, it can be opened to steady a soul on the brink of death, stabilizing a dying creature within 5 feet without a check.",
+    history: "Passed down through five generations of the same modest family.",
+    bonusType: "none", bonusValue: 0, requiresAttunement: true, charges: 1, rechargeRule: "Regains its charge after a long rest.", value: 60000,
+  }),
+  m("nightsong-bladesingers-legacy", {
+    name: "Nightsong, the Bladesinger's Legacy", itemType: "Rapier", category: "Weapon",
+    rarity: "Legendary Heirloom", rarityTier: 4,
+    description: "An impossibly light rapier with a moonlit-pearl pommel, its blade singing a faint, clear note when drawn.",
+    property: "Reflects the viewer as they looked exactly one year ago. Strikes with the certainty of a blade that has never missed.",
+    history: "Traded to a farmer for a debt no one wrote down.",
+    bonusType: "attackAndDamage", bonusValue: 3, requiresAttunement: true, charges: null, rechargeRule: null, value: 90000,
+  }),
+  m("hourglass-of-the-long-wait", {
+    name: "Hourglass of the Long Wait", itemType: "Hourglass", category: "Wondrous Item",
+    rarity: "Legendary Heirloom", rarityTier: 4,
+    description: "An ornate hourglass of black sand that never seems to finish running out, no matter how long it's watched.",
+    property: "Chimes softly at the first sign of rain, an hour before the clouds arrive. Bends the flow of a single desperate moment in the owner's favor.",
+    history: "Carried by a soldier who deserted the night before the battle.",
+    bonusType: "savingThrows", bonusValue: 3, requiresAttunement: true, charges: null, rechargeRule: null, value: 120000,
+  }),
+];

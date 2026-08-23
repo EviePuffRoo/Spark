@@ -1,18 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { SpellDef, ConditionDef, RuleDef, StatBlockTemplate } from "@spark/shared";
+import type { SpellDef, ConditionDef, RuleDef, StatBlockTemplate, MagicItemDef } from "@spark/shared";
+import { ITEM_RARITY_TIERS } from "@spark/shared";
 import { api, type CompendiumData } from "../api";
 import { CompendiumIcon } from "../components/icons";
 import { EmptyState } from "../components/EmptyState";
 import { StatBlockView } from "../components/StatBlockView";
+import { ItemCardView } from "../components/ItemCardView";
 import { useScrollDetailOnSelect } from "../useScrollDetailOnSelect";
 
-type CompendiumTab = "spells" | "conditions" | "rules" | "bestiary";
+type CompendiumTab = "spells" | "conditions" | "rules" | "bestiary" | "magicItems";
 
 const TAB_LABELS: Record<CompendiumTab, string> = {
   spells: "Spells",
   conditions: "Conditions",
   rules: "Rules",
   bestiary: "Bestiary",
+  magicItems: "Magic Items",
 };
 
 // "1/8" / "1/4" / "1/2" sort and compare below their numeric CR neighbors.
@@ -46,6 +49,7 @@ export function CompendiumPage() {
   const [classFilter, setClassFilter] = useState<string>("all");
   const [ruleCategoryFilter, setRuleCategoryFilter] = useState<string>("all");
   const [crFilter, setCrFilter] = useState<string>("all");
+  const [rarityFilter, setRarityFilter] = useState<string>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const detailRef = useRef<HTMLDivElement>(null);
   useScrollDetailOnSelect(detailRef, selectedId);
@@ -113,10 +117,21 @@ export function CompendiumPage() {
       .sort((a, b) => crToNumber(a.challengeRating) - crToNumber(b.challengeRating));
   }, [data, search, crFilter]);
 
+  const filteredMagicItems = useMemo(() => {
+    if (!data) return [];
+    const q = search.trim().toLowerCase();
+    return data.magicItems.filter((i) => {
+      if (rarityFilter !== "all" && i.rarity !== rarityFilter) return false;
+      if (q && !i.name.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [data, search, rarityFilter]);
+
   const selectedSpell: SpellDef | null = tab === "spells" ? filteredSpells.find((s) => s.id === selectedId) ?? data?.spells.find((s) => s.id === selectedId) ?? null : null;
   const selectedCondition: ConditionDef | null = tab === "conditions" ? data?.conditions.find((c) => c.id === selectedId) ?? null : null;
   const selectedRule: RuleDef | null = tab === "rules" ? data?.rules.find((r) => r.id === selectedId) ?? null : null;
   const selectedMonster: StatBlockTemplate | null = tab === "bestiary" ? data?.monsters.find((m) => m.id === selectedId) ?? null : null;
+  const selectedMagicItem: MagicItemDef | null = tab === "magicItems" ? data?.magicItems.find((i) => i.id === selectedId) ?? null : null;
 
   return (
     <div className="page roster-layout">
@@ -125,7 +140,7 @@ export function CompendiumPage() {
           <CompendiumIcon className="page-title-icon" aria-hidden="true" />
           <h2>Compendium</h2>
         </div>
-        <p className="hint">SRD spells, conditions, quick-reference rules, and monster stat blocks — searchable, no tabbing out mid-session.</p>
+        <p className="hint">SRD spells, conditions, quick-reference rules, monster stat blocks, and curated magic items — searchable, no tabbing out mid-session.</p>
 
         <div className="tabs roster-mode-tabs">
           {(Object.keys(TAB_LABELS) as CompendiumTab[]).map((t) => (
@@ -175,6 +190,16 @@ export function CompendiumPage() {
             <select value={crFilter} onChange={(e) => setCrFilter(e.target.value)}>
               <option value="all">All ratings</option>
               {monsterChallengeRatings.map((cr) => <option key={cr} value={cr}>{cr}</option>)}
+            </select>
+          </label>
+        )}
+
+        {tab === "magicItems" && (
+          <label className="field">
+            <span>Rarity</span>
+            <select value={rarityFilter} onChange={(e) => setRarityFilter(e.target.value)}>
+              <option value="all">All rarities</option>
+              {ITEM_RARITY_TIERS.map((r) => <option key={r} value={r}>{r}</option>)}
             </select>
           </label>
         )}
@@ -243,14 +268,30 @@ export function CompendiumPage() {
             </ul>
           </>
         )}
+
+        {!loading && tab === "magicItems" && (
+          <>
+            {filteredMagicItems.length === 0 && <p className="hint">No magic items match.</p>}
+            <ul className="entity-list">
+              {filteredMagicItems.map((i) => (
+                <li key={i.id}>
+                  <button className={`entity-item ${i.id === selectedId ? "active" : ""}`} aria-current={i.id === selectedId ? "true" : undefined} onClick={() => setSelectedId(i.id)}>
+                    <span className="entity-name">{i.name}</span>
+                    <span className="entity-meta">{i.rarity} · {i.category}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
       </div>
 
       <div className="panel result-panel" ref={detailRef}>
-        {!selectedSpell && !selectedCondition && !selectedRule && !selectedMonster && (
+        {!selectedSpell && !selectedCondition && !selectedRule && !selectedMonster && !selectedMagicItem && (
           <EmptyState
             icon={<CompendiumIcon />}
             heading="No entry selected"
-            hint="Select a spell, condition, rule, or monster from the list to view its details."
+            hint="Select a spell, condition, rule, monster, or magic item from the list to view its details."
           />
         )}
 
@@ -291,6 +332,8 @@ export function CompendiumPage() {
             statBlock={{ ...selectedMonster.statBlock, alignment: selectedMonster.typicalAlignment }}
           />
         )}
+
+        {selectedMagicItem && <ItemCardView item={selectedMagicItem} />}
       </div>
     </div>
   );

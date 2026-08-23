@@ -19,6 +19,7 @@ export * from "./data/flavor.js";
 export * from "./data/npcTemplates.js";
 export * from "./data/monsterTemplates.js";
 export * from "./data/items.js";
+export * from "./data/magicItems.js";
 export * from "./data/locations.js";
 export * from "./data/quests.js";
 export * from "./data/factions.js";

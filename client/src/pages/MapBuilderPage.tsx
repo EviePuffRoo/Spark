@@ -16,6 +16,7 @@ const CATEGORY_LABELS: Record<TileCategory, string> = {
   nature: "Nature",
   hazard: "Hazard",
   decor: "Decor",
+  gmOnly: "GM Only",
 };
 const CATEGORIES = Object.keys(CATEGORY_LABELS) as TileCategory[];
 
@@ -23,17 +24,45 @@ function tileKey(x: number, y: number) {
   return `${x},${y}`;
 }
 
-// A cell can hold at most one floor tile and one decor tile — split into
-// two maps so the decor overlay (rugs, moss, bloodstains) never collides
-// with or overwrites the mechanically-authoritative floor tile beneath it.
-function tilesToLayerMaps(tiles: PlacedTile[]): { floor: Map<string, string>; decor: Map<string, string> } {
-  const floor = new Map<string, string>();
-  const decor = new Map<string, string>();
-  for (const t of tiles) (t.layer === "decor" ? decor : floor).set(tileKey(t.x, t.y), t.tileId);
-  return { floor, decor };
+function layerForTile(tileId: string): "floor" | "decor" | "gmOnly" {
+  const category = BATTLE_TILE_BY_ID[tileId]?.category;
+  if (category === "decor") return "decor";
+  if (category === "gmOnly") return "gmOnly";
+  return "floor";
 }
 
-function layerMapsToTiles(floor: Map<string, string>, decor: Map<string, string>): PlacedTile[] {
+// A cell can hold at most one tile per layer — split into three maps so the
+// decor overlay (rugs, moss, bloodstains) and the DM-only marker layer
+// (secret doors, trap notes) never collide with or overwrite the
+// mechanically-authoritative floor tile beneath them. gmOnlyNotes is keyed
+// the same way, holding just the cells that have a note attached.
+function tilesToLayerMaps(tiles: PlacedTile[]): {
+  floor: Map<string, string>;
+  decor: Map<string, string>;
+  gmOnly: Map<string, string>;
+  gmOnlyNotes: Map<string, string>;
+} {
+  const floor = new Map<string, string>();
+  const decor = new Map<string, string>();
+  const gmOnly = new Map<string, string>();
+  const gmOnlyNotes = new Map<string, string>();
+  for (const t of tiles) {
+    const key = tileKey(t.x, t.y);
+    if (t.layer === "decor") decor.set(key, t.tileId);
+    else if (t.layer === "gmOnly") {
+      gmOnly.set(key, t.tileId);
+      if (t.note) gmOnlyNotes.set(key, t.note);
+    } else floor.set(key, t.tileId);
+  }
+  return { floor, decor, gmOnly, gmOnlyNotes };
+}
+
+function layerMapsToTiles(
+  floor: Map<string, string>,
+  decor: Map<string, string>,
+  gmOnly: Map<string, string>,
+  gmOnlyNotes: Map<string, string>,
+): PlacedTile[] {
   const out: PlacedTile[] = [];
   for (const [key, tileId] of floor) {
     const [x, y] = key.split(",").map(Number);
@@ -42,6 +71,11 @@ function layerMapsToTiles(floor: Map<string, string>, decor: Map<string, string>
   for (const [key, tileId] of decor) {
     const [x, y] = key.split(",").map(Number);
     out.push({ x, y, tileId, layer: "decor" });
+  }
+  for (const [key, tileId] of gmOnly) {
+    const [x, y] = key.split(",").map(Number);
+    const note = gmOnlyNotes.get(key);
+    out.push({ x, y, tileId, layer: "gmOnly", ...(note ? { note } : {}) });
   }
   return out;
 }
@@ -60,6 +94,8 @@ export function MapBuilderPage() {
   const [activeMap, setActiveMap] = useState<BattleMap | null>(null);
   const [floorTiles, setFloorTiles] = useState<Map<string, string>>(new Map());
   const [decorTiles, setDecorTiles] = useState<Map<string, string>>(new Map());
+  const [gmOnlyTiles, setGmOnlyTiles] = useState<Map<string, string>>(new Map());
+  const [gmOnlyNotes, setGmOnlyNotes] = useState<Map<string, string>>(new Map());
   const [dirty, setDirty] = useState(false);
   const [selectedTileId, setSelectedTileId] = useState(BATTLE_TILES[0].id);
   const [eraser, setEraser] = useState(false);
@@ -102,9 +138,11 @@ export function MapBuilderPage() {
 
   function openMap(map: BattleMap) {
     setActiveMap(map);
-    const { floor, decor } = tilesToLayerMaps(map.tiles);
+    const { floor, decor, gmOnly, gmOnlyNotes: notes } = tilesToLayerMaps(map.tiles);
     setFloorTiles(floor);
     setDecorTiles(decor);
+    setGmOnlyTiles(gmOnly);
+    setGmOnlyNotes(notes);
     setDirty(false);
     setName(map.name);
     setSaveWorldId(map.worldId ?? "");
@@ -162,7 +200,7 @@ export function MapBuilderPage() {
     return { x: screenPt.x, y: screenPt.y };
   }
 
-  const selectedIsDecor = BATTLE_TILE_BY_ID[selectedTileId]?.category === "decor";
+  const selectedLayer = layerForTile(selectedTileId);
 
   function paintAt(clientX: number, clientY: number) {
     if (!activeMap) return;
@@ -172,18 +210,40 @@ export function MapBuilderPage() {
     if (cellX < 0 || cellY < 0 || cellX >= activeMap.width || cellY >= activeMap.height) return;
     const key = tileKey(cellX, cellY);
     if (eraser) {
-      // Erase the top layer first (decor, if any is painted here), same as
-      // most map tools — a second click on a bare floor tile then clears it.
-      if (decorTiles.has(key)) {
+      // Erase the top layer first (GM markers, then decor, then floor) —
+      // same as most map tools, a repeated click on a bare floor tile
+      // eventually clears it.
+      if (gmOnlyTiles.has(key)) {
+        setGmOnlyTiles((prev) => { const next = new Map(prev); next.delete(key); return next; });
+        setGmOnlyNotes((prev) => { const next = new Map(prev); next.delete(key); return next; });
+      } else if (decorTiles.has(key)) {
         setDecorTiles((prev) => { const next = new Map(prev); next.delete(key); return next; });
       } else {
         setFloorTiles((prev) => { const next = new Map(prev); next.delete(key); return next; });
       }
-    } else if (selectedIsDecor) {
+    } else if (selectedLayer === "gmOnly") {
+      setGmOnlyTiles((prev) => new Map(prev).set(key, selectedTileId));
+    } else if (selectedLayer === "decor") {
       setDecorTiles((prev) => new Map(prev).set(key, selectedTileId));
     } else {
       setFloorTiles((prev) => new Map(prev).set(key, selectedTileId));
     }
+    setDirty(true);
+  }
+
+  function setGmOnlyNote(key: string, note: string) {
+    setGmOnlyNotes((prev) => {
+      const next = new Map(prev);
+      if (note) next.set(key, note);
+      else next.delete(key);
+      return next;
+    });
+    setDirty(true);
+  }
+
+  function deleteGmOnlyMarker(key: string) {
+    setGmOnlyTiles((prev) => { const next = new Map(prev); next.delete(key); return next; });
+    setGmOnlyNotes((prev) => { const next = new Map(prev); next.delete(key); return next; });
     setDirty(true);
   }
 
@@ -207,7 +267,7 @@ export function MapBuilderPage() {
     try {
       const updated = await api.updateBattleMap(activeMap.id, {
         name,
-        tiles: layerMapsToTiles(floorTiles, decorTiles),
+        tiles: layerMapsToTiles(floorTiles, decorTiles, gmOnlyTiles, gmOnlyNotes),
         worldId: saveWorldId || null,
         tags: saveTags.split(",").map((t) => t.trim()).filter(Boolean),
         notes: saveNotes || undefined,
@@ -233,6 +293,7 @@ export function MapBuilderPage() {
   }
   const placedFloorTiles = useMemo(() => toPlacedList(floorTiles), [floorTiles]);
   const placedDecorTiles = useMemo(() => toPlacedList(decorTiles), [decorTiles]);
+  const placedGmOnlyTiles = useMemo(() => toPlacedList(gmOnlyTiles), [gmOnlyTiles]);
 
   if (activeMap) {
     return (
@@ -245,6 +306,7 @@ export function MapBuilderPage() {
           <p className="hint">
             {activeMap.width}×{activeMap.height} tiles. Click, or click-and-drag, to paint. No uploaded images — every map here is hand-built from the tileset below.
             {" "}Decor tiles paint over a floor tile without replacing it, and never block movement or sight — good for rugs, moss, bloodstains.
+            {" "}GM Only markers (secret doors, traps) are for your eyes alone — players never see them, in the builder or at the table.
           </p>
           {error && <p className="error">{error}</p>}
           <div className="map-builder-actions">
@@ -312,6 +374,9 @@ export function MapBuilderPage() {
                 {placedDecorTiles.map((t) => (
                   <use key={`decor-${t.key}`} href={`#tile-${t.tileId}`} x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL} pointerEvents="none" />
                 ))}
+                {placedGmOnlyTiles.map((t) => (
+                  <use key={`gm-${t.key}`} href={`#tile-${t.tileId}`} x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL} pointerEvents="none" />
+                ))}
               </svg>
             </div>
           </div>
@@ -332,6 +397,31 @@ export function MapBuilderPage() {
               <button className="btn-secondary" onClick={openPublish} disabled={dirty}>Publish to Gallery</button>
             </div>
             {dirty && <p className="hint">Save your changes before publishing.</p>}
+
+            {placedGmOnlyTiles.length > 0 && (
+              <div className="gm-markers-panel">
+                <h3 className="section-heading">GM Markers</h3>
+                <p className="hint">Only you ever see these — stripped before a map reaches any player.</p>
+                <ul className="gm-markers-list">
+                  {placedGmOnlyTiles.map((t) => (
+                    <li key={t.key} className="gm-marker-row">
+                      <div className="gm-marker-row-header">
+                        <TileSwatch tileId={t.tileId} size={20} />
+                        <span className="entity-name">{BATTLE_TILE_BY_ID[t.tileId]?.name ?? t.tileId}</span>
+                        <span className="entity-meta">({t.x}, {t.y})</span>
+                        <button className="btn-secondary" onClick={() => deleteGmOnlyMarker(t.key)}>Delete</button>
+                      </div>
+                      <textarea
+                        placeholder="Note (why it's secret, what it does)…"
+                        value={gmOnlyNotes.get(t.key) ?? ""}
+                        onChange={(e) => setGmOnlyNote(t.key, e.target.value)}
+                        rows={2}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {publishOpen && (
               <div className="save-panel">
                 <h3 className="section-heading">Publish to Gallery</h3>

@@ -122,6 +122,41 @@ describe("publish + report + clone", () => {
     expect(cloned?.name).toBe("Goblin Ambush");
     expect(cloned?.worldId).toBeNull();
   });
+
+  it("strips gmOnly markers from a BattleMap's gallery view and clone for a non-owner, but keeps them for the owner", async () => {
+    const { agent: owner } = await signupAgent("mapowner2");
+    const created = await owner.post("/api/battle-maps").send({
+      name: "Secret Vault", width: 6, height: 6,
+      tiles: [
+        { x: 0, y: 0, tileId: "stone-floor" },
+        { x: 2, y: 2, tileId: "secret-door", layer: "gmOnly", note: "Leads to the vault" },
+      ],
+    });
+    expect(created.status).toBe(201);
+    const mapId = created.body.id as string;
+    expect(created.body.tiles).toHaveLength(2);
+
+    const publish = await owner.post("/api/public").send({ entityType: "battleMap", entityId: mapId, title: "Secret Vault" });
+    const entryId = publish.body.id as string;
+
+    const { agent: viewer } = await signupAgent("mapviewer2");
+    const single = await viewer.get(`/api/public/${entryId}`);
+    expect(single.status).toBe(200);
+    expect(single.body.data.tiles).toEqual([{ x: 0, y: 0, tileId: "stone-floor" }]);
+
+    const ownerSingle = await owner.get(`/api/public/${entryId}`);
+    expect(ownerSingle.body.data.tiles).toHaveLength(2);
+
+    const clone = await viewer.post(`/api/public/${entryId}/clone`);
+    expect(clone.status).toBe(201);
+    const cloned = await prisma.battleMap.findUnique({ where: { id: clone.body.id } });
+    expect(JSON.parse(cloned!.tiles)).toEqual([{ x: 0, y: 0, tileId: "stone-floor" }]);
+
+    // The owner cloning their own published map keeps the gmOnly marker.
+    const ownerClone = await owner.post(`/api/public/${entryId}/clone`);
+    const ownerCloned = await prisma.battleMap.findUnique({ where: { id: ownerClone.body.id } });
+    expect(JSON.parse(ownerCloned!.tiles)).toHaveLength(2);
+  });
 });
 
 describe("admin moderation", () => {

@@ -1115,7 +1115,7 @@ export interface BaseState {
   unlockedShops: BaseUnlockedShop[];
 }
 
-export type TileCategory = "terrain" | "structure" | "nature" | "hazard" | "decor";
+export type TileCategory = "terrain" | "structure" | "nature" | "hazard" | "decor" | "gmOnly";
 
 // A curated, first-party tile a DM paints onto a BattleMap grid — never an
 // uploaded image. Every mechanical property a tile carries (does it block
@@ -1145,7 +1145,15 @@ export interface PlacedTile {
   // the cell's floor. Never consulted by vision.ts/gridMovement.ts, which
   // only ever read the floor-layer placement for a cell, so a decor tile
   // can never accidentally change a cell's movement or sight rules.
-  layer?: "floor" | "decor";
+  //
+  // "gmOnly" is a DM-only marker (a secret door, a trap warning) — the
+  // server strips every gmOnly placement from a BattleMap before it's
+  // ever sent to a viewer who isn't the map's owner (see toBattleMapDTO),
+  // so this layer never reaches a player's browser at all.
+  layer?: "floor" | "decor" | "gmOnly";
+  // Free-text reminder for a gmOnly marker (why this door is secret, what
+  // the trap does). Meaningless on any other layer.
+  note?: string;
 }
 
 export const BATTLE_MAP_MAX_WIDTH = 40;

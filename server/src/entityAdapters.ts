@@ -41,6 +41,19 @@ function genericDuplicate(model: { create: (args: { data: any }) => Promise<any>
   };
 }
 
+// A gallery clone otherwise carries the source row's `tiles` JSON over
+// verbatim (genericDuplicate doesn't know its shape) — that would leak the
+// original owner's gmOnly markers (secret doors, trap notes) into a
+// stranger's copy, bypassing the redaction toBattleMapDTO applies for
+// display. Same rule as there: only the original owner cloning their own
+// map keeps them.
+async function duplicateBattleMap(row: any, targetUserId: string, targetWorldId: string | null) {
+  const tiles = targetUserId === row.userId ? row.tiles : JSON.stringify(JSON.parse(row.tiles).filter((t: { layer?: string }) => t.layer !== "gmOnly"));
+  return prisma.battleMap.create({
+    data: { userId: targetUserId, worldId: targetWorldId, hiddenFromParty: false, name: row.name, width: row.width, height: row.height, tiles, tags: row.tags, notes: row.notes },
+  });
+}
+
 // Dungeon.rooms references ZoneMapTemplate ids the cloning user doesn't own
 // (or, cloning within the same account, that are already used by the
 // original dungeon) — genericDuplicate can't just carry the JSON over
@@ -197,7 +210,7 @@ const adapters: Record<EntityType, EntityAdapter> = {
     findMany: (args) => prisma.battleMap.findMany(args),
     findUnique: (id, userId, memberWorldIds) => prisma.battleMap.findFirst({ where: accessWhere(id, userId, memberWorldIds) }),
     findPublic: (id) => prisma.battleMap.findUnique({ where: { id } }),
-    duplicate: genericDuplicate(prisma.battleMap),
+    duplicate: duplicateBattleMap,
     getName: (row) => row.name,
     getMeta: (row) => `${row.width}×${row.height}`,
     searchFields: ["name", "notes", "tags"],

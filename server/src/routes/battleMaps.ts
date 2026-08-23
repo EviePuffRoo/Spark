@@ -13,8 +13,9 @@ function coerceTile(raw: unknown, width: number, height: number): PlacedTile | n
   if (typeof t.x !== "number" || typeof t.y !== "number" || typeof t.tileId !== "string") return null;
   if (!Number.isInteger(t.x) || !Number.isInteger(t.y) || t.x < 0 || t.y < 0 || t.x >= width || t.y >= height) return null;
   if (!BATTLE_TILE_BY_ID[t.tileId]) return null;
-  const layer = t.layer === "decor" ? "decor" : undefined;
-  return { x: t.x, y: t.y, tileId: t.tileId, ...(layer ? { layer } : {}) };
+  const layer = t.layer === "decor" || t.layer === "gmOnly" ? t.layer : undefined;
+  const note = layer === "gmOnly" && typeof t.note === "string" ? t.note.slice(0, 500) : undefined;
+  return { x: t.x, y: t.y, tileId: t.tileId, ...(layer ? { layer } : {}), ...(note ? { note } : {}) };
 }
 
 function coerceDimension(value: unknown, max: number): number | null {
@@ -30,14 +31,14 @@ battleMapsRouter.get("/", async (req, res) => {
     ...(worldId === "unassigned" ? { worldId: null } : typeof worldId === "string" ? { worldId } : {}),
   };
   const rows = await prisma.battleMap.findMany({ where, orderBy: { createdAt: "desc" } });
-  res.json(rows.map(toBattleMapDTO));
+  res.json(rows.map((row) => toBattleMapDTO(row, req.userId!)));
 });
 
 battleMapsRouter.get("/:id", async (req, res) => {
   const memberWorldIds = await getMemberWorldIds(req.userId!);
   const row = await prisma.battleMap.findFirst({ where: { id: req.params.id, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }] } });
   if (!row) return res.status(404).json({ error: "Battle map not found" });
-  res.json(toBattleMapDTO(row));
+  res.json(toBattleMapDTO(row, req.userId!));
 });
 
 battleMapsRouter.post("/", async (req, res) => {
@@ -68,7 +69,7 @@ battleMapsRouter.post("/", async (req, res) => {
       userId: req.userId!,
     },
   });
-  res.status(201).json(toBattleMapDTO(row));
+  res.status(201).json(toBattleMapDTO(row, req.userId!));
 });
 
 battleMapsRouter.patch("/:id", async (req, res) => {
@@ -106,7 +107,7 @@ battleMapsRouter.patch("/:id", async (req, res) => {
   if ("tags" in body) data.tags = JSON.stringify(Array.isArray(body.tags) ? body.tags : []);
 
   const row = await prisma.battleMap.update({ where: { id: req.params.id }, data });
-  res.json(toBattleMapDTO(row));
+  res.json(toBattleMapDTO(row, req.userId!));
 });
 
 battleMapsRouter.delete("/:id", async (req, res) => {

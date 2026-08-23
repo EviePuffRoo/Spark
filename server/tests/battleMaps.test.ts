@@ -106,6 +106,39 @@ describe("battle maps", () => {
     expect(del.status).toBe(404);
   });
 
+  it("strips gmOnly markers from a world-shared map for a non-owner, keeping them (with notes) for the owner", async () => {
+    const { agent: dm } = await signupAgent("mapdm2");
+    const world = await dm.post("/api/worlds").send({ name: "GM Layer World" });
+    const worldId = world.body.id as string;
+    const joinCode = await dm.post(`/api/worlds/${worldId}/join-code`);
+
+    const { agent: player } = await signupAgent("mapplayer2");
+    await player.post("/api/worlds/join").send({ code: joinCode.body.code });
+
+    const created = await dm.post("/api/battle-maps").send({
+      name: "Dungeon Room", width: 6, height: 6, worldId,
+      tiles: [
+        { x: 0, y: 0, tileId: "stone-floor" },
+        { x: 3, y: 3, tileId: "hidden-trap", layer: "gmOnly", note: "Poison needle, DC 15" },
+      ],
+    });
+    expect(created.status).toBe(201);
+    expect(created.body.tiles).toHaveLength(2);
+    const mapId = created.body.id as string;
+
+    const dmGet = await dm.get(`/api/battle-maps/${mapId}`);
+    expect(dmGet.body.tiles).toHaveLength(2);
+    expect(dmGet.body.tiles.find((t: { layer?: string }) => t.layer === "gmOnly")?.note).toBe("Poison needle, DC 15");
+
+    const playerGet = await player.get(`/api/battle-maps/${mapId}`);
+    expect(playerGet.status).toBe(200);
+    expect(playerGet.body.tiles).toEqual([{ x: 0, y: 0, tileId: "stone-floor" }]);
+
+    const playerList = await player.get(`/api/battle-maps?worldId=${worldId}`);
+    const listed = playerList.body.find((m: { id: string }) => m.id === mapId);
+    expect(listed.tiles).toEqual([{ x: 0, y: 0, tileId: "stone-floor" }]);
+  });
+
   it("deletes a map you own", async () => {
     const { agent } = await signupAgent("mapuser5");
     const created = await agent.post("/api/battle-maps").send({ name: "Doomed Map", width: 5, height: 5 });

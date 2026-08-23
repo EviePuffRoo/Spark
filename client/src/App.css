@@ -1407,6 +1407,47 @@ textarea {
   max-width: 100%;
 }
 
+.gm-markers-panel {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--border);
+}
+
+.gm-markers-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gm-marker-row {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gm-marker-row-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gm-marker-row-header .entity-name {
+  flex: 1;
+}
+
+.gm-marker-row textarea {
+  width: 100%;
+  resize: vertical;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+}
+
 .world-list {
   margin-top: 20px;
 }

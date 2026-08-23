@@ -194,6 +194,7 @@ function AppShell({ initialLandOnOverview = false }: { initialLandOnOverview?: b
         )}
         {area === "world" && (
           <>
+            <span className="area-sidebar-group-label">World</span>
             <button className={subTab === "overview" ? "active" : ""} aria-current={subTab === "overview" ? "true" : undefined} onClick={() => selectSubTab("overview")}>Overview</button>
             <button className={subTab === "worlds" ? "active" : ""} aria-current={subTab === "worlds" ? "true" : undefined} onClick={() => selectSubTab("worlds")}>Worlds</button>
             <button className={subTab === "roster" ? "active" : ""} aria-current={subTab === "roster" ? "true" : undefined} onClick={() => selectSubTab("roster")}>Roster</button>
@@ -203,6 +204,7 @@ function AppShell({ initialLandOnOverview = false }: { initialLandOnOverview?: b
             <button className={subTab === "notes" ? "active" : ""} aria-current={subTab === "notes" ? "true" : undefined} onClick={() => selectSubTab("notes")}>
               Notes{notesUnseen && <span className="nav-badge" aria-label="New notes activity" />}
             </button>
+            <span className="area-sidebar-group-label">Downtime</span>
             <button className={subTab === "downtime" ? "active" : ""} aria-current={subTab === "downtime" ? "true" : undefined} onClick={() => selectSubTab("downtime")}>Downtime</button>
             <button className={subTab === "tavern" ? "active" : ""} aria-current={subTab === "tavern" ? "true" : undefined} onClick={() => selectSubTab("tavern")}>Tavern</button>
             <button className={subTab === "baseMap" ? "active" : ""} aria-current={subTab === "baseMap" ? "true" : undefined} onClick={() => selectSubTab("baseMap")}>Base Map</button>

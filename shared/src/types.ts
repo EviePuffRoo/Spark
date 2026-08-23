@@ -229,6 +229,13 @@ export interface GeneratedSettlement {
   settlementType: string;
   population?: string;
   government?: string;
+  // How well the settlement is doing economically — same free-text-from-a-
+  // fixed-pool convention as government/population (see PROSPERITY_LEVELS).
+  prosperity?: string;
+  // Reuses Region's DANGER_LEVELS pool rather than inventing a parallel
+  // scale — a settlement's danger level is conceptually the same axis as
+  // its surrounding region's, just independently set.
+  dangerLevel?: string;
   description: string;
 }
 
@@ -238,6 +245,11 @@ export interface Settlement extends GeneratedSettlement {
   worldId?: string | null;
   hiddenFromParty: boolean;
   regionId?: string | null;
+  // The faction that currently holds power here, if any — a loose,
+  // DM-assigned tag (same "coexists, doesn't replace" pattern as
+  // Character.factionId): nothing keeps a settlement's fortunes in
+  // lockstep with the controlling faction's reputation automatically.
+  controllingFactionId?: string | null;
   tags: string[];
   notes?: string;
   createdAt: string;

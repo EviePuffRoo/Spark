@@ -25,6 +25,10 @@ export const POPULATION_BANDS: Record<string, string> = {
   port: "1,000-10,000",
 };
 
+export const PROSPERITY_LEVELS: string[] = [
+  "Destitute", "Struggling", "Modest", "Comfortable", "Prosperous", "Wealthy",
+];
+
 export const GOVERNMENT_TYPES: string[] = [
   "Monarchy", "Council of Elders", "Merchant Guild Rule", "Theocracy", "Elected Council",
   "Military Garrison Command", "Anarchic (No Formal Rule)", "Hereditary Chiefdom", "Magistrate-Appointed",

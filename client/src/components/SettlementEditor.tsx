@@ -41,6 +41,16 @@ export function SettlementEditor({
           <input type="text" value={draft.population ?? ""} onChange={(e) => set("population", e.target.value || undefined)} />
         </label>
       </div>
+      <div className="editor-grid">
+        <label className="field">
+          <span>Prosperity</span>
+          <input type="text" value={draft.prosperity ?? ""} onChange={(e) => set("prosperity", e.target.value || undefined)} />
+        </label>
+        <label className="field">
+          <span>Danger Level</span>
+          <input type="text" value={draft.dangerLevel ?? ""} onChange={(e) => set("dangerLevel", e.target.value || undefined)} />
+        </label>
+      </div>
       <label className="field">
         <span>Government</span>
         <input type="text" value={draft.government ?? ""} onChange={(e) => set("government", e.target.value || undefined)} />

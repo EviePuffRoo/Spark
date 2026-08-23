@@ -286,6 +286,12 @@ export function RosterPage({
   const [locationSettlementName, setLocationSettlementName] = useState<string>("");
   const [pickingSettlement, setPickingSettlement] = useState(false);
 
+  const [settlementProsperity, setSettlementProsperity] = useState("");
+  const [settlementDangerLevel, setSettlementDangerLevel] = useState("");
+  const [settlementFactionId, setSettlementFactionId] = useState<string | null>(null);
+  const [settlementFactionName, setSettlementFactionName] = useState<string>("");
+  const [pickingSettlementFaction, setPickingSettlementFaction] = useState(false);
+
   useEffect(() => {
     if (selected) {
       setMetaNotes(selected.notes ?? "");
@@ -302,7 +308,18 @@ export function RosterPage({
         setLocationSettlementName("");
       }
     }
+    if (selectedSettlement) {
+      setSettlementProsperity(selectedSettlement.prosperity ?? "");
+      setSettlementDangerLevel(selectedSettlement.dangerLevel ?? "");
+      setSettlementFactionId(selectedSettlement.controllingFactionId ?? null);
+      if (selectedSettlement.controllingFactionId) {
+        api.getFaction(selectedSettlement.controllingFactionId).then((f) => setSettlementFactionName(f.name)).catch(() => setSettlementFactionName(""));
+      } else {
+        setSettlementFactionName("");
+      }
+    }
     setPickingSettlement(false);
+    setPickingSettlementFaction(false);
     setEditingContent(false);
     setShowDungeonMap(false);
     setActionError(null);
@@ -314,7 +331,7 @@ export function RosterPage({
     // dragging a room on the Dungeon Map — this should only reset local
     // edit state when the user actually switches to a different entity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected?.id, selectedQuest?.id, selectedLocation?.id]);
+  }, [selected?.id, selectedQuest?.id, selectedLocation?.id, selectedSettlement?.id]);
 
   async function updateDungeonRoomRect(roomId: string, rect: DungeonRoomRect) {
     if (!selectedDungeon) return;
@@ -339,6 +356,11 @@ export function RosterPage({
       hiddenFromParty,
       ...(mode === "quests" ? { status: questStatus } : {}),
       ...(mode === "locations" ? { settlementId: locationSettlementId } : {}),
+      ...(mode === "settlements" ? {
+        prosperity: settlementProsperity || undefined,
+        dangerLevel: settlementDangerLevel || undefined,
+        controllingFactionId: settlementFactionId,
+      } : {}),
     };
     try {
       if (mode === "characters") await api.updateCharacter(selected.id, patch);
@@ -600,7 +622,7 @@ export function RosterPage({
     mode === "dungeons" ? dungeons.filter((d) => !tagFilter || d.tags.includes(tagFilter)).map((d) => ({ id: d.id, name: d.name, meta: `${d.rooms.length} rooms`, hidden: d.hiddenFromParty })) :
     mode === "shops" ? shops.filter((s) => !tagFilter || s.tags.includes(tagFilter)).map((s) => ({ id: s.id, name: s.name, meta: `${s.stock.length} items in stock`, hidden: s.hiddenFromParty })) :
     mode === "regions" ? regions.filter((r) => !tagFilter || r.tags.includes(tagFilter)).map((r) => ({ id: r.id, name: r.name, meta: `${r.terrainCategory}${r.dangerLevel ? ` · ${r.dangerLevel}` : ""}`, hidden: r.hiddenFromParty })) :
-    settlements.filter((s) => !tagFilter || s.tags.includes(tagFilter)).map((s) => ({ id: s.id, name: s.name, meta: s.settlementType, hidden: s.hiddenFromParty }))
+    settlements.filter((s) => !tagFilter || s.tags.includes(tagFilter)).map((s) => ({ id: s.id, name: s.name, meta: `${s.settlementType}${s.dangerLevel ? ` · ${s.dangerLevel}` : ""}`, hidden: s.hiddenFromParty }))
   ).filter((entry) => !trimmedSearch || entry.name.toLowerCase().includes(trimmedSearch));
 
   if (showFactionWeb) {
@@ -771,6 +793,33 @@ export function RosterPage({
                       <button className="btn-secondary" onClick={() => setPickingSettlement(true)}>+ Anchor to a Settlement</button>
                     )}
                   </label>
+                )}
+                {mode === "settlements" && (
+                  <>
+                    <div className="editor-grid">
+                      <label className="field">
+                        <span>Prosperity</span>
+                        <input type="text" value={settlementProsperity} onChange={(e) => setSettlementProsperity(e.target.value)} />
+                      </label>
+                      <label className="field">
+                        <span>Danger Level</span>
+                        <input type="text" value={settlementDangerLevel} onChange={(e) => setSettlementDangerLevel(e.target.value)} />
+                      </label>
+                    </div>
+                    <label className="field">
+                      <span>Controlling Faction (optional)</span>
+                      {settlementFactionId ? (
+                        <div className="role-slot-filled">
+                          <span className="role-slot-value">{settlementFactionName || "…"}</span>
+                          <button className="btn-secondary" onClick={() => { setSettlementFactionId(null); setSettlementFactionName(""); }}>Clear</button>
+                        </div>
+                      ) : pickingSettlementFaction ? (
+                        <EntitySearchPicker type="faction" onSelect={(r) => { setSettlementFactionId(r.id); setSettlementFactionName(r.name); setPickingSettlementFaction(false); }} placeholder="Search factions…" />
+                      ) : (
+                        <button className="btn-secondary" onClick={() => setPickingSettlementFaction(true)}>+ Assign a Controlling Faction</button>
+                      )}
+                    </label>
+                  </>
                 )}
                 <label className="field">
                   <input type="checkbox" checked={hiddenFromParty} onChange={(e) => setHiddenFromParty(e.target.checked)} />

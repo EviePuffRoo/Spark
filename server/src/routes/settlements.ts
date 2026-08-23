@@ -26,7 +26,7 @@ settlementsRouter.get("/:id", async (req, res) => {
 
 settlementsRouter.post("/", async (req, res) => {
   const body = req.body ?? {};
-  const { name, settlementType, population, government, description, regionId, worldId, tags, notes, hiddenFromParty } = body;
+  const { name, settlementType, population, government, prosperity, dangerLevel, description, regionId, worldId, tags, notes, hiddenFromParty } = body;
 
   if (!name || !settlementType || !description) {
     return res.status(400).json({ error: "Missing required settlement fields" });
@@ -41,6 +41,8 @@ settlementsRouter.post("/", async (req, res) => {
       name, settlementType, description,
       population: population ?? null,
       government: government ?? null,
+      prosperity: prosperity ?? null,
+      dangerLevel: dangerLevel ?? null,
       regionId: regionId ?? null,
       worldId: worldId ?? null,
       tags: JSON.stringify(Array.isArray(tags) ? tags : []),
@@ -56,7 +58,7 @@ settlementsRouter.patch("/:id", async (req, res) => {
   const body = req.body ?? {};
   const data: Record<string, unknown> = {};
 
-  for (const field of ["name", "settlementType", "description", "population", "government", "notes", "hiddenFromParty"] as const) {
+  for (const field of ["name", "settlementType", "description", "population", "government", "prosperity", "dangerLevel", "notes", "hiddenFromParty"] as const) {
     if (field in body) data[field] = body[field];
   }
   if ("worldId" in body) {
@@ -67,6 +69,13 @@ settlementsRouter.patch("/:id", async (req, res) => {
     data.worldId = body.worldId ?? null;
   }
   if ("regionId" in body) data.regionId = body.regionId ?? null;
+  if ("controllingFactionId" in body) {
+    if (typeof body.controllingFactionId === "string") {
+      const faction = await prisma.faction.findFirst({ where: { id: body.controllingFactionId, userId: req.userId } });
+      if (!faction) return res.status(403).json({ error: "You don't have access to this faction" });
+    }
+    data.controllingFactionId = body.controllingFactionId ?? null;
+  }
   if ("tags" in body) data.tags = JSON.stringify(Array.isArray(body.tags) ? body.tags : []);
 
   const result = await prisma.settlement.updateMany({ where: { id: req.params.id, userId: req.userId }, data });

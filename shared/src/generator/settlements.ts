@@ -1,7 +1,8 @@
 import {
-  SETTLEMENT_TYPES, POPULATION_BANDS, GOVERNMENT_TYPES,
+  SETTLEMENT_TYPES, POPULATION_BANDS, GOVERNMENT_TYPES, PROSPERITY_LEVELS,
   SETTLEMENT_NAME_ADJECTIVES, SETTLEMENT_NAME_SUFFIXES, SETTLEMENT_DESCRIPTIONS, SETTLEMENT_FEATURES,
 } from "../data/settlements.js";
+import { DANGER_LEVELS } from "../data/regions.js";
 import { pick } from "./random.js";
 import type { GenerateSettlementRequest, GeneratedSettlement } from "../types.js";
 
@@ -19,6 +20,8 @@ export function generateSettlement(request: GenerateSettlementRequest = {}): Gen
     settlementType: settlementType.name,
     population: POPULATION_BANDS[settlementType.id],
     government: pick(GOVERNMENT_TYPES),
+    prosperity: pick(PROSPERITY_LEVELS),
+    dangerLevel: pick(DANGER_LEVELS),
     description,
   };
 }

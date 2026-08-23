@@ -10,6 +10,13 @@ export function SettlementCardView({ settlement }: { settlement: GeneratedSettle
       </p>
       <hr className="rule gold" />
       <p>{settlement.description}</p>
+      {(settlement.prosperity || settlement.dangerLevel) && (
+        <p className="entity-meta">
+          {settlement.prosperity ? `${settlement.prosperity} prosperity` : ""}
+          {settlement.prosperity && settlement.dangerLevel ? " · " : ""}
+          {settlement.dangerLevel ? `${settlement.dangerLevel} danger` : ""}
+        </p>
+      )}
       {settlement.government && (
         <>
           <h3 className="section-heading">Government</h3>

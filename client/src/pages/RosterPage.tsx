@@ -5,44 +5,14 @@ import { api, type WorldSummary, type WorldMemberInfo } from "../api";
 import { useAuth } from "../AuthContext";
 import { downloadJson } from "../downloadJson";
 import { useScrollDetailOnSelect } from "../useScrollDetailOnSelect";
-import { StatBlockView } from "../components/StatBlockView";
-import { BackstoryView } from "../components/BackstoryView";
-import { ItemCardView } from "../components/ItemCardView";
-import { LocationCardView } from "../components/LocationCardView";
-import { QuestHookCardView } from "../components/QuestHookCardView";
-import { FactionCardView } from "../components/FactionCardView";
-import { NpcDispositionView } from "../components/NpcDispositionView";
-import { EncounterTableCardView } from "../components/EncounterTableCardView";
-import { ZoneMapTemplateCardView } from "../components/ZoneMapTemplateCardView";
-import { DungeonCardView } from "../components/DungeonCardView";
-import { DungeonEditor } from "../components/DungeonEditor";
-import { DungeonMapView } from "../components/DungeonMapView";
-import { ShopCardView } from "../components/ShopCardView";
-import { ShopEditor } from "../components/ShopEditor";
 import { LinkedEntities } from "../components/LinkedEntities";
 import { FactionWebView } from "../components/FactionWebView";
-import { SessionNoteCardView } from "../components/SessionNoteCardView";
 import { RosterIcon } from "../components/icons";
 import { EmptyState } from "../components/EmptyState";
-import { EquipmentPanel } from "../components/EquipmentPanel";
-import { AdventureCardView } from "../components/AdventureCardView";
-import { PlayerCharacterCardView } from "../components/PlayerCharacterCardView";
-import { LevelUpPanel } from "../components/LevelUpPanel";
 import type { PrintItem } from "../components/PrintPane";
-import { CharacterEditor } from "../components/CharacterEditor";
-import { ItemEditor } from "../components/ItemEditor";
-import { LocationEditor } from "../components/LocationEditor";
-import { QuestEditor } from "../components/QuestEditor";
-import { FactionEditor } from "../components/FactionEditor";
-import { EncounterTableEditor } from "../components/EncounterTableEditor";
-import { AdventureEditor } from "../components/AdventureEditor";
-import { PlayerCharacterEditor } from "../components/PlayerCharacterEditor";
-import { RegionCardView } from "../components/RegionCardView";
-import { RegionEditor } from "../components/RegionEditor";
-import { SettlementCardView } from "../components/SettlementCardView";
-import { SettlementEditor } from "../components/SettlementEditor";
 import { EntitySearchPicker } from "../components/EntitySearchPicker";
-import { GroupedTabs } from "../components/GroupedTabs";
+import { RosterListPanel } from "../components/RosterListPanel";
+import { RosterDetailPanel } from "../components/RosterDetailPanel";
 
 export type Mode = "characters" | "items" | "locations" | "quests" | "factions" | "encounters" | "notes" | "adventures" | "playerCharacters" | "zoneMapTemplates" | "dungeons" | "shops" | "regions" | "settlements";
 type RosterGroup = "characters" | "world" | "story" | "tools";
@@ -653,84 +623,30 @@ export function RosterPage({
 
   return (
     <div className="page roster-layout">
-      <div className="panel roster-list">
-        <GroupedTabs
-          className="roster-mode-tabs"
-          groups={ROSTER_GROUPS}
-          groupLabels={ROSTER_GROUP_LABELS}
-          itemLabels={MODE_LABELS}
-          groupOf={(m) => ROSTER_MODE_TO_GROUP[m]}
-          active={mode}
-          onSelect={switchMode}
-        />
-
-        {mode === "factions" && (
-          <button className="btn-secondary" onClick={() => setShowFactionWeb(true)}>Relationship Web</button>
-        )}
-
-        <label className="field">
-          <span>Search</span>
-          <input
-            type="text"
-            value={searchFilter}
-            onChange={(e) => setSearchFilter(e.target.value)}
-            placeholder={`Search ${MODE_LABELS[mode].toLowerCase()}…`}
-          />
-        </label>
-
-        <label className="field">
-          <span>Filter by world</span>
-          <select value={worldFilter} onChange={(e) => onWorldFilterChange(e.target.value)}>
-            <option value="">All</option>
-            <option value="unassigned">Unassigned</option>
-            {worlds.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
-          </select>
-        </label>
-
-        {availableTags.length > 0 && (
-          <label className="field">
-            <span>Filter by tag</span>
-            <select value={tagFilter} onChange={(e) => setTagFilter(e.target.value)}>
-              <option value="">All tags</option>
-              {availableTags.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </label>
-        )}
-
-        {mode === "quests" && (
-          <label className="field">
-            <span>Filter by status</span>
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as QuestStatus | "")}>
-              <option value="">All statuses</option>
-              {QUEST_STATUSES.map((s) => <option key={s} value={s}>{QUEST_STATUS_LABELS[s]}</option>)}
-            </select>
-          </label>
-        )}
-
-        {loading && <p className="hint">Loading…</p>}
-        {!loading && activeList.length === 0 && (
-          <p className="hint">
-            {unfiltered ? "No matches for your filters." : `No saved ${MODE_LABELS[mode].toLowerCase()} yet.`}
-          </p>
-        )}
-        <ul className="entity-list">
-          {activeList.map((entry) => (
-            <li key={entry.id}>
-              <button
-                className={`entity-item ${entry.id === selectedId ? "active" : ""}`}
-                aria-current={entry.id === selectedId ? "true" : undefined}
-                onClick={() => setSelectedId(entry.id)}
-              >
-                <span className="entity-name">
-                  {entry.name}
-                  {entry.hidden && <span className="hidden-badge" title="Hidden from party">🔒</span>}
-                </span>
-                <span className="entity-meta">{entry.meta}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </div>
+      <RosterListPanel
+        mode={mode}
+        onSwitchMode={switchMode}
+        onShowFactionWeb={() => setShowFactionWeb(true)}
+        groups={ROSTER_GROUPS}
+        groupLabels={ROSTER_GROUP_LABELS}
+        itemLabels={MODE_LABELS}
+        groupOf={(m) => ROSTER_MODE_TO_GROUP[m]}
+        searchFilter={searchFilter}
+        onSearchFilterChange={setSearchFilter}
+        worldFilter={worldFilter}
+        onWorldFilterChange={onWorldFilterChange}
+        worlds={worlds}
+        availableTags={availableTags}
+        tagFilter={tagFilter}
+        onTagFilterChange={setTagFilter}
+        statusFilter={statusFilter}
+        onStatusFilterChange={setStatusFilter}
+        loading={loading}
+        activeList={activeList}
+        unfiltered={unfiltered}
+        selectedId={selectedId}
+        onSelectId={setSelectedId}
+      />
 
       <div className="panel result-panel" ref={detailRef}>
         {!selected && (
@@ -741,191 +657,31 @@ export function RosterPage({
           />
         )}
 
-        {selected && editingContent && <h2>Editing {selectedDisplayName}</h2>}
-
-        {selectedCharacter && !editingContent && (
-          <>
-            <StatBlockView
-              name={selectedCharacter.name}
-              subtitle={`${selectedCharacter.statBlock.size} ${selectedCharacter.statBlock.creatureType}, ${selectedCharacter.statBlock.alignment}${selectedCharacter.race ? ` — ${selectedCharacter.race}` : ""}${selectedCharacter.background ? `, ${selectedCharacter.background}` : ""}`}
-              statBlock={selectedCharacter.statBlock}
-            />
-            <BackstoryView backstory={selectedCharacter.backstory} />
-            <EquipmentPanel
-              equippedItems={selectedCharacter.equippedItems}
-              attunedItems={selectedCharacter.attunedItems}
-              baseArmorClass={selectedCharacter.statBlock.armorClass}
-            />
-            {selectedCharacter.kind === "npc" && (
-              <NpcDispositionView
-                characterId={selectedCharacter.id}
-                disposition={selectedCharacter.disposition}
-                factionId={selectedCharacter.factionId}
-                canEdit={canEditSelected}
-                onChanged={refresh}
-                onLinkFaction={async (factionId) => {
-                  await api.updateCharacter(selectedCharacter.id, { factionId });
-                  refresh();
-                }}
-              />
-            )}
-          </>
-        )}
-        {selectedCharacter && editingContent && (
-          <CharacterEditor
-            character={selectedCharacter}
-            onSave={async (patch) => { await api.updateCharacter(selectedCharacter.id, patch); setEditingContent(false); refresh(); }}
-            onCancel={() => setEditingContent(false)}
-          />
-        )}
-
-        {selectedItem && !editingContent && <ItemCardView item={selectedItem} />}
-        {selectedItem && editingContent && (
-          <ItemEditor
-            value={selectedItem}
-            onSave={async (patch) => { await api.updateItem(selectedItem.id, patch); setEditingContent(false); refresh(); }}
-            onCancel={() => setEditingContent(false)}
-          />
-        )}
-
-        {selectedLocation && !editingContent && <LocationCardView location={selectedLocation} />}
-        {selectedLocation && editingContent && (
-          <LocationEditor
-            value={selectedLocation}
-            onSave={async (patch) => { await api.updateLocation(selectedLocation.id, patch); setEditingContent(false); refresh(); }}
-            onCancel={() => setEditingContent(false)}
-          />
-        )}
-
-        {selectedQuest && !editingContent && <QuestHookCardView quest={selectedQuest} />}
-        {selectedQuest && editingContent && (
-          <QuestEditor
-            value={selectedQuest}
-            onSave={async (patch) => { await api.updateQuest(selectedQuest.id, patch); setEditingContent(false); refresh(); }}
-            onCancel={() => setEditingContent(false)}
-          />
-        )}
-
-        {selectedFaction && !editingContent && (
-          <FactionCardView
-            faction={selectedFaction}
-            canEdit={canEditSelected}
-            onChanged={refresh}
-          />
-        )}
-        {selectedFaction && editingContent && (
-          <FactionEditor
-            value={selectedFaction}
-            onSave={async (patch) => { await api.updateFaction(selectedFaction.id, patch); setEditingContent(false); refresh(); }}
-            onCancel={() => setEditingContent(false)}
-          />
-        )}
-
-        {selectedEncounter && !editingContent && <EncounterTableCardView table={selectedEncounter} />}
-        {selectedEncounter && editingContent && (
-          <EncounterTableEditor
-            value={selectedEncounter}
-            onSave={async (patch) => { await api.updateEncounterTable(selectedEncounter.id, patch); setEditingContent(false); refresh(); }}
-            onCancel={() => setEditingContent(false)}
-          />
-        )}
-
-        {selectedNote && (
-          <>
-            <SessionNoteCardView note={selectedNote} />
-            <p className="hint">Edit this note from the Notes tab.</p>
-          </>
-        )}
-
-        {selectedAdventure && !editingContent && <AdventureCardView adventure={selectedAdventure} />}
-        {selectedAdventure && editingContent && (
-          <AdventureEditor
-            value={selectedAdventure}
-            onSave={async (patch) => { await api.updateAdventure(selectedAdventure.id, patch); setEditingContent(false); refresh(); }}
-            onCancel={() => setEditingContent(false)}
-          />
-        )}
-
-        {selectedPlayerCharacter && !editingContent && (
-          <>
-            <PlayerCharacterCardView pc={selectedPlayerCharacter} />
-            <LevelUpPanel pc={selectedPlayerCharacter} onUpdated={refresh} />
-            <EquipmentPanel
-              equippedItems={selectedPlayerCharacter.equippedItems}
-              attunedItems={selectedPlayerCharacter.attunedItems}
-              baseArmorClass={selectedPlayerCharacter.armorClass}
-            />
-          </>
-        )}
-        {selectedPlayerCharacter && editingContent && (
-          <PlayerCharacterEditor
-            value={selectedPlayerCharacter}
-            equippedItems={selectedPlayerCharacter.equippedItems}
-            attunedItems={selectedPlayerCharacter.attunedItems}
-            currentHp={selectedPlayerCharacter.currentHp}
-            deathSaves={selectedPlayerCharacter.deathSaves}
-            spellSlots={selectedPlayerCharacter.spellSlots}
-            preparedSpells={selectedPlayerCharacter.preparedSpells}
-            classResources={selectedPlayerCharacter.classResources}
-            onSave={async (patch) => { await api.updatePlayerCharacter(selectedPlayerCharacter.id, patch); setEditingContent(false); refresh(); }}
-            onCancel={() => setEditingContent(false)}
-          />
-        )}
-
-        {selectedZoneMapTemplate && (
-          <>
-            <ZoneMapTemplateCardView template={selectedZoneMapTemplate} />
-            <p className="hint">Edit this template by loading it into a Zone Map in Combat and saving over it.</p>
-          </>
-        )}
-
-        {selectedDungeon && !editingContent && <DungeonCardView dungeon={selectedDungeon} />}
-        {selectedDungeon && !editingContent && showDungeonMap && (
-          <DungeonMapView
-            dungeon={selectedDungeon}
-            canEdit={canEditSelected}
-            onUpdateRoomRect={updateDungeonRoomRect}
-            onAutoArrange={canEditSelected ? autoArrangeDungeon : undefined}
-          />
-        )}
-        {selectedDungeon && editingContent && (
-          <DungeonEditor
-            value={selectedDungeon}
-            onSave={async (patch) => { await api.updateDungeon(selectedDungeon.id, patch); setEditingContent(false); refresh(); }}
-            onCancel={() => setEditingContent(false)}
-            saveLabel="Save Changes"
-          />
-        )}
-
-        {selectedShop && !editingContent && <ShopCardView shop={selectedShop} />}
-        {selectedShop && editingContent && (
-          <ShopEditor
-            value={selectedShop}
-            onSave={async (patch) => { await api.updateShop(selectedShop.id, patch); setEditingContent(false); refresh(); }}
-            onCancel={() => setEditingContent(false)}
-            saveLabel="Save Changes"
-          />
-        )}
-
-        {selectedRegion && !editingContent && <RegionCardView region={selectedRegion} />}
-        {selectedRegion && editingContent && (
-          <RegionEditor
-            value={selectedRegion}
-            onSave={async (patch) => { await api.updateRegion(selectedRegion.id, patch); setEditingContent(false); refresh(); }}
-            onCancel={() => setEditingContent(false)}
-            saveLabel="Save Changes"
-          />
-        )}
-
-        {selectedSettlement && !editingContent && <SettlementCardView settlement={selectedSettlement} />}
-        {selectedSettlement && editingContent && (
-          <SettlementEditor
-            value={selectedSettlement}
-            onSave={async (patch) => { await api.updateSettlement(selectedSettlement.id, patch); setEditingContent(false); refresh(); }}
-            onCancel={() => setEditingContent(false)}
-            saveLabel="Save Changes"
-          />
-        )}
+        <RosterDetailPanel
+          editingContent={editingContent}
+          setEditingContent={setEditingContent}
+          selectedDisplayName={selectedDisplayName}
+          hasSelected={!!selected}
+          canEditSelected={canEditSelected}
+          refresh={refresh}
+          selectedCharacter={selectedCharacter}
+          selectedItem={selectedItem}
+          selectedLocation={selectedLocation}
+          selectedQuest={selectedQuest}
+          selectedFaction={selectedFaction}
+          selectedEncounter={selectedEncounter}
+          selectedNote={selectedNote}
+          selectedAdventure={selectedAdventure}
+          selectedPlayerCharacter={selectedPlayerCharacter}
+          selectedZoneMapTemplate={selectedZoneMapTemplate}
+          selectedDungeon={selectedDungeon}
+          selectedShop={selectedShop}
+          selectedRegion={selectedRegion}
+          selectedSettlement={selectedSettlement}
+          showDungeonMap={showDungeonMap}
+          onUpdateDungeonRoomRect={updateDungeonRoomRect}
+          onAutoArrangeDungeon={autoArrangeDungeon}
+        />
 
         {selected && !editingContent && mode !== "notes" && mode !== "zoneMapTemplates" && mode !== "dungeons" && mode !== "shops" && canEditSelected && (
           <button className="btn-secondary" onClick={() => setEditingContent(true)}>Edit Content</button>

@@ -282,9 +282,9 @@ export function RosterPage({
     }
   }
 
-  const [locationSettlementId, setLocationSettlementId] = useState<string | null>(null);
-  const [locationSettlementName, setLocationSettlementName] = useState<string>("");
-  const [pickingSettlement, setPickingSettlement] = useState(false);
+  const [entitySettlementId, setEntitySettlementId] = useState<string | null>(null);
+  const [entitySettlementName, setEntitySettlementName] = useState<string>("");
+  const [pickingEntitySettlement, setPickingEntitySettlement] = useState(false);
 
   const [settlementProsperity, setSettlementProsperity] = useState("");
   const [settlementDangerLevel, setSettlementDangerLevel] = useState("");
@@ -300,12 +300,13 @@ export function RosterPage({
       setHiddenFromParty(selected.hiddenFromParty);
     }
     if (selectedQuest) setQuestStatus(selectedQuest.status);
-    if (selectedLocation) {
-      setLocationSettlementId(selectedLocation.settlementId ?? null);
-      if (selectedLocation.settlementId) {
-        api.getSettlement(selectedLocation.settlementId).then((s) => setLocationSettlementName(s.name)).catch(() => setLocationSettlementName(""));
+    const linkedSettlementId = selectedLocation?.settlementId ?? selectedCharacter?.settlementId ?? selectedShop?.settlementId;
+    if (selectedLocation || selectedCharacter || selectedShop) {
+      setEntitySettlementId(linkedSettlementId ?? null);
+      if (linkedSettlementId) {
+        api.getSettlement(linkedSettlementId).then((s) => setEntitySettlementName(s.name)).catch(() => setEntitySettlementName(""));
       } else {
-        setLocationSettlementName("");
+        setEntitySettlementName("");
       }
     }
     if (selectedSettlement) {
@@ -318,7 +319,7 @@ export function RosterPage({
         setSettlementFactionName("");
       }
     }
-    setPickingSettlement(false);
+    setPickingEntitySettlement(false);
     setPickingSettlementFaction(false);
     setEditingContent(false);
     setShowDungeonMap(false);
@@ -331,7 +332,7 @@ export function RosterPage({
     // dragging a room on the Dungeon Map — this should only reset local
     // edit state when the user actually switches to a different entity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected?.id, selectedQuest?.id, selectedLocation?.id, selectedSettlement?.id]);
+  }, [selected?.id, selectedQuest?.id, selectedLocation?.id, selectedCharacter?.id, selectedShop?.id, selectedSettlement?.id]);
 
   async function updateDungeonRoomRect(roomId: string, rect: DungeonRoomRect) {
     if (!selectedDungeon) return;
@@ -355,7 +356,7 @@ export function RosterPage({
       notes: metaNotes, tags: tags.split(",").map((t) => t.trim()).filter(Boolean), worldId: assignedWorld || null,
       hiddenFromParty,
       ...(mode === "quests" ? { status: questStatus } : {}),
-      ...(mode === "locations" ? { settlementId: locationSettlementId } : {}),
+      ...(mode === "locations" || mode === "characters" || mode === "shops" ? { settlementId: entitySettlementId } : {}),
       ...(mode === "settlements" ? {
         prosperity: settlementProsperity || undefined,
         dangerLevel: settlementDangerLevel || undefined,
@@ -779,20 +780,20 @@ export function RosterPage({
                     </select>
                   </label>
                 )}
-                {mode === "locations" && (
-                  <label className="field">
+                {(mode === "locations" || mode === "characters" || mode === "shops") && (
+                  <div className="field">
                     <span>Settlement (optional)</span>
-                    {locationSettlementId ? (
+                    {entitySettlementId ? (
                       <div className="role-slot-filled">
-                        <span className="role-slot-value">{locationSettlementName || "…"}</span>
-                        <button className="btn-secondary" onClick={() => { setLocationSettlementId(null); setLocationSettlementName(""); }}>Clear</button>
+                        <span className="role-slot-value">{entitySettlementName || "…"}</span>
+                        <button className="btn-secondary" onClick={() => { setEntitySettlementId(null); setEntitySettlementName(""); }}>Clear</button>
                       </div>
-                    ) : pickingSettlement ? (
-                      <EntitySearchPicker type="settlement" onSelect={(r) => { setLocationSettlementId(r.id); setLocationSettlementName(r.name); setPickingSettlement(false); }} placeholder="Search settlements…" />
+                    ) : pickingEntitySettlement ? (
+                      <EntitySearchPicker type="settlement" onSelect={(r) => { setEntitySettlementId(r.id); setEntitySettlementName(r.name); setPickingEntitySettlement(false); }} placeholder="Search settlements…" />
                     ) : (
-                      <button className="btn-secondary" onClick={() => setPickingSettlement(true)}>+ Anchor to a Settlement</button>
+                      <button className="btn-secondary" onClick={() => setPickingEntitySettlement(true)}>+ Anchor to a Settlement</button>
                     )}
-                  </label>
+                  </div>
                 )}
                 {mode === "settlements" && (
                   <>
@@ -806,7 +807,7 @@ export function RosterPage({
                         <input type="text" value={settlementDangerLevel} onChange={(e) => setSettlementDangerLevel(e.target.value)} />
                       </label>
                     </div>
-                    <label className="field">
+                    <div className="field">
                       <span>Controlling Faction (optional)</span>
                       {settlementFactionId ? (
                         <div className="role-slot-filled">
@@ -818,7 +819,7 @@ export function RosterPage({
                       ) : (
                         <button className="btn-secondary" onClick={() => setPickingSettlementFaction(true)}>+ Assign a Controlling Faction</button>
                       )}
-                    </label>
+                    </div>
                   </>
                 )}
                 <label className="field">

@@ -155,6 +155,8 @@ model Character {
   disposition  Int      @default(0)
   factionId    String?
   faction      Faction? @relation(fields: [factionId], references: [id], onDelete: SetNull)
+  settlementId String?
+  settlement   Settlement? @relation(fields: [settlementId], references: [id], onDelete: SetNull)
   worldId      String?
   hiddenFromParty Boolean @default(false)
   world        World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
@@ -167,6 +169,7 @@ model Character {
   @@index([worldId])
   @@index([userId])
   @@index([factionId])
+  @@index([settlementId])
 }
 
 model DispositionLogEntry {
@@ -286,6 +289,8 @@ model Settlement {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   locations      Location[]
+  notableCharacters Character[]
+  localShops     Shop[]
 
   @@index([worldId])
   @@index([userId])
@@ -446,6 +451,8 @@ model Shop {
   stock       String
   tags        String   @default("[]")
   notes       String?
+  settlementId String?
+  settlement  Settlement? @relation(fields: [settlementId], references: [id], onDelete: SetNull)
   worldId     String?
   hiddenFromParty Boolean @default(false)
   world       World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
@@ -457,6 +464,7 @@ model Shop {
 
   @@index([worldId])
   @@index([userId])
+  @@index([settlementId])
 }
 
 // A custom-crafted item ordered from a shop's artisan, paid up front and

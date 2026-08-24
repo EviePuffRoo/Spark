@@ -91,6 +91,7 @@ export function RosterDetailPanel({
             <NpcDispositionView
               characterId={selectedCharacter.id}
               disposition={selectedCharacter.disposition}
+              perPcDisposition={selectedCharacter.perPcDisposition}
               factionId={selectedCharacter.factionId}
               canEdit={canEditSelected}
               onChanged={refresh}

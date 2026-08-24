@@ -15,6 +15,8 @@ async function signupAgent(username: string) {
   return { agent, userId: res.body.id as string };
 }
 
+const PC_BODY = { name: "Aria", className: "Fighter", level: 1, race: "Human", armorClass: 15, maxHp: 12 };
+
 function charPayload(overrides: Record<string, unknown> = {}) {
   return {
     kind: "npc",
@@ -196,6 +198,54 @@ describe("characters CRUD + ownership — representative entity-router template"
     expect(log.body[1].delta).toBe(10);
     expect(log.body[1].reason).toBe("Saved their village");
     expect(log.body[1].authorName).toBe("cruduser12");
+  });
+
+  it("adjusts per-PC disposition independently of general disposition and of other PCs", async () => {
+    const { agent } = await signupAgent("cruduser22");
+    const world = await agent.post("/api/worlds").send({ name: "Per-PC World" });
+    const worldId = world.body.id as string;
+    const create = await agent.post("/api/characters").send(charPayload({ worldId }));
+    const id = create.body.id as string;
+    const pc1 = await agent.post("/api/player-characters").send({ ...PC_BODY, name: "Aria", worldId });
+    const pc2 = await agent.post("/api/player-characters").send({ ...PC_BODY, name: "Beren", worldId });
+    const pc1Id = pc1.body.id as string;
+    const pc2Id = pc2.body.id as string;
+
+    await agent.post(`/api/characters/${id}/adjust-disposition`).send({ delta: 5, reason: "General goodwill" });
+    const forPc1 = await agent.post(`/api/characters/${id}/adjust-disposition`).send({ delta: 8, reason: "Saved Aria's life", playerCharacterId: pc1Id });
+    expect(forPc1.status).toBe(200);
+    expect(forPc1.body.disposition).toBe(5);
+    expect(forPc1.body.perPcDisposition).toEqual({ [pc1Id]: 8 });
+
+    const forPc2 = await agent.post(`/api/characters/${id}/adjust-disposition`).send({ delta: -4, playerCharacterId: pc2Id });
+    expect(forPc2.body.perPcDisposition).toEqual({ [pc1Id]: 8, [pc2Id]: -4 });
+
+    const again = await agent.post(`/api/characters/${id}/adjust-disposition`).send({ delta: 2, playerCharacterId: pc1Id });
+    expect(again.body.perPcDisposition).toEqual({ [pc1Id]: 10, [pc2Id]: -4 });
+    expect(again.body.disposition).toBe(5);
+
+    const log = await agent.get(`/api/characters/${id}/disposition-log`);
+    expect(log.body).toHaveLength(4);
+    const generalEntries = log.body.filter((e: { playerCharacterId?: string }) => !e.playerCharacterId);
+    const pc1Entries = log.body.filter((e: { playerCharacterId?: string }) => e.playerCharacterId === pc1Id);
+    expect(generalEntries).toHaveLength(1);
+    expect(pc1Entries).toHaveLength(2);
+  });
+
+  it("403s adjust-disposition with a playerCharacterId belonging to someone else", async () => {
+    const { agent } = await signupAgent("cruduser23");
+    const create = await agent.post("/api/characters").send(charPayload());
+    const id = create.body.id as string;
+
+    const { agent: other } = await signupAgent("cruduser24");
+    const otherWorld = await other.post("/api/worlds").send({ name: "Other World" });
+    const otherPc = await other.post("/api/player-characters").send({ ...PC_BODY, worldId: otherWorld.body.id });
+
+    const res = await agent.post(`/api/characters/${id}/adjust-disposition`).send({ delta: 5, playerCharacterId: otherPc.body.id });
+    expect(res.status).toBe(403);
+
+    const check = await agent.get(`/api/characters/${id}`);
+    expect(check.body.perPcDisposition).toEqual({});
   });
 
   it("400s adjust-disposition with a zero or missing delta", async () => {

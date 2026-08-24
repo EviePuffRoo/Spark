@@ -868,6 +868,25 @@ export interface DungeonRoomRect {
   height: number;
 }
 
+// Room-level memory: what's true about this room from past visits, so
+// reloading it doesn't reset the dungeon to its pristine template state.
+// Deliberately room-level, not per-monster — see DungeonRoom.state.
+export interface DungeonRoomState {
+  // No hostile combatants were alive in the encounter the last time this
+  // room was left. Recomputed on every leave, so it can also un-clear if
+  // the DM later adds new monsters and leaves before clearing them again.
+  cleared: boolean;
+  // Something fled this room instead of being defeated — set by the
+  // "Flee" combatant action, distinct from Remove (defeated/dismissed).
+  // Sticky: only ever set true, since a warned dungeon doesn't forget.
+  alerted: boolean;
+  lastVisitedDay?: number;
+  // Zone ids (from this room's ZoneMapTemplate) whose hazard was cleared
+  // during a past visit — reapplied (hazard stripped) on every reload so
+  // a disarmed trap stays disarmed.
+  disarmedHazardZoneIds: string[];
+}
+
 export interface DungeonRoom {
   id: string;
   name: string;
@@ -879,6 +898,7 @@ export interface DungeonRoom {
   // same "coexists, doesn't replace" relationship the zone system
   // already has with the grid system at the Encounter level.
   battleMapId?: string;
+  state?: DungeonRoomState;
 }
 
 export interface DungeonInput {

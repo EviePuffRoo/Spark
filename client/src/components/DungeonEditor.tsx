@@ -115,7 +115,11 @@ export function DungeonEditor({
               aria-current={room.id === selectedRoomId ? "true" : undefined}
               onClick={() => setSelectedRoomId(room.id)}
             >
-              <span className="entity-name">{room.name}</span>
+              <span className="entity-name">
+                {room.name}
+                {room.state?.cleared && <span className="room-status-badge cleared">Cleared</span>}
+                {room.state?.alerted && <span className="room-status-badge alerted">Alerted</span>}
+              </span>
               <span className="entity-meta">{room.exits.length} exit{room.exits.length === 1 ? "" : "s"}</span>
             </button>
             <div className="button-row">

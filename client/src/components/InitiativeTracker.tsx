@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { SearchResult, LiveCombatant, LiveCombatantCondition, EncounterStateInput, EncounterZone, Dungeon } from "@spark/shared";
+import type { SearchResult, LiveCombatant, LiveCombatantCondition, EncounterStateInput, EncounterZone, Dungeon, DungeonRoomState } from "@spark/shared";
 import { computeConcentrationDc, isHostilePair, leftReach, CONDITIONS_COMPENDIUM } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { useAuth } from "../AuthContext";
@@ -544,14 +544,62 @@ export function InitiativeTracker({
     applyEncounterUpdate((e) => ({ ...e, zones: [...(e.zones ?? []), ...remapped] }));
   }
 
+  const DEFAULT_ROOM_STATE: DungeonRoomState = { cleared: false, alerted: false, disarmedHazardZoneIds: [] };
+
+  async function updateRoomState(dungeonId: string, roomId: string, updater: (s: DungeonRoomState) => DungeonRoomState) {
+    const dungeon = await api.getDungeon(dungeonId);
+    const rooms = dungeon.rooms.map((r) => (r.id === roomId ? { ...r, state: updater(r.state ?? DEFAULT_ROOM_STATE) } : r));
+    const updated = await api.updateDungeon(dungeonId, { rooms });
+    setActiveDungeon(updated);
+    return updated;
+  }
+
+  // Room-level dungeon memory: called right before switching away from
+  // whatever room is currently active (either into a different room or
+  // out of the dungeon entirely) so its state survives the visit. Cleared
+  // is recomputed from the live encounter's remaining hostiles every time
+  // — a room can also un-clear if the DM adds fresh monsters and leaves
+  // before finishing them off. Disarmed hazards are found by diffing the
+  // live zones (which started as a copy of the room's template zones)
+  // against the template itself: a zone that had a hazard in the
+  // template but doesn't anymore in the live encounter was disarmed.
+  async function persistActiveRoomLeaveState() {
+    const dungeonId = activeEncounter.activeDungeonId;
+    const roomId = activeEncounter.activeDungeonRoomId;
+    if (!dungeonId || !roomId || !activeDungeon) return;
+    const room = activeDungeon.rooms.find((r) => r.id === roomId);
+    if (!room) return;
+    const template = await api.getZoneMapTemplate(room.templateId).catch(() => null);
+    const liveMonstersAlive = activeEncounter.combatants.some((c) => c.kind === "monster" && (c.currentHp ?? 0) > 0);
+    const newlyDisarmed = template
+      ? template.zones
+          .filter((tz) => tz.hazard)
+          .map((tz) => tz.id)
+          .filter((zoneId) => {
+            const liveZone = activeEncounter.zones.find((z) => z.id === zoneId);
+            return !!liveZone && !liveZone.hazard;
+          })
+      : [];
+    await updateRoomState(dungeonId, roomId, (s) => ({
+      cleared: !liveMonstersAlive,
+      alerted: s.alerted,
+      lastVisitedDay: selectedWorld?.currentDay ?? s.lastVisitedDay,
+      disarmedHazardZoneIds: Array.from(new Set([...s.disarmedHazardZoneIds, ...newlyDisarmed])),
+    }));
+  }
+
   async function loadDungeonRoom(dungeonId: string, roomId: string) {
+    await persistActiveRoomLeaveState();
     const dungeon = await api.getDungeon(dungeonId);
     const room = dungeon.rooms.find((r) => r.id === roomId);
     if (!room) return;
     const template = await api.getZoneMapTemplate(room.templateId);
+    // A trap this room remembers being disarmed stays disarmed on reload.
+    const disarmed = new Set(room.state?.disarmedHazardZoneIds ?? []);
+    const zones = template.zones.map((z) => (disarmed.has(z.id) && z.hazard ? { ...z, hazard: undefined } : z));
     applyEncounterUpdate((e) => ({
       ...e,
-      zones: template.zones,
+      zones,
       zoneEffects: [],
       activeDungeonId: dungeonId,
       activeDungeonRoomId: roomId,
@@ -563,9 +611,22 @@ export function InitiativeTracker({
     setActiveDungeon(dungeon);
   }
 
-  function leaveDungeon() {
+  async function leaveDungeon() {
+    await persistActiveRoomLeaveState();
     applyEncounterUpdate((e) => ({ ...e, activeDungeonId: undefined, activeDungeonRoomId: undefined }));
     setActiveDungeon(null);
+  }
+
+  // Distinct from Remove: a fled monster is still out there and may have
+  // warned the rest of the dungeon, so it marks the room alerted (sticky)
+  // rather than just disappearing from the encounter.
+  async function fleeCombatant(id: string) {
+    removeCombatant(id);
+    const dungeonId = activeEncounter.activeDungeonId;
+    const roomId = activeEncounter.activeDungeonRoomId;
+    if (dungeonId && roomId) {
+      await updateRoomState(dungeonId, roomId, (s) => ({ ...s, alerted: true }));
+    }
   }
 
   function loadBattleMap(mapId: string) {
@@ -692,14 +753,19 @@ export function InitiativeTracker({
         </p>
       )}
 
-      {canEdit && activeDungeon && (
-        <p className="hint">
-          Dungeon: {activeDungeon.name}
-          {activeEncounter.activeDungeonRoomId && ` · Room: ${activeDungeon.rooms.find((r) => r.id === activeEncounter.activeDungeonRoomId)?.name ?? ""}`}
-          {" "}
-          <button className="btn-secondary" onClick={leaveDungeon}>Leave Dungeon</button>
-        </p>
-      )}
+      {canEdit && activeDungeon && (() => {
+        const activeRoom = activeDungeon.rooms.find((r) => r.id === activeEncounter.activeDungeonRoomId);
+        return (
+          <p className="hint">
+            Dungeon: {activeDungeon.name}
+            {activeRoom && ` · Room: ${activeRoom.name}`}
+            {activeRoom?.state?.cleared && <span className="room-status-badge cleared"> Cleared</span>}
+            {activeRoom?.state?.alerted && <span className="room-status-badge alerted"> Alerted</span>}
+            {" "}
+            <button className="btn-secondary" onClick={leaveDungeon}>Leave Dungeon</button>
+          </p>
+        );
+      })()}
 
       {canEdit && opportunityPrompt && (
         <div className="button-row opportunity-prompt">
@@ -826,6 +892,9 @@ export function InitiativeTracker({
                 >
                   ⚔ Attack
                 </button>
+              )}
+              {c.kind === "monster" && activeEncounter.activeDungeonId && activeEncounter.activeDungeonRoomId && (
+                <button className="btn-secondary" onClick={() => fleeCombatant(c.id)} aria-label={`${c.name} flees`}>Flee</button>
               )}
               <button className="btn-danger" onClick={() => removeCombatant(c.id)} aria-label={`Remove ${c.name}`}>Remove</button>
             </div>

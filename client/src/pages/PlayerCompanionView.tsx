@@ -11,6 +11,7 @@ import { DiceRoller } from "../components/DiceRoller";
 import { ChatPanel } from "../components/ChatPanel";
 import { GridMap } from "../components/GridMap";
 import { LastSessionPanel } from "../components/LastSessionPanel";
+import { DoomClockPanel } from "../components/DoomClockPanel";
 import { NextSessionPanel } from "../components/NextSessionPanel";
 import { HpTrackerPanel } from "../components/HpTrackerPanel";
 import { DeathSavesPanel } from "../components/DeathSavesPanel";
@@ -255,6 +256,7 @@ export function PlayerCompanionView() {
           {worldId && (
             <>
               <LastSessionPanel worldId={worldId} />
+              <DoomClockPanel worldId={worldId} canEdit={false} />
 
               <section className="panel">
                 <div className="section-heading-row">

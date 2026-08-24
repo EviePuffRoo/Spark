@@ -50,6 +50,7 @@ model User {
   factionRelationships FactionRelationship[]
   campaignEvents  CampaignEvent[]
   worldTickLogs   WorldTickLog[]
+  doomClocks      DoomClock[]
 }
 
 model World {
@@ -90,6 +91,7 @@ model World {
   factionRelationships FactionRelationship[]
   campaignEvents  CampaignEvent[]
   worldTickLogs   WorldTickLog[]
+  doomClocks      DoomClock[]
 
   @@index([userId])
 }
@@ -591,6 +593,26 @@ model WorldTickLog {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+
+  @@index([worldId])
+}
+
+// A named, segmented countdown (Blades in the Dark-style) — a world can
+// have several running at once (danger, a faction's goal, ...). Filling
+// is always DM-driven (advance/reset), never automatic; visibleToParty
+// gates whether it's shown in the read-only party-facing view.
+model DoomClock {
+  id             String   @id @default(cuid())
+  worldId        String
+  world          World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  label          String
+  segments       Int
+  filled         Int      @default(0)
+  visibleToParty Boolean  @default(false)
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@index([worldId])
 }

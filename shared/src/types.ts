@@ -1236,6 +1236,24 @@ export interface WorldAchievements {
 // summed across every world the account owns or has joined — a career
 // rollup, not a new stats system. Private to the account owner: no
 // worldId, so there's nothing here for a non-owner to be denied access to.
+export interface DoomClockInput {
+  worldId: string;
+  label: string;
+  segments: number;
+  visibleToParty?: boolean;
+}
+
+// A named, segmented countdown (Blades in the Dark-style) — a world can
+// run several at once. Filling is always DM-driven (advance/reset), never
+// automatic; visibleToParty gates whether the party's read-only view shows it.
+export interface DoomClock extends DoomClockInput {
+  id: string;
+  userId: string;
+  filled: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface LegacyAchievements {
   worldCount: number;
   unlockedCount: number;

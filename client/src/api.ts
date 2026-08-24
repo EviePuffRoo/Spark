@@ -24,6 +24,7 @@ import type {
   FactionLogEntry, FactionRelationship, FactionRelationshipInput, CampaignEvent, CampaignEventInput,
   WorldTickProposal, WorldTickApplyRequest, WorldTickLog,
   FactionBattleProposal,
+  DoomClock, DoomClockInput,
   Region, GenerateRegionRequest, GeneratedRegion,
   Settlement, GenerateSettlementRequest, GeneratedSettlement,
   ActivitySummary,
@@ -186,6 +187,15 @@ export const api = {
   simulateFactionBattle: (relationshipId: string) => request<FactionBattleProposal>(`/faction-relationships/${relationshipId}/simulate-battle`),
   applyFactionBattle: (relationshipId: string) =>
     request<{ proposal: FactionBattleProposal; event: CampaignEvent }>(`/faction-relationships/${relationshipId}/apply-battle`, { method: "POST" }),
+
+  listDoomClocks: (worldId: string) => request<DoomClock[]>(`/doom-clocks?worldId=${worldId}`),
+  createDoomClock: (clock: DoomClockInput) => request<DoomClock>("/doom-clocks", { method: "POST", body: JSON.stringify(clock) }),
+  updateDoomClock: (id: string, patch: Partial<DoomClock>) =>
+    request<DoomClock>(`/doom-clocks/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+  deleteDoomClock: (id: string) => request<void>(`/doom-clocks/${id}`, { method: "DELETE" }),
+  advanceDoomClock: (id: string, amount = 1) =>
+    request<DoomClock>(`/doom-clocks/${id}/advance`, { method: "POST", body: JSON.stringify({ amount }) }),
+  resetDoomClock: (id: string) => request<DoomClock>(`/doom-clocks/${id}/reset`, { method: "POST" }),
 
   listEncounterTables: (worldId?: string) =>
     request<EncounterTable[]>(`/encounter-tables${worldId ? `?worldId=${worldId}` : ""}`),

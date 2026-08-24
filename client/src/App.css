@@ -2456,6 +2456,54 @@ textarea {
   width: 100%;
 }
 
+.doom-clock-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.doom-clock-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.doom-clock-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.doom-clock-face {
+  flex-shrink: 0;
+  width: 64px;
+  height: 64px;
+}
+
+.doom-clock-wedge {
+  fill: var(--bg);
+  stroke: var(--border);
+  stroke-width: 1px;
+}
+
+.doom-clock-wedge.filled {
+  fill: var(--danger);
+}
+
+.doom-clock-outline {
+  fill: none;
+  stroke: var(--border-strong);
+  stroke-width: 2px;
+}
+
 .chip-row {
   display: flex;
   flex-wrap: wrap;

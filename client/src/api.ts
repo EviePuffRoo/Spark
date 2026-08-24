@@ -34,6 +34,7 @@ import type {
   AuthUser, SignupResult, RecoveryCodeResult,
   SpellDef, ConditionDef, RuleDef, StatBlockTemplate, MagicItemDef,
   WorldMemberRole,
+  WorldWebhookInfo, WorldWebhookSecretResult, WebhookTestResult,
 } from "@spark/shared";
 
 let onSessionExpired: (() => void) | null = null;
@@ -425,6 +426,18 @@ export const api = {
   removeWorldMember: (worldId: string, userId: string) =>
     request<void>(`/worlds/${worldId}/members/${userId}`, { method: "DELETE" }),
   leaveWorld: (worldId: string) => request<void>(`/worlds/${worldId}/leave`, { method: "POST" }),
+
+  // Returns null rather than throwing when no webhook is configured yet —
+  // that's the expected steady state for most worlds, not an error.
+  getWorldWebhook: (worldId: string) =>
+    request<WorldWebhookInfo>(`/worlds/${worldId}/webhook`).catch(() => null),
+  saveWorldWebhook: (worldId: string, url: string) =>
+    request<WorldWebhookSecretResult>(`/worlds/${worldId}/webhook`, { method: "POST", body: JSON.stringify({ url }) }),
+  setWorldWebhookEnabled: (worldId: string, enabled: boolean) =>
+    request<void>(`/worlds/${worldId}/webhook`, { method: "PATCH", body: JSON.stringify({ enabled }) }),
+  deleteWorldWebhook: (worldId: string) => request<void>(`/worlds/${worldId}/webhook`, { method: "DELETE" }),
+  testWorldWebhook: (worldId: string) =>
+    request<WebhookTestResult>(`/worlds/${worldId}/webhook/test`, { method: "POST" }),
 
   search: (q: string, type?: EntityType) =>
     request<{ query: string; results: SearchResult[] }>(

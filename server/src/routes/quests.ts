@@ -4,6 +4,7 @@ import { toQuestHookDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
 import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
 import { logCampaignEventOp } from "../campaignEventLog.js";
+import { dispatchWebhookEvent } from "../webhookDispatch.js";
 
 export const questsRouter = Router();
 
@@ -139,6 +140,13 @@ questsRouter.patch("/:id", async (req, res) => {
             userId: claim.posterUserId,
           }),
         ]);
+        void dispatchWebhookEvent(claim.posterWorldId, {
+          entityType: "campaignEvent",
+          entityId: null,
+          eventType: "campaignEvent.logged",
+          payload: { title: eventTitle, description: eventDescription },
+          authorName: posterAuthorName,
+        });
       }
     }
   }

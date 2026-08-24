@@ -4,6 +4,7 @@ import { prisma } from "../db.js";
 import { toWorldTickLogDTO } from "../serialize.js";
 import { findAccessibleWorld } from "../worldAccess.js";
 import { logCampaignEventOp } from "../campaignEventLog.js";
+import { dispatchWebhookEvent, type WebhookEventInput } from "../webhookDispatch.js";
 import { computeWorldTickProposal } from "@spark/shared";
 import type { WorldTickProposalItem, ShopStockEntry, FactionRelationshipStance } from "@spark/shared";
 
@@ -97,6 +98,7 @@ worldTickRouter.post("/:worldId/apply", async (req, res) => {
   const validShopById = new Map(shopRows.map((s) => [s.id, s] as const));
 
   const ops: Prisma.PrismaPromise<unknown>[] = [];
+  const webhookEvents: WebhookEventInput[] = [];
   let itemCount = 0;
 
   for (const op of factionOps) {
@@ -107,6 +109,10 @@ worldTickRouter.post("/:worldId/apply", async (req, res) => {
       worldId, entityType: "factionReputation", entityId: op.id, eventType: "faction.reputationChanged",
       payload: { factionId: op.id, delta: op.delta, reason: op.reason }, authorName, userId: req.userId!,
     }));
+    webhookEvents.push({
+      entityType: "factionReputation", entityId: op.id, eventType: "faction.reputationChanged",
+      payload: { factionId: op.id, delta: op.delta, reason: op.reason }, authorName,
+    });
     itemCount++;
   }
   for (const op of characterOps) {
@@ -117,6 +123,10 @@ worldTickRouter.post("/:worldId/apply", async (req, res) => {
       worldId, entityType: "disposition", entityId: op.id, eventType: "disposition.adjusted",
       payload: { characterId: op.id, delta: op.delta, reason: op.reason }, authorName, userId: req.userId!,
     }));
+    webhookEvents.push({
+      entityType: "disposition", entityId: op.id, eventType: "disposition.adjusted",
+      payload: { characterId: op.id, delta: op.delta, reason: op.reason }, authorName,
+    });
     itemCount++;
   }
   for (const ev of eventOps) {
@@ -125,6 +135,10 @@ worldTickRouter.post("/:worldId/apply", async (req, res) => {
       worldId, entityType: "campaignEvent", entityId: null, eventType: "campaignEvent.logged",
       payload: { title: ev.title, description: ev.description, factionId: ev.factionId }, authorName, userId: req.userId!,
     }));
+    webhookEvents.push({
+      entityType: "campaignEvent", entityId: null, eventType: "campaignEvent.logged",
+      payload: { title: ev.title, description: ev.description, factionId: ev.factionId }, authorName,
+    });
     itemCount++;
   }
   for (const [shopId, entryDeltas] of shopDeltas) {
@@ -149,9 +163,14 @@ worldTickRouter.post("/:worldId/apply", async (req, res) => {
     worldId, entityType: "worldTick", entityId: null, eventType: "worldTick.applied",
     payload: { fromDay: Math.trunc(fromDay), toDay: Math.trunc(toDay), itemCount }, authorName, userId: req.userId!,
   }));
+  webhookEvents.push({
+    entityType: "worldTick", entityId: null, eventType: "worldTick.applied",
+    payload: { fromDay: Math.trunc(fromDay), toDay: Math.trunc(toDay), itemCount }, authorName,
+  });
 
   const results = await prisma.$transaction(ops);
   const logRow = results[results.length - 2];
+  for (const event of webhookEvents) void dispatchWebhookEvent(worldId, event);
   res.status(201).json(toWorldTickLogDTO(logRow as Parameters<typeof toWorldTickLogDTO>[0]));
 });
 

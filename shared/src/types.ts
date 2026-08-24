@@ -1464,3 +1464,25 @@ export interface RecoveryCodeResult {
 }
 
 export type WorldMemberRole = "player" | "coDM";
+
+// A world's single outgoing webhook config, as seen by its owner. `secret`
+// is never included except immediately after creating/regenerating it
+// (same one-time-reveal pattern as a world join code or account recovery
+// code) — everywhere else this DTO is returned without it.
+export interface WorldWebhookInfo {
+  url: string;
+  enabled: boolean;
+  lastDeliveryAt?: string;
+  lastDeliveryOk?: boolean;
+  lastDeliveryError?: string;
+}
+
+export interface WorldWebhookSecretResult {
+  secret: string;
+}
+
+export interface WebhookTestResult {
+  ok: boolean;
+  status?: number;
+  error?: string;
+}

@@ -4,6 +4,7 @@ import { toCharacterDTO, toDispositionLogEntryDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
 import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
 import { logCampaignEventOp } from "../campaignEventLog.js";
+import { dispatchWebhookEvent } from "../webhookDispatch.js";
 
 export const charactersRouter = Router();
 
@@ -169,6 +170,13 @@ charactersRouter.post("/:id/adjust-disposition", async (req, res) => {
       userId: req.userId!,
     }),
   ]);
+  void dispatchWebhookEvent(row.worldId, {
+    entityType: "disposition",
+    entityId: row.id,
+    eventType: playerCharacterId ? "disposition.adjustedForPc" : "disposition.adjusted",
+    payload: { characterId: row.id, characterName: row.name, delta, reason, playerCharacterId },
+    authorName,
+  });
   res.json(toCharacterDTO(updated));
 });
 

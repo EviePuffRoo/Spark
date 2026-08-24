@@ -97,6 +97,9 @@ export interface ImportResult {
 
 export interface WorldSummary extends World {
   isOwner: boolean;
+  // Owner, or a coDM member — a plain "player" member can see everything
+  // but can't edit. Always true for owned worlds.
+  canWrite: boolean;
   ownerUsername?: string;
   characterCount: number;
   itemCount: number;

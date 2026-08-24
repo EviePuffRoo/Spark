@@ -244,7 +244,8 @@ export function RosterPage({
   const selectedDisplayName =
     selectedCharacter?.name ?? selectedItem?.name ?? selectedLocation?.name ?? selectedQuest?.title ??
     selectedFaction?.name ?? selectedEncounter?.name ?? selectedNote?.title ?? selectedAdventure?.title ?? selectedPlayerCharacter?.name ?? selectedZoneMapTemplate?.name ?? selectedDungeon?.name ?? selectedShop?.name ?? selectedRegion?.name ?? selectedSettlement?.name ?? "";
-  const canEditSelected = !selected || selected.userId === user?.id;
+  const selectedWorld = selected?.worldId ? worlds.find((w) => w.id === selected.worldId) : undefined;
+  const canEditSelected = !selected || selected.userId === user?.id || !!selectedWorld?.canWrite;
 
   // Reassigning a player character's owner is a world-ownership action, not
   // an entity-ownership one (canEditSelected) — the whole point is letting

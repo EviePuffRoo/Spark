@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { toItemDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
-import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
+import { findAccessibleWorld, getMemberWorldIds, authorizeEntityWrite } from "../worldAccess.js";
 
 export const itemsRouter = Router();
 
@@ -78,15 +78,20 @@ itemsRouter.patch("/:id", async (req, res) => {
   }
   if ("tags" in body) data.tags = JSON.stringify(Array.isArray(body.tags) ? body.tags : []);
 
-  const result = await prisma.item.updateMany({ where: { id: req.params.id, userId: req.userId }, data });
-  if (result.count === 0) return res.status(404).json({ error: "Item not found" });
-  const row = await prisma.item.findUnique({ where: { id: req.params.id } });
-  res.json(toItemDTO(row!));
+  const existing = await prisma.item.findUnique({ where: { id: req.params.id } });
+  if (!(await authorizeEntityWrite(req.userId!, existing))) {
+    return res.status(404).json({ error: "Item not found" });
+  }
+  const row = await prisma.item.update({ where: { id: req.params.id }, data });
+  res.json(toItemDTO(row));
 });
 
 itemsRouter.delete("/:id", async (req, res) => {
-  const result = await prisma.item.deleteMany({ where: { id: req.params.id, userId: req.userId } });
-  if (result.count === 0) return res.status(404).json({ error: "Item not found" });
+  const existing = await prisma.item.findUnique({ where: { id: req.params.id } });
+  if (!(await authorizeEntityWrite(req.userId!, existing))) {
+    return res.status(404).json({ error: "Item not found" });
+  }
+  await prisma.item.delete({ where: { id: req.params.id } });
   await deleteLinksForEntity("item", req.params.id, req.userId!);
   res.status(204).end();
 });

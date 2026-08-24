@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
 import { generateRecoveryCode, hashRecoveryCode, verifyRecoveryCode } from "../auth.js";
-import { getMemberWorldIds } from "../worldAccess.js";
+import { getMemberWorldIds, canWriteWorld } from "../worldAccess.js";
 import { FREE_TIER_WORLD_LIMIT, type WorldMemberRole } from "@spark/shared";
 import { seedStarterWorld } from "../seedStarterWorld.js";
 
@@ -21,7 +21,8 @@ const COUNT_SELECT = {
 function toSummary(
   row: { id: string; name: string; description: string | null; nextSessionAt: Date | null; currentDay: number; createdAt: Date; updatedAt: Date; _count: Record<string, number> },
   isOwner: boolean,
-  ownerUsername?: string
+  ownerUsername?: string,
+  canWrite = true
 ) {
   return {
     id: row.id,
@@ -30,6 +31,7 @@ function toSummary(
     nextSessionAt: row.nextSessionAt?.toISOString(),
     currentDay: row.currentDay,
     isOwner,
+    canWrite,
     ownerUsername,
     characterCount: row._count.characters,
     itemCount: row._count.items,
@@ -59,7 +61,7 @@ worldsRouter.get("/", async (req, res) => {
   ]);
 
   const ownedSummaries = owned.map((row) => toSummary(row, true));
-  const sharedSummaries = memberships.map((m) => toSummary(m.world, false, m.world.user.username));
+  const sharedSummaries = memberships.map((m) => toSummary(m.world, false, m.world.user.username, m.role === "coDM"));
   res.json([...ownedSummaries, ...sharedSummaries]);
 });
 
@@ -132,24 +134,26 @@ worldsRouter.patch("/:id", async (req, res) => {
     data.currentDay = currentDay;
   }
 
-  const result = await prisma.world.updateMany({ where: { id: req.params.id, userId: req.userId }, data });
-  if (result.count === 0) return res.status(404).json({ error: "World not found" });
-  const row = await prisma.world.findUnique({ where: { id: req.params.id } });
+  if (!(await canWriteWorld(req.userId!, req.params.id))) {
+    return res.status(404).json({ error: "World not found" });
+  }
+  const row = await prisma.world.update({ where: { id: req.params.id }, data });
   res.json(row);
 });
 
-// Owner-only: moves the in-world calendar forward by a DM-chosen number of
-// days — never automatic (see World.currentDay's comment in shared/types.ts
-// for why). Downtime/Travel only ever suggest a day count; this is the one
-// place that actually advances it.
+// Owner or coDM: moves the in-world calendar forward by a DM-chosen number
+// of days — never automatic (see World.currentDay's comment in
+// shared/types.ts for why). Downtime/Travel only ever suggest a day count;
+// this is the one place that actually advances it.
 worldsRouter.post("/:id/advance-day", async (req, res) => {
   const days = req.body?.days;
   if (typeof days !== "number" || !Number.isInteger(days) || days < 1) {
     return res.status(400).json({ error: "days must be a positive integer" });
   }
-  const world = await prisma.world.findFirst({ where: { id: req.params.id, userId: req.userId } });
-  if (!world) return res.status(404).json({ error: "World not found" });
-  const row = await prisma.world.update({ where: { id: world.id }, data: { currentDay: { increment: days } } });
+  if (!(await canWriteWorld(req.userId!, req.params.id))) {
+    return res.status(404).json({ error: "World not found" });
+  }
+  const row = await prisma.world.update({ where: { id: req.params.id }, data: { currentDay: { increment: days } } });
   res.json(row);
 });
 

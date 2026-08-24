@@ -1,5 +1,6 @@
 import { app } from "./app.js";
 import { scheduleBackups } from "./dbBackup.js";
+import { initRealtimeBackbone } from "./worldEvents.js";
 
 const port = process.env.PORT ? Number(process.env.PORT) : 4000;
 app.listen(port, () => {
@@ -7,3 +8,4 @@ app.listen(port, () => {
 });
 
 scheduleBackups();
+initRealtimeBackbone();

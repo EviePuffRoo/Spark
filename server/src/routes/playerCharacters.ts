@@ -3,7 +3,7 @@ import { prisma } from "../db.js";
 import { toPlayerCharacterDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
 import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
-import { BASE_UPGRADES, PC_CLASSES, PC_PROFICIENCY_BONUS_BY_LEVEL, levelForXp, computeLevelUpChanges } from "@spark/shared";
+import { BASE_UPGRADES, PC_CLASSES, PC_PROFICIENCY_BONUS_BY_LEVEL, levelForXp, computeLevelUpChanges, abilityModifier } from "@spark/shared";
 import type { DeathSaves, SpellSlotLevel, ClassResource } from "@spark/shared";
 
 function proficiencyBonusForLevel(level: number): number {
@@ -228,7 +228,7 @@ playerCharactersRouter.post("/:id/level-up", async (req, res) => {
 
   const pcClass = PC_CLASSES.find((c) => c.name === row.className);
   const abilityScores = JSON.parse(row.abilityScores) as Record<string, number>;
-  const conMod = Math.floor(((abilityScores.con ?? 10) - 10) / 2);
+  const conMod = abilityModifier(abilityScores.con ?? 10);
   const changes = computeLevelUpChanges(pcClass, row.level, toLevel, conMod);
 
   const data: Record<string, unknown> = {

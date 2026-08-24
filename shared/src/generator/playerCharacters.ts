@@ -6,10 +6,7 @@ import { RACES } from "../data/races.js";
 import { nameListFor } from "../data/names.js";
 import { pick } from "./random.js";
 import type { GeneratePlayerCharacterRequest, GeneratedPlayerCharacter, AbilityScores, SpellSlotLevel, ClassResource } from "../types.js";
-
-function abilityModifier(score: number): number {
-  return Math.floor((score - 10) / 2);
-}
+import { abilityModifier } from "../rulesets/dnd5e/math.js";
 
 function assignStandardArray(priority: string[]): AbilityScores {
   const scores: Record<string, number> = {};

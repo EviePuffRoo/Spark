@@ -14,7 +14,7 @@ export function PreparedSpellsPanel({
   const [picking, setPicking] = useState(false);
 
   useEffect(() => {
-    api.getCompendium().then((c) => setSpells(c.spells));
+    api.getCompendium().then((c) => setSpells(c.data.spells));
   }, []);
 
   const spellsById = useMemo(() => new Map(spells.map((s) => [s.id, s])), [spells]);

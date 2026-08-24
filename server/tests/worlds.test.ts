@@ -139,3 +139,74 @@ describe("world calendar", () => {
     expect(stillOk.body.currentDay).toBe(42);
   });
 });
+
+describe("world member roles", () => {
+  it("defaults a joined member to the player role, visible in the members list", async () => {
+    const { agent: owner } = await signupAgent("roleowner1");
+    const world = await owner.post("/api/worlds").send({ name: "Role World" });
+    const worldId = world.body.id as string;
+    const joinCode = await owner.post(`/api/worlds/${worldId}/join-code`);
+
+    const { agent: member, userId } = await signupAgent("rolemember1");
+    await member.post("/api/worlds/join").send({ code: joinCode.body.code });
+
+    const members = await owner.get(`/api/worlds/${worldId}/members`);
+    expect(members.status).toBe(200);
+    expect(members.body).toEqual([{ userId, username: "rolemember1", role: "player" }]);
+  });
+
+  it("issues a join code that grants coDM, and rejects an invalid role", async () => {
+    const { agent: owner } = await signupAgent("roleowner2");
+    const world = await owner.post("/api/worlds").send({ name: "CoDM World" });
+    const worldId = world.body.id as string;
+
+    const badRole = await owner.post(`/api/worlds/${worldId}/join-code`).send({ role: "wizard" });
+    expect(badRole.status).toBe(400);
+
+    const joinCode = await owner.post(`/api/worlds/${worldId}/join-code`).send({ role: "coDM" });
+    expect(joinCode.status).toBe(200);
+
+    const { agent: member, userId } = await signupAgent("rolemember2");
+    await member.post("/api/worlds/join").send({ code: joinCode.body.code });
+
+    const members = await owner.get(`/api/worlds/${worldId}/members`);
+    expect(members.body).toEqual([{ userId, username: "rolemember2", role: "coDM" }]);
+  });
+
+  it("lets the owner promote and demote a member via PATCH, owner-only, with role validation", async () => {
+    const { agent: owner } = await signupAgent("roleowner3");
+    const world = await owner.post("/api/worlds").send({ name: "Promote World" });
+    const worldId = world.body.id as string;
+    const joinCode = await owner.post(`/api/worlds/${worldId}/join-code`);
+
+    const { agent: member, userId } = await signupAgent("rolemember3");
+    await member.post("/api/worlds/join").send({ code: joinCode.body.code });
+
+    const nonOwnerAttempt = await member.patch(`/api/worlds/${worldId}/members/${userId}`).send({ role: "coDM" });
+    expect(nonOwnerAttempt.status).toBe(404);
+
+    const badRole = await owner.patch(`/api/worlds/${worldId}/members/${userId}`).send({ role: "wizard" });
+    expect(badRole.status).toBe(400);
+
+    const promote = await owner.patch(`/api/worlds/${worldId}/members/${userId}`).send({ role: "coDM" });
+    expect(promote.status).toBe(204);
+
+    const afterPromote = await owner.get(`/api/worlds/${worldId}/members`);
+    expect(afterPromote.body).toEqual([{ userId, username: "rolemember3", role: "coDM" }]);
+
+    const demote = await owner.patch(`/api/worlds/${worldId}/members/${userId}`).send({ role: "player" });
+    expect(demote.status).toBe(204);
+
+    const afterDemote = await owner.get(`/api/worlds/${worldId}/members`);
+    expect(afterDemote.body).toEqual([{ userId, username: "rolemember3", role: "player" }]);
+  });
+
+  it("404s a PATCH for a userId that isn't a member of the world", async () => {
+    const { agent: owner } = await signupAgent("roleowner4");
+    const world = await owner.post("/api/worlds").send({ name: "Lonely World" });
+    const worldId = world.body.id as string;
+
+    const res = await owner.patch(`/api/worlds/${worldId}/members/not-a-real-user`).send({ role: "coDM" });
+    expect(res.status).toBe(404);
+  });
+});

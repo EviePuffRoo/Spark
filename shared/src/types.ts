@@ -1462,3 +1462,5 @@ export interface SignupResult extends AuthUser {
 export interface RecoveryCodeResult {
   recoveryCode: string;
 }
+
+export type WorldMemberRole = "player" | "coDM";

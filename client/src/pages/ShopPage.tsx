@@ -146,14 +146,14 @@ export function ShopPage() {
           <ShopIcon className="page-title-icon" aria-hidden="true" />
           <h2>Shop</h2>
         </div>
-        <p className="hint">Buy and sell against the party's shared ledger — selling pays half the listed price.</p>
+        <p className="hint">Buy and sell against the party's shared ledger. Selling pays half the listed price.</p>
 
         {worlds.length === 0 ? (
           <p className="hint">Create or join a world to shop.</p>
         ) : !worldId ? (
           <p className="hint">Select a world from the header to browse its shops.</p>
         ) : shops.length === 0 ? (
-          <p className="hint">No shops in this world yet — create one from Prep &gt; Create &gt; Shops.</p>
+          <p className="hint">No shops in this world yet. Create one from Prep &gt; Create &gt; Shops.</p>
         ) : (
           <>
             <label className="field">
@@ -214,11 +214,11 @@ export function ShopPage() {
             </ul>
 
             <h3 className="section-heading">Commission a Custom Item</h3>
-            <p className="hint">Not everything a crafter can make is sitting on the shelf — pay up front and the DM marks it delivered once the work is done.</p>
+            <p className="hint">Not everything a crafter can make is sitting on the shelf. Pay up front and the DM marks it delivered once the work is done.</p>
             {commissionItem ? (
               <div className="button-row">
                 <span>
-                  {commissionItem.name} — {computeCraftingCost(commissionItem).goldCost} gp,{" "}
+                  {commissionItem.name} · {computeCraftingCost(commissionItem).goldCost} gp,{" "}
                   {computeCraftingCost(commissionItem).daysRequired}d turnaround
                 </span>
                 <button className="btn-primary" disabled={busyCommission} onClick={() => commission(selectedShop)}>

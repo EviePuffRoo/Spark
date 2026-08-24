@@ -147,7 +147,7 @@ export function DiceRoller({
   function performRoll(input: string, rollLabel?: string) {
     const parsed = parseNotation(input);
     if (!parsed) {
-      setError(`Can't parse "${input}" — try something like 1d20 or 2d6+3.`);
+      setError(`Can't parse "${input}". Try something like 1d20 or 2d6+3.`);
       return;
     }
     setError(null);
@@ -291,7 +291,7 @@ export function DiceRoller({
       {partyMode && selectedWorld?.isOwner && (
         <label className="field">
           <input type="checkbox" checked={secret} onChange={(e) => setSecret(e.target.checked)} />
-          {" "}Secret (DM only — hidden from players)
+          {" "}Secret (DM only, hidden from players)
         </label>
       )}
       {error && <p className="error">{error}</p>}
@@ -306,7 +306,7 @@ export function DiceRoller({
                   <span className="entity-name">
                     {r.notation}
                     {r.mode && <span className="entity-meta"> ({r.mode === "adv" ? "adv" : "dis"})</span>}
-                    {r.label && <span className="entity-meta"> — {r.label}</span>}
+                    {r.label && <span className="entity-meta"> · {r.label}</span>}
                   </span>
                   <button className="dice-history-delete" onClick={() => deleteRecord(r.id)} aria-label={`Delete roll ${r.notation}${r.label ? ` (${r.label})` : ""}`}>×</button>
                 </div>
@@ -324,7 +324,7 @@ export function DiceRoller({
       {partyMode && selectedWorldId && (
         <>
           <h3 className="section-heading">Party Log</h3>
-          {partyLog.length === 0 && <p className="hint">No rolls yet — be the first.</p>}
+          {partyLog.length === 0 && <p className="hint">No rolls yet. Be the first.</p>}
           <ul className="dice-history">
             {partyLog.map((r) => {
               const canDelete = r.userId === user?.id || selectedWorld?.isOwner;
@@ -334,7 +334,7 @@ export function DiceRoller({
                     <span className="entity-name">
                       {r.rollerName}: {r.notation}
                       {r.mode && <span className="entity-meta"> ({r.mode === "adv" ? "adv" : "dis"})</span>}
-                      {r.label && <span className="entity-meta"> — {r.label}</span>}
+                      {r.label && <span className="entity-meta"> · {r.label}</span>}
                       {r.hiddenFromParty && <span className="dice-history-secret">secret</span>}
                     </span>
                     {canDelete && (
@@ -386,7 +386,7 @@ export function DiceRoller({
           </div>
 
           {historyOpen && !isPaid && (
-            <p className="hint">Full history beyond the last {RECENT_HISTORY_LIMIT} rolls is a paid feature — see Billing to upgrade.</p>
+            <p className="hint">Full history beyond the last {RECENT_HISTORY_LIMIT} rolls is a paid feature. See Billing to upgrade.</p>
           )}
 
           {historyOpen && isPaid && (
@@ -397,7 +397,7 @@ export function DiceRoller({
                     <span className="entity-name">
                       {r.rollerName}: {r.notation}
                       {r.mode && <span className="entity-meta"> ({r.mode === "adv" ? "adv" : "dis"})</span>}
-                      {r.label && <span className="entity-meta"> — {r.label}</span>}
+                      {r.label && <span className="entity-meta"> · {r.label}</span>}
                     </span>
                     <span className="entity-meta">
                       [{r.results.join(", ")}]{r.modifier ? ` ${r.modifier > 0 ? "+" : ""}${r.modifier}` : ""} = <strong className="dice-total mono">{r.total}</strong>

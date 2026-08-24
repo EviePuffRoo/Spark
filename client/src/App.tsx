@@ -252,7 +252,7 @@ function AppShell({ initialLandOnOverview = false }: { initialLandOnOverview?: b
       </header>
 
       <main>
-        <h1 className="sr-only">Spark — {SUBTAB_LABELS[subTab]}</h1>
+        <h1 className="sr-only">Spark: {SUBTAB_LABELS[subTab]}</h1>
         {subTab === "create" && <CreatePage onSendToDowntime={sendToDowntimeLog} />}
         {subTab === "compendium" && <CompendiumPage />}
         {subTab === "profile" && <ProfilePage />}

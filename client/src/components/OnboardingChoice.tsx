@@ -27,7 +27,7 @@ export function OnboardingChoice({ onDone }: { onDone: (landOnOverview: boolean)
       <div className="panel auth-panel">
         <h1>Welcome to Spark</h1>
         <p className="hint">
-          Build your world, then run it live — encounters, dice, HP, and party chat sync to every
+          Build your world, then run it live: encounters, dice, HP, and party chat sync to every
           player's phone as you play. Nothing here is AI-generated, and real-time sync is free, not
           a paid feature.
         </p>
@@ -47,7 +47,7 @@ export function OnboardingChoice({ onDone }: { onDone: (landOnOverview: boolean)
 
         <div className="save-panel">
           <button className="btn-secondary" onClick={() => onDone(false)}>Start from a blank slate</button>
-          <p className="hint">Jump straight to building your own — you can load the sample world later from the Worlds tab.</p>
+          <p className="hint">Jump straight to building your own. You can load the sample world later from the Worlds tab.</p>
         </div>
       </div>
     </div>

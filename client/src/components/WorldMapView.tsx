@@ -193,7 +193,7 @@ export function WorldMapView({
           <p>{selectedRegion.description}</p>
           {(() => {
             const weather = describeWeather(selectedRegion.terrainCategory, selectedRegion.id, currentDay);
-            return <p className="hint">Today's weather: <strong>{weather.condition}</strong> — {weather.description}</p>;
+            return <p className="hint">Today's weather: <strong>{weather.condition}</strong>. {weather.description}</p>;
           })()}
           {selectedRegionSettlements.length > 0 && (
             <>

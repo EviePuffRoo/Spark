@@ -39,7 +39,7 @@ export function PrintPane({ items }: { items: PrintItem[] | null }) {
             <>
               <StatBlockView
                 name={item.data.name}
-                subtitle={`${item.data.statBlock.size} ${item.data.statBlock.creatureType}, ${item.data.statBlock.alignment}${item.data.race ? ` — ${item.data.race}` : ""}${item.data.background ? `, ${item.data.background}` : ""}`}
+                subtitle={`${item.data.statBlock.size} ${item.data.statBlock.creatureType}, ${item.data.statBlock.alignment}${item.data.race ? ` · ${item.data.race}` : ""}${item.data.background ? `, ${item.data.background}` : ""}`}
                 statBlock={item.data.statBlock}
               />
               <BackstoryView backstory={item.data.backstory} />

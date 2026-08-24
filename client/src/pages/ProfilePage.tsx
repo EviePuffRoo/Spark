@@ -61,7 +61,7 @@ export function ProfilePage() {
   }
 
   function handleGetRecoveryCode() {
-    if (!confirm("This replaces your current recovery code — the old one will stop working. Continue?")) return;
+    if (!confirm("This replaces your current recovery code. The old one will stop working. Continue?")) return;
     regenerateRecoveryCode();
   }
 
@@ -89,7 +89,7 @@ export function ProfilePage() {
   async function handleDeleteAccount(e: React.FormEvent) {
     e.preventDefault();
     setDeleteError(null);
-    if (!confirm("This permanently deletes your account and everything in it — worlds, characters, published homebrew, all of it. This cannot be undone. Continue?")) return;
+    if (!confirm("This permanently deletes your account and everything in it: worlds, characters, published homebrew, all of it. This cannot be undone. Continue?")) return;
     try {
       await deleteAccount(deletePassword);
     } catch (e) {
@@ -163,7 +163,7 @@ export function ProfilePage() {
             </button>
           </div>
           {notifyBlocked && (
-            <p className="hint">Notifications are blocked in your browser — allow them for this site to enable turn alerts.</p>
+            <p className="hint">Notifications are blocked in your browser. Allow them for this site to enable turn alerts.</p>
           )}
           <p className="hint">Turn notifications fire while you're in Player View during live combat.</p>
         </div>

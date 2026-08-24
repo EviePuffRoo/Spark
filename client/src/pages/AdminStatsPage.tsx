@@ -19,7 +19,7 @@ export function AdminStatsPage() {
     setBackupError(null);
     try {
       const { key, pruned } = await api.runDatabaseBackup();
-      setBackupResult(`Uploaded ${key}${pruned > 0 ? ` — pruned ${pruned} old backup${pruned === 1 ? "" : "s"}` : ""}`);
+      setBackupResult(`Uploaded ${key}${pruned > 0 ? `, pruned ${pruned} old backup${pruned === 1 ? "" : "s"}` : ""}`);
     } catch (e) {
       setBackupError((e as Error).message);
     } finally {
@@ -33,7 +33,7 @@ export function AdminStatsPage() {
     <div className="page">
       <div className="panel">
         <h2>Stats</h2>
-        <p className="hint">Read-only aggregate counts — no per-user activity tracking, just totals already in the database.</p>
+        <p className="hint">Read-only aggregate counts. No per-user activity tracking, just totals already in the database.</p>
 
         {error && <p className="error">{error}</p>}
         {!stats && !error && <p className="hint">Loading…</p>}
@@ -72,7 +72,7 @@ export function AdminStatsPage() {
         )}
         {stats && (
           <p className="hint">
-            "Sample worlds loaded" is an estimate — it counts worlds still named "The Salt Coast", not a tracked event.
+            "Sample worlds loaded" is an estimate. It counts worlds still named "The Salt Coast", not a tracked event.
           </p>
         )}
       </div>
@@ -80,7 +80,7 @@ export function AdminStatsPage() {
       <div className="panel">
         <h2>Database Backups</h2>
         <p className="hint">
-          Triggers the same backup the scheduled daily job runs — useful right before a risky
+          Triggers the same backup the scheduled daily job runs, useful right before a risky
           deploy or migration, without waiting for the next scheduled window.
         </p>
         <button className="btn-secondary" onClick={runBackup} disabled={backupStatus === "running"}>

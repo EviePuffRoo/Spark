@@ -186,7 +186,7 @@ export function ItemForgePage({ onSendToDowntime }: { onSendToDowntime?: (item: 
         <div className="generator-layout">
           <div className="panel">
             <h2>Forge an Item</h2>
-            <p className="hint">Unique, flavorful gear — nothing game-breaking, just something worth remembering.</p>
+            <p className="hint">Unique, flavorful gear. Nothing game-breaking, just something worth remembering.</p>
 
             <label className="field">
               <input
@@ -248,7 +248,7 @@ export function ItemForgePage({ onSendToDowntime }: { onSendToDowntime?: (item: 
       {creationMode === "manual" && !manualResult && (
         <div className="panel">
           <h2>Create Your Own Item</h2>
-          <p className="hint">Write it exactly how you want it — nothing generated, all yours.</p>
+          <p className="hint">Write it exactly how you want it. Nothing generated, all yours.</p>
           <ItemEditor value={BLANK_ITEM} onSave={async (draft) => setManualResult(draft)} onCancel={() => switchMode("generate")} saveLabel="Continue" />
         </div>
       )}

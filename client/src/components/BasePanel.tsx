@@ -68,14 +68,14 @@ export function BasePanel({
 
   return (
     <div className="panel">
-      <h3 className="section-heading">{data.name} — Level {data.level}</h3>
+      <h3 className="section-heading">{data.name}, Level {data.level}</h3>
       <p className="hint">Invest the party's gold to expand the base. {data.gold} gp available. Defense Rating {data.defenseRating}.</p>
       {error && <p className="error">{error}</p>}
 
       {!data.isPaid && (
         <div className="upgrade-callout">
-          <p>The home base is a paid feature — upgrade to start investing in it.</p>
-          <button className="btn-primary" onClick={onNavigateToBilling}>Upgrade — $4.99/mo</button>
+          <p>The home base is a paid feature. Upgrade to start investing in it.</p>
+          <button className="btn-primary" onClick={onNavigateToBilling}>Upgrade ($4.99/mo)</button>
         </div>
       )}
 
@@ -98,7 +98,7 @@ export function BasePanel({
 
                 return (
                   <li key={def.id} className={`tavern-row base-upgrade-row ${owned ? "base-upgrade-owned" : ""}`}>
-                    <span className="entity-name">{def.name}{owned && <span className="base-upgrade-owned-tag"> — Acquired</span>}</span>
+                    <span className="entity-name">{def.name}{owned && <span className="base-upgrade-owned-tag"> · Acquired</span>}</span>
                     <span className="entity-meta">{def.cost} gp</span>
                     <p className="tavern-row-detail">{def.description}</p>
                     {effectText && <p className="tavern-row-detail base-upgrade-effect">{effectText}</p>}
@@ -122,7 +122,7 @@ export function BasePanel({
                             value={selections[def.id]?.factionId ?? ""}
                             onChange={(e) => setSelection(def.id, { factionId: e.target.value })}
                           >
-                            <option value="">— none —</option>
+                            <option value="">None</option>
                             {factions.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
                           </select>
                         </label>
@@ -133,7 +133,7 @@ export function BasePanel({
                               value={selections[def.id]?.rivalFactionId ?? ""}
                               onChange={(e) => setSelection(def.id, { rivalFactionId: e.target.value })}
                             >
-                              <option value="">— none —</option>
+                              <option value="">None</option>
                               {factions.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
                             </select>
                           </label>

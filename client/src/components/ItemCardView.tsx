@@ -13,7 +13,7 @@ export function ItemCardView({ item }: { item: GeneratedItem }) {
         {item.requiresAttunement && <span className="item-stat-badge attunement">Requires Attunement</span>}
         {item.charges != null && (
           <span className="item-stat-badge">
-            {item.charges} charge{item.charges === 1 ? "" : "s"}{item.rechargeRule ? ` — ${item.rechargeRule}` : ""}
+            {item.charges} charge{item.charges === 1 ? "" : "s"}{item.rechargeRule ? ` · ${item.rechargeRule}` : ""}
           </span>
         )}
       </div>

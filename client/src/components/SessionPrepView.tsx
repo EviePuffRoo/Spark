@@ -54,7 +54,7 @@ export function SessionPrepView({
           {!latestNote && <p className="hint">No session notes for this world yet.</p>}
           {latestNote && (
             <>
-              <p><strong>{latestNote.title}</strong>{latestNote.sessionLabel ? ` — ${latestNote.sessionLabel}` : ""}</p>
+              <p><strong>{latestNote.title}</strong>{latestNote.sessionLabel ? ` · ${latestNote.sessionLabel}` : ""}</p>
               {latestNote.looseThreads && <p><strong>Loose threads:</strong> {latestNote.looseThreads}</p>}
               {latestNote.nextSteps && <p><strong>Next steps:</strong> {latestNote.nextSteps}</p>}
               <button className="btn-secondary" onClick={() => onSelectNote(latestNote)}>Open this note</button>

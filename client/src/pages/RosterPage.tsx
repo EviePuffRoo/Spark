@@ -773,7 +773,7 @@ export function RosterPage({
             {selectedPlayerCharacter && canReassignSelectedPlayerCharacter && user && (
               <div className="save-panel">
                 <h3 className="section-heading">Owner</h3>
-                <p className="hint">Who this character sheet belongs to — that account is the only one who can edit it, rest it, and track its spell slots.</p>
+                <p className="hint">Who this character sheet belongs to. That account is the only one who can edit it, rest it, and track its spell slots.</p>
                 <label className="field">
                   <span>Belongs to</span>
                   <select value={assignTargetUserId} onChange={(e) => setAssignTargetUserId(e.target.value)}>
@@ -925,14 +925,14 @@ export function RosterPage({
                       </button>
                       <button className="btn-secondary" onClick={() => setPublishOpen(false)}>Cancel</button>
                     </div>
-                    {publishStatus === "published" && <p className="success">Published — visible in the Homebrew Gallery.</p>}
+                    {publishStatus === "published" && <p className="success">Published. Visible in the Homebrew Gallery.</p>}
                   </div>
                 )}
               </div>
             ) : (
               <div className="save-panel">
                 <h3 className="section-heading">Roster Details</h3>
-                <p className="hint">Shared by the world's owner — you can view this, but only they can edit or delete it.</p>
+                <p className="hint">Shared by the world's owner. You can view this, but only they can edit or delete it.</p>
                 {tags && <p><strong>Tags:</strong> {tags}</p>}
                 {metaNotes && <p><strong>Notes:</strong> {metaNotes}</p>}
                 {actionError && <p className="error">{actionError}</p>}

@@ -213,7 +213,7 @@ export function QuestForgePage() {
       {creationMode === "manual" && !manualResult && (
         <div className="panel">
           <h2>Create Your Own Quest Hook</h2>
-          <p className="hint">Write it exactly how you want it — nothing generated, all yours.</p>
+          <p className="hint">Write it exactly how you want it. Nothing generated, all yours.</p>
           <QuestEditor value={BLANK_QUEST} onSave={async (draft) => setManualResult(draft)} onCancel={() => switchMode("generate")} saveLabel="Continue" />
         </div>
       )}

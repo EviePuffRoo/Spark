@@ -27,7 +27,7 @@ export function BillingPage() {
     try {
       const { url } = await api.createCheckoutSession();
       if (url) window.location.href = url;
-      else setError("Couldn't start checkout — please try again.");
+      else setError("Couldn't start checkout. Please try again.");
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -41,7 +41,7 @@ export function BillingPage() {
     try {
       const { url } = await api.createPortalSession();
       if (url) window.location.href = url;
-      else setError("Couldn't open the billing portal — please try again.");
+      else setError("Couldn't open the billing portal. Please try again.");
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -56,9 +56,9 @@ export function BillingPage() {
       <div className="panel">
         <h2>Billing</h2>
         <p className="hint">
-          Almost everything in Spark is free, forever. The paid plan raises usage caps — how many worlds you
+          Almost everything in Spark is free, forever. The paid plan raises usage caps (how many worlds you
           can have, how fast you can generate content, and how far back you can browse roll log and chat
-          history — and unlocks the Home Base upgrade system for worlds you own. Paying isn't required to play
+          history) and unlocks the Home Base upgrade system for worlds you own. Paying isn't required to play
           in someone else's world: a DM's subscription unlocks their Home Base for the whole table.
         </p>
 
@@ -96,7 +96,7 @@ export function BillingPage() {
 
         <div className="save-panel">
           <h3 className="section-heading">Current Plan</h3>
-          <p className="entity-meta">{isPaid ? "Paid — higher limits" : "Free"}</p>
+          <p className="entity-meta">{isPaid ? "Paid, higher limits" : "Free"}</p>
           {!isPaid && <p className="hint">You'll see the exact price and can review everything on the next screen before you pay anything.</p>}
           {error && <p className="error">{error}</p>}
           {isPaid ? (

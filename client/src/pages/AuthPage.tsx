@@ -52,15 +52,16 @@ export function AuthPage() {
         <p className="tagline">Everything a DM needs to prep and run a session, ready for the table</p>
         <ul className="auth-pitch-points">
           <li>
-            <strong>One tool, prep to table.</strong> Build your world, then run it live — encounters, dice, HP, and party chat sync to every player's phone as you play.
+            <strong>One tool, prep to table.</strong> Build your world, then run it live: encounters, dice, HP, and party chat sync to every player's phone as you play.
           </li>
           <li>
-            <strong>No AI, ever.</strong> Every generator is hand-curated and deterministic. Nothing about your campaign is sent to a language model — not your notes, not your players' characters, nothing.
+            <strong>A spark, not a script.</strong> Every generator draws from hand-built content pools, not a live AI call. No scraped prose, nothing laundered from a model's training data. Generate something, then it's yours: keep it as-is, rewrite every word, or land anywhere in between. The tool's job is to get your imagination moving, not to hand you a finished thought.
           </li>
           <li>
-            <strong>Real-time sync, free.</strong> Live combat, chat, and party tracking aren't a paid tier here — they're just how the app works.
+            <strong>Real-time sync, free.</strong> Live combat, chat, and party tracking aren't a paid tier here. They're just how the app works.
           </li>
         </ul>
+        <button className="link-button auth-about-link" onClick={() => window.open("/about", "_blank")}>How this is built</button>
       </div>
 
       <div className="panel auth-panel">

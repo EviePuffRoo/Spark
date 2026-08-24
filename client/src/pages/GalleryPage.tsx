@@ -37,7 +37,7 @@ function renderEntryDetail(entityType: EntityType, data: any) {
         <>
           <StatBlockView
             name={data.name}
-            subtitle={`${data.statBlock.size} ${data.statBlock.creatureType}, ${data.statBlock.alignment}${data.race ? ` — ${data.race}` : ""}`}
+            subtitle={`${data.statBlock.size} ${data.statBlock.creatureType}, ${data.statBlock.alignment}${data.race ? ` · ${data.race}` : ""}`}
             statBlock={data.statBlock}
           />
           <BackstoryView backstory={data.backstory} />
@@ -145,7 +145,7 @@ export function GalleryPage() {
     setReportStatus(null);
     try {
       await api.reportGalleryEntry(selectedId, reportReason, reportDetail.trim() || undefined);
-      setReportStatus("Thanks — this has been reported for review.");
+      setReportStatus("Thanks. This has been reported for review.");
       setReportOpen(false);
       setReportDetail("");
     } catch (e) {
@@ -185,7 +185,7 @@ export function GalleryPage() {
             <p className="hint">
               {query || typeFilter
                 ? "Nothing matches that search."
-                : "Nothing published yet — be the first. Save something to your Roster, then use “Publish to Gallery” from its details to share it here."}
+                : "Nothing published yet. Be the first. Save something to your Roster, then use “Publish to Gallery” from its details to share it here."}
             </p>
           ) : (
             <ul className="entity-list">
@@ -210,7 +210,7 @@ export function GalleryPage() {
           {detail && !detailLoading && (
             <>
               <p className="entity-meta">
-                "{detail.entry.title}" — published by {detail.entry.publisherUsername} on {new Date(detail.entry.publishedAt).toLocaleDateString()}
+                "{detail.entry.title}", published by {detail.entry.publisherUsername} on {new Date(detail.entry.publishedAt).toLocaleDateString()}
               </p>
               {detail.entry.description && <p>{detail.entry.description}</p>}
               {renderEntryDetail(detail.entry.entityType, detail.data)}

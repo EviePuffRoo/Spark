@@ -224,7 +224,7 @@ export function PlayerCompanionView() {
       {worldsLoading ? (
         <p className="hint">Loading…</p>
       ) : worlds.length === 0 ? (
-        <p className="hint">You're not in any worlds yet — join one from the full app.</p>
+        <p className="hint">You're not in any worlds yet. Join one from the full app.</p>
       ) : (
         <>
           {worlds.length > 1 && (
@@ -246,7 +246,7 @@ export function PlayerCompanionView() {
                 </button>
               </div>
               {sessionRemindBlocked && (
-                <p className="hint">Notifications are blocked — enable them in your browser's site settings to use this.</p>
+                <p className="hint">Notifications are blocked. Enable them in your browser's site settings to use this.</p>
               )}
               <NextSessionPanel world={world} onUpdated={refreshWorlds} />
             </section>
@@ -264,7 +264,7 @@ export function PlayerCompanionView() {
                   </button>
                 </div>
                 {notifyBlocked && (
-                  <p className="hint">Notifications are blocked — enable them in your browser's site settings to use this.</p>
+                  <p className="hint">Notifications are blocked. Enable them in your browser's site settings to use this.</p>
                 )}
                 <TurnOrderStrip combatants={combatants} activeId={activeId} />
               </section>
@@ -311,7 +311,7 @@ export function PlayerCompanionView() {
       )}
 
       <a className="player-companion-back-link" href={backToDesktopHref()}>
-        {user ? `Signed in as ${user.displayName || user.username} — Full App` : "Full App"}
+        {user ? `Signed in as ${user.displayName || user.username}, Full App` : "Full App"}
       </a>
     </div>
   );

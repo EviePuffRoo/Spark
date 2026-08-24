@@ -51,7 +51,7 @@ export function TavernPage({ onNavigateToBilling }: { onNavigateToBilling: () =>
           <TavernIcon className="page-title-icon" aria-hidden="true" />
           <h2>The Tavern</h2>
         </div>
-        <p className="hint">Catch up between sessions — rumors on the board, who stands where, and familiar faces.</p>
+        <p className="hint">Catch up between sessions: rumors on the board, who stands where, and familiar faces.</p>
 
         {worlds.length === 0 ? (
           <p className="hint">Create or join a world to visit its tavern.</p>
@@ -123,8 +123,8 @@ export function TavernPage({ onNavigateToBilling }: { onNavigateToBilling: () =>
 
           {baseData && (
             <div className="panel">
-              <h3 className="section-heading">{baseData.name} — Level {baseData.level}</h3>
-              <p className="hint">A living map of the party's outpost — it grows as you invest in it. Click a structure for details.</p>
+              <h3 className="section-heading">{baseData.name}, Level {baseData.level}</h3>
+              <p className="hint">A living map of the party's outpost. It grows as you invest in it. Click a structure for details.</p>
               <BaseMapView base={baseData} />
             </div>
           )}

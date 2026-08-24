@@ -44,7 +44,7 @@ export function AdminUsersPage() {
     setResultLabel(null);
     try {
       const { recoveryCode } = await api.adminIssueRecoveryCode(selected.id);
-      setResultLabel(`New recovery code for ${selected.username} — give this to them once, it won't be shown again:`);
+      setResultLabel(`New recovery code for ${selected.username}. Give this to them once, it won't be shown again:`);
       setResultValue(recoveryCode);
     } catch (e) {
       setActionError((e as Error).message);
@@ -58,7 +58,7 @@ export function AdminUsersPage() {
     setResultLabel(null);
     try {
       await api.adminSetPassword(selected.id, newPassword);
-      setResultLabel(`Temporary password set for ${selected.username} — give this to them once, it won't be shown again:`);
+      setResultLabel(`Temporary password set for ${selected.username}. Give this to them once, it won't be shown again:`);
       setResultValue(newPassword);
       setNewPassword("");
     } catch (e) {
@@ -72,7 +72,7 @@ export function AdminUsersPage() {
         <div className="panel">
           <h2>Account Recovery</h2>
           <p className="hint">
-            For a user who's lost their password, their recovery code, or both — verify their identity out of band
+            For a user who's lost their password, their recovery code, or both, verify their identity out of band
             first, then use these tools to get them back in.
           </p>
 
@@ -107,7 +107,7 @@ export function AdminUsersPage() {
           {selected && (
             <>
               <p className="entity-meta">
-                {selected.username} — {selected.role}, {selected.tier} tier, joined {new Date(selected.createdAt).toLocaleDateString()}
+                {selected.username}: {selected.role}, {selected.tier} tier, joined {new Date(selected.createdAt).toLocaleDateString()}
               </p>
 
               <h3 className="section-heading">Lost recovery code</h3>

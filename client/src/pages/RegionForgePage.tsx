@@ -167,7 +167,7 @@ export function RegionForgePage() {
       {creationMode === "manual" && !manualResult && (
         <div className="panel">
           <h2>Build a Region</h2>
-          <p className="hint">Write it exactly how you want it — nothing generated, all yours.</p>
+          <p className="hint">Write it exactly how you want it. Nothing generated, all yours.</p>
           <RegionEditor
             key={resetKey}
             value={BLANK_REGION}

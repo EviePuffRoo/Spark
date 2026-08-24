@@ -16,7 +16,7 @@ export function WelcomePanel() {
     <div className="panel welcome-panel">
       <h2>Welcome to Spark</h2>
       <p>
-        Generate content from any tab below — NPCs, items, quests, shops, and more — or write your
+        Generate content from any tab below (NPCs, items, quests, shops, and more), or write your
         own from scratch with "Create Your Own". Save what you like to your{" "}
         <strong>Roster</strong>, tag it, then group things into <strong>Worlds</strong> as your campaigns take shape.
       </p>

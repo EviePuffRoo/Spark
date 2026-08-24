@@ -89,7 +89,7 @@ export function FactionWebView({
           const id = `rel-${rel.id}`;
           edgeById.set(id, {
             id, source: rel.factionAId, target: rel.factionBId, stance: rel.stance,
-            label: rel.notes ? `${FACTION_RELATIONSHIP_STANCE_LABELS[rel.stance]} — ${rel.notes}` : FACTION_RELATIONSHIP_STANCE_LABELS[rel.stance],
+            label: rel.notes ? `${FACTION_RELATIONSHIP_STANCE_LABELS[rel.stance]}: ${rel.notes}` : FACTION_RELATIONSHIP_STANCE_LABELS[rel.stance],
           });
         }
       }

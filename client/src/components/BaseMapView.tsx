@@ -109,13 +109,13 @@ export function BaseMapView({ base }: { base: BaseState }) {
 
       {selectedDef && (
         <div className="save-panel base-map-detail">
-          <h3 className="section-heading">{selectedDef.name}{selectedOwned && <span className="base-upgrade-owned-tag"> — Built</span>}</h3>
+          <h3 className="section-heading">{selectedDef.name}{selectedOwned && <span className="base-upgrade-owned-tag"> · Built</span>}</h3>
           <p className="hint">{selectedDef.description}</p>
           {describeEffect(selectedDef) && <p className="base-upgrade-effect">{describeEffect(selectedDef)}</p>}
           {selectedOwned && selectedUnlockedShop && (
             <p className="base-upgrade-effect">A new shop, "{selectedUnlockedShop.shopName}", has appeared on the Shop tab.</p>
           )}
-          {!selectedOwned && <p className="entity-meta">{selectedDef.cost} gp — not yet built</p>}
+          {!selectedOwned && <p className="entity-meta">{selectedDef.cost} gp, not yet built</p>}
           <button className="btn-secondary" onClick={() => setSelectedId(null)}>Close</button>
         </div>
       )}

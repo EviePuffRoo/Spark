@@ -140,7 +140,7 @@ export function CompendiumPage() {
           <CompendiumIcon className="page-title-icon" aria-hidden="true" />
           <h2>Compendium</h2>
         </div>
-        <p className="hint">SRD spells, conditions, quick-reference rules, monster stat blocks, and curated magic items — searchable, no tabbing out mid-session.</p>
+        <p className="hint">SRD spells, conditions, quick-reference rules, monster stat blocks, and curated magic items, searchable, no tabbing out mid-session.</p>
 
         <div className="tabs roster-mode-tabs">
           {(Object.keys(TAB_LABELS) as CompendiumTab[]).map((t) => (

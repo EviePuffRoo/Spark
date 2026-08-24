@@ -142,7 +142,7 @@ export function PlayerCharacterCreatePage() {
         <div className="generator-layout">
           <div className="panel">
             <h2>Generate a Player Character</h2>
-            <p className="hint">A quick pre-gen — a hireling, a one-shot pick-up, or a starting point to hand a new player.</p>
+            <p className="hint">A quick pre-gen: a hireling, a one-shot pick-up, or a starting point to hand a new player.</p>
 
             <label className="field">
               <input
@@ -236,7 +236,7 @@ export function PlayerCharacterCreatePage() {
         <div className="panel">
           <h2>Paste to Import</h2>
           <p className="hint">
-            Paste a character sheet — a D&amp;D Beyond export, or your own notes with lines like
+            Paste a character sheet: a D&amp;D Beyond export, or your own notes with lines like
             "Class: Fighter" or "STR: 16". We'll pick out what we recognize; you review and fix the
             rest before saving.
           </p>
@@ -264,7 +264,7 @@ export function PlayerCharacterCreatePage() {
               everything below and fill in anything we missed.
             </p>
           ) : (
-            <p className="hint">Couldn't recognize any fields in that text — fill in the character below.</p>
+            <p className="hint">Couldn't recognize any fields in that text. Fill in the character below.</p>
           )}
           <button className="btn-secondary" onClick={() => { setImportDraft(null); setImportMatched([]); }}>
             ← Paste Different Text

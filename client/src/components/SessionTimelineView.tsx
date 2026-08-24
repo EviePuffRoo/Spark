@@ -33,7 +33,7 @@ export function SessionTimelineView({
   return (
     <div className="panel session-timeline">
       <h2>Campaign Timeline</h2>
-      <p className="hint">Your campaign's story so far, oldest to newest — session notes, quests, adventures, and world events together.</p>
+      <p className="hint">Your campaign's story so far, oldest to newest: session notes, quests, adventures, and world events together.</p>
 
       {worlds.length > 0 && (
         <label className="field">

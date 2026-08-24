@@ -4,7 +4,7 @@ import { toEncounterDTO } from "../serialize.js";
 import { findAccessibleWorld } from "../worldAccess.js";
 import { publishWorldChange, publishTokenMoved } from "../worldEvents.js";
 import { computeCurrentVisibility } from "../gridVisibility.js";
-import type { LiveCombatant, LiveCombatantCondition, CombatantKind, EncounterZone, EncounterZoneEffect, ZoneHazard, ParsedAttack, AbilityKey, SizeCategory, PlacedTile } from "@spark/shared";
+import type { LiveCombatant, LiveCombatantCondition, CombatantKind, EncounterZone, EncounterZoneEffect, ZoneHazard, ParsedAttack, AbilityKey, SizeCategory, PlacedTile, LegendaryAction, StatBlockAction } from "@spark/shared";
 import { SIZE_FOOTPRINT, computeReachableCells, computeVisionForTokens, extendWithLightSources } from "@spark/shared";
 
 export const encountersRouter = Router();
@@ -62,12 +62,32 @@ function coerceAttack(raw: unknown): ParsedAttack | null {
   };
 }
 
+function coerceLegendaryAction(raw: unknown): LegendaryAction | null {
+  if (!raw || typeof raw !== "object") return null;
+  const a = raw as Record<string, unknown>;
+  if (typeof a.name !== "string" || typeof a.description !== "string") return null;
+  return { name: a.name, cost: typeof a.cost === "number" && a.cost > 0 ? a.cost : 1, description: a.description };
+}
+
+function coerceStatBlockAction(raw: unknown): StatBlockAction | null {
+  if (!raw || typeof raw !== "object") return null;
+  const a = raw as Record<string, unknown>;
+  if (typeof a.name !== "string" || typeof a.description !== "string") return null;
+  return { name: a.name, description: a.description };
+}
+
 function coerceCombatant(raw: unknown): LiveCombatant | null {
   if (!raw || typeof raw !== "object") return null;
   const c = raw as Record<string, unknown>;
   if (typeof c.id !== "string" || typeof c.name !== "string") return null;
   const kind: CombatantKind = c.kind === "monster" || c.kind === "playerCharacter" ? c.kind : "custom";
   const attacks = Array.isArray(c.attacks) ? c.attacks.map(coerceAttack).filter((a): a is ParsedAttack => a !== null) : undefined;
+  const legendaryActionsList = Array.isArray(c.legendaryActionsList)
+    ? c.legendaryActionsList.map(coerceLegendaryAction).filter((a): a is LegendaryAction => a !== null)
+    : undefined;
+  const lairActionsList = Array.isArray(c.lairActionsList)
+    ? c.lairActionsList.map(coerceStatBlockAction).filter((a): a is StatBlockAction => a !== null)
+    : undefined;
   return {
     id: c.id,
     name: c.name,
@@ -93,6 +113,11 @@ function coerceCombatant(raw: unknown): LiveCombatant | null {
     visionRadiusFeet: typeof c.visionRadiusFeet === "number" ? c.visionRadiusFeet : undefined,
     lightRadiusFeet: typeof c.lightRadiusFeet === "number" ? c.lightRadiusFeet : undefined,
     concentratingOn: typeof c.concentratingOn === "string" && c.concentratingOn ? c.concentratingOn : undefined,
+    legendaryActionsMax: typeof c.legendaryActionsMax === "number" ? c.legendaryActionsMax : undefined,
+    legendaryActionsRemaining: typeof c.legendaryActionsRemaining === "number" ? c.legendaryActionsRemaining : undefined,
+    legendaryActionsList: legendaryActionsList && legendaryActionsList.length > 0 ? legendaryActionsList : undefined,
+    lairActionsList: lairActionsList && lairActionsList.length > 0 ? lairActionsList : undefined,
+    lairActionUsedRound: typeof c.lairActionUsedRound === "number" ? c.lairActionUsedRound : undefined,
   };
 }
 

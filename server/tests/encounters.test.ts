@@ -124,6 +124,54 @@ describe("combat automation: attacks and condition durations", () => {
     expect(playerView.body.combatants[0].attacks).toBeUndefined();
     expect(playerView.body.combatants[0].conditions.map((c: { name: string }) => c.name)).toEqual(["Stunned"]);
   });
+
+  it("round-trips legendary/lair action fields through PUT, and hides the descriptive lists (but not the pip counts) from a non-owner", async () => {
+    const { agent: dm } = await signupAgent("legendary-dm");
+    const world = await dm.post("/api/worlds").send({ name: "Legendary Test World" });
+    const worldId = world.body.id as string;
+    const joinCode = await dm.post(`/api/worlds/${worldId}/join-code`);
+    const { agent: player } = await signupAgent("legendary-player");
+    await player.post("/api/worlds/join").send({ code: joinCode.body.code });
+
+    const combatants = [
+      {
+        id: "vampire-1",
+        name: "Vampire",
+        kind: "monster",
+        initiative: 18,
+        maxHp: 144,
+        currentHp: 144,
+        conditions: [],
+        notes: "",
+        hpVisible: true,
+        legendaryActionsMax: 3,
+        legendaryActionsRemaining: 2,
+        legendaryActionsList: [
+          { name: "Move", cost: 1, description: "Moves up to its speed without provoking opportunity attacks." },
+          { name: "Bite", cost: 2, description: "Bites one creature within 5 ft." },
+        ],
+        lairActionsList: [{ name: "Grasping Fog", description: "Fog fills a 20-foot-radius sphere." }],
+        lairActionUsedRound: 1,
+      },
+    ];
+    const put = await dm.put(`/api/encounters/${worldId}`).send({ combatants, round: 1, turnIndex: 0 });
+    expect(put.status).toBe(200);
+    expect(put.body.combatants[0].legendaryActionsMax).toBe(3);
+    expect(put.body.combatants[0].legendaryActionsRemaining).toBe(2);
+    expect(put.body.combatants[0].legendaryActionsList).toHaveLength(2);
+    expect(put.body.combatants[0].lairActionsList).toHaveLength(1);
+    expect(put.body.combatants[0].lairActionUsedRound).toBe(1);
+
+    const ownerView = await dm.get(`/api/encounters/${worldId}`);
+    expect(ownerView.body.combatants[0].legendaryActionsList).toHaveLength(2);
+    expect(ownerView.body.combatants[0].lairActionsList).toHaveLength(1);
+
+    const playerView = await player.get(`/api/encounters/${worldId}`);
+    expect(playerView.body.combatants[0].legendaryActionsMax).toBe(3);
+    expect(playerView.body.combatants[0].legendaryActionsRemaining).toBe(2);
+    expect(playerView.body.combatants[0].legendaryActionsList).toBeUndefined();
+    expect(playerView.body.combatants[0].lairActionsList).toBeUndefined();
+  });
 });
 
 describe("grid combat: battle map position and move-grid", () => {

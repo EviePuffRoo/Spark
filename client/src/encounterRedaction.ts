@@ -30,6 +30,8 @@ export function filterEncounterForDisplay(encounter: Encounter, visibleCells?: S
       maxHp: c.hpVisible ? c.maxHp : undefined,
       xp: undefined,
       attacks: undefined,
+      legendaryActionsList: undefined,
+      lairActionsList: undefined,
       conditions: c.conditions.filter((cond) => cond.expiresAtRound === null || cond.expiresAtRound >= encounter.round),
     }))
     .filter((c) => {

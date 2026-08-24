@@ -299,8 +299,37 @@ export function InitiativeTracker({
       const count = e.combatants.length;
       if (count === 0) return e;
       const next = e.turnIndex + 1;
-      return next >= count ? { ...e, turnIndex: 0, round: e.round + 1 } : { ...e, turnIndex: next };
+      const wrapped = next >= count;
+      const newIndex = wrapped ? 0 : next;
+      // Legendary actions refill at the start of the creature's own turn,
+      // not on a timer — the "sorted by initiative" list here has to match
+      // the one `sorted`/`activeId` above are built from, since turnIndex
+      // is an index into that order, not into e.combatants directly.
+      const turnOrder = [...e.combatants].sort((a, b) => b.initiative - a.initiative);
+      const newActiveId = turnOrder[newIndex % turnOrder.length]?.id;
+      const combatants = e.combatants.map((c) =>
+        c.id === newActiveId && c.legendaryActionsMax !== undefined
+          ? { ...c, legendaryActionsRemaining: c.legendaryActionsMax }
+          : c
+      );
+      return wrapped ? { ...e, combatants, turnIndex: 0, round: e.round + 1 } : { ...e, combatants, turnIndex: next };
     });
+  }
+
+  function spendLegendaryAction(id: string, cost: number) {
+    applyEncounterUpdate((e) => ({
+      ...e,
+      combatants: e.combatants.map((c) =>
+        c.id === id ? { ...c, legendaryActionsRemaining: Math.max(0, (c.legendaryActionsRemaining ?? 0) - cost) } : c
+      ),
+    }));
+  }
+
+  function triggerLairAction(id: string) {
+    applyEncounterUpdate((e) => ({
+      ...e,
+      combatants: e.combatants.map((c) => (c.id === id ? { ...c, lairActionUsedRound: e.round } : c)),
+    }));
   }
 
   function clearEncounter() {
@@ -588,6 +617,25 @@ export function InitiativeTracker({
           {DIFFICULTY_LABELS[difficulty.rating]} encounter: {difficulty.adjustedXp} XP (adjusted) vs. {difficulty.thresholds.easy}/{difficulty.thresholds.medium}/{difficulty.thresholds.hard}/{difficulty.thresholds.deadly} easy/medium/hard/deadly thresholds
         </p>
       )}
+
+      {canEdit && (() => {
+        const lairSource = sorted.find((c) => c.lairActionsList && c.lairActionsList.length > 0);
+        if (!lairSource) return null;
+        const usedThisRound = lairSource.lairActionUsedRound === activeEncounter.round;
+        return (
+          <div className="save-panel lair-actions-panel">
+            <h3 className="section-heading">Lair Actions ({lairSource.name})</h3>
+            <ul className="lair-actions-list">
+              {lairSource.lairActionsList!.map((a) => (
+                <li key={a.name}><strong>{a.name}.</strong> {a.description}</li>
+              ))}
+            </ul>
+            <button className="btn-secondary" disabled={usedThisRound} onClick={() => triggerLairAction(lairSource.id)}>
+              {usedThisRound ? `Used This Round (${activeEncounter.round})` : `Trigger Lair Action (Round ${activeEncounter.round})`}
+            </button>
+          </div>
+        );
+      })()}
 
       {canEdit && <AddCombatantPanel onAddCombatant={addCombatant} />}
 
@@ -950,6 +998,25 @@ export function InitiativeTracker({
                     + Carried Light
                   </button>
                 )}
+              </div>
+            )}
+
+            {c.legendaryActionsMax !== undefined && (
+              <div className="combatant-legendary">
+                <span className="legendary-pips" title={`${c.legendaryActionsRemaining ?? 0} of ${c.legendaryActionsMax} legendary actions remaining`}>
+                  Legendary: {"⚡".repeat(c.legendaryActionsRemaining ?? 0)}{"·".repeat(Math.max(0, c.legendaryActionsMax - (c.legendaryActionsRemaining ?? 0)))}
+                </span>
+                {c.legendaryActionsList?.map((a) => (
+                  <button
+                    key={a.name}
+                    className="btn-secondary"
+                    disabled={(c.legendaryActionsRemaining ?? 0) < a.cost}
+                    title={a.description}
+                    onClick={() => spendLegendaryAction(c.id, a.cost)}
+                  >
+                    {a.name} ({a.cost})
+                  </button>
+                ))}
               </div>
             )}
 

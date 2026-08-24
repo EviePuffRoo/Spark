@@ -10,6 +10,16 @@ export interface StatBlockAction {
   description: string;
 }
 
+// A legendary action's point cost is almost always 1, but some (a dragon's
+// wing attack, a vampire's bite) cost more of the creature's shared
+// per-round budget — see LiveCombatant.legendaryActionsMax/Remaining below
+// for how that budget is tracked once the creature is actually in combat.
+export interface LegendaryAction {
+  name: string;
+  cost: number;
+  description: string;
+}
+
 export interface StatBlock {
   size: string;
   creatureType: string;
@@ -33,6 +43,16 @@ export interface StatBlock {
   traits: StatBlockAction[];
   actions: StatBlockAction[];
   reactions?: StatBlockAction[];
+  // Only present on boss-tier monsters. legendaryActionsPerRound is the
+  // shared point budget spent on other creatures' turns and refilled at
+  // the start of this creature's own turn (see InitiativeTracker's
+  // nextTurn). lairActions fire once per round, at initiative count 20,
+  // for as long as the fight stays in this creature's lair — the DM
+  // decides whether that's true for any given encounter, so the app just
+  // surfaces the list rather than gating it on anything.
+  legendaryActions?: LegendaryAction[];
+  legendaryActionsPerRound?: number;
+  lairActions?: StatBlockAction[];
 }
 
 export interface Backstory {
@@ -721,6 +741,21 @@ export interface LiveCombatant {
   // light, not just player characters — an ally NPC or even a monster
   // holding a torch still casts real light.
   lightRadiusFeet?: number;
+  // Persisted copies of the source stat block's legendary/lair data, same
+  // pattern as attacks above (see the comment on ParsedAttack) — captured
+  // once when the combatant is added so combat state survives the source
+  // monster being edited or deleted later. legendaryActionsRemaining is
+  // spent on other creatures' turns and reset to legendaryActionsMax at
+  // the start of this creature's own turn.
+  legendaryActionsMax?: number;
+  legendaryActionsRemaining?: number;
+  legendaryActionsList?: LegendaryAction[];
+  // Lair actions aren't costed or numbered — at most one fires per round.
+  // lairActionUsedRound records the round number it was last triggered in
+  // (compared against the encounter's current round), rather than a
+  // separate used/unused flag that would need its own reset step.
+  lairActionsList?: StatBlockAction[];
+  lairActionUsedRound?: number;
 }
 
 export interface ZoneHazard {

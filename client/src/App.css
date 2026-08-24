@@ -2796,6 +2796,35 @@ textarea {
   margin-top: 6px;
 }
 
+.combatant-legendary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.legendary-pips {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 1px;
+}
+
+.lair-actions-panel {
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.lair-actions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9rem;
+}
+
 .condition-picker input[type="number"] {
   width: 90px;
 }

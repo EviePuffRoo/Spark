@@ -545,6 +545,63 @@ export interface CampaignEvent extends CampaignEventInput {
   createdAt: string;
 }
 
+// A single proposed change from computeWorldTickProposal (shared/src/worldTick.ts).
+// One interface covers every kind rather than a discriminated union of four
+// near-identical shapes, since the DM-facing diff list and the apply
+// endpoint both just need "what changed, by how much, why" regardless of
+// which system it touches; the fields each kind actually uses are
+// documented per-kind below.
+export type WorldTickProposalItemKind = "factionReputation" | "characterDisposition" | "shopStock" | "campaignEvent";
+
+export interface WorldTickProposalItem {
+  // Deterministic given the same world/day-range (see hashSeed), not
+  // random — the same logical item gets the same id if the proposal is
+  // recomputed, so a DM's partial approval survives a page refresh.
+  id: string;
+  kind: WorldTickProposalItemKind;
+  // Always present: what the DM sees in the diff list.
+  summary: string;
+  // factionReputation: factionId + delta + reasonOrTitle (log reason).
+  // characterDisposition: characterId + delta + reasonOrTitle (log reason).
+  // shopStock: shopId + stockEntryId + delta (new price minus old).
+  // campaignEvent: factionId (optional) + reasonOrTitle (title) + description.
+  factionId?: string;
+  characterId?: string;
+  shopId?: string;
+  stockEntryId?: string;
+  delta?: number;
+  reasonOrTitle?: string;
+  description?: string;
+}
+
+export interface WorldTickProposal {
+  worldId: string;
+  fromDay: number;
+  toDay: number;
+  items: WorldTickProposalItem[];
+}
+
+// The DM sends back exactly the WorldTickProposalItem objects they checked
+// (a subset of what GET .../proposal returned) — the same "trust the DM's
+// own client for an owner-only bulk action" pattern the full encounter PUT
+// already uses, rather than round-tripping item ids and recomputing.
+export interface WorldTickApplyRequest {
+  worldId: string;
+  fromDay: number;
+  toDay: number;
+  items: WorldTickProposalItem[];
+}
+
+export interface WorldTickLog {
+  id: string;
+  worldId: string;
+  fromDay: number;
+  toDay: number;
+  itemCount: number;
+  userId: string;
+  createdAt: string;
+}
+
 export interface RollLogEntryInput {
   worldId: string;
   rollerName: string;

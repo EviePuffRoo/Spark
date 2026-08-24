@@ -49,6 +49,7 @@ model User {
   factionLogEntries FactionLogEntry[]
   factionRelationships FactionRelationship[]
   campaignEvents  CampaignEvent[]
+  worldTickLogs   WorldTickLog[]
 }
 
 model World {
@@ -88,6 +89,7 @@ model World {
   shopCommissions ShopCommission[]
   factionRelationships FactionRelationship[]
   campaignEvents  CampaignEvent[]
+  worldTickLogs   WorldTickLog[]
 
   @@index([userId])
 }
@@ -565,6 +567,26 @@ model CampaignEvent {
 
   @@index([worldId])
   @@index([userId])
+}
+
+// One row per applied World Tick (the DM-reviewed "simulate the world
+// forward" action) — purely a history/audit log so re-running Simulate
+// knows where the last tick left off (fromDay) and doesn't double-propose
+// the same day range. The actual changes it represents (reputation,
+// disposition, campaign events, shop prices) are written through their
+// own tables/endpoints, not duplicated here.
+model WorldTickLog {
+  id        String   @id @default(cuid())
+  worldId   String
+  world     World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  fromDay   Int
+  toDay     Int
+  itemCount Int
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([worldId])
 }
 
 model RollLogEntry {

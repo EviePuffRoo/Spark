@@ -9,6 +9,7 @@ import { SessionHighlightsPanel } from "../components/SessionHighlightsPanel";
 import { AchievementsPanel } from "../components/AchievementsPanel";
 import { NextSessionPanel } from "../components/NextSessionPanel";
 import { CalendarPanel } from "../components/CalendarPanel";
+import { WorldTickPanel } from "../components/WorldTickPanel";
 
 export type OverviewNavTarget = "worlds" | "roster" | "codex" | "notes" | "downtime" | "shop";
 
@@ -113,6 +114,7 @@ export function WorldOverviewPage({ onNavigate }: { onNavigate: (subTab: Overvie
         {world.description && <p className="hint">{world.description}</p>}
         <NextSessionPanel world={world} onUpdated={refreshWorlds} />
         <CalendarPanel world={world} onUpdated={refreshWorlds} />
+        <WorldTickPanel world={world} onUpdated={refreshWorlds} />
         <p className="entity-meta">
           {nonEmptyCounts.length === 0
             ? "Empty so far"

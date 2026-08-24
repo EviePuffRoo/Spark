@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { toQuestHookDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
-import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
+import { findAccessibleWorld, getMemberWorldIds, authorizeEntityWrite } from "../worldAccess.js";
 import { logCampaignEventOp } from "../campaignEventLog.js";
 import { dispatchWebhookEvent } from "../webhookDispatch.js";
 
@@ -55,7 +55,8 @@ questsRouter.post("/", async (req, res) => {
     if (!world) return res.status(403).json({ error: "You don't have access to this world" });
   }
   if (typeof prerequisiteQuestId === "string") {
-    const prereq = await prisma.questHook.findFirst({ where: { id: prerequisiteQuestId, userId: req.userId } });
+    const memberWorldIds = await getMemberWorldIds(req.userId!);
+    const prereq = await prisma.questHook.findFirst({ where: { id: prerequisiteQuestId, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }] } });
     if (!prereq) return res.status(403).json({ error: "You don't have access to this quest" });
   }
 
@@ -93,7 +94,8 @@ questsRouter.patch("/:id", async (req, res) => {
       if (body.prerequisiteQuestId === req.params.id) {
         return res.status(400).json({ error: "A quest cannot be its own prerequisite" });
       }
-      const prereq = await prisma.questHook.findFirst({ where: { id: body.prerequisiteQuestId, userId: req.userId } });
+      const memberWorldIds = await getMemberWorldIds(req.userId!);
+      const prereq = await prisma.questHook.findFirst({ where: { id: body.prerequisiteQuestId, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }] } });
       if (!prereq) return res.status(403).json({ error: "You don't have access to this quest" });
       if (await wouldCreateCycle(req.params.id, body.prerequisiteQuestId)) {
         return res.status(400).json({ error: "This would create a prerequisite cycle" });
@@ -102,9 +104,11 @@ questsRouter.patch("/:id", async (req, res) => {
     data.prerequisiteQuestId = body.prerequisiteQuestId ?? null;
   }
 
-  const result = await prisma.questHook.updateMany({ where: { id: req.params.id, userId: req.userId }, data });
-  if (result.count === 0) return res.status(404).json({ error: "Quest hook not found" });
-  const row = await prisma.questHook.findUnique({ where: { id: req.params.id } });
+  const existing = await prisma.questHook.findUnique({ where: { id: req.params.id } });
+  if (!(await authorizeEntityWrite(req.userId!, existing))) {
+    return res.status(404).json({ error: "Quest hook not found" });
+  }
+  const row = await prisma.questHook.update({ where: { id: req.params.id }, data });
 
   // Guild Board completion callback: if this is a quest another DM
   // claimed from the gallery and it just became "completed" for the
@@ -112,14 +116,14 @@ questsRouter.patch("/:id", async (req, res) => {
   // one deliberate, narrow cross-account write in the whole app (see
   // GuildJobClaim's schema comment). Fires at most once per claim.
   if (data.status === "completed") {
-    const claim = await prisma.guildJobClaim.findFirst({ where: { claimerQuestHookId: row!.id, completedAt: null } });
+    const claim = await prisma.guildJobClaim.findFirst({ where: { claimerQuestHookId: row.id, completedAt: null } });
     if (claim && claim.posterWorldId) {
       const posterWorld = await prisma.world.findUnique({ where: { id: claim.posterWorldId } });
       if (posterWorld) {
         const posterUser = await prisma.user.findUnique({ where: { id: claim.posterUserId } });
         const posterAuthorName = posterUser?.displayName || posterUser?.username || "The DM";
         const eventTitle = "A distant company answers the call";
-        const eventDescription = `Word reaches you that another band of adventurers, far from here, took up "${row!.title}" and saw it through to the end.`;
+        const eventDescription = `Word reaches you that another band of adventurers, far from here, took up "${row.title}" and saw it through to the end.`;
         await prisma.$transaction([
           prisma.campaignEvent.create({
             data: {
@@ -151,12 +155,15 @@ questsRouter.patch("/:id", async (req, res) => {
     }
   }
 
-  res.json(toQuestHookDTO(row!));
+  res.json(toQuestHookDTO(row));
 });
 
 questsRouter.delete("/:id", async (req, res) => {
-  const result = await prisma.questHook.deleteMany({ where: { id: req.params.id, userId: req.userId } });
-  if (result.count === 0) return res.status(404).json({ error: "Quest hook not found" });
+  const existing = await prisma.questHook.findUnique({ where: { id: req.params.id } });
+  if (!(await authorizeEntityWrite(req.userId!, existing))) {
+    return res.status(404).json({ error: "Quest hook not found" });
+  }
+  await prisma.questHook.delete({ where: { id: req.params.id } });
   await deleteLinksForEntity("quest", req.params.id, req.userId!);
   res.status(204).end();
 });

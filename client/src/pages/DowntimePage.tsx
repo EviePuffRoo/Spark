@@ -340,7 +340,7 @@ export function DowntimePage({
                     <span className="entity-name">{a.characterName} · {DOWNTIME_ACTIVITY_TYPE_LABELS[a.activityType]} ({a.daysSpent}d)</span>
                     <div className="entity-meta">{a.description}{a.outcome ? ` · ${a.outcome}` : ""}</div>
                   </div>
-                  {(a.userId === user?.id) && (
+                  {(a.userId === user?.id || world?.canWrite) && (
                     <button className="btn-danger" onClick={() => deleteActivity(a.id)} aria-label={`Delete activity for ${a.characterName}`}>Delete</button>
                   )}
                 </li>

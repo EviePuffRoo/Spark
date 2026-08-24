@@ -22,7 +22,7 @@ export function ChatPanel({ worldId, worlds }: { worldId: string; worlds: WorldS
   const isPaid = user?.tier === "paid";
 
   const { error: liveError } = useWorldLiveChannel(worldId, { onChat: setMessages });
-  const isOwner = worlds.find((w) => w.id === worldId)?.isOwner ?? false;
+  const isOwner = worlds.find((w) => w.id === worldId)?.canWrite ?? false;
 
   useEffect(() => {
     // A world switch invalidates any loaded older history.

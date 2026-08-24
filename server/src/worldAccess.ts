@@ -23,3 +23,29 @@ export async function findAccessibleWorld(userId: string, worldId: string) {
   const memberWorldIds = await getMemberWorldIds(userId);
   return prisma.world.findFirst({ where: { id: worldId, OR: [{ userId }, { id: { in: memberWorldIds } }] } });
 }
+
+// Owner, or a member with the "coDM" role — the actual write-access check,
+// as opposed to findAccessibleWorld's read/narrow-write check above. A
+// "player" member can see everything in the world but can't write to it.
+export async function canWriteWorld(userId: string, worldId: string): Promise<boolean> {
+  const world = await prisma.world.findUnique({ where: { id: worldId } });
+  if (!world) return false;
+  if (world.userId === userId) return true;
+  const membership = await prisma.worldMember.findUnique({ where: { worldId_userId: { worldId, userId } } });
+  return membership?.role === "coDM";
+}
+
+// Authorizes writing to a row shaped like every per-world entity (its own
+// creator's userId, plus a nullable worldId it's attached to): direct
+// ownership always wins, otherwise coDM write access to the attached
+// world. An entity with no worldId (never assigned to a world) stays
+// owner-only, same as before this existed.
+export async function authorizeEntityWrite(
+  userId: string,
+  row: { userId: string; worldId: string | null } | null,
+): Promise<boolean> {
+  if (!row) return false;
+  if (row.userId === userId) return true;
+  if (!row.worldId) return false;
+  return canWriteWorld(userId, row.worldId);
+}

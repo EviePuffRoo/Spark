@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { toCharacterDTO, toDispositionLogEntryDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
-import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
+import { findAccessibleWorld, getMemberWorldIds, authorizeEntityWrite } from "../worldAccess.js";
 import { logCampaignEventOp } from "../campaignEventLog.js";
 import { dispatchWebhookEvent } from "../webhookDispatch.js";
 
@@ -79,14 +79,16 @@ charactersRouter.patch("/:id", async (req, res) => {
   }
   if ("factionId" in body) {
     if (typeof body.factionId === "string") {
-      const faction = await prisma.faction.findFirst({ where: { id: body.factionId, userId: req.userId } });
+      const memberWorldIds = await getMemberWorldIds(req.userId!);
+      const faction = await prisma.faction.findFirst({ where: { id: body.factionId, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }] } });
       if (!faction) return res.status(403).json({ error: "You don't have access to this faction" });
     }
     data.factionId = body.factionId ?? null;
   }
   if ("settlementId" in body) {
     if (typeof body.settlementId === "string") {
-      const settlement = await prisma.settlement.findFirst({ where: { id: body.settlementId, userId: req.userId } });
+      const memberWorldIds = await getMemberWorldIds(req.userId!);
+      const settlement = await prisma.settlement.findFirst({ where: { id: body.settlementId, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }] } });
       if (!settlement) return res.status(403).json({ error: "You don't have access to this settlement" });
     }
     data.settlementId = body.settlementId ?? null;
@@ -105,15 +107,20 @@ charactersRouter.patch("/:id", async (req, res) => {
     data.attunedItems = JSON.stringify(attuned);
   }
 
-  const result = await prisma.character.updateMany({ where: { id: req.params.id, userId: req.userId }, data });
-  if (result.count === 0) return res.status(404).json({ error: "Character not found" });
-  const row = await prisma.character.findUnique({ where: { id: req.params.id } });
-  res.json(toCharacterDTO(row!));
+  const existing = await prisma.character.findUnique({ where: { id: req.params.id } });
+  if (!(await authorizeEntityWrite(req.userId!, existing))) {
+    return res.status(404).json({ error: "Character not found" });
+  }
+  const row = await prisma.character.update({ where: { id: req.params.id }, data });
+  res.json(toCharacterDTO(row));
 });
 
 charactersRouter.delete("/:id", async (req, res) => {
-  const result = await prisma.character.deleteMany({ where: { id: req.params.id, userId: req.userId } });
-  if (result.count === 0) return res.status(404).json({ error: "Character not found" });
+  const existing = await prisma.character.findUnique({ where: { id: req.params.id } });
+  if (!(await authorizeEntityWrite(req.userId!, existing))) {
+    return res.status(404).json({ error: "Character not found" });
+  }
+  await prisma.character.delete({ where: { id: req.params.id } });
   await deleteLinksForEntity("character", req.params.id, req.userId!);
   res.status(204).end();
 });
@@ -136,11 +143,14 @@ charactersRouter.post("/:id/adjust-disposition", async (req, res) => {
     return res.status(400).json({ error: "delta must be a nonzero number" });
   }
 
-  const row = await prisma.character.findFirst({ where: { id: req.params.id, userId: req.userId } });
-  if (!row) return res.status(404).json({ error: "Character not found" });
+  const row = await prisma.character.findUnique({ where: { id: req.params.id } });
+  if (!row || !(await authorizeEntityWrite(req.userId!, row))) {
+    return res.status(404).json({ error: "Character not found" });
+  }
 
   if (playerCharacterId) {
-    const pc = await prisma.playerCharacter.findFirst({ where: { id: playerCharacterId, userId: req.userId } });
+    const memberWorldIds = await getMemberWorldIds(req.userId!);
+    const pc = await prisma.playerCharacter.findFirst({ where: { id: playerCharacterId, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds } }] } });
     if (!pc) return res.status(403).json({ error: "You don't have access to this player character" });
   }
 

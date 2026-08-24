@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { toSettlementDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
-import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
+import { findAccessibleWorld, getMemberWorldIds, authorizeEntityWrite } from "../worldAccess.js";
 
 export const settlementsRouter = Router();
 
@@ -71,22 +71,28 @@ settlementsRouter.patch("/:id", async (req, res) => {
   if ("regionId" in body) data.regionId = body.regionId ?? null;
   if ("controllingFactionId" in body) {
     if (typeof body.controllingFactionId === "string") {
-      const faction = await prisma.faction.findFirst({ where: { id: body.controllingFactionId, userId: req.userId } });
+      const memberWorldIds = await getMemberWorldIds(req.userId!);
+      const faction = await prisma.faction.findFirst({ where: { id: body.controllingFactionId, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }] } });
       if (!faction) return res.status(403).json({ error: "You don't have access to this faction" });
     }
     data.controllingFactionId = body.controllingFactionId ?? null;
   }
   if ("tags" in body) data.tags = JSON.stringify(Array.isArray(body.tags) ? body.tags : []);
 
-  const result = await prisma.settlement.updateMany({ where: { id: req.params.id, userId: req.userId }, data });
-  if (result.count === 0) return res.status(404).json({ error: "Settlement not found" });
-  const row = await prisma.settlement.findUnique({ where: { id: req.params.id } });
-  res.json(toSettlementDTO(row!));
+  const existing = await prisma.settlement.findUnique({ where: { id: req.params.id } });
+  if (!(await authorizeEntityWrite(req.userId!, existing))) {
+    return res.status(404).json({ error: "Settlement not found" });
+  }
+  const row = await prisma.settlement.update({ where: { id: req.params.id }, data });
+  res.json(toSettlementDTO(row));
 });
 
 settlementsRouter.delete("/:id", async (req, res) => {
-  const result = await prisma.settlement.deleteMany({ where: { id: req.params.id, userId: req.userId } });
-  if (result.count === 0) return res.status(404).json({ error: "Settlement not found" });
+  const existing = await prisma.settlement.findUnique({ where: { id: req.params.id } });
+  if (!(await authorizeEntityWrite(req.userId!, existing))) {
+    return res.status(404).json({ error: "Settlement not found" });
+  }
+  await prisma.settlement.delete({ where: { id: req.params.id } });
   await deleteLinksForEntity("settlement", req.params.id, req.userId!);
   res.status(204).end();
 });

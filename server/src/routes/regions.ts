@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { toRegionDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
-import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
+import { findAccessibleWorld, getMemberWorldIds, authorizeEntityWrite } from "../worldAccess.js";
 
 export const regionsRouter = Router();
 
@@ -74,15 +74,20 @@ regionsRouter.patch("/:id", async (req, res) => {
     data.connections = JSON.stringify(Array.isArray(body.connections) ? body.connections.filter((c: unknown) => typeof c === "string") : []);
   }
 
-  const result = await prisma.region.updateMany({ where: { id: req.params.id, userId: req.userId }, data });
-  if (result.count === 0) return res.status(404).json({ error: "Region not found" });
-  const row = await prisma.region.findUnique({ where: { id: req.params.id } });
-  res.json(toRegionDTO(row!));
+  const existing = await prisma.region.findUnique({ where: { id: req.params.id } });
+  if (!(await authorizeEntityWrite(req.userId!, existing))) {
+    return res.status(404).json({ error: "Region not found" });
+  }
+  const row = await prisma.region.update({ where: { id: req.params.id }, data });
+  res.json(toRegionDTO(row));
 });
 
 regionsRouter.delete("/:id", async (req, res) => {
-  const result = await prisma.region.deleteMany({ where: { id: req.params.id, userId: req.userId } });
-  if (result.count === 0) return res.status(404).json({ error: "Region not found" });
+  const existing = await prisma.region.findUnique({ where: { id: req.params.id } });
+  if (!(await authorizeEntityWrite(req.userId!, existing))) {
+    return res.status(404).json({ error: "Region not found" });
+  }
+  await prisma.region.delete({ where: { id: req.params.id } });
   await deleteLinksForEntity("region", req.params.id, req.userId!);
   res.status(204).end();
 });

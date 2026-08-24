@@ -288,7 +288,7 @@ export function DiceRoller({
           placeholder="e.g. Attack vs Goblin"
         />
       </label>
-      {partyMode && selectedWorld?.isOwner && (
+      {partyMode && selectedWorld?.canWrite && (
         <label className="field">
           <input type="checkbox" checked={secret} onChange={(e) => setSecret(e.target.checked)} />
           {" "}Secret (DM only, hidden from players)
@@ -327,7 +327,7 @@ export function DiceRoller({
           {partyLog.length === 0 && <p className="hint">No rolls yet. Be the first.</p>}
           <ul className="dice-history">
             {partyLog.map((r) => {
-              const canDelete = r.userId === user?.id || selectedWorld?.isOwner;
+              const canDelete = r.userId === user?.id || selectedWorld?.canWrite;
               return (
                 <li key={r.id} className="dice-history-row">
                   <div className="dice-history-main">

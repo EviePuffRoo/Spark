@@ -44,7 +44,7 @@ export function InventoryPage() {
   useEffect(() => { setError(liveError ?? null); }, [liveError]);
 
   const selectedWorld = worlds.find((w) => w.id === worldId) ?? null;
-  const isOwner = !!selectedWorld?.isOwner;
+  const isOwner = !!selectedWorld?.canWrite;
 
   async function refresh() {
     if (!worldId) return;

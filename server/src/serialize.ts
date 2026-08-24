@@ -37,6 +37,7 @@ export function toCharacterDTO(row: CharacterRow): Character {
     equippedItems: JSON.parse(row.equippedItems),
     attunedItems: JSON.parse(row.attunedItems),
     disposition: row.disposition,
+    perPcDisposition: JSON.parse(row.perPcDisposition),
     status: row.status as Character["status"],
     factionId: row.factionId,
     settlementId: row.settlementId,
@@ -53,6 +54,7 @@ export function toDispositionLogEntryDTO(row: DispositionLogEntryRow): Dispositi
     authorName: row.authorName,
     delta: row.delta,
     reason: row.reason ?? undefined,
+    playerCharacterId: row.playerCharacterId ?? undefined,
     createdAt: row.createdAt.toISOString(),
   };
 }

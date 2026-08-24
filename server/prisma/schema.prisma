@@ -158,6 +158,12 @@ model Character {
   equippedItems String  @default("[]")
   attunedItems  String  @default("[]")
   disposition  Int      @default(0)
+  // Per-PC standing deltas layered on top of the general `disposition`
+  // above — JSON map of playerCharacterId -> delta, same
+  // stringified-JSON-map pattern as PlayerCharacter.abilityScores. An NPC's
+  // effective standing with a given PC is `disposition + (perPcDisposition[pcId] ?? 0)`.
+  // Absent/empty for characters nobody has ever adjusted per-PC.
+  perPcDisposition String @default("{}")
   // "active" | "deceased" | "fled" — set by Autonomous Wars battle
   // resolution (a casualty of a resolved faction battle becomes
   // "deceased"; a survivor on the losing side can become "fled"), left at
@@ -190,6 +196,11 @@ model DispositionLogEntry {
   authorName  String
   delta       Int
   reason      String?
+  // Present when this entry adjusted standing with one specific PC rather
+  // than the NPC's general disposition. No relation — a deleted
+  // PlayerCharacter shouldn't take the log entry down with it; it just
+  // becomes a per-PC entry for a PC that no longer exists.
+  playerCharacterId String?
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())

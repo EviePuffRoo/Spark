@@ -94,6 +94,11 @@ export interface Character {
   // but generally left at its default for kind:"monster" entries, which
   // don't have ongoing relationships with the party the way NPCs do.
   disposition: number;
+  // Per-PC standing deltas layered on top of `disposition` above — keyed by
+  // PlayerCharacter id. An NPC's effective standing with a given PC is
+  // `disposition + (perPcDisposition[pcId] ?? 0)`. Absent/empty entries
+  // mean "no per-PC adjustment yet, falls back to the general disposition."
+  perPcDisposition: Record<string, number>;
   // "active" | "deceased" | "fled" — set by resolving a faction battle
   // (see battleResolver.ts); every other character stays "active". Purely
   // informational: nothing currently gates on a non-"active" status.
@@ -126,6 +131,9 @@ export interface DispositionLogEntry {
   authorName: string;
   delta: number;
   reason?: string;
+  // Present when this entry adjusted standing with one specific PC rather
+  // than the NPC's general disposition.
+  playerCharacterId?: string;
   createdAt: string;
 }
 

@@ -138,8 +138,8 @@ export const api = {
   updateCharacter: (id: string, patch: Partial<Character>) =>
     request<Character>(`/characters/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   deleteCharacter: (id: string) => request<void>(`/characters/${id}`, { method: "DELETE" }),
-  adjustCharacterDisposition: (id: string, delta: number, reason?: string) =>
-    request<Character>(`/characters/${id}/adjust-disposition`, { method: "POST", body: JSON.stringify({ delta, reason }) }),
+  adjustCharacterDisposition: (id: string, delta: number, reason?: string, playerCharacterId?: string) =>
+    request<Character>(`/characters/${id}/adjust-disposition`, { method: "POST", body: JSON.stringify({ delta, reason, playerCharacterId }) }),
   getDispositionLog: (id: string) => request<DispositionLogEntry[]>(`/characters/${id}/disposition-log`),
 
   listItems: (worldId?: string) =>

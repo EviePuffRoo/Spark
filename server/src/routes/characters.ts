@@ -120,9 +120,16 @@ charactersRouter.delete("/:id", async (req, res) => {
 // the "smart" convenience action layered over a raw PATCH of `disposition`,
 // exactly like level-up/rest are layered over PlayerCharacter's PATCH. The
 // plain PATCH remains available with no side effects for hand edits.
+//
+// An optional `playerCharacterId` targets the change at one specific PC's
+// standing instead of the NPC's general disposition: the delta is folded
+// into `perPcDisposition[playerCharacterId]` rather than `disposition`, and
+// the log entry records which PC it was for. Omitting it is fully
+// backward-compatible with the pre-existing behavior above.
 charactersRouter.post("/:id/adjust-disposition", async (req, res) => {
   const delta = typeof req.body?.delta === "number" ? Math.trunc(req.body.delta) : NaN;
   const reason = typeof req.body?.reason === "string" && req.body.reason.trim() ? req.body.reason.trim() : undefined;
+  const playerCharacterId = typeof req.body?.playerCharacterId === "string" ? req.body.playerCharacterId : undefined;
   if (!Number.isFinite(delta) || delta === 0) {
     return res.status(400).json({ error: "delta must be a nonzero number" });
   }
@@ -130,13 +137,26 @@ charactersRouter.post("/:id/adjust-disposition", async (req, res) => {
   const row = await prisma.character.findFirst({ where: { id: req.params.id, userId: req.userId } });
   if (!row) return res.status(404).json({ error: "Character not found" });
 
+  if (playerCharacterId) {
+    const pc = await prisma.playerCharacter.findFirst({ where: { id: playerCharacterId, userId: req.userId } });
+    if (!pc) return res.status(403).json({ error: "You don't have access to this player character" });
+  }
+
   const user = await prisma.user.findUnique({ where: { id: req.userId } });
   const authorName = user?.displayName || user?.username || "The DM";
 
+  const characterUpdate = playerCharacterId
+    ? (() => {
+        const perPc: Record<string, number> = JSON.parse(row.perPcDisposition);
+        perPc[playerCharacterId] = (perPc[playerCharacterId] ?? 0) + delta;
+        return prisma.character.update({ where: { id: row.id }, data: { perPcDisposition: JSON.stringify(perPc) } });
+      })()
+    : prisma.character.update({ where: { id: row.id }, data: { disposition: { increment: delta } } });
+
   const [updated] = await prisma.$transaction([
-    prisma.character.update({ where: { id: row.id }, data: { disposition: { increment: delta } } }),
+    characterUpdate,
     prisma.dispositionLogEntry.create({
-      data: { characterId: row.id, authorName, delta, reason: reason ?? null, userId: req.userId! },
+      data: { characterId: row.id, authorName, delta, reason: reason ?? null, playerCharacterId: playerCharacterId ?? null, userId: req.userId! },
     }),
   ]);
   res.json(toCharacterDTO(updated));

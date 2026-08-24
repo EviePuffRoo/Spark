@@ -51,6 +51,7 @@ model User {
   campaignEvents  CampaignEvent[]
   worldTickLogs   WorldTickLog[]
   doomClocks      DoomClock[]
+  campaignEventLogs CampaignEventLog[]
 }
 
 model World {
@@ -92,6 +93,7 @@ model World {
   campaignEvents  CampaignEvent[]
   worldTickLogs   WorldTickLog[]
   doomClocks      DoomClock[]
+  campaignEventLogs CampaignEventLog[]
 
   @@index([userId])
 }
@@ -606,6 +608,39 @@ model WorldTickLog {
   createdAt DateTime @default(now())
 
   @@index([worldId])
+}
+
+// A single unified, append-only event stream mirroring every write that
+// today's four separate ad hoc logs (DispositionLogEntry, FactionLogEntry,
+// CampaignEvent, WorldTickLog) already record — this table is additive,
+// not a replacement: those tables keep being the system of record for
+// their own features, this is a dual-written second copy that lets a
+// world's full history be read/filtered/paginated in one query instead of
+// four. `entityType`/`entityId` identify what changed (characterId,
+// factionId, the created CampaignEvent, or null for a whole-tick summary);
+// `payload` carries whatever a timeline UI or a future undo action needs
+// to render or reverse the event, since re-joining back to the original
+// per-feature row isn't always possible (e.g. after that row is deleted).
+// worldId is nullable because an NPC or faction can be adjusted while
+// unassigned to any world, mirroring Character.worldId/Faction.worldId's
+// own nullability; onDelete SetNull (not Cascade) for the same reason —
+// deleting a world shouldn't erase audit history for an entity that can
+// outlive it.
+model CampaignEventLog {
+  id         String   @id @default(cuid())
+  worldId    String?
+  world      World?   @relation(fields: [worldId], references: [id], onDelete: SetNull)
+  entityType String
+  entityId   String?
+  eventType  String
+  payload    String
+  authorName String
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@index([worldId])
+  @@index([userId])
 }
 
 // A named, segmented countdown (Blades in the Dark-style) — a world can

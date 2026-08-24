@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "../db.js";
 import { toFactionRelationshipDTO, toCampaignEventDTO } from "../serialize.js";
 import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
+import { logCampaignEventOp } from "../campaignEventLog.js";
 import { FACTION_RELATIONSHIP_STANCES, resolveFactionBattle } from "@spark/shared";
 import type { StatBlock, FactionBattleSideInput, FactionBattleProposal } from "@spark/shared";
 
@@ -156,13 +157,31 @@ factionRelationshipsRouter.post("/:id/apply-battle", async (req, res) => {
       prisma.factionLogEntry.create({
         data: { factionId: d.factionId, authorName, delta: d.delta, reason: proposal.title, userId: req.userId! },
       }),
+      logCampaignEventOp({
+        worldId: relationship.worldId,
+        entityType: "factionReputation",
+        entityId: d.factionId,
+        eventType: "faction.reputationChanged",
+        payload: { factionId: d.factionId, delta: d.delta, reason: proposal.title },
+        authorName,
+        userId: req.userId!,
+      }),
     ]),
     prisma.campaignEvent.create({
       data: { worldId: relationship.worldId, title: proposal.title, description: proposal.narrative, factionId: proposal.winnerFactionId, userId: req.userId! },
     }),
+    logCampaignEventOp({
+      worldId: relationship.worldId,
+      entityType: "campaignEvent",
+      entityId: null,
+      eventType: "campaignEvent.logged",
+      payload: { title: proposal.title, description: proposal.narrative, factionId: proposal.winnerFactionId },
+      authorName,
+      userId: req.userId!,
+    }),
   ];
 
   const results = await prisma.$transaction(ops);
-  const eventRow = results[results.length - 1];
+  const eventRow = results[results.length - 2];
   res.status(201).json({ proposal, event: toCampaignEventDTO(eventRow as Parameters<typeof toCampaignEventDTO>[0]) });
 });

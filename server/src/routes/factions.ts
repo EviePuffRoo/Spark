@@ -3,6 +3,7 @@ import { prisma } from "../db.js";
 import { toFactionDTO, toFactionLogEntryDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
 import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
+import { logCampaignEventOp } from "../campaignEventLog.js";
 
 export const factionsRouter = Router();
 
@@ -99,6 +100,15 @@ factionsRouter.post("/:id/adjust-reputation", async (req, res) => {
     prisma.faction.update({ where: { id: row.id }, data: { reputation: { increment: delta } } }),
     prisma.factionLogEntry.create({
       data: { factionId: row.id, authorName, delta, reason: reason ?? null, userId: req.userId! },
+    }),
+    logCampaignEventOp({
+      worldId: row.worldId,
+      entityType: "factionReputation",
+      entityId: row.id,
+      eventType: "faction.reputationChanged",
+      payload: { factionId: row.id, factionName: row.name, delta, reason },
+      authorName,
+      userId: req.userId!,
     }),
   ]);
   res.json(toFactionDTO(updated));

@@ -103,6 +103,32 @@ questsRouter.patch("/:id", async (req, res) => {
   const result = await prisma.questHook.updateMany({ where: { id: req.params.id, userId: req.userId }, data });
   if (result.count === 0) return res.status(404).json({ error: "Quest hook not found" });
   const row = await prisma.questHook.findUnique({ where: { id: req.params.id } });
+
+  // Guild Board completion callback: if this is a quest another DM
+  // claimed from the gallery and it just became "completed" for the
+  // first time, tell the original poster's world what happened — the
+  // one deliberate, narrow cross-account write in the whole app (see
+  // GuildJobClaim's schema comment). Fires at most once per claim.
+  if (data.status === "completed") {
+    const claim = await prisma.guildJobClaim.findFirst({ where: { claimerQuestHookId: row!.id, completedAt: null } });
+    if (claim && claim.posterWorldId) {
+      const posterWorld = await prisma.world.findUnique({ where: { id: claim.posterWorldId } });
+      if (posterWorld) {
+        await prisma.$transaction([
+          prisma.campaignEvent.create({
+            data: {
+              worldId: claim.posterWorldId,
+              title: "A distant company answers the call",
+              description: `Word reaches you that another band of adventurers, far from here, took up "${row!.title}" and saw it through to the end.`,
+              userId: claim.posterUserId,
+            },
+          }),
+          prisma.guildJobClaim.update({ where: { id: claim.id }, data: { completedAt: new Date() } }),
+        ]);
+      }
+    }
+  }
+
   res.json(toQuestHookDTO(row!));
 });
 

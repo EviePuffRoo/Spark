@@ -140,6 +140,19 @@ export function GalleryPage() {
     }
   }
 
+  // The Guild Board action: same underlying clone, but also links the copy
+  // back to the poster so completing it later notifies their world.
+  async function handleClaim() {
+    if (!selectedId) return;
+    setCloneStatus(null);
+    try {
+      await api.claimGuildJob(selectedId);
+      setCloneStatus("Claimed for your table — it's in your Roster now. Complete it there and the poster will hear how it went.");
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+
   async function handleReport() {
     if (!selectedId) return;
     setReportStatus(null);
@@ -214,8 +227,18 @@ export function GalleryPage() {
               </p>
               {detail.entry.description && <p>{detail.entry.description}</p>}
               {renderEntryDetail(detail.entry.entityType, detail.data)}
+              {detail.entry.entityType === "quest" && (
+                <p className="hint">
+                  This is the Guild Board: claim it for your table and it's cloned into your own Roster. If you mark it
+                  completed, {detail.entry.publisherUsername} hears back that someone answered the call.
+                </p>
+              )}
               <div className="button-row">
-                <button className="btn-primary" onClick={handleClone}>Clone to my Roster</button>
+                {detail.entry.entityType === "quest" ? (
+                  <button className="btn-primary" onClick={handleClaim}>Claim for My Table</button>
+                ) : (
+                  <button className="btn-primary" onClick={handleClone}>Clone to my Roster</button>
+                )}
                 <button className="btn-secondary" onClick={() => setReportOpen((v) => !v)}>Report</button>
               </div>
               {cloneStatus && <p className="success">{cloneStatus}</p>}

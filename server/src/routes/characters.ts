@@ -3,6 +3,7 @@ import { prisma } from "../db.js";
 import { toCharacterDTO, toDispositionLogEntryDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
 import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
+import { logCampaignEventOp } from "../campaignEventLog.js";
 
 export const charactersRouter = Router();
 
@@ -157,6 +158,15 @@ charactersRouter.post("/:id/adjust-disposition", async (req, res) => {
     characterUpdate,
     prisma.dispositionLogEntry.create({
       data: { characterId: row.id, authorName, delta, reason: reason ?? null, playerCharacterId: playerCharacterId ?? null, userId: req.userId! },
+    }),
+    logCampaignEventOp({
+      worldId: row.worldId,
+      entityType: "disposition",
+      entityId: row.id,
+      eventType: playerCharacterId ? "disposition.adjustedForPc" : "disposition.adjusted",
+      payload: { characterId: row.id, characterName: row.name, delta, reason, playerCharacterId },
+      authorName,
+      userId: req.userId!,
     }),
   ]);
   res.json(toCharacterDTO(updated));

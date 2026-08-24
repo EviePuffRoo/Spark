@@ -3,6 +3,7 @@ import { prisma } from "../db.js";
 import { toQuestHookDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
 import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
+import { logCampaignEventOp } from "../campaignEventLog.js";
 
 export const questsRouter = Router();
 
@@ -114,16 +115,29 @@ questsRouter.patch("/:id", async (req, res) => {
     if (claim && claim.posterWorldId) {
       const posterWorld = await prisma.world.findUnique({ where: { id: claim.posterWorldId } });
       if (posterWorld) {
+        const posterUser = await prisma.user.findUnique({ where: { id: claim.posterUserId } });
+        const posterAuthorName = posterUser?.displayName || posterUser?.username || "The DM";
+        const eventTitle = "A distant company answers the call";
+        const eventDescription = `Word reaches you that another band of adventurers, far from here, took up "${row!.title}" and saw it through to the end.`;
         await prisma.$transaction([
           prisma.campaignEvent.create({
             data: {
               worldId: claim.posterWorldId,
-              title: "A distant company answers the call",
-              description: `Word reaches you that another band of adventurers, far from here, took up "${row!.title}" and saw it through to the end.`,
+              title: eventTitle,
+              description: eventDescription,
               userId: claim.posterUserId,
             },
           }),
           prisma.guildJobClaim.update({ where: { id: claim.id }, data: { completedAt: new Date() } }),
+          logCampaignEventOp({
+            worldId: claim.posterWorldId,
+            entityType: "campaignEvent",
+            entityId: null,
+            eventType: "campaignEvent.logged",
+            payload: { title: eventTitle, description: eventDescription },
+            authorName: posterAuthorName,
+            userId: claim.posterUserId,
+          }),
         ]);
       }
     }

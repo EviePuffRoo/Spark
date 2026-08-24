@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { toCampaignEventDTO } from "../serialize.js";
 import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
+import { logCampaignEventOp } from "../campaignEventLog.js";
 
 export const campaignEventsRouter = Router();
 
@@ -38,14 +39,26 @@ campaignEventsRouter.post("/", async (req, res) => {
     if (!faction) return res.status(403).json({ error: "You don't have access to this faction" });
   }
 
-  const row = await prisma.campaignEvent.create({
-    data: {
-      worldId, title: title.trim(), description: description.trim(),
-      factionId: typeof factionId === "string" ? factionId : null,
-      userId: req.userId!,
-    },
-  });
-  res.status(201).json(toCampaignEventDTO(row));
+  const user = await prisma.user.findUnique({ where: { id: req.userId } });
+  const authorName = user?.displayName || user?.username || "The DM";
+  const trimmedTitle = title.trim();
+  const trimmedDescription = description.trim();
+
+  const [row] = await prisma.$transaction([
+    prisma.campaignEvent.create({
+      data: {
+        worldId, title: trimmedTitle, description: trimmedDescription,
+        factionId: typeof factionId === "string" ? factionId : null,
+        userId: req.userId!,
+      },
+    }),
+    logCampaignEventOp({
+      worldId, entityType: "campaignEvent", entityId: null, eventType: "campaignEvent.logged",
+      payload: { title: trimmedTitle, description: trimmedDescription, factionId: typeof factionId === "string" ? factionId : null },
+      authorName, userId: req.userId!,
+    }),
+  ]);
+  res.status(201).json(toCampaignEventDTO(row as Parameters<typeof toCampaignEventDTO>[0]));
 });
 
 campaignEventsRouter.delete("/:id", async (req, res) => {

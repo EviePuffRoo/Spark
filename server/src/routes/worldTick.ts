@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "../db.js";
 import { toWorldTickLogDTO } from "../serialize.js";
 import { findAccessibleWorld } from "../worldAccess.js";
+import { logCampaignEventOp } from "../campaignEventLog.js";
 import { computeWorldTickProposal } from "@spark/shared";
 import type { WorldTickProposalItem, ShopStockEntry, FactionRelationshipStance } from "@spark/shared";
 
@@ -102,16 +103,28 @@ worldTickRouter.post("/:worldId/apply", async (req, res) => {
     if (!validFactionIds.has(op.id)) continue;
     ops.push(prisma.faction.update({ where: { id: op.id }, data: { reputation: { increment: op.delta } } }));
     ops.push(prisma.factionLogEntry.create({ data: { factionId: op.id, authorName, delta: op.delta, reason: op.reason ?? null, userId: req.userId! } }));
+    ops.push(logCampaignEventOp({
+      worldId, entityType: "factionReputation", entityId: op.id, eventType: "faction.reputationChanged",
+      payload: { factionId: op.id, delta: op.delta, reason: op.reason }, authorName, userId: req.userId!,
+    }));
     itemCount++;
   }
   for (const op of characterOps) {
     if (!validCharacterIds.has(op.id)) continue;
     ops.push(prisma.character.update({ where: { id: op.id }, data: { disposition: { increment: op.delta } } }));
     ops.push(prisma.dispositionLogEntry.create({ data: { characterId: op.id, authorName, delta: op.delta, reason: op.reason ?? null, userId: req.userId! } }));
+    ops.push(logCampaignEventOp({
+      worldId, entityType: "disposition", entityId: op.id, eventType: "disposition.adjusted",
+      payload: { characterId: op.id, delta: op.delta, reason: op.reason }, authorName, userId: req.userId!,
+    }));
     itemCount++;
   }
   for (const ev of eventOps) {
     ops.push(prisma.campaignEvent.create({ data: { worldId, title: ev.title, description: ev.description, factionId: ev.factionId ?? null, userId: req.userId! } }));
+    ops.push(logCampaignEventOp({
+      worldId, entityType: "campaignEvent", entityId: null, eventType: "campaignEvent.logged",
+      payload: { title: ev.title, description: ev.description, factionId: ev.factionId }, authorName, userId: req.userId!,
+    }));
     itemCount++;
   }
   for (const [shopId, entryDeltas] of shopDeltas) {
@@ -132,9 +145,13 @@ worldTickRouter.post("/:worldId/apply", async (req, res) => {
   ops.push(prisma.worldTickLog.create({
     data: { worldId, fromDay: Math.trunc(fromDay), toDay: Math.trunc(toDay), itemCount, userId: req.userId! },
   }));
+  ops.push(logCampaignEventOp({
+    worldId, entityType: "worldTick", entityId: null, eventType: "worldTick.applied",
+    payload: { fromDay: Math.trunc(fromDay), toDay: Math.trunc(toDay), itemCount }, authorName, userId: req.userId!,
+  }));
 
   const results = await prisma.$transaction(ops);
-  const logRow = results[results.length - 1];
+  const logRow = results[results.length - 2];
   res.status(201).json(toWorldTickLogDTO(logRow as Parameters<typeof toWorldTickLogDTO>[0]));
 });
 

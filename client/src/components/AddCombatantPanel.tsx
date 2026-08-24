@@ -1,13 +1,9 @@
 import { useState } from "react";
 import type { SearchResult, LiveCombatant, EncounterTable, SizeCategory, Item } from "@spark/shared";
-import { computeEquipmentBonuses, parseStatBlockAttacks, parseSizeCategory, parseSpeedFeet } from "@spark/shared";
+import { computeEquipmentBonuses, parseStatBlockAttacks, parseSizeCategory, parseSpeedFeet, abilityModifier } from "@spark/shared";
 import { api } from "../api";
 import { EntitySearchPicker } from "./EntitySearchPicker";
 import { rollTableIndex } from "../rollTable";
-
-export function abilityModifier(score: number): number {
-  return Math.floor((score - 10) / 2);
-}
 
 export function rollD20(): number {
   return Math.floor(Math.random() * 20) + 1;

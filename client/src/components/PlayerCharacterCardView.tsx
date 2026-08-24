@@ -1,5 +1,5 @@
 import type { PlayerCharacterInput, PlayerCharacter, AbilityKey } from "@spark/shared";
-import { XP_THRESHOLDS } from "@spark/shared";
+import { XP_THRESHOLDS, formatModifier as modifier } from "@spark/shared";
 
 const ABILITY_ORDER: { key: AbilityKey; label: string }[] = [
   { key: "str", label: "STR" },
@@ -9,11 +9,6 @@ const ABILITY_ORDER: { key: AbilityKey; label: string }[] = [
   { key: "wis", label: "WIS" },
   { key: "cha", label: "CHA" },
 ];
-
-function modifier(score: number): string {
-  const mod = Math.floor((score - 10) / 2);
-  return mod >= 0 ? `+${mod}` : `${mod}`;
-}
 
 type LivingStateProps = Partial<Pick<PlayerCharacter, "currentHp" | "deathSaves" | "spellSlots" | "preparedSpells" | "classResources" | "xp" | "proficiencyBonus">>;
 

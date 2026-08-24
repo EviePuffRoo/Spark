@@ -68,6 +68,7 @@ export interface Backstory {
 }
 
 export type CharacterKind = "npc" | "monster";
+export type CharacterStatus = "active" | "deceased" | "fled";
 
 export interface Character {
   id: string;
@@ -93,6 +94,10 @@ export interface Character {
   // but generally left at its default for kind:"monster" entries, which
   // don't have ongoing relationships with the party the way NPCs do.
   disposition: number;
+  // "active" | "deceased" | "fled" — set by resolving a faction battle
+  // (see battleResolver.ts); every other character stays "active". Purely
+  // informational: nothing currently gates on a non-"active" status.
+  status: CharacterStatus;
   // Optional faction membership — coexists with disposition rather than
   // replacing it (same "coexists, doesn't replace" pattern as
   // Location.settlementId): an affiliated NPC's disposition is still a

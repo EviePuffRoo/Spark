@@ -37,6 +37,7 @@ export function toCharacterDTO(row: CharacterRow): Character {
     equippedItems: JSON.parse(row.equippedItems),
     attunedItems: JSON.parse(row.attunedItems),
     disposition: row.disposition,
+    status: row.status as Character["status"],
     factionId: row.factionId,
     settlementId: row.settlementId,
     createdAt: row.createdAt.toISOString(),

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { GeneratedFaction, FactionLogEntry, FactionRelationship, FactionRelationshipStance, SearchResult } from "@spark/shared";
+import type { GeneratedFaction, FactionLogEntry, FactionRelationship, FactionRelationshipStance, SearchResult, FactionBattleProposal } from "@spark/shared";
 import { computeReputationTier, REPUTATION_TIER_LABELS, FACTION_RELATIONSHIP_STANCES, FACTION_RELATIONSHIP_STANCE_LABELS } from "@spark/shared";
 import { api } from "../api";
 import { EntitySearchPicker } from "./EntitySearchPicker";
@@ -19,6 +19,12 @@ export function FactionCardView({
   const [otherFactionNames, setOtherFactionNames] = useState<Record<string, string>>({});
   const [picking, setPicking] = useState(false);
   const [pendingStance, setPendingStance] = useState<FactionRelationshipStance>("ally");
+  const [battleRelationshipId, setBattleRelationshipId] = useState<string | null>(null);
+  const [battleProposal, setBattleProposal] = useState<FactionBattleProposal | null>(null);
+  const [battleLoading, setBattleLoading] = useState(false);
+  const [battleApplying, setBattleApplying] = useState(false);
+  const [battleError, setBattleError] = useState<string | null>(null);
+  const [battleResult, setBattleResult] = useState<string | null>(null);
 
   const factionId = faction.id;
   const worldId = faction.worldId;
@@ -72,6 +78,45 @@ export function FactionCardView({
   async function deleteRelationship(id: string) {
     await api.deleteFactionRelationship(id);
     refreshRelationships();
+  }
+
+  async function simulateBattle(relationshipId: string) {
+    setBattleRelationshipId(relationshipId);
+    setBattleProposal(null);
+    setBattleError(null);
+    setBattleResult(null);
+    setBattleLoading(true);
+    try {
+      const proposal = await api.simulateFactionBattle(relationshipId);
+      setBattleProposal(proposal);
+    } catch (e) {
+      setBattleError((e as Error).message);
+    } finally {
+      setBattleLoading(false);
+    }
+  }
+
+  function discardBattle() {
+    setBattleRelationshipId(null);
+    setBattleProposal(null);
+    setBattleError(null);
+  }
+
+  async function applyBattle() {
+    if (!battleRelationshipId) return;
+    setBattleApplying(true);
+    setBattleError(null);
+    try {
+      const { proposal } = await api.applyFactionBattle(battleRelationshipId);
+      setBattleResult(proposal.title);
+      setBattleRelationshipId(null);
+      setBattleProposal(null);
+      onChanged?.();
+    } catch (e) {
+      setBattleError((e as Error).message);
+    } finally {
+      setBattleApplying(false);
+    }
   }
 
   return (
@@ -136,6 +181,7 @@ export function FactionCardView({
       {factionId && worldId && (
         <>
           <h3 className="section-heading">Relationships</h3>
+          {battleResult && <p className="success">Battle resolved: {battleResult}</p>}
           {relationships.length === 0 && <p className="hint">No known relationships with other factions yet.</p>}
           {relationships.length > 0 && (
             <ul className="entity-list">
@@ -147,10 +193,58 @@ export function FactionCardView({
                       <span className="entity-name">{otherFactionNames[otherId] ?? "…"}</span>
                       <div className="entity-meta">{FACTION_RELATIONSHIP_STANCE_LABELS[r.stance]}</div>
                     </div>
-                    {canEdit && (
-                      <button className="btn-danger" onClick={() => deleteRelationship(r.id)} aria-label={`Remove relationship with ${otherFactionNames[otherId] ?? "faction"}`}>
-                        Remove
-                      </button>
+                    <div className="button-row">
+                      {canEdit && r.stance === "war" && (
+                        <button className="btn-secondary" onClick={() => simulateBattle(r.id)}>⚔ Resolve Battle</button>
+                      )}
+                      {canEdit && (
+                        <button className="btn-danger" onClick={() => deleteRelationship(r.id)} aria-label={`Remove relationship with ${otherFactionNames[otherId] ?? "faction"}`}>
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                    {battleRelationshipId === r.id && (
+                      <div className="save-panel battle-review-panel">
+                        {battleLoading && <p className="hint">Simulating battle…</p>}
+                        {battleError && <p className="error">{battleError}</p>}
+                        {battleProposal && (
+                          <>
+                            <h4 className="section-heading">{battleProposal.title}</h4>
+                            <p>{battleProposal.narrative}</p>
+                            {battleProposal.winnerFactionId === null ? (
+                              <p className="hint">Neither side has any forces to commit — nothing to apply.</p>
+                            ) : (
+                              <>
+                                <ul className="entity-list">
+                                  {battleProposal.reputationDeltas.map((d) => (
+                                    <li key={d.factionId} className="entity-meta">
+                                      {d.factionId === factionId ? faction.name : (otherFactionNames[d.factionId] ?? "The other faction")}: reputation {d.delta > 0 ? "+" : ""}{d.delta}
+                                    </li>
+                                  ))}
+                                </ul>
+                                {battleProposal.casualties.length > 0 && (
+                                  <>
+                                    <p className="entity-meta">Casualties:</p>
+                                    <ul className="entity-list">
+                                      {battleProposal.casualties.map((c) => (
+                                        <li key={c.characterId} className="entity-meta">{c.characterName} — {c.outcome}</li>
+                                      ))}
+                                    </ul>
+                                  </>
+                                )}
+                              </>
+                            )}
+                            <div className="button-row">
+                              {battleProposal.winnerFactionId !== null && (
+                                <button className="btn-primary" onClick={applyBattle} disabled={battleApplying}>
+                                  {battleApplying ? "Applying…" : "Apply"}
+                                </button>
+                              )}
+                              <button className="btn-secondary" onClick={discardBattle} disabled={battleApplying}>Discard</button>
+                            </div>
+                          </>
+                        )}
+                      </div>
                     )}
                   </li>
                 );

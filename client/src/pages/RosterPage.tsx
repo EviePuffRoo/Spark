@@ -374,7 +374,10 @@ export function RosterPage({
       } : {}),
     };
     try {
-      if (mode === "characters") await api.updateCharacter(selected.id, patch);
+      // patch's `status` field (quest-mode only) shares a name with, but not a
+      // domain with, Character.status (battle outcome — set only via Resolve
+      // Battle, never this generic form) — clear it explicitly for this call.
+      if (mode === "characters") await api.updateCharacter(selected.id, { ...patch, status: undefined });
       else if (mode === "items") await api.updateItem(selected.id, patch);
       else if (mode === "locations") await api.updateLocation(selected.id, patch);
       else if (mode === "quests") await api.updateQuest(selected.id, patch);

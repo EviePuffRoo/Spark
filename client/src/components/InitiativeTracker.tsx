@@ -1004,7 +1004,7 @@ export function InitiativeTracker({
             {c.legendaryActionsMax !== undefined && (
               <div className="combatant-legendary">
                 <span className="legendary-pips" title={`${c.legendaryActionsRemaining ?? 0} of ${c.legendaryActionsMax} legendary actions remaining`}>
-                  Legendary: {"⚡".repeat(c.legendaryActionsRemaining ?? 0)}{"·".repeat(Math.max(0, c.legendaryActionsMax - (c.legendaryActionsRemaining ?? 0)))}
+                  Legendary: {"⚡".repeat(Math.max(0, c.legendaryActionsRemaining ?? 0))}{"·".repeat(Math.max(0, c.legendaryActionsMax - (c.legendaryActionsRemaining ?? 0)))}
                 </span>
                 {c.legendaryActionsList?.map((a) => (
                   <button

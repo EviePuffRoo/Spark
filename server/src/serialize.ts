@@ -8,13 +8,14 @@ import type {
   DispositionLogEntry as DispositionLogEntryRow, ShopCommission as ShopCommissionRow,
   FactionLogEntry as FactionLogEntryRow, FactionRelationship as FactionRelationshipRow,
   CampaignEvent as CampaignEventRow, WorldTickLog as WorldTickLogRow, DoomClock as DoomClockRow,
+  CampaignEventLog as CampaignEventLogRow,
 } from "@prisma/client";
 import type {
   Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, PlayerCharacter, RollLogEntry,
   Encounter, LiveCombatant, HpStatus, CodexNote, EntityType, LedgerEntry, LedgerEntryKind, EncounterZone, EncounterZoneEffect,
   ZoneMapTemplate, Dungeon, DowntimeActivity, DowntimeActivityType, Shop, ShopStockEntry, Region, Settlement, ChatMessage, BattleMap,
   DispositionLogEntry, ShopCommission, FactionLogEntry, FactionRelationship, FactionRelationshipStance, CampaignEvent,
-  PlacedTile, WorldTickLog, DoomClock,
+  PlacedTile, WorldTickLog, DoomClock, CampaignEventLogEntry,
 } from "@spark/shared";
 
 export function toCharacterDTO(row: CharacterRow): Character {
@@ -338,6 +339,20 @@ export function toCampaignEventDTO(row: CampaignEventRow): CampaignEvent {
     title: row.title,
     description: row.description,
     factionId: row.factionId ?? undefined,
+    userId: row.userId,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+export function toCampaignEventLogEntryDTO(row: CampaignEventLogRow): CampaignEventLogEntry {
+  return {
+    id: row.id,
+    worldId: row.worldId,
+    entityType: row.entityType as CampaignEventLogEntry["entityType"],
+    entityId: row.entityId,
+    eventType: row.eventType,
+    payload: JSON.parse(row.payload),
+    authorName: row.authorName,
     userId: row.userId,
     createdAt: row.createdAt.toISOString(),
   };

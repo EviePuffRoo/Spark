@@ -615,6 +615,23 @@ export interface WorldTickLog {
   createdAt: string;
 }
 
+// One row of the unified activity feed that mirrors CampaignEvent,
+// DispositionLogEntry, FactionLogEntry, and WorldTickLog into a single
+// queryable stream — see CampaignEventLog in the Prisma schema for the
+// full rationale. `payload` is event-type-specific: render it via a
+// switch on `eventType`, not by assuming a fixed shape.
+export interface CampaignEventLogEntry {
+  id: string;
+  worldId: string | null;
+  entityType: "disposition" | "factionReputation" | "campaignEvent" | "worldTick";
+  entityId: string | null;
+  eventType: string;
+  payload: Record<string, unknown>;
+  authorName: string;
+  userId: string;
+  createdAt: string;
+}
+
 export interface RollLogEntryInput {
   worldId: string;
   rollerName: string;

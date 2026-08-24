@@ -32,6 +32,7 @@ import type {
   PublicGalleryEntry, PublishEntryInput, GalleryReportReason, ModerationQueueEntry, AdminUserSummary, AdminStats,
   AuthUser, SignupResult, RecoveryCodeResult,
   SpellDef, ConditionDef, RuleDef, StatBlockTemplate, MagicItemDef,
+  WorldMemberRole,
 } from "@spark/shared";
 
 let onSessionExpired: (() => void) | null = null;
@@ -109,6 +110,7 @@ export interface WorldSummary extends World {
 export interface WorldMemberInfo {
   userId: string;
   username: string;
+  role: WorldMemberRole;
 }
 
 export const api = {
@@ -389,11 +391,13 @@ export const api = {
   advanceWorldDay: (id: string, days: number) =>
     request<World>(`/worlds/${id}/advance-day`, { method: "POST", body: JSON.stringify({ days }) }),
 
-  generateWorldJoinCode: (worldId: string) =>
-    request<{ code: string }>(`/worlds/${worldId}/join-code`, { method: "POST" }),
+  generateWorldJoinCode: (worldId: string, role?: WorldMemberRole) =>
+    request<{ code: string }>(`/worlds/${worldId}/join-code`, { method: "POST", body: JSON.stringify({ role }) }),
   joinWorld: (code: string) =>
     request<{ worldId: string; worldName: string }>("/worlds/join", { method: "POST", body: JSON.stringify({ code }) }),
   getWorldMembers: (worldId: string) => request<WorldMemberInfo[]>(`/worlds/${worldId}/members`),
+  updateWorldMemberRole: (worldId: string, userId: string, role: WorldMemberRole) =>
+    request<void>(`/worlds/${worldId}/members/${userId}`, { method: "PATCH", body: JSON.stringify({ role }) }),
   removeWorldMember: (worldId: string, userId: string) =>
     request<void>(`/worlds/${worldId}/members/${userId}`, { method: "DELETE" }),
   leaveWorld: (worldId: string) => request<void>(`/worlds/${worldId}/leave`, { method: "POST" }),

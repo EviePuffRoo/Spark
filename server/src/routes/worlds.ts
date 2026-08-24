@@ -2,10 +2,15 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { generateRecoveryCode, hashRecoveryCode, verifyRecoveryCode } from "../auth.js";
 import { getMemberWorldIds } from "../worldAccess.js";
-import { FREE_TIER_WORLD_LIMIT } from "@spark/shared";
+import { FREE_TIER_WORLD_LIMIT, type WorldMemberRole } from "@spark/shared";
 import { seedStarterWorld } from "../seedStarterWorld.js";
 
 export const worldsRouter = Router();
+
+const WORLD_MEMBER_ROLES: WorldMemberRole[] = ["player", "coDM"];
+function isWorldMemberRole(value: unknown): value is WorldMemberRole {
+  return typeof value === "string" && (WORLD_MEMBER_ROLES as string[]).includes(value);
+}
 
 const COUNT_SELECT = {
   characters: true, items: true, locations: true, questHooks: true,
@@ -160,9 +165,11 @@ worldsRouter.delete("/:id", async (req, res) => {
 worldsRouter.post("/:id/join-code", async (req, res) => {
   const world = await prisma.world.findFirst({ where: { id: req.params.id, userId: req.userId } });
   if (!world) return res.status(404).json({ error: "World not found" });
+  const { role } = req.body ?? {};
+  if (role !== undefined && !isWorldMemberRole(role)) return res.status(400).json({ error: "Invalid role" });
   const code = generateRecoveryCode();
   const joinCodeHash = await hashRecoveryCode(code);
-  await prisma.world.update({ where: { id: world.id }, data: { joinCodeHash } });
+  await prisma.world.update({ where: { id: world.id }, data: { joinCodeHash, joinCodeRole: role ?? "player" } });
   res.json({ code });
 });
 
@@ -183,7 +190,7 @@ worldsRouter.post("/join", async (req, res) => {
 
   await prisma.worldMember.upsert({
     where: { worldId_userId: { worldId: matched.id, userId: req.userId! } },
-    create: { worldId: matched.id, userId: req.userId! },
+    create: { worldId: matched.id, userId: req.userId!, role: matched.joinCodeRole },
     update: {},
   });
   res.status(201).json({ worldId: matched.id, worldName: matched.name });
@@ -196,7 +203,17 @@ worldsRouter.get("/:id/members", async (req, res) => {
     where: { worldId: req.params.id },
     include: { user: { select: { id: true, username: true } } },
   });
-  res.json(members.map((m) => ({ userId: m.user.id, username: m.user.username })));
+  res.json(members.map((m) => ({ userId: m.user.id, username: m.user.username, role: m.role })));
+});
+
+worldsRouter.patch("/:id/members/:userId", async (req, res) => {
+  const world = await prisma.world.findFirst({ where: { id: req.params.id, userId: req.userId } });
+  if (!world) return res.status(404).json({ error: "World not found" });
+  const { role } = req.body ?? {};
+  if (!isWorldMemberRole(role)) return res.status(400).json({ error: "Invalid role" });
+  const result = await prisma.worldMember.updateMany({ where: { worldId: req.params.id, userId: req.params.userId }, data: { role } });
+  if (result.count === 0) return res.status(404).json({ error: "Member not found" });
+  res.status(204).end();
 });
 
 worldsRouter.delete("/:id/members/:userId", async (req, res) => {

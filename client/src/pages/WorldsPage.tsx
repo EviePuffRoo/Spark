@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { FREE_TIER_WORLD_LIMIT } from "@spark/shared";
+import { FREE_TIER_WORLD_LIMIT, type WorldMemberRole } from "@spark/shared";
 import { api, type WorldSummary, type WorldMemberInfo } from "../api";
 import { useActiveWorld } from "../ActiveWorldContext";
 import { useAuth } from "../AuthContext";
@@ -49,6 +49,7 @@ export function WorldsPage({ onViewRoster, onNavigateToBilling }: { onViewRoster
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
   const [members, setMembers] = useState<WorldMemberInfo[]>([]);
   const [memberError, setMemberError] = useState<string | null>(null);
+  const [inviteRole, setInviteRole] = useState<WorldMemberRole>("player");
 
   function refresh() {
     api.listWorlds().then(setWorlds).catch((e) => setError(e.message)).finally(() => setLoading(false));
@@ -144,6 +145,7 @@ export function WorldsPage({ onViewRoster, onNavigateToBilling }: { onViewRoster
     setExpandedWorldId(worldId);
     setGeneratedCode(null);
     setMemberError(null);
+    setInviteRole("player");
     try {
       setMembers(await api.getWorldMembers(worldId));
     } catch (e) {
@@ -153,8 +155,17 @@ export function WorldsPage({ onViewRoster, onNavigateToBilling }: { onViewRoster
 
   async function handleGenerateCode(worldId: string) {
     try {
-      const { code } = await api.generateWorldJoinCode(worldId);
+      const { code } = await api.generateWorldJoinCode(worldId, inviteRole);
       setGeneratedCode(code);
+    } catch (e) {
+      setMemberError((e as Error).message);
+    }
+  }
+
+  async function handleChangeMemberRole(worldId: string, userId: string, role: WorldMemberRole) {
+    try {
+      await api.updateWorldMemberRole(worldId, userId, role);
+      setMembers(await api.getWorldMembers(worldId));
     } catch (e) {
       setMemberError((e as Error).message);
     }
@@ -283,6 +294,13 @@ export function WorldsPage({ onViewRoster, onNavigateToBilling }: { onViewRoster
               {expandedWorldId === w.id && (
                 <div className="save-panel world-sharing-panel">
                   <h3 className="section-heading">Sharing</h3>
+                  <label className="field">
+                    <span>Invite as</span>
+                    <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value as WorldMemberRole)}>
+                      <option value="player">Player</option>
+                      <option value="coDM">Co-DM</option>
+                    </select>
+                  </label>
                   <button className="btn-secondary" onClick={() => handleGenerateCode(w.id)}>
                     {generatedCode ? "Regenerate Invite Code" : "Get Invite Code"}
                   </button>
@@ -298,8 +316,18 @@ export function WorldsPage({ onViewRoster, onNavigateToBilling }: { onViewRoster
                     <ul className="entity-list">
                       {members.map((m) => (
                         <li key={m.userId} className="world-row">
-                          <span className="entity-name">{m.username}</span>
-                          <button className="btn-danger" onClick={() => handleRemoveMember(w.id, m.userId)} aria-label={`Remove ${m.username}`}>Remove</button>
+                          <span className="entity-name">{m.username} {m.role === "coDM" && <span className="status-badge status-active">Co-DM</span>}</span>
+                          <div className="button-row">
+                            <select
+                              value={m.role}
+                              onChange={(e) => handleChangeMemberRole(w.id, m.userId, e.target.value as WorldMemberRole)}
+                              aria-label={`Change role for ${m.username}`}
+                            >
+                              <option value="player">Player</option>
+                              <option value="coDM">Co-DM</option>
+                            </select>
+                            <button className="btn-danger" onClick={() => handleRemoveMember(w.id, m.userId)} aria-label={`Remove ${m.username}`}>Remove</button>
+                          </div>
                         </li>
                       ))}
                     </ul>

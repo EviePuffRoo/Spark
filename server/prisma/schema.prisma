@@ -59,6 +59,7 @@ model World {
   name        String
   description String?
   joinCodeHash String?
+  joinCodeRole String      @default("player")
   nextSessionAt DateTime?
   currentDay  Int         @default(1)
   createdAt   DateTime    @default(now())
@@ -104,6 +105,7 @@ model WorldMember {
   world     World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String   @default("player")
   createdAt DateTime @default(now())
 
   @@unique([worldId, userId])

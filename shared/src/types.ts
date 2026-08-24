@@ -1227,6 +1227,17 @@ export interface WorldAchievements {
   progress: AchievementProgress[];
 }
 
+// The same per-world achievement computation (see achievements.ts),
+// summed across every world the account owns or has joined — a career
+// rollup, not a new stats system. Private to the account owner: no
+// worldId, so there's nothing here for a non-owner to be denied access to.
+export interface LegacyAchievements {
+  worldCount: number;
+  unlockedCount: number;
+  totalCount: number;
+  progress: AchievementProgress[];
+}
+
 export type BaseUpgradeCategory = "defenses" | "trade" | "influence" | "comfort";
 
 // The mechanical payoff a purchased upgrade actually delivers — every

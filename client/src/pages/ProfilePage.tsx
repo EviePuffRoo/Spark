@@ -3,6 +3,7 @@ import { useAuth } from "../AuthContext";
 import { useTheme } from "../useTheme";
 import { useLocalStorage } from "../useLocalStorage";
 import { api } from "../api";
+import { LegacyPanel } from "../components/LegacyPanel";
 
 export function ProfilePage() {
   const { user, logout, regenerateRecoveryCode, deleteAccount, updateDisplayName } = useAuth();
@@ -121,6 +122,8 @@ export function ProfilePage() {
             <button className="btn-primary" type="submit" disabled={savingDisplayName}>{savingDisplayName ? "Saving…" : "Save Display Name"}</button>
           </form>
         </div>
+
+        <LegacyPanel />
 
         <h3 className="section-heading">Account</h3>
         <div className="save-panel">

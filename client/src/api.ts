@@ -13,7 +13,7 @@ import type {
   CodexNote, CodexNoteInput,
   LedgerEntry, LedgerEntryInput, LedgerSummary,
   SessionHighlights,
-  WorldAchievements,
+  WorldAchievements, LegacyAchievements,
   BaseState,
   DowntimeActivity, DowntimeActivityInput, DowntimeOutcomeActivityType, DowntimeOutcomeDef,
   Encounter, EncounterStateInput,
@@ -263,6 +263,7 @@ export const api = {
   getSessionHighlights: (worldId: string, since: string) =>
     request<SessionHighlights>(`/session-highlights?worldId=${worldId}&since=${encodeURIComponent(since)}`),
   getAchievements: (worldId: string) => request<WorldAchievements>(`/achievements?worldId=${worldId}`),
+  getLegacyAchievements: () => request<LegacyAchievements>("/achievements/legacy"),
   getBase: (worldId: string) => request<BaseState>(`/base?worldId=${worldId}`),
   purchaseBaseUpgrade: (worldId: string, upgradeId: string, factionId?: string, rivalFactionId?: string) =>
     request<BaseState>("/base/purchase", { method: "POST", body: JSON.stringify({ worldId, upgradeId, factionId, rivalFactionId }) }),

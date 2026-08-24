@@ -1,12 +1,59 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { BattleMap, PlacedTile, TileCategory } from "@spark/shared";
-import { BATTLE_TILES, BATTLE_TILE_BY_ID, BATTLE_MAP_MAX_WIDTH, BATTLE_MAP_MAX_HEIGHT } from "@spark/shared";
+import { BATTLE_TILES, BATTLE_TILE_BY_ID, BATTLE_MAP_MAX_WIDTH, BATTLE_MAP_MAX_HEIGHT, battleMapToUvtt, uvttToBattleMapInput } from "@spark/shared";
 import { api } from "../api";
 import { useActiveWorld } from "../ActiveWorldContext";
 import { MapBuilderIcon } from "../components/icons";
 import { BattleTileDefs, TileSwatch } from "../components/TileIcon";
 import { EmptyState } from "../components/EmptyState";
 import { SaveEntityFields } from "../components/SaveEntityFields";
+
+// Flat reference colors for the VTT export's background image — not a
+// pixel-perfect render of Spark's tile icons (those are SVGs designed for
+// crisp display at small sizes, not for baking into a raster background),
+// just enough for a DM to see room shapes and terrain at a glance once
+// the file is open in their own VTT. Only the floor layer is drawn: decor
+// sits cosmetically on top of a floor tile and gmOnly markers are the DM's
+// own secret annotations, neither of which define what a cell "is".
+const CATEGORY_EXPORT_COLOR: Record<TileCategory, string> = {
+  terrain: "#5f8a4a",
+  structure: "#6b6b66",
+  nature: "#3a6b30",
+  hazard: "#a8442f",
+  decor: "#5f8a4a",
+  gmOnly: "#5f8a4a",
+};
+const EXPORT_PIXELS_PER_CELL = 70;
+
+function renderBattleMapBackgroundImage(width: number, height: number, floorTiles: Map<string, string>): string {
+  const canvas = document.createElement("canvas");
+  canvas.width = width * EXPORT_PIXELS_PER_CELL;
+  canvas.height = height * EXPORT_PIXELS_PER_CELL;
+  const ctx = canvas.getContext("2d")!;
+  ctx.fillStyle = CATEGORY_EXPORT_COLOR.terrain;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  for (const [key, tileId] of floorTiles) {
+    const [x, y] = key.split(",").map(Number);
+    const category = BATTLE_TILE_BY_ID[tileId]?.category ?? "terrain";
+    ctx.fillStyle = CATEGORY_EXPORT_COLOR[category];
+    ctx.fillRect(x * EXPORT_PIXELS_PER_CELL, y * EXPORT_PIXELS_PER_CELL, EXPORT_PIXELS_PER_CELL, EXPORT_PIXELS_PER_CELL);
+  }
+  // Strip the "data:image/png;base64," prefix — UVTT's image field wants
+  // bare base64.
+  return canvas.toDataURL("image/png").split(",")[1] ?? "";
+}
+
+function downloadVttFile(filename: string, doc: unknown) {
+  const blob = new Blob([JSON.stringify(doc)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
 
 const CELL = 32;
 
@@ -111,6 +158,9 @@ export function MapBuilderPage() {
   const [publishDescription, setPublishDescription] = useState("");
   const [publishStatus, setPublishStatus] = useState<"idle" | "saving" | "published">("idle");
 
+  const [importing, setImporting] = useState(false);
+  const importInputRef = useRef<HTMLInputElement>(null);
+
   const svgRef = useRef<SVGSVGElement>(null);
   const paintingRef = useRef(false);
 
@@ -133,6 +183,24 @@ export function MapBuilderPage() {
       openMap(created);
     } catch (e) {
       setError((e as Error).message);
+    }
+  }
+
+  async function importFromVtt(file: File) {
+    setImporting(true);
+    setError(null);
+    try {
+      const text = await file.text();
+      const doc = JSON.parse(text);
+      const baseName = file.name.replace(/\.(dd2vtt|uvtt|json)$/i, "") || "Imported Map";
+      const input = uvttToBattleMapInput(doc, baseName);
+      const created = await api.saveBattleMap({ ...input, worldId: worldId || null });
+      refresh();
+      openMap(created);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setImporting(false);
     }
   }
 
@@ -260,6 +328,14 @@ export function MapBuilderPage() {
     paintingRef.current = false;
   }
 
+  function exportToVtt() {
+    if (!activeMap) return;
+    const tiles = layerMapsToTiles(floorTiles, decorTiles, gmOnlyTiles, gmOnlyNotes);
+    const image = renderBattleMapBackgroundImage(activeMap.width, activeMap.height, floorTiles);
+    const doc = battleMapToUvtt({ width: activeMap.width, height: activeMap.height, tiles }, image);
+    downloadVttFile(`${activeMap.name.trim() || "battle-map"}.dd2vtt`, doc);
+  }
+
   async function saveMap() {
     if (!activeMap) return;
     setSaving(true);
@@ -311,6 +387,9 @@ export function MapBuilderPage() {
           {error && <p className="error">{error}</p>}
           <div className="map-builder-actions">
             <button className="btn-secondary" onClick={closeMap}>← Back to My Maps</button>
+            <button className="btn-secondary" onClick={exportToVtt} title="Download as a Universal VTT (.dd2vtt) file to import into Foundry, DungeonFog, or another VTT">
+              Export to VTT
+            </button>
             <button className="btn-primary" onClick={saveMap} disabled={saving || !dirty}>
               {saving ? "Saving…" : dirty ? "Save Map" : "Saved"}
             </button>
@@ -459,7 +538,30 @@ export function MapBuilderPage() {
         <p className="hint">Hand-build battle maps from a curated tileset. No image uploads. Paint terrain, walls, and hazards tile by tile, save, and reuse them across sessions.</p>
         {error && <p className="error">{error}</p>}
 
-        {!creating && <button className="btn-primary" onClick={() => setCreating(true)}>+ New Map</button>}
+        {!creating && (
+          <div className="button-row">
+            <button className="btn-primary" onClick={() => setCreating(true)}>+ New Map</button>
+            <button
+              className="btn-secondary"
+              onClick={() => importInputRef.current?.click()}
+              disabled={importing}
+              title="Import a Universal VTT (.dd2vtt/.uvtt) file exported from Foundry, DungeonFog, or another VTT"
+            >
+              {importing ? "Importing…" : "Import from VTT"}
+            </button>
+            <input
+              ref={importInputRef}
+              type="file"
+              accept=".dd2vtt,.uvtt,.json,application/json"
+              style={{ display: "none" }}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) importFromVtt(file);
+                e.target.value = "";
+              }}
+            />
+          </div>
+        )}
         {creating && (
           <div className="save-panel">
             <label className="field">

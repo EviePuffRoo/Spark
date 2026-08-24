@@ -56,3 +56,4 @@ export * from "./generator/regions.js";
 export * from "./generator/settlements.js";
 export * from "./generator/downtimeOutcomes.js";
 export * from "./rulesets/index.js";
+export * from "./vttBridge.js";

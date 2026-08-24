@@ -423,6 +423,7 @@ export const api = {
     request<{ id: string }>("/public", { method: "POST", body: JSON.stringify(body) }),
   unpublishEntry: (id: string) => request<void>(`/public/${id}`, { method: "DELETE" }),
   cloneFromGallery: (id: string) => request<{ id: string }>(`/public/${id}/clone`, { method: "POST" }),
+  claimGuildJob: (id: string) => request<{ id: string }>(`/public/${id}/claim-quest`, { method: "POST" }),
   reportGalleryEntry: (id: string, reason: GalleryReportReason, detail?: string) =>
     request<{ ok: true }>(`/public/${id}/report`, { method: "POST", body: JSON.stringify({ reason, detail }) }),
 

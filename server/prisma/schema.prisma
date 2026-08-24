@@ -831,6 +831,28 @@ model GalleryReport {
   @@index([entryId])
 }
 
+// The one deliberate, narrow hole in the account boundary the Guild Board
+// needs: links a quest hook a DM published and another DM claimed (cloned
+// into their own roster from the gallery), so completing the claimer's
+// copy can write exactly one CampaignEvent back into the poster's own
+// world. Every field here is a plain scalar, not a Prisma relation, on
+// purpose — this is a loose, best-effort cross-account audit trail, not
+// something that should cascade-delete or hard-fail if the poster's
+// world, quest, or account is gone by the time completion happens.
+model GuildJobClaim {
+  id                 String    @id @default(cuid())
+  publishedEntryId   String
+  posterUserId       String
+  posterWorldId      String?
+  posterQuestHookId  String
+  claimerUserId      String
+  claimerQuestHookId String    @unique
+  claimedAt          DateTime  @default(now())
+  completedAt        DateTime?
+
+  @@index([claimerQuestHookId])
+}
+
 model Link {
   id        String   @id @default(cuid())
   fromType  String

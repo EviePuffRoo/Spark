@@ -183,6 +183,36 @@ publicGalleryRouter.post("/:id/report", reportLimiter, async (req, res) => {
   res.status(201).json({ ok: true });
 });
 
+// The Guild Board action: clones a published quest hook into the caller's
+// own roster (same mechanism as /clone) and, additionally, records a
+// GuildJobClaim linking the new copy back to the original poster. That
+// link is what lets completing this quest later notify the poster's own
+// world — see the completion hook in routes/quests.ts.
+publicGalleryRouter.post("/:id/claim-quest", async (req, res) => {
+  const entry = await prisma.publishedEntry.findUnique({ where: { id: req.params.id } });
+  if (!entry || entry.removedAt) return res.status(404).json({ error: "Published entry not found" });
+  if (entry.entityType !== "quest") return res.status(400).json({ error: "Only quest hooks can be claimed from the Guild Board" });
+
+  const adapter = getAdapter(entry.entityType);
+  if (!adapter) return res.status(400).json({ error: "Unknown entity type" });
+
+  const sourceRow = await adapter.findPublic(entry.entityId);
+  if (!sourceRow) return res.status(404).json({ error: "The original entry has been deleted" });
+
+  const cloned = await adapter.duplicate(sourceRow, req.userId!, null);
+  await prisma.guildJobClaim.create({
+    data: {
+      publishedEntryId: entry.id,
+      posterUserId: entry.userId,
+      posterWorldId: sourceRow.worldId ?? null,
+      posterQuestHookId: entry.entityId,
+      claimerUserId: req.userId!,
+      claimerQuestHookId: cloned.id,
+    },
+  });
+  res.status(201).json({ id: cloned.id });
+});
+
 publicGalleryRouter.post("/:id/clone", async (req, res) => {
   const entry = await prisma.publishedEntry.findUnique({ where: { id: req.params.id } });
   if (!entry || entry.removedAt) return res.status(404).json({ error: "Published entry not found" });

@@ -7,14 +7,14 @@ import type {
   Region as RegionRow, Settlement as SettlementRow, ChatMessage as ChatMessageRow, BattleMap as BattleMapRow,
   DispositionLogEntry as DispositionLogEntryRow, ShopCommission as ShopCommissionRow,
   FactionLogEntry as FactionLogEntryRow, FactionRelationship as FactionRelationshipRow,
-  CampaignEvent as CampaignEventRow, WorldTickLog as WorldTickLogRow,
+  CampaignEvent as CampaignEventRow, WorldTickLog as WorldTickLogRow, DoomClock as DoomClockRow,
 } from "@prisma/client";
 import type {
   Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, PlayerCharacter, RollLogEntry,
   Encounter, LiveCombatant, HpStatus, CodexNote, EntityType, LedgerEntry, LedgerEntryKind, EncounterZone, EncounterZoneEffect,
   ZoneMapTemplate, Dungeon, DowntimeActivity, DowntimeActivityType, Shop, ShopStockEntry, Region, Settlement, ChatMessage, BattleMap,
   DispositionLogEntry, ShopCommission, FactionLogEntry, FactionRelationship, FactionRelationshipStance, CampaignEvent,
-  PlacedTile, WorldTickLog,
+  PlacedTile, WorldTickLog, DoomClock,
 } from "@spark/shared";
 
 export function toCharacterDTO(row: CharacterRow): Character {
@@ -350,6 +350,20 @@ export function toWorldTickLogDTO(row: WorldTickLogRow): WorldTickLog {
     itemCount: row.itemCount,
     userId: row.userId,
     createdAt: row.createdAt.toISOString(),
+  };
+}
+
+export function toDoomClockDTO(row: DoomClockRow): DoomClock {
+  return {
+    id: row.id,
+    worldId: row.worldId,
+    userId: row.userId,
+    label: row.label,
+    segments: row.segments,
+    filled: row.filled,
+    visibleToParty: row.visibleToParty,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
   };
 }
 

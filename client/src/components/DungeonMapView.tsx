@@ -155,13 +155,15 @@ export function DungeonMapView({
               <g
                 key={room.id}
                 transform={`translate(${room.rect.x} ${room.rect.y})`}
-                className={`dungeon-room${selectedRoomId === room.id ? " dungeon-room-selected" : ""}`}
+                className={`dungeon-room${selectedRoomId === room.id ? " dungeon-room-selected" : ""}${room.state?.cleared ? " dungeon-room-cleared" : ""}${room.state?.alerted ? " dungeon-room-alerted" : ""}`}
                 onPointerDown={(e) => handleRoomPointerDown(e, room)}
                 onPointerMove={(e) => handleRoomPointerMove(e, room)}
                 onPointerUp={(e) => handleRoomPointerUp(e, room)}
               >
                 <rect width={room.rect.width} height={room.rect.height} rx={6} />
                 <text x={room.rect.width / 2} y={room.rect.height / 2}>{room.name}</text>
+                {room.state?.cleared && <circle className="dungeon-room-status-dot cleared" cx={room.rect.width - 10} cy={10} r={5} />}
+                {room.state?.alerted && <circle className="dungeon-room-status-dot alerted" cx={room.rect.width - (room.state?.cleared ? 24 : 10)} cy={10} r={5} />}
               </g>
             ))}
           </g>
@@ -171,6 +173,14 @@ export function DungeonMapView({
       {selectedRoom && (
         <div className="save-panel">
           <h3 className="section-heading">{selectedRoom.name}</h3>
+          {(selectedRoom.state?.cleared || selectedRoom.state?.alerted) && (
+            <p className="hint">
+              {selectedRoom.state.cleared && <span className="room-status-badge cleared">Cleared</span>}
+              {" "}
+              {selectedRoom.state.alerted && <span className="room-status-badge alerted">Alerted</span>}
+              {selectedRoom.state.lastVisitedDay !== undefined && ` · Last visited day ${selectedRoom.state.lastVisitedDay}`}
+            </p>
+          )}
           {selectedRoom.exits.length === 0 ? (
             <p className="hint">No exits.</p>
           ) : (

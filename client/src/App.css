@@ -2410,6 +2410,47 @@ textarea {
   pointer-events: none;
 }
 
+.dungeon-room.dungeon-room-cleared rect {
+  stroke-dasharray: 4 3;
+}
+
+.dungeon-room.dungeon-room-alerted rect {
+  stroke: var(--danger);
+}
+
+.dungeon-room-status-dot {
+  pointer-events: none;
+}
+
+.dungeon-room-status-dot.cleared {
+  fill: var(--success);
+}
+
+.dungeon-room-status-dot.alerted {
+  fill: var(--danger);
+}
+
+.room-status-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.room-status-badge.cleared {
+  background: color-mix(in srgb, var(--success) 16%, transparent);
+  color: var(--success);
+}
+
+.room-status-badge.alerted {
+  background: color-mix(in srgb, var(--danger) 16%, transparent);
+  color: var(--danger);
+}
+
 .chip-row {
   display: flex;
   flex-wrap: wrap;

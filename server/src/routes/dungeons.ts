@@ -3,7 +3,7 @@ import { prisma } from "../db.js";
 import { toDungeonDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
 import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
-import type { DungeonExit, DungeonRoom, DungeonRoomRect } from "@spark/shared";
+import type { DungeonExit, DungeonRoom, DungeonRoomRect, DungeonRoomState } from "@spark/shared";
 
 export const dungeonsRouter = Router();
 
@@ -25,6 +25,19 @@ function coerceRect(raw: unknown): DungeonRoomRect | undefined {
   return { x: r.x, y: r.y, width: r.width, height: r.height };
 }
 
+function coerceRoomState(raw: unknown): DungeonRoomState | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const s = raw as Record<string, unknown>;
+  return {
+    cleared: !!s.cleared,
+    alerted: !!s.alerted,
+    lastVisitedDay: typeof s.lastVisitedDay === "number" ? s.lastVisitedDay : undefined,
+    disarmedHazardZoneIds: Array.isArray(s.disarmedHazardZoneIds)
+      ? s.disarmedHazardZoneIds.filter((id): id is string => typeof id === "string")
+      : [],
+  };
+}
+
 function coerceRoom(raw: unknown): DungeonRoom | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
@@ -36,6 +49,7 @@ function coerceRoom(raw: unknown): DungeonRoom | null {
     exits: Array.isArray(r.exits) ? r.exits.map(coerceExit).filter((e): e is DungeonExit => e !== null) : [],
     rect: coerceRect(r.rect),
     battleMapId: typeof r.battleMapId === "string" ? r.battleMapId : undefined,
+    state: coerceRoomState(r.state),
   };
 }
 

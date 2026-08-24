@@ -1,3 +1,4 @@
+import { getCached, putCached } from "./offlineCache";
 import type {
   Character, GenerateRequest, GeneratedCharacter, World, DispositionLogEntry,
   Item, GenerateItemRequest, GeneratedItem,
@@ -113,9 +114,32 @@ export interface WorldMemberInfo {
   role: WorldMemberRole;
 }
 
+const COMPENDIUM_CACHE_KEY = "compendium";
+
+export interface CompendiumResult {
+  data: CompendiumData;
+  offline: boolean;
+  cachedAt: string | null;
+}
+
 export const api = {
   getReference: () => request<ReferenceData>("/reference"),
-  getCompendium: () => request<CompendiumData>("/compendium"),
+  // The Compendium (spells/monsters/rules/conditions/magic items) is static
+  // reference content, identical for every request — unlike everything
+  // else in api.ts, it's safe to fall back to a locally cached copy when
+  // offline. See offlineCache.ts for why this one endpoint is the
+  // exception, not the rule.
+  getCompendium: async (): Promise<CompendiumResult> => {
+    try {
+      const data = await request<CompendiumData>("/compendium");
+      void putCached(COMPENDIUM_CACHE_KEY, data);
+      return { data, offline: false, cachedAt: null };
+    } catch (e) {
+      const cached = await getCached<CompendiumData>(COMPENDIUM_CACHE_KEY);
+      if (cached) return { data: cached.data, offline: true, cachedAt: cached.cachedAt };
+      throw e;
+    }
+  },
   generate: (body: GenerateRequest) =>
     request<GeneratedCharacter>("/generate", { method: "POST", body: JSON.stringify(body) }),
   generateItem: (body: GenerateItemRequest) =>

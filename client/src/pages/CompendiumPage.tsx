@@ -7,6 +7,7 @@ import { EmptyState } from "../components/EmptyState";
 import { StatBlockView } from "../components/StatBlockView";
 import { ItemCardView } from "../components/ItemCardView";
 import { useScrollDetailOnSelect } from "../useScrollDetailOnSelect";
+import { timeAgo } from "../components/DiceRoller";
 
 type CompendiumTab = "spells" | "conditions" | "rules" | "bestiary" | "magicItems";
 
@@ -43,6 +44,8 @@ function spellComponentsText(spell: SpellDef): string {
 export function CompendiumPage() {
   const [data, setData] = useState<CompendiumData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [offline, setOffline] = useState(false);
+  const [cachedAt, setCachedAt] = useState<string | null>(null);
   const [tab, setTab] = useState<CompendiumTab>("spells");
   const [search, setSearch] = useState("");
   const [levelFilter, setLevelFilter] = useState<number | "all">("all");
@@ -55,7 +58,13 @@ export function CompendiumPage() {
   useScrollDetailOnSelect(detailRef, selectedId);
 
   useEffect(() => {
-    api.getCompendium().then(setData).finally(() => setLoading(false));
+    api.getCompendium()
+      .then((result) => {
+        setData(result.data);
+        setOffline(result.offline);
+        setCachedAt(result.cachedAt);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   function switchTab(next: CompendiumTab) {
@@ -141,6 +150,11 @@ export function CompendiumPage() {
           <h2>Compendium</h2>
         </div>
         <p className="hint">SRD spells, conditions, quick-reference rules, monster stat blocks, and curated magic items, searchable, no tabbing out mid-session.</p>
+        {offline && (
+          <p className="hint" role="status">
+            You're offline — showing a saved copy from {timeAgo(cachedAt ? new Date(cachedAt).getTime() : undefined) ?? "your last visit"}.
+          </p>
+        )}
 
         <div className="tabs roster-mode-tabs">
           {(Object.keys(TAB_LABELS) as CompendiumTab[]).map((t) => (

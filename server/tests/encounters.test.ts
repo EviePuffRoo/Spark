@@ -172,6 +172,31 @@ describe("combat automation: attacks and condition durations", () => {
     expect(playerView.body.combatants[0].legendaryActionsList).toBeUndefined();
     expect(playerView.body.combatants[0].lairActionsList).toBeUndefined();
   });
+
+  it("clamps visionRadiusFeet/lightRadiusFeet/legendaryActionsMax to a finite upper bound rather than persisting them unbounded", async () => {
+    // An unbounded radius here would otherwise turn computeVisibleCells'
+    // O(radius^2) loop into a multi-trillion-iteration hang on every read
+    // of this encounter, and an unbounded legendaryActionsMax would crash
+    // the client's `.repeat()` pip rendering — see clampFinite's comment
+    // in encounters.ts.
+    const { agent: dm } = await signupAgent("clamp-dm");
+    const world = await dm.post("/api/worlds").send({ name: "Clamp Test World" });
+    const worldId = world.body.id as string;
+
+    const combatants = [
+      {
+        id: "c1", name: "Overloaded", kind: "monster", initiative: 10, conditions: [], notes: "", hpVisible: false,
+        visionRadiusFeet: 5_000_000, lightRadiusFeet: 5_000_000, legendaryActionsMax: 1_000_000_000, legendaryActionsRemaining: -50,
+      },
+    ];
+    const put = await dm.put(`/api/encounters/${worldId}`).send({ combatants, round: 1, turnIndex: 0 });
+    expect(put.status).toBe(200);
+    const c = put.body.combatants[0];
+    expect(c.visionRadiusFeet).toBeLessThanOrEqual(1000);
+    expect(c.lightRadiusFeet).toBeLessThanOrEqual(1000);
+    expect(c.legendaryActionsMax).toBeLessThanOrEqual(20);
+    expect(c.legendaryActionsRemaining).toBe(0);
+  });
 });
 
 describe("grid combat: battle map position and move-grid", () => {
@@ -255,6 +280,24 @@ describe("grid combat: battle map position and move-grid", () => {
     const { agent: outsider } = await signupAgent("gridoutsider1");
     const res = await outsider.post(`/api/encounters/${worldId}/move-grid`).send({ combatantId: "c1", gridX: 1, gridY: 1 });
     expect(res.status).toBe(403);
+  });
+
+  it("404s a non-owner trying to move-grid a hidden combatant, but lets the owner move it", async () => {
+    const { dm, worldId, mapId } = await setupWorldWithMap("griddm7");
+    const joinCode = await dm.post(`/api/worlds/${worldId}/join-code`);
+    const { agent: player } = await signupAgent("gridplayer2");
+    await player.post("/api/worlds/join").send({ code: joinCode.body.code });
+
+    await dm.put(`/api/encounters/${worldId}`).send({
+      combatants: [{ id: "c1", name: "Ambusher", kind: "monster", initiative: 8, conditions: [], notes: "", hpVisible: false, gridX: 0, gridY: 0, hidden: true }],
+      round: 1, turnIndex: 0, activeBattleMapId: mapId,
+    });
+
+    const playerMove = await player.post(`/api/encounters/${worldId}/move-grid`).send({ combatantId: "c1", gridX: 1, gridY: 0 });
+    expect(playerMove.status).toBe(404);
+
+    const dmMove = await dm.post(`/api/encounters/${worldId}/move-grid`).send({ combatantId: "c1", gridX: 1, gridY: 0 });
+    expect(dmMove.status).toBe(200);
   });
 });
 

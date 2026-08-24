@@ -83,6 +83,27 @@ describe("faction relationships", () => {
     expect(res.status).toBe(404);
   });
 
+  it("hides a relationship touching a hidden faction from a non-owner party member, but not from the owner", async () => {
+    const { agent: dm } = await signupAgent("relationdm6");
+    const world = await dm.post("/api/worlds").send({ name: "Relations World 6" });
+    const worldId = world.body.id as string;
+    const joinCode = await dm.post(`/api/worlds/${worldId}/join-code`);
+    const { agent: player } = await signupAgent("relationplayer6");
+    await player.post("/api/worlds/join").send({ code: joinCode.body.code });
+
+    const visible = await dm.post("/api/factions").send(factionPayload("Merchants Guild", worldId));
+    const secret = await dm.post("/api/factions").send({ ...factionPayload("The Cult", worldId), hiddenFromParty: true });
+    await dm.post("/api/faction-relationships").send({
+      worldId, factionAId: visible.body.id, factionBId: secret.body.id, stance: "war", notes: "secretly funding an assassination",
+    });
+
+    const ownerList = await dm.get(`/api/faction-relationships?worldId=${worldId}`);
+    expect(ownerList.body).toHaveLength(1);
+
+    const playerList = await player.get(`/api/faction-relationships?worldId=${worldId}`);
+    expect(playerList.body).toHaveLength(0);
+  });
+
   it("lets the owner delete a relationship", async () => {
     const { agent } = await signupAgent("relationdm5");
     const world = await agent.post("/api/worlds").send({ name: "Relations World 5" });

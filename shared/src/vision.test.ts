@@ -45,6 +45,19 @@ describe("computeVisibleCells", () => {
     expect(fromA).toBe(fromB);
   });
 
+  it("does not leak sight through the diagonal gap where two walls meet corner-to-corner", () => {
+    // Walls at (1,0) and (0,1), open floor at (1,1) between them — a line
+    // from the origin straight through that pinch point must not reach
+    // cells beyond it, even though (1,1) itself is open floor.
+    const map = emptyMap(10, 10, [
+      { x: 1, y: 0, tileId: "stone-wall" },
+      { x: 0, y: 1, tileId: "stone-wall" },
+    ]);
+    const visible = computeVisibleCells(map, 0, 0, 5);
+    expect(visible.has("2,2")).toBe(false);
+    expect(visible.has("3,3")).toBe(false);
+  });
+
   it("does not leak vision around a fully enclosing wall", () => {
     const tiles: BattleMap["tiles"] = [];
     for (let x = 3; x <= 7; x++) { tiles.push({ x, y: 3, tileId: "stone-wall" }); tiles.push({ x, y: 7, tileId: "stone-wall" }); }

@@ -54,7 +54,7 @@ function toEntityDTO(entityType: EntityType, row: any, viewerId: string): unknow
     case "sessionNote": return toSessionNoteDTO(row, viewerId);
     case "adventure": return toAdventureDTO(row);
     case "playerCharacter": return toPlayerCharacterDTO(row);
-    case "zoneMapTemplate": return toZoneMapTemplateDTO(row);
+    case "zoneMapTemplate": return toZoneMapTemplateDTO(row, viewerId);
     case "dungeon": return toDungeonDTO(row);
     case "shop": return toShopDTO(row);
     case "region": return toRegionDTO(row);

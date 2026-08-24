@@ -99,6 +99,16 @@ export function InitiativeTracker({
   const isOwner = partyMode && !!selectedWorld?.isOwner;
   const canEdit = !partyMode || isOwner;
 
+  // moveCombatantToZone/moveCombatantOnGrid below fire an async request and
+  // apply whatever comes back with setLiveEncounter — but if the viewer
+  // switches worlds (or flips back to Personal mode) before that response
+  // lands, applying it unconditionally would stomp the newly-selected
+  // world's live state with the old world's data. Read fresh on every
+  // render (not just in an effect) so the .then() callback always sees
+  // the current values, not the ones closed over when the request fired.
+  const liveContextRef = useRef({ partyWorldId, partyMode });
+  liveContextRef.current = { partyWorldId, partyMode };
+
   useEffect(() => {
     if (!partyMode || !partyWorldId) setLiveEncounter(null);
   }, [partyMode, partyWorldId]);
@@ -121,9 +131,12 @@ export function InitiativeTracker({
   // Encounter, structurally a superset) always satisfies.
   const activeEncounter: EncounterStateInput & { visibleCells?: string[] } = partyMode ? (liveEncounter ?? BLANK_ENCOUNTER) : encounter;
 
-  // Older saved encounters (before conditions/kind/hpVisible/zones existed) won't have these
-  // fields, and encounters saved before duration tracking existed have plain strings in
-  // conditions rather than { name, expiresAtRound } — normalize both on the way in.
+  // Older saved encounters (before conditions/kind/hpVisible/notes/zones existed) won't have
+  // these fields, and encounters saved before duration tracking existed have plain strings in
+  // conditions rather than { name, expiresAtRound } — normalize both on the way in. Notes in
+  // particular has to default here (not just at the type level): the combatant-notes <input>
+  // below binds it directly, and an undefined value would make that a briefly-uncontrolled
+  // input for any combatant carried over from before this field existed.
   const sorted = [...activeEncounter.combatants]
     .map((c) => ({
       ...c,
@@ -132,6 +145,7 @@ export function InitiativeTracker({
       ),
       kind: c.kind ?? "custom",
       hpVisible: c.hpVisible ?? false,
+      notes: c.notes ?? "",
     }))
     .sort((a, b) => b.initiative - a.initiative);
   const activeId = sorted.length > 0 ? sorted[activeEncounter.turnIndex % sorted.length]?.id : null;
@@ -407,8 +421,11 @@ export function InitiativeTracker({
     if (canEdit) {
       applyEncounterUpdate((e) => ({ ...e, combatants: e.combatants.map((c) => (c.id === combatantId ? { ...c, zoneId } : c)) }));
     } else if (partyMode && partyWorldId) {
+      const requestWorldId = partyWorldId;
       api.moveCombatantZone(partyWorldId, combatantId, zoneId)
-        .then(setLiveEncounter)
+        .then((result) => {
+          if (liveContextRef.current.partyWorldId === requestWorldId && liveContextRef.current.partyMode) setLiveEncounter(result);
+        })
         .catch((err) => setLiveError((err as Error).message));
     }
   }
@@ -567,8 +584,11 @@ export function InitiativeTracker({
     if (canEdit) {
       applyEncounterUpdate((e) => ({ ...e, combatants: e.combatants.map((c) => (c.id === combatantId ? { ...c, gridX, gridY } : c)) }));
     } else if (partyMode && partyWorldId) {
+      const requestWorldId = partyWorldId;
       api.moveCombatantGrid(partyWorldId, combatantId, gridX, gridY)
-        .then(setLiveEncounter)
+        .then((result) => {
+          if (liveContextRef.current.partyWorldId === requestWorldId && liveContextRef.current.partyMode) setLiveEncounter(result);
+        })
         .catch((err) => setLiveError((err as Error).message));
     }
   }
@@ -1004,7 +1024,7 @@ export function InitiativeTracker({
             {c.legendaryActionsMax !== undefined && (
               <div className="combatant-legendary">
                 <span className="legendary-pips" title={`${c.legendaryActionsRemaining ?? 0} of ${c.legendaryActionsMax} legendary actions remaining`}>
-                  Legendary: {"⚡".repeat(c.legendaryActionsRemaining ?? 0)}{"·".repeat(Math.max(0, c.legendaryActionsMax - (c.legendaryActionsRemaining ?? 0)))}
+                  Legendary: {"⚡".repeat(Math.max(0, c.legendaryActionsRemaining ?? 0))}{"·".repeat(Math.max(0, c.legendaryActionsMax - (c.legendaryActionsRemaining ?? 0)))}
                 </span>
                 {c.legendaryActionsList?.map((a) => (
                   <button

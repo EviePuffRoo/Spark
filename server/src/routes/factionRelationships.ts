@@ -20,7 +20,18 @@ factionRelationshipsRouter.get("/", async (req, res) => {
   if (!world) return res.status(403).json({ error: "You don't have access to this world" });
 
   const rows = await prisma.factionRelationship.findMany({ where: { worldId }, orderBy: { createdAt: "desc" } });
-  res.json(rows.map(toFactionRelationshipDTO));
+
+  if (world.userId === req.userId) {
+    return res.json(rows.map(toFactionRelationshipDTO));
+  }
+  // A non-owner never sees a relationship touching a faction the DM has
+  // hidden from the party — same spoiler concern GET /factions already
+  // protects for the factions themselves; a relationship row would
+  // otherwise reveal a hidden faction's existence, stance, and notes.
+  const hiddenFactions = await prisma.faction.findMany({ where: { worldId, hiddenFromParty: true }, select: { id: true } });
+  const hiddenIds = new Set(hiddenFactions.map((f) => f.id));
+  const visible = rows.filter((r) => !hiddenIds.has(r.factionAId) && !hiddenIds.has(r.factionBId));
+  res.json(visible.map(toFactionRelationshipDTO));
 });
 
 // Upserts the relationship for a faction pair: if one already exists it's

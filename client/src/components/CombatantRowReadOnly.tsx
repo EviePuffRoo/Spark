@@ -27,7 +27,7 @@ export function CombatantRowReadOnly({ c, isActive }: { c: LiveCombatant; isActi
         {c.speedFeet !== undefined && <span className="entity-meta">Speed {c.speedFeet} ft</span>}
         {c.legendaryActionsMax !== undefined && (
           <span className="legendary-pips" title={`${c.legendaryActionsRemaining ?? 0} of ${c.legendaryActionsMax} legendary actions remaining`}>
-            {"⚡".repeat(c.legendaryActionsRemaining ?? 0)}{"·".repeat(Math.max(0, c.legendaryActionsMax - (c.legendaryActionsRemaining ?? 0)))}
+            {"⚡".repeat(Math.max(0, c.legendaryActionsRemaining ?? 0))}{"·".repeat(Math.max(0, c.legendaryActionsMax - (c.legendaryActionsRemaining ?? 0)))}
           </span>
         )}
       </div>

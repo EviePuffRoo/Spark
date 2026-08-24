@@ -4,6 +4,7 @@ import { toFactionDTO, toFactionLogEntryDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
 import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
 import { logCampaignEventOp } from "../campaignEventLog.js";
+import { dispatchWebhookEvent } from "../webhookDispatch.js";
 
 export const factionsRouter = Router();
 
@@ -111,6 +112,13 @@ factionsRouter.post("/:id/adjust-reputation", async (req, res) => {
       userId: req.userId!,
     }),
   ]);
+  void dispatchWebhookEvent(row.worldId, {
+    entityType: "factionReputation",
+    entityId: row.id,
+    eventType: "faction.reputationChanged",
+    payload: { factionId: row.id, factionName: row.name, delta, reason },
+    authorName,
+  });
   res.json(toFactionDTO(updated));
 });
 

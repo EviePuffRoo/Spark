@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { FREE_TIER_WORLD_LIMIT, type WorldMemberRole } from "@spark/shared";
+import { FREE_TIER_WORLD_LIMIT, type WorldMemberRole, type WorldWebhookInfo } from "@spark/shared";
 import { api, type WorldSummary, type WorldMemberInfo } from "../api";
 import { useActiveWorld } from "../ActiveWorldContext";
 import { useAuth } from "../AuthContext";
@@ -50,6 +50,13 @@ export function WorldsPage({ onViewRoster, onNavigateToBilling }: { onViewRoster
   const [members, setMembers] = useState<WorldMemberInfo[]>([]);
   const [memberError, setMemberError] = useState<string | null>(null);
   const [inviteRole, setInviteRole] = useState<WorldMemberRole>("player");
+
+  const [webhook, setWebhook] = useState<WorldWebhookInfo | null>(null);
+  const [webhookUrlInput, setWebhookUrlInput] = useState("");
+  const [webhookSecret, setWebhookSecret] = useState<string | null>(null);
+  const [webhookError, setWebhookError] = useState<string | null>(null);
+  const [webhookTestResult, setWebhookTestResult] = useState<string | null>(null);
+  const [webhookBusy, setWebhookBusy] = useState(false);
 
   function refresh() {
     api.listWorlds().then(setWorlds).catch((e) => setError(e.message)).finally(() => setLoading(false));
@@ -146,10 +153,68 @@ export function WorldsPage({ onViewRoster, onNavigateToBilling }: { onViewRoster
     setGeneratedCode(null);
     setMemberError(null);
     setInviteRole("player");
+    setWebhookSecret(null);
+    setWebhookError(null);
+    setWebhookTestResult(null);
     try {
       setMembers(await api.getWorldMembers(worldId));
     } catch (e) {
       setMemberError((e as Error).message);
+    }
+    const w = await api.getWorldWebhook(worldId);
+    setWebhook(w);
+    setWebhookUrlInput(w?.url ?? "");
+  }
+
+  async function handleSaveWebhook(worldId: string) {
+    if (!webhookUrlInput.trim() || webhookBusy) return;
+    setWebhookBusy(true);
+    setWebhookError(null);
+    setWebhookTestResult(null);
+    try {
+      const { secret } = await api.saveWorldWebhook(worldId, webhookUrlInput.trim());
+      setWebhookSecret(secret);
+      setWebhook(await api.getWorldWebhook(worldId));
+    } catch (e) {
+      setWebhookError((e as Error).message);
+    } finally {
+      setWebhookBusy(false);
+    }
+  }
+
+  async function handleToggleWebhookEnabled(worldId: string, enabled: boolean) {
+    try {
+      await api.setWorldWebhookEnabled(worldId, enabled);
+      setWebhook(await api.getWorldWebhook(worldId));
+    } catch (e) {
+      setWebhookError((e as Error).message);
+    }
+  }
+
+  async function handleDeleteWebhook(worldId: string) {
+    if (!confirm("Remove this world's webhook? It'll stop receiving campaign events.")) return;
+    try {
+      await api.deleteWorldWebhook(worldId);
+      setWebhook(null);
+      setWebhookUrlInput("");
+      setWebhookSecret(null);
+      setWebhookTestResult(null);
+    } catch (e) {
+      setWebhookError((e as Error).message);
+    }
+  }
+
+  async function handleTestWebhook(worldId: string) {
+    setWebhookBusy(true);
+    setWebhookTestResult(null);
+    try {
+      const result = await api.testWorldWebhook(worldId);
+      setWebhookTestResult(result.ok ? "Test ping delivered successfully." : `Test ping failed: ${result.error ?? `HTTP ${result.status}`}`);
+      setWebhook(await api.getWorldWebhook(worldId));
+    } catch (e) {
+      setWebhookError((e as Error).message);
+    } finally {
+      setWebhookBusy(false);
     }
   }
 
@@ -332,6 +397,55 @@ export function WorldsPage({ onViewRoster, onNavigateToBilling }: { onViewRoster
                       ))}
                     </ul>
                   )}
+
+                  <h3 className="section-heading">Webhook</h3>
+                  <p className="hint">
+                    Send an HTTPS POST to your own server whenever something happens in this world (disposition
+                    changes, faction reputation, campaign events, world ticks). Spark never calls out anywhere else —
+                    this is the one address you choose, signed so you can verify it's really us.
+                  </p>
+                  <label className="field">
+                    <span>Endpoint URL</span>
+                    <input
+                      type="text"
+                      value={webhookUrlInput}
+                      onChange={(e) => setWebhookUrlInput(e.target.value)}
+                      placeholder="https://example.com/spark-webhook"
+                    />
+                  </label>
+                  <div className="button-row">
+                    <button className="btn-secondary" onClick={() => handleSaveWebhook(w.id)} disabled={webhookBusy}>
+                      {webhook ? "Update Webhook" : "Add Webhook"}
+                    </button>
+                    {webhook && (
+                      <>
+                        <button className="btn-secondary" onClick={() => handleToggleWebhookEnabled(w.id, !webhook.enabled)}>
+                          {webhook.enabled ? "Disable" : "Enable"}
+                        </button>
+                        <button className="btn-secondary" onClick={() => handleTestWebhook(w.id)} disabled={webhookBusy}>
+                          Send Test Ping
+                        </button>
+                        <button className="btn-danger" onClick={() => handleDeleteWebhook(w.id)}>Remove</button>
+                      </>
+                    )}
+                  </div>
+                  {webhookSecret && (
+                    <div className="invite-code-row">
+                      <p className="hint">Signing secret, it won't be shown again: <code>{webhookSecret}</code></p>
+                      <CopyButton value={webhookSecret} />
+                    </div>
+                  )}
+                  {webhook && (
+                    <p className="entity-meta">
+                      {webhook.enabled ? "Enabled" : "Disabled"}
+                      {webhook.lastDeliveryAt && (
+                        <> · last delivery {webhook.lastDeliveryOk ? "succeeded" : "failed"} at {new Date(webhook.lastDeliveryAt).toLocaleString()}
+                        {!webhook.lastDeliveryOk && webhook.lastDeliveryError ? ` (${webhook.lastDeliveryError})` : ""}</>
+                      )}
+                    </p>
+                  )}
+                  {webhookTestResult && <p className="hint" role="status">{webhookTestResult}</p>}
+                  {webhookError && <p className="error">{webhookError}</p>}
                 </div>
               )}
             </li>

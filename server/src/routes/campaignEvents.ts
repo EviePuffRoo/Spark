@@ -3,6 +3,7 @@ import { prisma } from "../db.js";
 import { toCampaignEventDTO } from "../serialize.js";
 import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
 import { logCampaignEventOp } from "../campaignEventLog.js";
+import { dispatchWebhookEvent } from "../webhookDispatch.js";
 
 export const campaignEventsRouter = Router();
 
@@ -58,6 +59,11 @@ campaignEventsRouter.post("/", async (req, res) => {
       authorName, userId: req.userId!,
     }),
   ]);
+  void dispatchWebhookEvent(worldId, {
+    entityType: "campaignEvent", entityId: null, eventType: "campaignEvent.logged",
+    payload: { title: trimmedTitle, description: trimmedDescription, factionId: typeof factionId === "string" ? factionId : null },
+    authorName,
+  });
   res.status(201).json(toCampaignEventDTO(row as Parameters<typeof toCampaignEventDTO>[0]));
 });
 

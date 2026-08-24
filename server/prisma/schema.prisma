@@ -95,6 +95,7 @@ model World {
   worldTickLogs   WorldTickLog[]
   doomClocks      DoomClock[]
   campaignEventLogs CampaignEventLog[]
+  webhook         WorldWebhook?
 
   @@index([userId])
 }
@@ -643,6 +644,25 @@ model CampaignEventLog {
 
   @@index([worldId])
   @@index([userId])
+}
+
+// A DM-configured outbound webhook, one per world. Delivery is a
+// best-effort, fire-and-forget HTTP POST triggered by new CampaignEventLog
+// rows for the same world — see server/src/webhookDispatch.ts. The last
+// delivery's outcome is stored directly on this row (no separate log
+// table) so the DM can see whether their endpoint is working.
+model WorldWebhook {
+  id                String    @id @default(cuid())
+  worldId           String    @unique
+  world             World     @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  url               String
+  secret            String
+  enabled           Boolean   @default(true)
+  lastDeliveryAt    DateTime?
+  lastDeliveryOk    Boolean?
+  lastDeliveryError String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 }
 
 // A named, segmented countdown (Blades in the Dark-style) — a world can

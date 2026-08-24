@@ -71,3 +71,16 @@ describe("shop settlement linking", () => {
     expect(get.body.settlementId).toBeNull();
   });
 });
+
+describe("shop stock validation", () => {
+  it("keeps -1 as the unlimited-stock sentinel but drops any other negative quantity", async () => {
+    const { agent } = await signupAgent("shopdm7");
+    const stock = [
+      { id: "s1", itemId: "i1", itemName: "Rope, 50 ft", price: 1, quantity: -1 },
+      { id: "s2", itemId: "i2", itemName: "Cursed Amulet", price: 1, quantity: -5 },
+    ];
+    const create = await agent.post("/api/shops").send(shopPayload({ stock }));
+    expect(create.status).toBe(201);
+    expect(create.body.stock).toEqual([{ id: "s1", itemId: "i1", itemName: "Rope, 50 ft", price: 1, quantity: -1 }]);
+  });
+});

@@ -16,14 +16,14 @@ zoneMapTemplatesRouter.get("/", async (req, res) => {
     ...(worldId === "unassigned" ? { worldId: null } : typeof worldId === "string" ? { worldId } : {}),
   };
   const rows = await prisma.zoneMapTemplate.findMany({ where, orderBy: { createdAt: "desc" } });
-  res.json(rows.map(toZoneMapTemplateDTO));
+  res.json(rows.map((row) => toZoneMapTemplateDTO(row, req.userId!)));
 });
 
 zoneMapTemplatesRouter.get("/:id", async (req, res) => {
   const memberWorldIds = await getMemberWorldIds(req.userId!);
   const row = await prisma.zoneMapTemplate.findFirst({ where: { id: req.params.id, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }] } });
   if (!row) return res.status(404).json({ error: "Zone map template not found" });
-  res.json(toZoneMapTemplateDTO(row));
+  res.json(toZoneMapTemplateDTO(row, req.userId!));
 });
 
 zoneMapTemplatesRouter.post("/", async (req, res) => {
@@ -50,7 +50,7 @@ zoneMapTemplatesRouter.post("/", async (req, res) => {
       userId: req.userId!,
     },
   });
-  res.status(201).json(toZoneMapTemplateDTO(row));
+  res.status(201).json(toZoneMapTemplateDTO(row, req.userId!));
 });
 
 zoneMapTemplatesRouter.patch("/:id", async (req, res) => {
@@ -76,7 +76,7 @@ zoneMapTemplatesRouter.patch("/:id", async (req, res) => {
   const result = await prisma.zoneMapTemplate.updateMany({ where: { id: req.params.id, userId: req.userId }, data });
   if (result.count === 0) return res.status(404).json({ error: "Zone map template not found" });
   const row = await prisma.zoneMapTemplate.findUnique({ where: { id: req.params.id } });
-  res.json(toZoneMapTemplateDTO(row!));
+  res.json(toZoneMapTemplateDTO(row!, req.userId!));
 });
 
 zoneMapTemplatesRouter.delete("/:id", async (req, res) => {

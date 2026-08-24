@@ -31,12 +31,26 @@ function hasLineOfSight(map: Pick<BattleMap, "tiles">, x0: number, y0: number, x
   const dist = Math.max(Math.abs(dx), Math.abs(dy));
   if (dist === 0) return true;
   const steps = dist * 4;
+  let prevCx = x0;
+  let prevCy = y0;
   for (let i = 1; i < steps; i++) {
     const t = i / steps;
     const cx = Math.floor(x0 + 0.5 + dx * t);
     const cy = Math.floor(y0 + 0.5 + dy * t);
-    if (cx === x1 && cy === y1) continue;
     if (cx === x0 && cy === y0) continue;
+    // Consecutive samples can jump diagonally from one cell straight to
+    // another without ever landing on either of the two cells flanking the
+    // corner between them — so a wall pair that meets corner-to-corner
+    // (e.g. walls at (1,0) and (0,1) with open floor at (1,1)) would
+    // otherwise leak sight straight through the gap between them. Block
+    // the ray there too when both flanking cells are walls, same as a
+    // squeezing-through-a-pinch-point rule.
+    if (cx !== prevCx && cy !== prevCy && tileAt(map, cx, prevCy)?.blocksVision && tileAt(map, prevCx, cy)?.blocksVision) {
+      return false;
+    }
+    prevCx = cx;
+    prevCy = cy;
+    if (cx === x1 && cy === y1) continue;
     if (tileAt(map, cx, cy)?.blocksVision) return false;
   }
   return true;

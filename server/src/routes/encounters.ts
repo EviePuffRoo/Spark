@@ -62,6 +62,18 @@ function coerceAttack(raw: unknown): ParsedAttack | null {
   };
 }
 
+// Every field this clamps is user/DM-editable and gets replayed straight
+// into an O(radius^2) loop (vision/light radius, in shared/src/vision.ts)
+// or a `.repeat()` call (legendary action pips, in the client) on every
+// viewer's read. An unbounded value in either direction can hang the
+// single Node process (a vision radius in the millions turns that loop
+// into trillions of iterations) or crash the client with a RangeError
+// (repeat() rejects absurdly large counts) — so every one of them gets a
+// generous but finite range on ingest rather than just a lower bound.
+function clampFinite(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
 function coerceLegendaryAction(raw: unknown): LegendaryAction | null {
   if (!raw || typeof raw !== "object") return null;
   const a = raw as Record<string, unknown>;
@@ -110,11 +122,11 @@ function coerceCombatant(raw: unknown): LiveCombatant | null {
     gridY: typeof c.gridY === "number" ? c.gridY : undefined,
     sizeCategory: SIZE_CATEGORIES.includes(c.sizeCategory as SizeCategory) ? (c.sizeCategory as SizeCategory) : undefined,
     speedFeet: typeof c.speedFeet === "number" ? c.speedFeet : undefined,
-    visionRadiusFeet: typeof c.visionRadiusFeet === "number" ? c.visionRadiusFeet : undefined,
-    lightRadiusFeet: typeof c.lightRadiusFeet === "number" ? c.lightRadiusFeet : undefined,
+    visionRadiusFeet: typeof c.visionRadiusFeet === "number" ? clampFinite(c.visionRadiusFeet, 0, 1000) : undefined,
+    lightRadiusFeet: typeof c.lightRadiusFeet === "number" ? clampFinite(c.lightRadiusFeet, 0, 1000) : undefined,
     concentratingOn: typeof c.concentratingOn === "string" && c.concentratingOn ? c.concentratingOn : undefined,
-    legendaryActionsMax: typeof c.legendaryActionsMax === "number" ? Math.max(0, c.legendaryActionsMax) : undefined,
-    legendaryActionsRemaining: typeof c.legendaryActionsRemaining === "number" ? Math.max(0, c.legendaryActionsRemaining) : undefined,
+    legendaryActionsMax: typeof c.legendaryActionsMax === "number" ? clampFinite(c.legendaryActionsMax, 0, 20) : undefined,
+    legendaryActionsRemaining: typeof c.legendaryActionsRemaining === "number" ? clampFinite(c.legendaryActionsRemaining, 0, 20) : undefined,
     legendaryActionsList: legendaryActionsList && legendaryActionsList.length > 0 ? legendaryActionsList : undefined,
     lairActionsList: lairActionsList && lairActionsList.length > 0 ? lairActionsList : undefined,
     lairActionUsedRound: typeof c.lairActionUsedRound === "number" ? c.lairActionUsedRound : undefined,
@@ -298,7 +310,11 @@ encountersRouter.post("/:worldId/move-zone", async (req, res) => {
 
     const combatants: LiveCombatant[] = JSON.parse(row.combatants);
     const target = combatants.find((c) => c.id === combatantId);
-    if (!target) return { error: 404 as const, message: "Combatant not found" };
+    // A hidden combatant is stripped from every non-owner GET response, so
+    // it should look equally nonexistent here — otherwise a player who
+    // learns/guesses its id (e.g. from earlier client state) could still
+    // reposition a monster they can't perceive.
+    if (!target || (!isOwner && target.hidden)) return { error: 404 as const, message: "Combatant not found" };
 
     if (target.zoneId) {
       const currentZone = zones.find((z) => z.id === target.zoneId);
@@ -350,7 +366,9 @@ encountersRouter.post("/:worldId/move-grid", async (req, res) => {
 
     const combatants: LiveCombatant[] = JSON.parse(row.combatants);
     const target = combatants.find((c) => c.id === combatantId);
-    if (!target) return { error: 404 as const, message: "Combatant not found" };
+    // Same reasoning as move-zone above: a hidden combatant doesn't exist
+    // as far as a non-owner is concerned.
+    if (!target || (!isOwner && target.hidden)) return { error: 404 as const, message: "Combatant not found" };
 
     const footprint = SIZE_FOOTPRINT[target.sizeCategory ?? "medium"];
     if (gridX + footprint > map.width || gridY + footprint > map.height) {

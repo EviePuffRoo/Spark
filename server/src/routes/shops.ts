@@ -12,7 +12,9 @@ function coerceStockEntry(raw: unknown): ShopStockEntry | null {
   const s = raw as Record<string, unknown>;
   if (typeof s.id !== "string" || typeof s.itemId !== "string" || typeof s.itemName !== "string") return null;
   if (typeof s.price !== "number" || typeof s.quantity !== "number") return null;
-  if (s.price < 0) return null;
+  // -1 is the deliberate "unlimited stock" sentinel (see ShopPage.tsx);
+  // any other negative quantity is invalid, same as a negative price.
+  if (s.price < 0 || (s.quantity < 0 && s.quantity !== -1)) return null;
   return {
     id: s.id,
     itemId: s.itemId,

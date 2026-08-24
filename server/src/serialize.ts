@@ -208,12 +208,24 @@ export function toEncounterTableDTO(row: EncounterTableRow): EncounterTable {
   };
 }
 
-export function toZoneMapTemplateDTO(row: ZoneMapTemplateRow): ZoneMapTemplate {
+// Mirrors toEncounterDTO's zone redaction (below): a non-owner never sees a
+// zone the DM hasn't marked revealed, same spoiler concern as a live
+// encounter's unrevealed zones, just applied to the template these rooms
+// get loaded from instead of the live combat state itself.
+export function toZoneMapTemplateDTO(row: ZoneMapTemplateRow, viewerId?: string): ZoneMapTemplate {
+  const isOwner = viewerId === row.userId;
+  const allZones: EncounterZone[] = JSON.parse(row.zones);
+  const visibleZones = isOwner ? allZones : allZones.filter((z) => z.revealed);
+  const visibleZoneIds = new Set(visibleZones.map((z) => z.id));
+  const zones: EncounterZone[] = visibleZones.map((z) => ({
+    ...z,
+    connections: isOwner ? z.connections : z.connections.filter((id) => visibleZoneIds.has(id)),
+  }));
   return {
     id: row.id,
     userId: row.userId,
     name: row.name,
-    zones: JSON.parse(row.zones),
+    zones,
     worldId: row.worldId,
     hiddenFromParty: row.hiddenFromParty,
     tags: JSON.parse(row.tags),

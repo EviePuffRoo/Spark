@@ -11,6 +11,7 @@ export * from "./craftingRules.js";
 export * from "./reputation.js";
 export * from "./calendar.js";
 export * from "./weather.js";
+export * from "./worldTick.js";
 export * from "./characterImport.js";
 export * from "./equipmentStats.js";
 export * from "./data/races.js";

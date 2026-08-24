@@ -22,6 +22,7 @@ import type {
   BattleMap, BattleMapInput,
   Shop, ShopInput, GenerateShopRequest, GeneratedShop, ShopCommission, ShopCommissionInput,
   FactionLogEntry, FactionRelationship, FactionRelationshipInput, CampaignEvent, CampaignEventInput,
+  WorldTickProposal, WorldTickApplyRequest, WorldTickLog,
   Region, GenerateRegionRequest, GeneratedRegion,
   Settlement, GenerateSettlementRequest, GeneratedSettlement,
   ActivitySummary,
@@ -204,6 +205,11 @@ export const api = {
   postCampaignEvent: (event: CampaignEventInput) =>
     request<CampaignEvent>("/campaign-events", { method: "POST", body: JSON.stringify(event) }),
   deleteCampaignEvent: (id: string) => request<void>(`/campaign-events/${id}`, { method: "DELETE" }),
+
+  getWorldTickProposal: (worldId: string) => request<WorldTickProposal>(`/world-tick/${worldId}/proposal`),
+  applyWorldTick: (worldId: string, body: WorldTickApplyRequest) =>
+    request<WorldTickLog>(`/world-tick/${worldId}/apply`, { method: "POST", body: JSON.stringify(body) }),
+  listWorldTickLog: (worldId: string) => request<WorldTickLog[]>(`/world-tick/${worldId}/log`),
 
   listAdventures: (worldId?: string) =>
     request<Adventure[]>(`/adventures${worldId ? `?worldId=${worldId}` : ""}`),

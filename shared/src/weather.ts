@@ -5,7 +5,7 @@ export type WeatherReading = WeatherEntry;
 // FNV-1a — deterministic and fast. Used to pick a stable weather entry per
 // region-per-day, so the reading never changes on refetch but still varies
 // day to day and region to region without needing a database table.
-function hashSeed(input: string): number {
+export function hashSeed(input: string): number {
   let hash = 2166136261;
   for (let i = 0; i < input.length; i++) {
     hash ^= input.charCodeAt(i);

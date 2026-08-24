@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
-import { findAccessibleWorld } from "../worldAccess.js";
+import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
 import { ACHIEVEMENTS } from "@spark/shared";
-import type { AchievementProgress, WorldAchievements } from "@spark/shared";
+import type { AchievementProgress, WorldAchievements, LegacyAchievements } from "@spark/shared";
 
 export const achievementsRouter = Router();
 
@@ -17,13 +17,10 @@ const ROSTER_COUNT_SELECT = {
   encounterTables: true, sessionNotes: true, adventures: true, playerCharacters: true,
 } as const;
 
-achievementsRouter.get("/", async (req, res) => {
-  const { worldId } = req.query;
-  if (typeof worldId !== "string") return res.status(400).json({ error: "worldId is required" });
-
-  const world = await findAccessibleWorld(req.userId!, worldId);
-  if (!world) return res.status(403).json({ error: "You don't have access to this world" });
-
+// Pulled out of the GET "/" handler so the legacy rollup below can run the
+// exact same per-world computation for every world the account touches,
+// rather than re-deriving a second version of these rules.
+async function computeCurrentForWorld(worldId: string): Promise<Record<string, number>> {
   const [d20Rolls, totalRollCount, questsCompleted, goldEntries, goldEntryCount, sessionNoteCount, memberCount, chatCount, rosterWorld] = await Promise.all([
     // Narrowed at the DB level to plausible d20 notations before the
     // in-memory notation/results check — a long-running world's roll log
@@ -62,7 +59,7 @@ achievementsRouter.get("/", async (req, res) => {
   // so "everyone with standing access" is members plus the owner.
   const partySize = memberCount + 1;
 
-  const CURRENT: Record<string, number> = {
+  return {
     "first-blood": nat20Count,
     "hat-trick": nat20Count,
     "it-happens": nat1Count,
@@ -83,15 +80,51 @@ achievementsRouter.get("/", async (req, res) => {
     "chatterbox": chatCount,
     "world-builder": rosterCount,
   };
+}
 
-  const progress: AchievementProgress[] = ACHIEVEMENTS.map((def) => {
+function toProgress(current: Record<string, number>): AchievementProgress[] {
+  return ACHIEVEMENTS.map((def) => {
     const target = def.target ?? 1;
-    const current = CURRENT[def.id] ?? 0;
-    return { id: def.id, unlocked: current >= target, current: Math.min(current, target), target };
+    const value = current[def.id] ?? 0;
+    return { id: def.id, unlocked: value >= target, current: Math.min(value, target), target };
   });
+}
 
+achievementsRouter.get("/", async (req, res) => {
+  const { worldId } = req.query;
+  if (typeof worldId !== "string") return res.status(400).json({ error: "worldId is required" });
+
+  const world = await findAccessibleWorld(req.userId!, worldId);
+  if (!world) return res.status(403).json({ error: "You don't have access to this world" });
+
+  const progress = toProgress(await computeCurrentForWorld(worldId));
   const result: WorldAchievements = {
     worldId,
+    unlockedCount: progress.filter((p) => p.unlocked).length,
+    totalCount: progress.length,
+    progress,
+  };
+  res.json(result);
+});
+
+// Cross-campaign rollup: the same per-world stats summed across every
+// world this account owns or has joined. No worldId — this is always the
+// caller's own career, private by construction (there's no other user's
+// legacy this endpoint could even be asked for).
+achievementsRouter.get("/legacy", async (req, res) => {
+  const worldIds = await getMemberWorldIds(req.userId!);
+  const perWorldCurrent = await Promise.all(worldIds.map(computeCurrentForWorld));
+
+  const summed: Record<string, number> = {};
+  for (const current of perWorldCurrent) {
+    for (const [id, value] of Object.entries(current)) {
+      summed[id] = (summed[id] ?? 0) + value;
+    }
+  }
+
+  const progress = toProgress(summed);
+  const result: LegacyAchievements = {
+    worldCount: worldIds.length,
     unlockedCount: progress.filter((p) => p.unlocked).length,
     totalCount: progress.length,
     progress,

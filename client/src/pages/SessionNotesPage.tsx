@@ -9,6 +9,7 @@ import { EntitySearchPicker } from "../components/EntitySearchPicker";
 import { buildTimelineEntries } from "../campaignTimeline";
 import { NotesIcon } from "../components/icons";
 import { EmptyState } from "../components/EmptyState";
+import { WorldActivityPanel } from "../components/WorldActivityPanel";
 
 const BLANK = {
   title: "",
@@ -36,6 +37,7 @@ export function SessionNotesPage({ onOpenInRoster }: { onOpenInRoster: (type: En
   const [timelineQuests, setTimelineQuests] = useState<QuestHook[]>([]);
   const [timelineAdventures, setTimelineAdventures] = useState<Adventure[]>([]);
   const [timelineCampaignEvents, setTimelineCampaignEvents] = useState<CampaignEvent[]>([]);
+  const [activityRefreshKey, setActivityRefreshKey] = useState(0);
   const [eventTitle, setEventTitle] = useState("");
   const [eventDescription, setEventDescription] = useState("");
   const [eventFactionId, setEventFactionId] = useState<string | null>(null);
@@ -78,6 +80,7 @@ export function SessionNotesPage({ onOpenInRoster }: { onOpenInRoster: (type: En
       setEventFactionId(null);
       setEventFactionName(null);
       refreshTimelineExtras();
+      setActivityRefreshKey((k) => k + 1);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -216,6 +219,8 @@ export function SessionNotesPage({ onOpenInRoster }: { onOpenInRoster: (type: En
               </button>
             </div>
           )}
+
+          {timelineWorldFilter && <WorldActivityPanel worldId={timelineWorldFilter} refreshKey={activityRefreshKey} />}
         </div>
       )}
 

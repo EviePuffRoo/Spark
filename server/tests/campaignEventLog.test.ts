@@ -140,6 +140,30 @@ describe("campaign event log (unified dual-write)", () => {
     expect(rows.some((r) => r.entityType === "disposition")).toBe(true);
   });
 
+  it("serves a paginated GET /worlds/:id timeline, owner-or-member gated", async () => {
+    const { agent: dm } = await signupAgent("logdm7");
+    const world = await dm.post("/api/worlds").send({ name: "Log World 7" });
+    const worldId = world.body.id as string;
+    const character = await dm.post("/api/characters").send(charPayload("Old Man Willow", worldId));
+
+    for (let i = 0; i < 3; i++) {
+      await dm.post(`/api/characters/${character.body.id}/adjust-disposition`).send({ delta: 1 });
+    }
+
+    const missing = await dm.get("/api/campaign-event-log");
+    expect(missing.status).toBe(400);
+
+    const firstPage = await dm.get(`/api/campaign-event-log?worldId=${worldId}`);
+    expect(firstPage.status).toBe(200);
+    expect(firstPage.body.entries).toHaveLength(3);
+    expect(firstPage.body.entries[0].eventType).toBe("disposition.adjusted");
+    expect(firstPage.body.nextCursor).toBeNull();
+
+    const { agent: outsider } = await signupAgent("logoutsider1");
+    const denied = await outsider.get(`/api/campaign-event-log?worldId=${worldId}`);
+    expect(denied.status).toBe(403);
+  });
+
   it("mirrors the Guild Board completion callback into the poster's world", async () => {
     const { agent: poster } = await signupAgent("logposter1");
     const world = await poster.post("/api/worlds").send({ name: "Poster World" });

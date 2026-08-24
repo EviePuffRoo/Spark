@@ -21,7 +21,7 @@ import type {
   Dungeon, DungeonInput, GenerateDungeonRequest, GeneratedDungeonOutline,
   BattleMap, BattleMapInput,
   Shop, ShopInput, GenerateShopRequest, GeneratedShop, ShopCommission, ShopCommissionInput,
-  FactionLogEntry, FactionRelationship, FactionRelationshipInput, CampaignEvent, CampaignEventInput,
+  FactionLogEntry, FactionRelationship, FactionRelationshipInput, CampaignEvent, CampaignEventInput, CampaignEventLogEntry,
   WorldTickProposal, WorldTickApplyRequest, WorldTickLog,
   FactionBattleProposal,
   DoomClock, DoomClockInput,
@@ -219,6 +219,11 @@ export const api = {
   postCampaignEvent: (event: CampaignEventInput) =>
     request<CampaignEvent>("/campaign-events", { method: "POST", body: JSON.stringify(event) }),
   deleteCampaignEvent: (id: string) => request<void>(`/campaign-events/${id}`, { method: "DELETE" }),
+
+  listCampaignEventLog: (worldId: string, cursor?: string) =>
+    request<{ entries: CampaignEventLogEntry[]; nextCursor: string | null }>(
+      `/campaign-event-log?worldId=${worldId}${cursor ? `&cursor=${cursor}` : ""}`,
+    ),
 
   getWorldTickProposal: (worldId: string) => request<WorldTickProposal>(`/world-tick/${worldId}/proposal`),
   applyWorldTick: (worldId: string, body: WorldTickApplyRequest) =>

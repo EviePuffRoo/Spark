@@ -294,6 +294,11 @@ export function RosterPage({
   const [settlementFactionName, setSettlementFactionName] = useState<string>("");
   const [pickingSettlementFaction, setPickingSettlementFaction] = useState(false);
 
+  const [questPrerequisiteId, setQuestPrerequisiteId] = useState<string | null>(null);
+  const [pickingQuestPrerequisite, setPickingQuestPrerequisite] = useState(false);
+  const questPrerequisiteName = questPrerequisiteId ? quests.find((q) => q.id === questPrerequisiteId)?.title ?? "" : "";
+  const questDependents = selectedQuest ? quests.filter((q) => q.prerequisiteQuestId === selectedQuest.id) : [];
+
   useEffect(() => {
     if (selected) {
       setMetaNotes(selected.notes ?? "");
@@ -301,7 +306,10 @@ export function RosterPage({
       setAssignedWorld(selected.worldId ?? "");
       setHiddenFromParty(selected.hiddenFromParty);
     }
-    if (selectedQuest) setQuestStatus(selectedQuest.status);
+    if (selectedQuest) {
+      setQuestStatus(selectedQuest.status);
+      setQuestPrerequisiteId(selectedQuest.prerequisiteQuestId ?? null);
+    }
     const linkedSettlementId = selectedLocation?.settlementId ?? selectedCharacter?.settlementId ?? selectedShop?.settlementId;
     if (selectedLocation || selectedCharacter || selectedShop) {
       setEntitySettlementId(linkedSettlementId ?? null);
@@ -357,7 +365,7 @@ export function RosterPage({
     const patch = {
       notes: metaNotes, tags: tags.split(",").map((t) => t.trim()).filter(Boolean), worldId: assignedWorld || null,
       hiddenFromParty,
-      ...(mode === "quests" ? { status: questStatus } : {}),
+      ...(mode === "quests" ? { status: questStatus, prerequisiteQuestId: questPrerequisiteId } : {}),
       ...(mode === "locations" || mode === "characters" || mode === "shops" ? { settlementId: entitySettlementId } : {}),
       ...(mode === "settlements" ? {
         prosperity: settlementProsperity || undefined,
@@ -797,12 +805,41 @@ export function RosterPage({
                   </select>
                 </label>
                 {mode === "quests" && (
-                  <label className="field">
-                    <span>Status</span>
-                    <select value={questStatus} onChange={(e) => setQuestStatus(e.target.value as QuestStatus)}>
-                      {QUEST_STATUSES.map((s) => <option key={s} value={s}>{QUEST_STATUS_LABELS[s]}</option>)}
-                    </select>
-                  </label>
+                  <>
+                    <label className="field">
+                      <span>Status</span>
+                      <select value={questStatus} onChange={(e) => setQuestStatus(e.target.value as QuestStatus)}>
+                        {QUEST_STATUSES.map((s) => <option key={s} value={s}>{QUEST_STATUS_LABELS[s]}</option>)}
+                      </select>
+                    </label>
+                    <div className="field">
+                      <span>Prerequisite Quest (optional)</span>
+                      {questPrerequisiteId ? (
+                        <div className="role-slot-filled">
+                          <span className="role-slot-value">{questPrerequisiteName || "…"}</span>
+                          <button className="btn-secondary" onClick={() => setQuestPrerequisiteId(null)}>Clear</button>
+                        </div>
+                      ) : pickingQuestPrerequisite ? (
+                        <EntitySearchPicker type="quest" onSelect={(r) => { setQuestPrerequisiteId(r.id); setPickingQuestPrerequisite(false); }} placeholder="Search quests…" />
+                      ) : (
+                        <button className="btn-secondary" onClick={() => setPickingQuestPrerequisite(true)}>+ Set a Prerequisite Quest</button>
+                      )}
+                    </div>
+                    {questDependents.length > 0 && (
+                      <div className="field">
+                        <span>Unlocks</span>
+                        <ul className="entity-list">
+                          {questDependents.map((q) => (
+                            <li key={q.id} className="world-row">
+                              <button className="entity-item" onClick={() => setSelectedId(q.id)}>
+                                <span className="entity-name">{q.title}</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </>
                 )}
                 {(mode === "locations" || mode === "characters" || mode === "shops") && (
                   <div className="field">

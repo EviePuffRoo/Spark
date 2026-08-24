@@ -127,7 +127,7 @@ export function InventoryPage() {
           <InventoryIcon className="page-title-icon" aria-hidden="true" />
           <h2>Party Inventory</h2>
         </div>
-        <p className="hint">Shared gold and items for the whole party — anyone can add to it or take from it.</p>
+        <p className="hint">Shared gold and items for the whole party. Anyone can add to it or take from it.</p>
 
         {worlds.length === 0 ? (
           <p className="hint">Create or join a world to track a party inventory.</p>
@@ -172,7 +172,7 @@ export function InventoryPage() {
                   placeholder="Potion of Healing"
                 />
               </label>
-              {pickedItemId && <p className="hint">Linked to a Compendium item — claimable onto a character later.</p>}
+              {pickedItemId && <p className="hint">Linked to a Compendium item, claimable onto a character later.</p>}
               {pickingItem ? (
                 <div className="save-panel">
                   <EntitySearchPicker type="item" onSelect={pickItem} placeholder="Search your items…" />
@@ -231,7 +231,7 @@ export function InventoryPage() {
             )}
 
             <h3 className="section-heading">History</h3>
-            {summary.entries.length === 0 && <p className="hint">No activity yet — be the first.</p>}
+            {summary.entries.length === 0 && <p className="hint">No activity yet. Be the first.</p>}
             <ul className="dice-history">
               {summary.entries.map((entry) => (
                 <li key={entry.id} className="dice-history-row">

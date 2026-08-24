@@ -149,7 +149,7 @@ export function DungeonCreatePage() {
         <div className="generator-layout">
           <div className="panel">
             <h2>Generate a Dungeon</h2>
-            <p className="hint">A connected set of rooms, each a ready-to-use zone map — some carrying a hazard.</p>
+            <p className="hint">A connected set of rooms, each a ready-to-use zone map, some carrying a hazard.</p>
 
             <label className="field">
               <input

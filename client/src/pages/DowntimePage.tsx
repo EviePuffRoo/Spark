@@ -293,7 +293,7 @@ export function DowntimePage({
                 {craftedItem ? (
                   <div className="button-row">
                     <span>
-                      {craftedItem.name} — {computeCraftingCost(craftedItem).goldCost} gp,{" "}
+                      {craftedItem.name} · {computeCraftingCost(craftedItem).goldCost} gp,{" "}
                       {computeCraftingCost(craftedItem).daysRequired}d suggested
                     </span>
                     <button className="btn-secondary" onClick={() => setCraftedItem(null)}>Clear</button>
@@ -337,8 +337,8 @@ export function DowntimePage({
               {activities.map((a) => (
                 <li key={a.id} className="world-row">
                   <div>
-                    <span className="entity-name">{a.characterName} — {DOWNTIME_ACTIVITY_TYPE_LABELS[a.activityType]} ({a.daysSpent}d)</span>
-                    <div className="entity-meta">{a.description}{a.outcome ? ` — ${a.outcome}` : ""}</div>
+                    <span className="entity-name">{a.characterName} · {DOWNTIME_ACTIVITY_TYPE_LABELS[a.activityType]} ({a.daysSpent}d)</span>
+                    <div className="entity-meta">{a.description}{a.outcome ? ` · ${a.outcome}` : ""}</div>
                   </div>
                   {(a.userId === user?.id) && (
                     <button className="btn-danger" onClick={() => deleteActivity(a.id)} aria-label={`Delete activity for ${a.characterName}`}>Delete</button>
@@ -357,7 +357,7 @@ export function DowntimePage({
               <DowntimeIcon className="page-title-icon" aria-hidden="true" />
               <h2>Travel</h2>
             </div>
-            <p className="hint">Pick an encounter table and roll a check for each leg of the journey. Not saved — jot anything worth keeping into Session Notes.</p>
+            <p className="hint">Pick an encounter table and roll a check for each leg of the journey. Not saved. Jot anything worth keeping into Session Notes.</p>
 
             <label className="field">
               <span>From region (optional)</span>
@@ -388,7 +388,7 @@ export function DowntimePage({
             {originRegion && destinationRegion && (
               <p className="hint">
                 {suggestedDays === null
-                  ? "No known travel route between these regions — connect them on the World Map first."
+                  ? "No known travel route between these regions. Connect them on the World Map first."
                   : `Suggested: ${suggestedDays} day${suggestedDays === 1 ? "" : "s"} (${suggestedDays} region hop${suggestedDays === 1 ? "" : "s"} on the World Map).`}
                 {suggestedDays !== null && (
                   <>
@@ -434,7 +434,7 @@ export function DowntimePage({
               {checks.map((c) => (
                 <li key={c.id} className="world-row">
                   <div>
-                    <span className="entity-name">Day {c.day} — {c.roll}</span>
+                    <span className="entity-name">Day {c.day} · {c.roll}</span>
                     <div className="entity-meta">{c.description}</div>
                   </div>
                   <button className="btn-secondary" disabled={c.addedToCombat} onClick={() => escalateToCombat(c)}>

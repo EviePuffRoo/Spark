@@ -58,7 +58,7 @@ export function CodexNotesPanel({
       <h3 className="section-heading">Party Notes</h3>
       <p className="hint">Shared theories and knowledge the whole party can see and add to.</p>
 
-      {notes.length === 0 && <p className="hint">No notes yet — be the first.</p>}
+      {notes.length === 0 && <p className="hint">No notes yet. Be the first.</p>}
       <ul className="dice-history">
         {notes.map((note) => (
           <li key={note.id} className="dice-history-row">

@@ -73,7 +73,7 @@ export function WorldOverviewPage({ onNavigate }: { onNavigate: (subTab: Overvie
       <div className="page">
         <div className="panel">
           <h2>World Overview</h2>
-          <p className="hint">You don't have any worlds yet — create one to get started.</p>
+          <p className="hint">You don't have any worlds yet. Create one to get started.</p>
           <button className="btn-primary" onClick={() => onNavigate("worlds")}>Go to Worlds</button>
         </div>
       </div>
@@ -135,7 +135,7 @@ export function WorldOverviewPage({ onNavigate }: { onNavigate: (subTab: Overvie
         <div className="panel">
           <h3 className="section-heading">World Map</h3>
           {regions.length === 0 ? (
-            <p className="hint">No regions yet — generate one from Create → Regions to start mapping your world.</p>
+            <p className="hint">No regions yet. Generate one from Create → Regions to start mapping your world.</p>
           ) : (
             <WorldMapView
               regions={regions}

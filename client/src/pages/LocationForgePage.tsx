@@ -206,7 +206,7 @@ export function LocationForgePage() {
       {creationMode === "manual" && !manualResult && (
         <div className="panel">
           <h2>Create Your Own Location</h2>
-          <p className="hint">Write it exactly how you want it — nothing generated, all yours.</p>
+          <p className="hint">Write it exactly how you want it. Nothing generated, all yours.</p>
           <LocationEditor value={BLANK_LOCATION} onSave={async (draft) => setManualResult(draft)} onCancel={() => switchMode("generate")} saveLabel="Continue" />
         </div>
       )}

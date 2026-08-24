@@ -186,7 +186,7 @@ export function GeneratorPage() {
                 <div className="batch-result-card" key={index}>
                   <StatBlockView
                     name={result.name}
-                    subtitle={`${result.statBlock.size} ${result.statBlock.creatureType}, ${result.statBlock.alignment}${result.race ? ` — ${result.race}` : ""}${result.background ? `, ${result.background}` : ""}`}
+                    subtitle={`${result.statBlock.size} ${result.statBlock.creatureType}, ${result.statBlock.alignment}${result.race ? ` · ${result.race}` : ""}${result.background ? `, ${result.background}` : ""}`}
                     statBlock={result.statBlock}
                   />
                   <BackstoryView backstory={result.backstory} />

@@ -155,7 +155,7 @@ export function DungeonEditor({
               <label key={zone.id} className="field">
                 <span>{zone.name} leads to</span>
                 <select value={exit?.toRoomId ?? ""} onChange={(e) => setExit(selectedRoom.id, zone.id, e.target.value)}>
-                  <option value="">— No exit —</option>
+                  <option value="">No exit</option>
                   {rooms.filter((r) => r.id !== selectedRoom.id).map((r) => (
                     <option key={r.id} value={r.id}>{r.name}</option>
                   ))}

@@ -36,7 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setSessionExpiredHandler(() => {
       setUser(null);
-      setSessionMessage("Your session expired — please log in again.");
+      setSessionMessage("Your session expired. Please log in again.");
     });
   }, []);
 

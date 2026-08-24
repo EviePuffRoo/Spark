@@ -78,7 +78,7 @@ export function MyCharacterPage({ onViewRoster }: { onViewRoster: (worldId: stri
 
         {loading && <p className="hint">Loading…</p>}
         {!loading && characters.length === 0 && (
-          <p className="hint">You haven't created a character yet — head to Create → Player Characters to add one.</p>
+          <p className="hint">You haven't created a character yet. Head to Create → Player Characters to add one.</p>
         )}
         {error && <p className="error">{error}</p>}
         {restMessage && <p className="success">{restMessage}</p>}

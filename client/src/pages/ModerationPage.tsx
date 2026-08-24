@@ -127,14 +127,14 @@ export function ModerationPage() {
           {selected && (
             <>
               <p className="entity-meta">
-                "{selected.title}" — published by {selected.publisherUsername} on {new Date(selected.publishedAt).toLocaleDateString()}
+                "{selected.title}", published by {selected.publisherUsername} on {new Date(selected.publishedAt).toLocaleDateString()}
               </p>
 
               <h3 className="section-heading">Reports</h3>
               <ul className="entity-list">
                 {selected.reports.map((r) => (
                   <li key={r.id} className="save-panel">
-                    <p><strong>{REASON_LABELS[r.reason] ?? r.reason}</strong> — reported by {r.reporterUsername}</p>
+                    <p><strong>{REASON_LABELS[r.reason] ?? r.reason}</strong>, reported by {r.reporterUsername}</p>
                     {r.detail && <p className="hint">{r.detail}</p>}
                     <button className="btn-secondary" onClick={() => handleDismiss(r.id)}>Dismiss this report</button>
                   </li>

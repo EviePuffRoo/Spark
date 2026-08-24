@@ -46,7 +46,7 @@ export function SessionHighlightsPanel({ worldId, worldName }: { worldId: string
       {error && <p className="error">{error}</p>}
       {highlights && (
         <>
-          <p className="hint">Since {formatDate(highlights.since)} — {highlights.rollCount} roll{highlights.rollCount === 1 ? "" : "s"}, {highlights.messageCount} message{highlights.messageCount === 1 ? "" : "s"}.</p>
+          <p className="hint">Since {formatDate(highlights.since)}: {highlights.rollCount} roll{highlights.rollCount === 1 ? "" : "s"}, {highlights.messageCount} message{highlights.messageCount === 1 ? "" : "s"}.</p>
           {isEmpty && <p className="hint">Nothing notable since last session.</p>}
           {highlights.naturalTwenties.length > 0 && (
             <p><strong>Nat 20s:</strong> {highlights.naturalTwenties.map((r) => `${r.rollerName}${r.label ? ` (${r.label})` : ""}`).join(", ")}</p>
@@ -55,7 +55,7 @@ export function SessionHighlightsPanel({ worldId, worldName }: { worldId: string
             <p><strong>Nat 1s:</strong> {highlights.naturalOnes.map((r) => `${r.rollerName}${r.label ? ` (${r.label})` : ""}`).join(", ")}</p>
           )}
           {highlights.topRolls.length > 0 && (
-            <p><strong>Biggest rolls:</strong> {highlights.topRolls.map((r) => `${r.rollerName} — ${r.total}`).join(", ")}</p>
+            <p><strong>Biggest rolls:</strong> {highlights.topRolls.map((r) => `${r.rollerName}: ${r.total}`).join(", ")}</p>
           )}
           {highlights.goldDelta !== 0 && (
             <p><strong>Gold:</strong> {highlights.goldDelta > 0 ? "+" : ""}{highlights.goldDelta} gp</p>

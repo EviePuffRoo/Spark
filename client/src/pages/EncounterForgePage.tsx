@@ -206,7 +206,7 @@ export function EncounterForgePage() {
       {creationMode === "manual" && !manualResult && (
         <div className="panel">
           <h2>Create Your Own Encounter Table</h2>
-          <p className="hint">Write it exactly how you want it — nothing generated, all yours.</p>
+          <p className="hint">Write it exactly how you want it. Nothing generated, all yours.</p>
           <EncounterTableEditor value={BLANK_ENCOUNTER_TABLE} onSave={async (draft) => setManualResult(draft)} onCancel={() => switchMode("generate")} saveLabel="Continue" />
         </div>
       )}

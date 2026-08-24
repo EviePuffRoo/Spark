@@ -78,7 +78,7 @@ export function RosterDetailPanel({
         <>
           <StatBlockView
             name={selectedCharacter.name}
-            subtitle={`${selectedCharacter.statBlock.size} ${selectedCharacter.statBlock.creatureType}, ${selectedCharacter.statBlock.alignment}${selectedCharacter.race ? ` — ${selectedCharacter.race}` : ""}${selectedCharacter.background ? `, ${selectedCharacter.background}` : ""}`}
+            subtitle={`${selectedCharacter.statBlock.size} ${selectedCharacter.statBlock.creatureType}, ${selectedCharacter.statBlock.alignment}${selectedCharacter.race ? ` · ${selectedCharacter.race}` : ""}${selectedCharacter.background ? `, ${selectedCharacter.background}` : ""}`}
             statBlock={selectedCharacter.statBlock}
           />
           <BackstoryView backstory={selectedCharacter.backstory} />

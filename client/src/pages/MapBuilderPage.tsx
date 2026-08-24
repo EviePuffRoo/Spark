@@ -304,9 +304,9 @@ export function MapBuilderPage() {
             <h2>{activeMap.name}</h2>
           </div>
           <p className="hint">
-            {activeMap.width}×{activeMap.height} tiles. Click, or click-and-drag, to paint. No uploaded images — every map here is hand-built from the tileset below.
-            {" "}Decor tiles paint over a floor tile without replacing it, and never block movement or sight — good for rugs, moss, bloodstains.
-            {" "}GM Only markers (secret doors, traps) are for your eyes alone — players never see them, in the builder or at the table.
+            {activeMap.width}×{activeMap.height} tiles. Click, or click-and-drag, to paint. No uploaded images. Every map here is hand-built from the tileset below.
+            {" "}Decor tiles paint over a floor tile without replacing it, and never block movement or sight, good for rugs, moss, bloodstains.
+            {" "}GM Only markers (secret doors, traps) are for your eyes alone. Players never see them, in the builder or at the table.
           </p>
           {error && <p className="error">{error}</p>}
           <div className="map-builder-actions">
@@ -401,7 +401,7 @@ export function MapBuilderPage() {
             {placedGmOnlyTiles.length > 0 && (
               <div className="gm-markers-panel">
                 <h3 className="section-heading">GM Markers</h3>
-                <p className="hint">Only you ever see these — stripped before a map reaches any player.</p>
+                <p className="hint">Only you ever see these. Stripped before a map reaches any player.</p>
                 <ul className="gm-markers-list">
                   {placedGmOnlyTiles.map((t) => (
                     <li key={t.key} className="gm-marker-row">
@@ -440,7 +440,7 @@ export function MapBuilderPage() {
                   </button>
                   <button className="btn-secondary" onClick={() => setPublishOpen(false)}>Cancel</button>
                 </div>
-                {publishStatus === "published" && <p className="success">Published — visible in the Homebrew Gallery.</p>}
+                {publishStatus === "published" && <p className="success">Published. Visible in the Homebrew Gallery.</p>}
               </div>
             )}
           </div>
@@ -456,7 +456,7 @@ export function MapBuilderPage() {
           <MapBuilderIcon className="page-title-icon" aria-hidden="true" />
           <h2>Map Builder</h2>
         </div>
-        <p className="hint">Hand-build battle maps from a curated tileset — no image uploads. Paint terrain, walls, and hazards tile by tile, save, and reuse them across sessions.</p>
+        <p className="hint">Hand-build battle maps from a curated tileset. No image uploads. Paint terrain, walls, and hazards tile by tile, save, and reuse them across sessions.</p>
         {error && <p className="error">{error}</p>}
 
         {!creating && <button className="btn-primary" onClick={() => setCreating(true)}>+ New Map</button>}

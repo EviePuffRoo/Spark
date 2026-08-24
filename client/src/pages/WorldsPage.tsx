@@ -230,8 +230,8 @@ export function WorldsPage({ onViewRoster, onNavigateToBilling }: { onViewRoster
 
         {limitReached && (
           <div className="upgrade-callout">
-            <p>Free accounts are limited to {FREE_TIER_WORLD_LIMIT} worlds — upgrade for unlimited worlds and faster generation.</p>
-            <button className="btn-primary" onClick={onNavigateToBilling}>Upgrade — $4.99/mo</button>
+            <p>Free accounts are limited to {FREE_TIER_WORLD_LIMIT} worlds. Upgrade for unlimited worlds and faster generation.</p>
+            <button className="btn-primary" onClick={onNavigateToBilling}>Upgrade ($4.99/mo)</button>
           </div>
         )}
 
@@ -288,7 +288,7 @@ export function WorldsPage({ onViewRoster, onNavigateToBilling }: { onViewRoster
                   </button>
                   {generatedCode && (
                     <div className="invite-code-row">
-                      <p className="hint">Share this code — it won't be shown again: <code>{generatedCode}</code></p>
+                      <p className="hint">Share this code, it won't be shown again: <code>{generatedCode}</code></p>
                       <CopyButton value={generatedCode} />
                     </div>
                   )}
@@ -310,7 +310,7 @@ export function WorldsPage({ onViewRoster, onNavigateToBilling }: { onViewRoster
           ))}
         </ul>
         {loading && <p className="hint">Loading…</p>}
-        {!loading && myWorlds.length === 0 && <p className="hint">No worlds yet — create one above.</p>}
+        {!loading && myWorlds.length === 0 && <p className="hint">No worlds yet. Create one above.</p>}
 
         {sharedWorlds.length > 0 && (
           <>

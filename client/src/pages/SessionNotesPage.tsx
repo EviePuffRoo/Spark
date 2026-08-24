@@ -186,7 +186,7 @@ export function SessionNotesPage({ onOpenInRoster }: { onOpenInRoster: (type: En
           {timelineWorldFilter && (
             <div className="panel">
               <h3 className="section-heading">Log a World Event</h3>
-              <p className="hint">Something that happened off-screen between sessions — a territory shift, a battle, a treaty.</p>
+              <p className="hint">Something that happened off-screen between sessions: a territory shift, a battle, a treaty.</p>
               <label className="field">
                 <span>Title</span>
                 <input type="text" value={eventTitle} onChange={(e) => setEventTitle(e.target.value)} placeholder="The Docks Change Hands" />

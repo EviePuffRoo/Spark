@@ -87,7 +87,7 @@ export function LevelUpPanel({ pc, onUpdated }: { pc: PlayerCharacter; onUpdated
             </p>
           )}
           {preview && !preview.classMatched && (
-            <p className="hint">+{preview.hpGain} HP, proficiency bonus +{preview.proficiencyBonus} (class not recognized — spell slots/class resource left unchanged)</p>
+            <p className="hint">+{preview.hpGain} HP, proficiency bonus +{preview.proficiencyBonus} (class not recognized, spell slots/class resource left unchanged)</p>
           )}
         </>
       )}

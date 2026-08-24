@@ -61,7 +61,7 @@ export function AccountMenu() {
   }
 
   function handleGetRecoveryCode() {
-    if (!confirm("This replaces your current recovery code — the old one will stop working. Continue?")) return;
+    if (!confirm("This replaces your current recovery code. The old one will stop working. Continue?")) return;
     regenerateRecoveryCode();
   }
 

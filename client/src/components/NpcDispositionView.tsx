@@ -87,7 +87,7 @@ export function NpcDispositionView({
               <div className="dice-history-main">
                 <span>
                   {entry.delta > 0 ? "+" : ""}{entry.delta} by {entry.authorName}
-                  {entry.reason ? ` — ${entry.reason}` : ""}
+                  {entry.reason ? ` · ${entry.reason}` : ""}
                 </span>
                 <span className="dice-history-time">{timeAgo(new Date(entry.createdAt).getTime())}</span>
               </div>
@@ -100,7 +100,7 @@ export function NpcDispositionView({
       {faction && (
         <div className="button-row">
           <span>
-            {faction.name} — {REPUTATION_TIER_LABELS[computeReputationTier(faction.reputation)]} ({faction.reputation})
+            {faction.name}: {REPUTATION_TIER_LABELS[computeReputationTier(faction.reputation)]} ({faction.reputation})
           </span>
           {canEdit && faction.reputation !== disposition && (
             <button className="btn-secondary" onClick={() => adjust(faction.reputation - disposition, `Synced to ${faction.name}'s reputation`)}>

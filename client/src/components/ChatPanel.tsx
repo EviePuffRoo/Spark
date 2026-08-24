@@ -92,7 +92,7 @@ export function ChatPanel({ worldId, worlds }: { worldId: string; worlds: WorldS
     <div className="panel chat-panel">
       <h3 className="section-heading">Party Chat</h3>
       {liveError && <p className="hint">{liveError}</p>}
-      {messages.length === 0 && <p className="hint">No messages yet — say hello.</p>}
+      {messages.length === 0 && <p className="hint">No messages yet. Say hello.</p>}
       <ul className="chat-panel-messages" ref={listRef}>
         {messages.map((m) => {
           const canDelete = m.userId === user?.id || isOwner;
@@ -121,7 +121,7 @@ export function ChatPanel({ worldId, worlds }: { worldId: string; worlds: WorldS
       </div>
 
       {historyOpen && !isPaid && (
-        <p className="hint">Full history beyond the last {RECENT_HISTORY_LIMIT} messages is a paid feature — see Billing to upgrade.</p>
+        <p className="hint">Full history beyond the last {RECENT_HISTORY_LIMIT} messages is a paid feature. See Billing to upgrade.</p>
       )}
 
       {historyOpen && isPaid && (

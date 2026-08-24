@@ -425,7 +425,7 @@ export function InitiativeTracker({
     setAttackDamageResult(null);
     if (target) {
       const acNote = target.armorClass !== undefined ? ` (AC ${target.armorClass})` : "";
-      const outcome = hit === null ? "" : hit ? " — HIT" : " — MISS";
+      const outcome = hit === null ? "" : hit ? ": HIT" : ": MISS";
       announceAttackRoll(attacker, {
         notation: "1d20", results: rolls, modifier: bonus, total, mode: attackAdvMode === "normal" ? undefined : attackAdvMode,
       }, `${attackChoice || "Attack"}: ${attacker.name} vs ${target.name}${acNote}${outcome}`);
@@ -437,7 +437,7 @@ export function InitiativeTracker({
     if (!target) return;
     const parsed = parseNotation(attackDamageDice);
     if (!parsed) {
-      setAttackError(`Can't parse "${attackDamageDice}" — try something like 1d8+3.`);
+      setAttackError(`Can't parse "${attackDamageDice}". Try something like 1d8+3.`);
       return;
     }
     setAttackError(null);
@@ -585,7 +585,7 @@ export function InitiativeTracker({
 
       {canEdit && difficulty && (
         <p className={`difficulty-readout difficulty-${difficulty.rating}`}>
-          {DIFFICULTY_LABELS[difficulty.rating]} encounter — {difficulty.adjustedXp} XP (adjusted) vs. {difficulty.thresholds.easy}/{difficulty.thresholds.medium}/{difficulty.thresholds.hard}/{difficulty.thresholds.deadly} easy/medium/hard/deadly thresholds
+          {DIFFICULTY_LABELS[difficulty.rating]} encounter: {difficulty.adjustedXp} XP (adjusted) vs. {difficulty.thresholds.easy}/{difficulty.thresholds.medium}/{difficulty.thresholds.hard}/{difficulty.thresholds.deadly} easy/medium/hard/deadly thresholds
         </p>
       )}
 
@@ -619,7 +619,7 @@ export function InitiativeTracker({
       </div>
       {isOwner && (
         <p className="hint">
-          <strong>Table View</strong> shows the read-only turn order and map right here — no second window needed.{" "}
+          <strong>Table View</strong> shows the read-only turn order and map right here. No second window needed.{" "}
           <strong>Cast to Table</strong> opens the same thing in its own window, for a second monitor or TV.
         </p>
       )}
@@ -627,7 +627,7 @@ export function InitiativeTracker({
       {canEdit && activeDungeon && (
         <p className="hint">
           Dungeon: {activeDungeon.name}
-          {activeEncounter.activeDungeonRoomId && ` — Room: ${activeDungeon.rooms.find((r) => r.id === activeEncounter.activeDungeonRoomId)?.name ?? ""}`}
+          {activeEncounter.activeDungeonRoomId && ` · Room: ${activeDungeon.rooms.find((r) => r.id === activeEncounter.activeDungeonRoomId)?.name ?? ""}`}
           {" "}
           <button className="btn-secondary" onClick={leaveDungeon}>Leave Dungeon</button>
         </p>
@@ -636,7 +636,7 @@ export function InitiativeTracker({
       {canEdit && opportunityPrompt && (
         <div className="button-row opportunity-prompt">
           <span>
-            ⚔ {opportunityPrompt.moverName} left {opportunityPrompt.leftName}'s reach — Attack of Opportunity?
+            ⚔ {opportunityPrompt.moverName} left {opportunityPrompt.leftName}'s reach. Attack of Opportunity?
           </span>
           <button className="btn-secondary" onClick={() => setOpportunityPrompt(null)}>Dismiss</button>
         </div>
@@ -785,7 +785,7 @@ export function InitiativeTracker({
                   const selected = c.attacks?.find((a) => a.name === attackChoice);
                   return selected?.savingThrow ? (
                     <p className="hint">
-                      Also calls for a DC {selected.savingThrow.dc} {selected.savingThrow.ability.toUpperCase()} saving throw — resolve that separately.
+                      Also calls for a DC {selected.savingThrow.dc} {selected.savingThrow.ability.toUpperCase()} saving throw. Resolve that separately.
                     </p>
                   ) : null;
                 })()}
@@ -802,7 +802,7 @@ export function InitiativeTracker({
                 {attackRollResult && (
                   <p className="encounter-roll-result" role="status">
                     Rolled [{attackRollResult.rolls.join(", ")}]{attackToHitBonus !== "0" ? ` + ${attackToHitBonus}` : ""} = <strong className="mono">{attackRollResult.total}</strong>
-                    {" — "}
+                    {": "}
                     {attackRollResult.hit === null ? "target has no AC set" : attackRollResult.hit ? <strong>HIT</strong> : <strong>MISS</strong>}
                   </p>
                 )}
@@ -864,7 +864,7 @@ export function InitiativeTracker({
             {concentrationPrompt?.id === c.id && (
               <div className="button-row concentration-prompt">
                 <span>
-                  🎯 {concentrationPrompt.name} takes damage while concentrating on {concentrationPrompt.spell} — CON save DC {concentrationPrompt.dc} to maintain it.
+                  🎯 {concentrationPrompt.name} takes damage while concentrating on {concentrationPrompt.spell}. CON save DC {concentrationPrompt.dc} to maintain it.
                 </span>
                 <button
                   className="btn-danger"

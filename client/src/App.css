@@ -1728,6 +1728,11 @@ textarea {
   color: var(--text);
 }
 
+.auth-about-link {
+  margin-top: 18px;
+  font-size: 0.9rem;
+}
+
 .auth-panel {
   width: 100%;
   max-width: 380px;

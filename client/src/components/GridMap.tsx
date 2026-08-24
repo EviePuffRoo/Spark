@@ -259,7 +259,7 @@ export function GridMap({
             {showPicker && (
               <div className="save-panel">
                 {pickerMaps.length === 0 ? (
-                  <p className="hint">No battle maps yet — build one in Map Builder first.</p>
+                  <p className="hint">No battle maps yet. Build one in Map Builder first.</p>
                 ) : (
                   <ul className="entity-list">
                     {pickerMaps.map((m) => (

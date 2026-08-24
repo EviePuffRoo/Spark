@@ -34,14 +34,14 @@ export function describeEffect(def: BaseUpgradeDef): string | null {
     const discount = effect.priceMultiplier && effect.priceMultiplier < 1
       ? `, ${Math.round((1 - effect.priceMultiplier) * 100)}% below market price`
       : "";
-    return `Unlocks a real ${label} (~${effect.stockSize} items${discount}) — appears on the Shop tab the moment you buy this.`;
+    return `Unlocks a real ${label} (~${effect.stockSize} items${discount}). Appears on the Shop tab the moment you buy this.`;
   }
   if (effect.kind === "reputationDelta") {
     const rival = effect.rivalValue !== undefined ? `, ${effect.rivalValue} with a rival you choose` : "";
-    return `${effect.value >= 0 ? "+" : ""}${effect.value} reputation with a faction you choose${rival} — applied immediately, both optional.`;
+    return `${effect.value >= 0 ? "+" : ""}${effect.value} reputation with a faction you choose${rival}. Applied immediately, both optional.`;
   }
   if (effect.kind === "restBonus") {
-    return `+${effect.value} HP on every short rest taken by anyone in this world — short rests otherwise heal nothing.`;
+    return `+${effect.value} HP on every short rest taken by anyone in this world. Short rests otherwise heal nothing.`;
   }
   return null;
 }

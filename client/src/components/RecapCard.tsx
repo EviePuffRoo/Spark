@@ -127,7 +127,7 @@ function draw(ctx: CanvasRenderingContext2D, highlights: SessionHighlights, worl
     leftY = drawRow(ctx, leftX, leftY, colW, "Biggest Roll", `${top.rollerName} rolled ${top.total}`);
   }
   if (highlights.mostActiveRoller) {
-    leftY = drawRow(ctx, leftX, leftY, colW, "Most Active Roller", `${highlights.mostActiveRoller.rollerName} — ${highlights.mostActiveRoller.rollCount} rolls`);
+    leftY = drawRow(ctx, leftX, leftY, colW, "Most Active Roller", `${highlights.mostActiveRoller.rollerName}: ${highlights.mostActiveRoller.rollCount} rolls`);
   }
 
   if (highlights.itemsGained.length > 0) {

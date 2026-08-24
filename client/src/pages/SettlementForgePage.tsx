@@ -173,7 +173,7 @@ export function SettlementForgePage() {
         <div className="generator-layout">
           <div className="panel">
             <h2>Generate a Settlement</h2>
-            <p className="hint">Review it, then save it to your roster — optionally anchored to a Region.</p>
+            <p className="hint">Review it, then save it to your roster, optionally anchored to a Region.</p>
             <button className="btn-secondary" onClick={startOver}>← Generate Again</button>
           </div>
           <div className="panel result-panel">
@@ -186,7 +186,7 @@ export function SettlementForgePage() {
       {creationMode === "manual" && !manualResult && (
         <div className="panel">
           <h2>Build a Settlement</h2>
-          <p className="hint">Write it exactly how you want it — nothing generated, all yours.</p>
+          <p className="hint">Write it exactly how you want it. Nothing generated, all yours.</p>
           <SettlementEditor
             key={resetKey}
             value={BLANK_SETTLEMENT}

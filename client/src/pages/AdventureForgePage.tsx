@@ -215,7 +215,7 @@ export function AdventureForgePage() {
         <div className="panel">
           <h2>Weave a One-Shot Adventure</h2>
           <p className="hint">
-            Fill each role below — generate someone new or reuse an existing roster entry — then weave them
+            Fill each role below (generate someone new or reuse an existing roster entry), then weave them
             into a ready-to-run adventure.
           </p>
 

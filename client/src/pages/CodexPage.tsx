@@ -86,7 +86,7 @@ export function CodexPage() {
           <CodexIcon className="page-title-icon" aria-hidden="true" />
           <h2>Codex</h2>
         </div>
-        <p className="hint">What the party has learned so far — plus your own shared theories and notes.</p>
+        <p className="hint">What the party has learned so far, plus your own shared theories and notes.</p>
 
         {worlds.length === 0 ? (
           <p className="hint">Create or join a world to browse its codex.</p>
@@ -141,7 +141,7 @@ export function CodexPage() {
           <>
             <StatBlockView
               name={selectedCharacter.name}
-              subtitle={`${selectedCharacter.statBlock.size} ${selectedCharacter.statBlock.creatureType}, ${selectedCharacter.statBlock.alignment}${selectedCharacter.race ? ` — ${selectedCharacter.race}` : ""}${selectedCharacter.background ? `, ${selectedCharacter.background}` : ""}`}
+              subtitle={`${selectedCharacter.statBlock.size} ${selectedCharacter.statBlock.creatureType}, ${selectedCharacter.statBlock.alignment}${selectedCharacter.race ? ` · ${selectedCharacter.race}` : ""}${selectedCharacter.background ? `, ${selectedCharacter.background}` : ""}`}
               statBlock={selectedCharacter.statBlock}
             />
             <BackstoryView backstory={selectedCharacter.backstory} />

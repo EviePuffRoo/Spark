@@ -23,7 +23,7 @@ export function AchievementsPanel({ worldId }: { worldId: string }) {
   return (
     <div className="panel achievements-panel">
       <h3 className="section-heading">
-        Achievements{data && <span className="achievements-count"> — {data.unlockedCount}/{data.totalCount}</span>}
+        Achievements{data && <span className="achievements-count"> · {data.unlockedCount}/{data.totalCount}</span>}
       </h3>
       {loading && <p className="hint">Loading…</p>}
       {error && <p className="error">{error}</p>}

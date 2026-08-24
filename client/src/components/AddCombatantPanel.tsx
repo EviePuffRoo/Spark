@@ -50,6 +50,7 @@ export function AddCombatantPanel({ onAddCombatant }: { onAddCombatant: (c: Live
       const character = await api.getCharacter(result.id);
       const acBonus = await equipmentAcBonusFor(character.equippedItems, character.attunedItems);
       const attacks = parseStatBlockAttacks(character.statBlock.actions);
+      const legendaryMax = character.statBlock.legendaryActions?.length ? character.statBlock.legendaryActionsPerRound ?? 3 : undefined;
       onAddCombatant({
         id: crypto.randomUUID(),
         name: character.name,
@@ -67,6 +68,10 @@ export function AddCombatantPanel({ onAddCombatant }: { onAddCombatant: (c: Live
         attacks: attacks.length > 0 ? attacks : undefined,
         sizeCategory: parseSizeCategory(character.statBlock.size),
         speedFeet: parseSpeedFeet(character.statBlock.speed),
+        legendaryActionsMax: legendaryMax,
+        legendaryActionsRemaining: legendaryMax,
+        legendaryActionsList: character.statBlock.legendaryActions,
+        lairActionsList: character.statBlock.lairActions,
       });
     } else if (type === "playerCharacter") {
       const pc = await api.getPlayerCharacter(result.id);

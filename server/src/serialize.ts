@@ -481,6 +481,12 @@ export function toEncounterDTO(row: EncounterRow, viewerId: string, worldOwnerId
         // concern as xp above — a player shouldn't be able to read a
         // monster's exact attack bonus off the wire before it's rolled.
         attacks: isOwner ? c.attacks : undefined,
+        // legendaryActionsMax/Remaining stay visible to everyone — knowing
+        // a boss can still act between turns is real tactical information
+        // at the table, not a spoiler. The action descriptions themselves
+        // are withheld from non-owners for the same reason attacks are.
+        legendaryActionsList: isOwner ? c.legendaryActionsList : undefined,
+        lairActionsList: isOwner ? c.lairActionsList : undefined,
         conditions: (c.conditions ?? []).filter((cond) => cond.expiresAtRound === null || cond.expiresAtRound >= row.round),
       };
     })

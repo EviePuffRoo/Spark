@@ -263,6 +263,17 @@ export const MONSTER_TEMPLATES: StatBlockTemplate[] = [
       { name: "Claw", description: "Melee Weapon Attack: +7 to hit, reach 5 ft., one target. Hit: 11 (2d6+4) slashing damage." },
       { name: "Poison Breath (Recharge 5-6)", description: "The dragon exhales poisonous gas in a 30-foot cone. Each creature in that area must make a DC 14 Constitution saving throw, taking 42 (12d6) poison damage on a failed save, or half as much on a successful one." },
     ],
+    legendaryActionsPerRound: 3,
+    legendaryActions: [
+      { name: "Detect", cost: 1, description: "The dragon makes a Wisdom (Perception) check." },
+      { name: "Tail Attack", cost: 1, description: "The dragon makes a tail attack." },
+      { name: "Wing Attack", cost: 2, description: "The dragon beats its wings. Each creature within 10 ft. of the dragon must succeed on a Dexterity saving throw or take bludgeoning damage and be knocked prone. The dragon can then fly up to half its flying speed." },
+    ],
+    lairActions: [
+      { name: "Choking Fumes", description: "A patch of ground within the dragon's lair erupts with poisonous vapor in a 20-foot-radius sphere. Each creature there must succeed on a Constitution saving throw or become poisoned until the end of its next turn." },
+      { name: "Grasping Vines", description: "Grasping vines and roots sprout in a 20-foot-radius sphere centered on a point within the lair. The area becomes difficult terrain until initiative count 20 on the next round, and a creature that starts its turn there must succeed on a Strength saving throw or be restrained until it breaks free." },
+      { name: "Toxic Cloud", description: "A cloud of caustic gas fills a 20-foot cube within the lair, heavily obscuring the area until initiative count 20 on the next round." },
+    ],
   }),
   t("stone-golem", "Stone Golem", "10", "Unaligned", {
     size: "Large", creatureType: "construct", armorClass: 17, armorClassNote: "natural armor", hitPointsAverage: 178, hitDiceFormula: "17d10+85",
@@ -298,6 +309,17 @@ export const MONSTER_TEMPLATES: StatBlockTemplate[] = [
       { name: "Multiattack (Vampire Form Only)", description: "The vampire makes two attacks, only one of which can be a bite." },
       { name: "Unarmed Strike", description: "Melee Weapon Attack: +9 to hit, reach 5 ft., one creature. Hit: 8 (1d8+4) bludgeoning damage. The target must succeed on a DC 18 Strength saving throw or be grappled." },
       { name: "Bite", description: "Melee Weapon Attack: +9 to hit, reach 5 ft., one willing creature or one creature that is grappled or incapacitated. Hit: 7 (1d6+4) piercing damage plus 10 (3d6) necrotic damage. The target's hit point maximum is reduced by an amount equal to the necrotic damage taken, and the vampire regains hit points equal to that amount." },
+    ],
+    legendaryActionsPerRound: 3,
+    legendaryActions: [
+      { name: "Move", cost: 1, description: "The vampire moves up to its speed without provoking opportunity attacks." },
+      { name: "Unarmed Strike", cost: 1, description: "The vampire makes one unarmed strike." },
+      { name: "Bite", cost: 2, description: "The vampire bites one creature within 5 ft., as its Bite action." },
+    ],
+    lairActions: [
+      { name: "Grasping Fog", description: "Fog fills a 20-foot-radius sphere centered on a point the vampire can see within its lair, lightly obscuring the area until initiative count 20 on the next round." },
+      { name: "Restless Dead", description: "Ghostly shapes rise from the floor and claw at one creature the vampire can see within its lair. The target must succeed on a Constitution saving throw or take necrotic damage and have its hit point maximum reduced by that amount until it finishes a long rest." },
+      { name: "Sealed Passage", description: "The vampire causes a mundane door, window, or other opening within its lair to seal shut or fling open, until it uses this lair action again or the vampire dies." },
     ],
   }),
   t("beholder", "Beholder", "13", "Lawful Evil", {

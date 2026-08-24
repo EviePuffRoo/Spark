@@ -23,6 +23,7 @@ import type {
   Shop, ShopInput, GenerateShopRequest, GeneratedShop, ShopCommission, ShopCommissionInput,
   FactionLogEntry, FactionRelationship, FactionRelationshipInput, CampaignEvent, CampaignEventInput,
   WorldTickProposal, WorldTickApplyRequest, WorldTickLog,
+  FactionBattleProposal,
   Region, GenerateRegionRequest, GeneratedRegion,
   Settlement, GenerateSettlementRequest, GeneratedSettlement,
   ActivitySummary,
@@ -182,6 +183,9 @@ export const api = {
   saveFactionRelationship: (relationship: FactionRelationshipInput) =>
     request<FactionRelationship>("/faction-relationships", { method: "POST", body: JSON.stringify(relationship) }),
   deleteFactionRelationship: (id: string) => request<void>(`/faction-relationships/${id}`, { method: "DELETE" }),
+  simulateFactionBattle: (relationshipId: string) => request<FactionBattleProposal>(`/faction-relationships/${relationshipId}/simulate-battle`),
+  applyFactionBattle: (relationshipId: string) =>
+    request<{ proposal: FactionBattleProposal; event: CampaignEvent }>(`/faction-relationships/${relationshipId}/apply-battle`, { method: "POST" }),
 
   listEncounterTables: (worldId?: string) =>
     request<EncounterTable[]>(`/encounter-tables${worldId ? `?worldId=${worldId}` : ""}`),

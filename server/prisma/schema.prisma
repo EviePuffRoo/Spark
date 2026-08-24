@@ -156,6 +156,12 @@ model Character {
   equippedItems String  @default("[]")
   attunedItems  String  @default("[]")
   disposition  Int      @default(0)
+  // "active" | "deceased" | "fled" — set by Autonomous Wars battle
+  // resolution (a casualty of a resolved faction battle becomes
+  // "deceased"; a survivor on the losing side can become "fled"), left at
+  // "active" for every other character. Purely informational elsewhere in
+  // the app — nothing currently blocks acting on a non-"active" character.
+  status       String   @default("active")
   factionId    String?
   faction      Faction? @relation(fields: [factionId], references: [id], onDelete: SetNull)
   settlementId String?

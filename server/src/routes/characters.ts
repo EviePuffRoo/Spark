@@ -62,6 +62,12 @@ charactersRouter.patch("/:id", async (req, res) => {
   for (const field of ["name", "race", "background", "alignment", "notes", "hiddenFromParty", "disposition"] as const) {
     if (field in body) data[field] = body[field];
   }
+  if ("status" in body) {
+    if (body.status !== "active" && body.status !== "deceased" && body.status !== "fled") {
+      return res.status(400).json({ error: "status must be active, deceased, or fled" });
+    }
+    data.status = body.status;
+  }
   if ("worldId" in body) {
     if (typeof body.worldId === "string") {
       const world = await findAccessibleWorld(req.userId!, body.worldId);

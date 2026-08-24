@@ -2451,6 +2451,11 @@ textarea {
   color: var(--danger);
 }
 
+.battle-review-panel {
+  flex-basis: 100%;
+  width: 100%;
+}
+
 .chip-row {
   display: flex;
   flex-wrap: wrap;

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
 import { toDoomClockDTO } from "../serialize.js";
-import { findAccessibleWorld } from "../worldAccess.js";
+import { findAccessibleWorld, canWriteWorld, authorizeEntityWrite } from "../worldAccess.js";
 
 export const doomClocksRouter = Router();
 
@@ -33,8 +33,9 @@ doomClocksRouter.post("/", async (req, res) => {
     return res.status(400).json({ error: "worldId, a label, and a segment count (2-20) are required" });
   }
 
-  const world = await prisma.world.findFirst({ where: { id: worldId, userId: req.userId } });
-  if (!world) return res.status(403).json({ error: "Only the world's owner can create a doom clock" });
+  if (!(await canWriteWorld(req.userId!, worldId))) {
+    return res.status(403).json({ error: "You don't have write access to this world" });
+  }
 
   const row = await prisma.doomClock.create({
     data: { worldId, label: label.trim(), segments, visibleToParty: !!visibleToParty, userId: req.userId! },
@@ -44,8 +45,10 @@ doomClocksRouter.post("/", async (req, res) => {
 
 doomClocksRouter.patch("/:id", async (req, res) => {
   const body = req.body ?? {};
-  const existing = await prisma.doomClock.findFirst({ where: { id: req.params.id, userId: req.userId } });
-  if (!existing) return res.status(404).json({ error: "Doom clock not found" });
+  const existing = await prisma.doomClock.findUnique({ where: { id: req.params.id } });
+  if (!existing || !(await authorizeEntityWrite(req.userId!, existing))) {
+    return res.status(404).json({ error: "Doom clock not found" });
+  }
 
   const data: Record<string, unknown> = {};
   if ("label" in body) {
@@ -68,8 +71,11 @@ doomClocksRouter.patch("/:id", async (req, res) => {
 });
 
 doomClocksRouter.delete("/:id", async (req, res) => {
-  const result = await prisma.doomClock.deleteMany({ where: { id: req.params.id, userId: req.userId } });
-  if (result.count === 0) return res.status(404).json({ error: "Doom clock not found" });
+  const existing = await prisma.doomClock.findUnique({ where: { id: req.params.id } });
+  if (!existing || !(await authorizeEntityWrite(req.userId!, existing))) {
+    return res.status(404).json({ error: "Doom clock not found" });
+  }
+  await prisma.doomClock.delete({ where: { id: req.params.id } });
   res.status(204).end();
 });
 
@@ -78,8 +84,10 @@ doomClocksRouter.delete("/:id", async (req, res) => {
 // same convenience-endpoint-over-raw-PATCH shape as adjust-reputation.
 doomClocksRouter.post("/:id/advance", async (req, res) => {
   const amount = typeof req.body?.amount === "number" ? Math.trunc(req.body.amount) : 1;
-  const row = await prisma.doomClock.findFirst({ where: { id: req.params.id, userId: req.userId } });
-  if (!row) return res.status(404).json({ error: "Doom clock not found" });
+  const row = await prisma.doomClock.findUnique({ where: { id: req.params.id } });
+  if (!row || !(await authorizeEntityWrite(req.userId!, row))) {
+    return res.status(404).json({ error: "Doom clock not found" });
+  }
 
   const filled = Math.max(0, Math.min(row.segments, row.filled + amount));
   const updated = await prisma.doomClock.update({ where: { id: row.id }, data: { filled } });
@@ -87,8 +95,10 @@ doomClocksRouter.post("/:id/advance", async (req, res) => {
 });
 
 doomClocksRouter.post("/:id/reset", async (req, res) => {
-  const result = await prisma.doomClock.updateMany({ where: { id: req.params.id, userId: req.userId }, data: { filled: 0 } });
-  if (result.count === 0) return res.status(404).json({ error: "Doom clock not found" });
-  const row = await prisma.doomClock.findUnique({ where: { id: req.params.id } });
-  res.json(toDoomClockDTO(row!));
+  const existing = await prisma.doomClock.findUnique({ where: { id: req.params.id } });
+  if (!existing || !(await authorizeEntityWrite(req.userId!, existing))) {
+    return res.status(404).json({ error: "Doom clock not found" });
+  }
+  const row = await prisma.doomClock.update({ where: { id: req.params.id }, data: { filled: 0 } });
+  res.json(toDoomClockDTO(row));
 });

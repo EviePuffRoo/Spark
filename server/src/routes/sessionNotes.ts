@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { toSessionNoteDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
-import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
+import { findAccessibleWorld, getMemberWorldIds, authorizeEntityWrite } from "../worldAccess.js";
 
 export const sessionNotesRouter = Router();
 
@@ -70,15 +70,20 @@ sessionNotesRouter.patch("/:id", async (req, res) => {
   }
   if ("tags" in body) data.tags = JSON.stringify(Array.isArray(body.tags) ? body.tags : []);
 
-  const result = await prisma.sessionNote.updateMany({ where: { id: req.params.id, userId: req.userId }, data });
-  if (result.count === 0) return res.status(404).json({ error: "Session note not found" });
-  const row = await prisma.sessionNote.findUnique({ where: { id: req.params.id } });
-  res.json(toSessionNoteDTO(row!, req.userId!));
+  const existing = await prisma.sessionNote.findUnique({ where: { id: req.params.id } });
+  if (!(await authorizeEntityWrite(req.userId!, existing))) {
+    return res.status(404).json({ error: "Session note not found" });
+  }
+  const row = await prisma.sessionNote.update({ where: { id: req.params.id }, data });
+  res.json(toSessionNoteDTO(row, req.userId!));
 });
 
 sessionNotesRouter.delete("/:id", async (req, res) => {
-  const result = await prisma.sessionNote.deleteMany({ where: { id: req.params.id, userId: req.userId } });
-  if (result.count === 0) return res.status(404).json({ error: "Session note not found" });
+  const existing = await prisma.sessionNote.findUnique({ where: { id: req.params.id } });
+  if (!(await authorizeEntityWrite(req.userId!, existing))) {
+    return res.status(404).json({ error: "Session note not found" });
+  }
+  await prisma.sessionNote.delete({ where: { id: req.params.id } });
   await deleteLinksForEntity("sessionNote", req.params.id, req.userId!);
   res.status(204).end();
 });

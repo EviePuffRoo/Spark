@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
 import { toCampaignEventDTO } from "../serialize.js";
-import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
+import { findAccessibleWorld, getMemberWorldIds, authorizeEntityWrite } from "../worldAccess.js";
 import { logCampaignEventOp } from "../campaignEventLog.js";
 import { dispatchWebhookEvent } from "../webhookDispatch.js";
 
@@ -68,7 +68,10 @@ campaignEventsRouter.post("/", async (req, res) => {
 });
 
 campaignEventsRouter.delete("/:id", async (req, res) => {
-  const result = await prisma.campaignEvent.deleteMany({ where: { id: req.params.id, userId: req.userId } });
-  if (result.count === 0) return res.status(404).json({ error: "Campaign event not found" });
+  const existing = await prisma.campaignEvent.findUnique({ where: { id: req.params.id } });
+  if (!(await authorizeEntityWrite(req.userId!, existing))) {
+    return res.status(404).json({ error: "Campaign event not found" });
+  }
+  await prisma.campaignEvent.delete({ where: { id: req.params.id } });
   res.status(204).end();
 });

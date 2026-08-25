@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { toZoneMapTemplateDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
-import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
+import { findAccessibleWorld, getMemberWorldIds, authorizeEntityWrite } from "../worldAccess.js";
 import { coerceZone } from "./encounters.js";
 import type { EncounterZone } from "@spark/shared";
 
@@ -73,15 +73,20 @@ zoneMapTemplatesRouter.patch("/:id", async (req, res) => {
   }
   if ("tags" in body) data.tags = JSON.stringify(Array.isArray(body.tags) ? body.tags : []);
 
-  const result = await prisma.zoneMapTemplate.updateMany({ where: { id: req.params.id, userId: req.userId }, data });
-  if (result.count === 0) return res.status(404).json({ error: "Zone map template not found" });
-  const row = await prisma.zoneMapTemplate.findUnique({ where: { id: req.params.id } });
-  res.json(toZoneMapTemplateDTO(row!, req.userId!));
+  const existing = await prisma.zoneMapTemplate.findUnique({ where: { id: req.params.id } });
+  if (!(await authorizeEntityWrite(req.userId!, existing))) {
+    return res.status(404).json({ error: "Zone map template not found" });
+  }
+  const row = await prisma.zoneMapTemplate.update({ where: { id: req.params.id }, data });
+  res.json(toZoneMapTemplateDTO(row, req.userId!));
 });
 
 zoneMapTemplatesRouter.delete("/:id", async (req, res) => {
-  const result = await prisma.zoneMapTemplate.deleteMany({ where: { id: req.params.id, userId: req.userId } });
-  if (result.count === 0) return res.status(404).json({ error: "Zone map template not found" });
+  const existing = await prisma.zoneMapTemplate.findUnique({ where: { id: req.params.id } });
+  if (!(await authorizeEntityWrite(req.userId!, existing))) {
+    return res.status(404).json({ error: "Zone map template not found" });
+  }
+  await prisma.zoneMapTemplate.delete({ where: { id: req.params.id } });
   await deleteLinksForEntity("zoneMapTemplate", req.params.id, req.userId!);
   res.status(204).end();
 });

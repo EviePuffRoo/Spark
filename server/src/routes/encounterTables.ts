@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { toEncounterTableDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
-import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
+import { findAccessibleWorld, getMemberWorldIds, authorizeEntityWrite } from "../worldAccess.js";
 
 export const encounterTablesRouter = Router();
 
@@ -67,15 +67,20 @@ encounterTablesRouter.patch("/:id", async (req, res) => {
   }
   if ("tags" in body) data.tags = JSON.stringify(Array.isArray(body.tags) ? body.tags : []);
 
-  const result = await prisma.encounterTable.updateMany({ where: { id: req.params.id, userId: req.userId }, data });
-  if (result.count === 0) return res.status(404).json({ error: "Encounter table not found" });
-  const row = await prisma.encounterTable.findUnique({ where: { id: req.params.id } });
-  res.json(toEncounterTableDTO(row!));
+  const existing = await prisma.encounterTable.findUnique({ where: { id: req.params.id } });
+  if (!(await authorizeEntityWrite(req.userId!, existing))) {
+    return res.status(404).json({ error: "Encounter table not found" });
+  }
+  const row = await prisma.encounterTable.update({ where: { id: req.params.id }, data });
+  res.json(toEncounterTableDTO(row));
 });
 
 encounterTablesRouter.delete("/:id", async (req, res) => {
-  const result = await prisma.encounterTable.deleteMany({ where: { id: req.params.id, userId: req.userId } });
-  if (result.count === 0) return res.status(404).json({ error: "Encounter table not found" });
+  const existing = await prisma.encounterTable.findUnique({ where: { id: req.params.id } });
+  if (!(await authorizeEntityWrite(req.userId!, existing))) {
+    return res.status(404).json({ error: "Encounter table not found" });
+  }
+  await prisma.encounterTable.delete({ where: { id: req.params.id } });
   await deleteLinksForEntity("encounterTable", req.params.id, req.userId!);
   res.status(204).end();
 });

@@ -16,7 +16,11 @@ export function DungeonCardView({ dungeon }: { dungeon: Dungeon }) {
             <p className="hint">No exits.</p>
           ) : (
             room.exits.map((exit) => (
-              <p key={exit.zoneId}>{room.name} → {exit.label || "exit"} → {roomName(exit.toRoomId)}</p>
+              // Not just exit.zoneId: a generated room with 2+ exits can have
+              // every exit share the room's single zoneId (see
+              // shared/src/generator/dungeons.ts's connect()), which made
+              // this collide and React warn about duplicate keys.
+              <p key={`${exit.zoneId}-${exit.toRoomId}`}>{room.name} → {exit.label || "exit"} → {roomName(exit.toRoomId)}</p>
             ))
           )}
         </div>

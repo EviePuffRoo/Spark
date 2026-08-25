@@ -486,17 +486,20 @@ export function ZoneMap({
                 {" "}Revealed to party
               </label>
 
-              {(() => {
-                const exit = currentDungeonRoom?.exits.find((e) => e.zoneId === selectedZone.id);
-                if (!exit || !activeDungeon) return null;
-                const targetRoomName = activeDungeon.rooms.find((r) => r.id === exit.toRoomId)?.name ?? "another room";
-                return (
-                  <div className="button-row">
-                    <span>🚪 {exit.label || "Leads to"} {targetRoomName}</span>
-                    <button className="btn-secondary" onClick={() => onLoadDungeonRoom(activeDungeon.id, exit.toRoomId)}>Move Party</button>
-                  </div>
-                );
-              })()}
+              {activeDungeon && currentDungeonRoom?.exits
+                .filter((e) => e.zoneId === selectedZone.id)
+                // A generated room has a single zone standing in for the
+                // whole room, so 2+ of its exits can legitimately share
+                // that one zoneId — show every exit, not just the first.
+                .map((exit) => {
+                  const targetRoomName = activeDungeon.rooms.find((r) => r.id === exit.toRoomId)?.name ?? "another room";
+                  return (
+                    <div className="button-row" key={exit.toRoomId}>
+                      <span>🚪 {exit.label || "Leads to"} {targetRoomName}</span>
+                      <button className="btn-secondary" onClick={() => onLoadDungeonRoom(activeDungeon.id, exit.toRoomId)}>Move Party</button>
+                    </div>
+                  );
+                })}
 
               <h4 className="section-heading">Location</h4>
               {selectedZone.locationId ? (

@@ -1,5 +1,7 @@
 import type { AbilityKey, StatBlock } from "@spark/shared";
-import { formatModifier as modifier } from "@spark/shared";
+import { getRuleset } from "@spark/shared";
+
+const modifier = getRuleset().formatModifier;
 
 const ABILITY_ORDER: { key: AbilityKey; label: string }[] = [
   { key: "str", label: "STR" },

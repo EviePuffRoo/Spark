@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import type { SearchResult, LiveCombatant, LiveCombatantCondition, EncounterStateInput, EncounterZone, Dungeon, DungeonRoomState } from "@spark/shared";
-import { computeConcentrationDc, isHostilePair, leftReach, CONDITIONS_COMPENDIUM } from "@spark/shared";
+import type { SearchResult, LiveCombatant, LiveCombatantCondition, EncounterStateInput, EncounterZone, Dungeon, DungeonRoomState, DifficultyRating } from "@spark/shared";
+import { computeConcentrationDc, isHostilePair, leftReach, CONDITIONS_COMPENDIUM, getRuleset } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { useAuth } from "../AuthContext";
 import { EntitySearchPicker } from "./EntitySearchPicker";
@@ -8,7 +8,6 @@ import { ZoneMap } from "./ZoneMap";
 import { GridMap } from "./GridMap";
 import { useLocalStorage } from "../useLocalStorage";
 import { useWorldLiveChannel } from "../useWorldLiveChannel";
-import { computeDifficulty, type DifficultyRating } from "../encounterDifficulty";
 import { CombatIcon } from "./icons";
 import { EmptyState } from "./EmptyState";
 import { PresentationView } from "../pages/PresentationView";
@@ -149,7 +148,7 @@ export function InitiativeTracker({
     }))
     .sort((a, b) => b.initiative - a.initiative);
   const activeId = sorted.length > 0 ? sorted[activeEncounter.turnIndex % sorted.length]?.id : null;
-  const difficulty = computeDifficulty(sorted);
+  const difficulty = getRuleset().computeEncounterDifficulty(sorted);
   const zones = activeEncounter.zones ?? [];
   const zoneEffects = activeEncounter.zoneEffects ?? [];
 

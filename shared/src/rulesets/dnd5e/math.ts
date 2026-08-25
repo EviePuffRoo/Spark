@@ -1,3 +1,5 @@
+import { PC_PROFICIENCY_BONUS_BY_LEVEL } from "../../data/classes.js";
+
 // Core D&D 5e ability-score math — the piece of "what game system are we
 // running" that was previously duplicated verbatim in five different
 // files (the PC generator, two stat-block card views, the combatant
@@ -15,4 +17,8 @@ export function abilityModifier(score: number): number {
 export function formatModifier(score: number): string {
   const mod = abilityModifier(score);
   return mod >= 0 ? `+${mod}` : `${mod}`;
+}
+
+export function proficiencyBonusForLevel(level: number): number {
+  return PC_PROFICIENCY_BONUS_BY_LEVEL[Math.min(19, Math.max(0, Math.trunc(level) - 1))];
 }

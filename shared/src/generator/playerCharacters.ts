@@ -1,12 +1,12 @@
 import {
-  PC_CLASSES, PC_STANDARD_ARRAY, FULL_CASTER_SLOTS, HALF_CASTER_SLOTS, PACT_MAGIC_SLOTS, PC_PROFICIENCY_BONUS_BY_LEVEL,
+  PC_CLASSES, PC_STANDARD_ARRAY, FULL_CASTER_SLOTS, HALF_CASTER_SLOTS, PACT_MAGIC_SLOTS,
   type ArmorTier, type PcClassDef,
 } from "../data/classes.js";
 import { RACES } from "../data/races.js";
 import { nameListFor } from "../data/names.js";
 import { pick } from "./random.js";
 import type { GeneratePlayerCharacterRequest, GeneratedPlayerCharacter, AbilityScores, SpellSlotLevel, ClassResource } from "../types.js";
-import { abilityModifier } from "../rulesets/dnd5e/math.js";
+import { getRuleset } from "../rulesets/index.js";
 
 function assignStandardArray(priority: string[]): AbilityScores {
   const scores: Record<string, number> = {};
@@ -75,7 +75,7 @@ export interface LevelUpChanges {
 // (leveling up is assumed to happen between sessions/after a rest).
 export function computeLevelUpChanges(pcClass: PcClassDef | undefined, fromLevel: number, toLevel: number, conMod: number): LevelUpChanges {
   const hitDie = pcClass?.hitDie ?? FALLBACK_HIT_DIE;
-  const proficiencyBonus = PC_PROFICIENCY_BONUS_BY_LEVEL[Math.min(19, Math.max(0, Math.trunc(toLevel) - 1))];
+  const proficiencyBonus = getRuleset().proficiencyBonusForLevel(toLevel);
   return {
     hpGain: computeHp(hitDie, toLevel, conMod) - computeHp(hitDie, fromLevel, conMod),
     spellSlots: pcClass ? computeSpellSlots(pcClass, toLevel) : [],
@@ -99,8 +99,9 @@ export function generatePlayerCharacter(request: GeneratePlayerCharacterRequest 
   const level = !request.fullyRandom && request.level ? Math.min(20, Math.max(1, Math.trunc(request.level))) : 1;
 
   const abilityScores = assignStandardArray(pcClass.abilityPriority);
-  const conMod = abilityModifier(abilityScores.con);
-  const dexMod = abilityModifier(abilityScores.dex);
+  const ruleset = getRuleset();
+  const conMod = ruleset.abilityModifier(abilityScores.con);
+  const dexMod = ruleset.abilityModifier(abilityScores.dex);
 
   const { first, last } = nameListFor(race.id);
   const name = `${pick(first)} ${pick(last)}`;

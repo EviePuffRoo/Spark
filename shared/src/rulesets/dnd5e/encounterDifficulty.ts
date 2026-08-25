@@ -1,17 +1,10 @@
-import type { LiveCombatant } from "@spark/shared";
-
-export type DifficultyRating = "trivial" | "easy" | "medium" | "hard" | "deadly";
-
-export interface DifficultyResult {
-  rating: DifficultyRating;
-  adjustedXp: number;
-  thresholds: { easy: number; medium: number; hard: number; deadly: number };
-}
+import type { LiveCombatant } from "../../types.js";
+import type { DifficultyResult, DifficultyRating } from "../types.js";
 
 // Widely-used 5e-compatible XP budget guideline (DMG "Building a Combat
 // Encounter"), not SRD text — same convention as the rest of the app's
 // derived-content approach. [easy, medium, hard, deadly] per character level.
-const XP_THRESHOLDS: Record<number, [number, number, number, number]> = {
+const ENCOUNTER_DIFFICULTY_XP_THRESHOLDS: Record<number, [number, number, number, number]> = {
   1: [25, 50, 75, 100], 2: [50, 100, 150, 200], 3: [75, 150, 225, 400],
   4: [125, 250, 375, 500], 5: [250, 500, 750, 1100], 6: [300, 600, 900, 1400],
   7: [350, 750, 1100, 1700], 8: [450, 900, 1400, 2100], 9: [550, 1100, 1600, 2400],
@@ -34,14 +27,14 @@ function multiplierStepIndex(monsterCount: number): number {
   return index;
 }
 
-export function computeDifficulty(combatants: LiveCombatant[]): DifficultyResult | null {
+export function computeEncounterDifficulty(combatants: LiveCombatant[]): DifficultyResult | null {
   const partyLevels = combatants.filter((c) => typeof c.level === "number").map((c) => c.level!);
   const monsterXp = combatants.filter((c) => typeof c.xp === "number").map((c) => c.xp!);
   if (partyLevels.length === 0 || monsterXp.length === 0) return null;
 
   const thresholds = partyLevels.reduce(
     (sum, level) => {
-      const t = XP_THRESHOLDS[Math.min(20, Math.max(1, Math.round(level)))];
+      const t = ENCOUNTER_DIFFICULTY_XP_THRESHOLDS[Math.min(20, Math.max(1, Math.round(level)))];
       return { easy: sum.easy + t[0], medium: sum.medium + t[1], hard: sum.hard + t[2], deadly: sum.deadly + t[3] };
     },
     { easy: 0, medium: 0, hard: 0, deadly: 0 },

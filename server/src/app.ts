@@ -73,6 +73,14 @@ import { adminStatsRouter } from "./routes/adminStats.js";
 import { adminBackupRouter } from "./routes/adminBackup.js";
 import { vttExportRouter } from "./routes/vttExport.js";
 import { billingRouter, billingWebhookHandler } from "./routes/billing.js";
+import { apiKeysRouter } from "./routes/apiKeys.js";
+import { requireApiKey } from "./publicApiAuth.js";
+import { publicCharactersRouter } from "./routes/public/characters.js";
+import { publicLocationsRouter } from "./routes/public/locations.js";
+import { publicFactionsRouter } from "./routes/public/factions.js";
+import { publicQuestsRouter } from "./routes/public/quests.js";
+import { publicSessionNotesRouter } from "./routes/public/sessionNotes.js";
+import { publicCampaignEventsRouter } from "./routes/public/campaignEvents.js";
 import { FREE_TIER_GENERATE_LIMIT, PAID_TIER_GENERATE_LIMIT } from "@spark/shared";
 import { testAwareLimit } from "./rateLimitConfig.js";
 import { prisma } from "./db.js";
@@ -132,6 +140,28 @@ app.get("/api/health", async (_req, res) => {
   }
 });
 app.use("/api/auth", authRouter);
+
+// Public API: external clients authenticate with an API key (Authorization:
+// Bearer <key>), not the session cookie, so this whole surface must sit
+// before the blanket requireAuth gate below — same reason /api/auth does.
+// Its own limiter is keyed by the resolved API key's id (set by
+// requireApiKey), not userId/IP, so one key's misuse can't throttle the
+// same account's other keys or its normal cookie-authed session.
+const publicApiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: testAwareLimit(120),
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.apiKeyId!,
+  message: { error: "You're making requests a bit fast — please wait a moment and try again." },
+});
+app.use("/api/v1/public", requireApiKey, publicApiLimiter);
+app.use("/api/v1/public/characters", publicCharactersRouter);
+app.use("/api/v1/public/locations", publicLocationsRouter);
+app.use("/api/v1/public/factions", publicFactionsRouter);
+app.use("/api/v1/public/quests", publicQuestsRouter);
+app.use("/api/v1/public/session-notes", publicSessionNotesRouter);
+app.use("/api/v1/public/campaign-events", publicCampaignEventsRouter);
 
 // Everything below requires a signed-in user.
 app.use("/api", requireAuth);
@@ -210,6 +240,7 @@ app.use("/api/activity", activityRouter);
 app.use("/api/worlds", worldsRouter);
 app.use("/api/worlds", webhooksRouter);
 app.use("/api/worlds", worldLiveRouter);
+app.use("/api/api-keys", apiKeysRouter);
 app.use("/api/reference", referenceRouter);
 app.use("/api/compendium", compendiumRouter);
 app.use("/api/search", searchRouter);

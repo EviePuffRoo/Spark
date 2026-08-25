@@ -34,11 +34,16 @@ const DIFFICULTY_LABELS: Record<DifficultyRating, string> = {
 };
 
 export function InitiativeTracker({
-  worlds, partyWorldId, setPartyWorldId,
+  worlds, partyWorldId, setPartyWorldId, onMapActiveChange,
 }: {
   worlds: WorldSummary[];
   partyWorldId: string;
   setPartyWorldId: (id: string) => void;
+  // Lets the page collapse its own tools column when a map opens, so the
+  // map isn't left competing for width with a fixed-width sidebar it
+  // doesn't need — same "lift shared state to the page" pattern already
+  // used for partyWorldId/setPartyWorldId above.
+  onMapActiveChange?: (active: boolean) => void;
 }) {
   const { user } = useAuth();
   const [encounter, setEncounter] = useLocalStorage<EncounterStateInput>("spark-combat-encounter", BLANK_ENCOUNTER);
@@ -149,6 +154,12 @@ export function InitiativeTracker({
     .sort((a, b) => b.initiative - a.initiative);
   const activeId = sorted.length > 0 ? sorted[activeEncounter.turnIndex % sorted.length]?.id : null;
   const difficulty = getRuleset().computeEncounterDifficulty(sorted);
+  const mapActive = showZoneMap || showGridMap;
+
+  useEffect(() => {
+    onMapActiveChange?.(mapActive);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapActive]);
   const zones = activeEncounter.zones ?? [];
   const zoneEffects = activeEncounter.zoneEffects ?? [];
 
@@ -788,84 +799,88 @@ export function InitiativeTracker({
         </div>
       )}
 
-      {showZoneMap && (
-        <ZoneMap
-          zones={zones}
-          zoneEffects={zoneEffects}
-          combatants={sorted}
-          activeId={activeId}
-          canEdit={canEdit}
-          worldId={partyMode ? partyWorldId : undefined}
-          activeDungeon={activeDungeon}
-          activeDungeonRoomId={activeEncounter.activeDungeonRoomId}
-          onAddZone={addZone}
-          onUpdateZone={updateZone}
-          onDeleteZone={deleteZone}
-          onToggleConnection={toggleZoneConnection}
-          onAddEffect={addZoneEffect}
-          onRemoveEffect={removeZoneEffect}
-          onMoveCombatant={moveCombatantToZone}
-          onLoadTemplate={loadZoneMapTemplate}
-          onLoadDungeonRoom={loadDungeonRoom}
-        />
-      )}
+      <div className={`tracker-body${mapActive ? " map-active" : ""}`}>
+        <div className="tracker-map-region">
+          {showZoneMap && (
+            <ZoneMap
+              zones={zones}
+              zoneEffects={zoneEffects}
+              combatants={sorted}
+              activeId={activeId}
+              canEdit={canEdit}
+              worldId={partyMode ? partyWorldId : undefined}
+              activeDungeon={activeDungeon}
+              activeDungeonRoomId={activeEncounter.activeDungeonRoomId}
+              onAddZone={addZone}
+              onUpdateZone={updateZone}
+              onDeleteZone={deleteZone}
+              onToggleConnection={toggleZoneConnection}
+              onAddEffect={addZoneEffect}
+              onRemoveEffect={removeZoneEffect}
+              onMoveCombatant={moveCombatantToZone}
+              onLoadTemplate={loadZoneMapTemplate}
+              onLoadDungeonRoom={loadDungeonRoom}
+            />
+          )}
 
-      {showGridMap && (
-        <GridMap
-          worldId={partyMode ? partyWorldId : undefined}
-          battleMapId={activeEncounter.activeBattleMapId}
-          combatants={sorted}
-          activeId={activeId}
-          canEdit={canEdit}
-          exploredCells={activeEncounter.exploredCells}
-          visibleCells={activeEncounter.visibleCells}
-          onLoadBattleMap={loadBattleMap}
-          onLeaveBattleMap={leaveBattleMap}
-          onMoveCombatant={moveCombatantOnGrid}
-          onPlaceCombatant={moveCombatantOnGrid}
-          onDragBroadcast={broadcastTokenDrag}
-          onTemplateTargetsChange={setTemplateTargetIds}
-        />
-      )}
+          {showGridMap && (
+            <GridMap
+              worldId={partyMode ? partyWorldId : undefined}
+              battleMapId={activeEncounter.activeBattleMapId}
+              combatants={sorted}
+              activeId={activeId}
+              canEdit={canEdit}
+              exploredCells={activeEncounter.exploredCells}
+              visibleCells={activeEncounter.visibleCells}
+              onLoadBattleMap={loadBattleMap}
+              onLeaveBattleMap={leaveBattleMap}
+              onMoveCombatant={moveCombatantOnGrid}
+              onPlaceCombatant={moveCombatantOnGrid}
+              onDragBroadcast={broadcastTokenDrag}
+              onTemplateTargetsChange={setTemplateTargetIds}
+            />
+          )}
 
-      {canEdit && showGridMap && templateTargetIds.length > 0 && (
-        <div className="save-panel template-batch-panel">
-          <h3 className="section-heading">In Template ({templateTargetIds.length})</h3>
-          <p className="hint">
-            {templateTargetIds.map((id) => sorted.find((c) => c.id === id)?.name).filter(Boolean).join(", ")}
-          </p>
-          <label className="field">
-            <span>Damage to apply to all</span>
-            <input type="number" min={1} value={templateDamage} onChange={(e) => setTemplateDamage(e.target.value)} />
-          </label>
-          <button className="btn-danger" onClick={applyDamageToTemplateTargets}>Apply Damage to All</button>
-          <label className="field">
-            <span>Condition to apply to all</span>
-            <select value={templateCondition} onChange={(e) => setTemplateCondition(e.target.value)}>
-              <option value="">Select…</option>
-              {CONDITIONS.map((cond) => <option key={cond} value={cond}>{cond}</option>)}
-            </select>
-          </label>
-          <button className="btn-secondary" onClick={applyConditionToTemplateTargets}>Apply Condition to All</button>
+          {canEdit && showGridMap && templateTargetIds.length > 0 && (
+            <div className="save-panel template-batch-panel">
+              <h3 className="section-heading">In Template ({templateTargetIds.length})</h3>
+              <p className="hint">
+                {templateTargetIds.map((id) => sorted.find((c) => c.id === id)?.name).filter(Boolean).join(", ")}
+              </p>
+              <label className="field">
+                <span>Damage to apply to all</span>
+                <input type="number" min={1} value={templateDamage} onChange={(e) => setTemplateDamage(e.target.value)} />
+              </label>
+              <button className="btn-danger" onClick={applyDamageToTemplateTargets}>Apply Damage to All</button>
+              <label className="field">
+                <span>Condition to apply to all</span>
+                <select value={templateCondition} onChange={(e) => setTemplateCondition(e.target.value)}>
+                  <option value="">Select…</option>
+                  {CONDITIONS.map((cond) => <option key={cond} value={cond}>{cond}</option>)}
+                </select>
+              </label>
+              <button className="btn-secondary" onClick={applyConditionToTemplateTargets}>Apply Condition to All</button>
+            </div>
+          )}
+
+          {showTableView && partyMode && partyWorldId && (
+            <div className="inline-table-view">
+              <PresentationView worldId={partyWorldId} />
+            </div>
+          )}
         </div>
-      )}
 
-      {showTableView && partyMode && partyWorldId && (
-        <div className="inline-table-view">
-          <PresentationView worldId={partyWorldId} />
-        </div>
-      )}
+        <div className="tracker-editor-rail">
+          {sorted.length === 0 && (
+            <EmptyState
+              icon={<CombatIcon />}
+              heading="No combatants yet"
+              hint={canEdit ? "Add from the roster or add a custom entry (e.g. a PC)." : "No combat happening right now."}
+            />
+          )}
 
-      {sorted.length === 0 && (
-        <EmptyState
-          icon={<CombatIcon />}
-          heading="No combatants yet"
-          hint={canEdit ? "Add from the roster or add a custom entry (e.g. a PC)." : "No combat happening right now."}
-        />
-      )}
-
-      <ul className="combatant-list">
-        {sorted.map((c) => canEdit ? (
+          <ul className="combatant-list">
+            {sorted.map((c) => canEdit ? (
           <li key={c.id} className={`combatant-row${c.id === activeId ? " active-turn" : ""}${(c.currentHp ?? 0) <= 0 ? " down" : ""}`}>
             <div className="combatant-main">
               <input
@@ -1205,7 +1220,9 @@ export function InitiativeTracker({
         ) : (
           <CombatantRowReadOnly key={c.id} c={c} isActive={c.id === activeId} />
         ))}
-      </ul>
+          </ul>
+        </div>
+      </div>
     </div>
   );
 }

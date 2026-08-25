@@ -31,6 +31,7 @@ import { PrintPane, type PrintItem } from "./components/PrintPane";
 import { PrepIcon, WorldIcon, PlayIcon, AccountIcon } from "./components/icons";
 import { TavernPage } from "./pages/TavernPage";
 import { MapBuilderPage } from "./pages/MapBuilderPage";
+import { GroupedTabs } from "./components/GroupedTabs";
 
 type Area = "prep" | "world" | "play" | "account";
 type SubTab = "create" | "compendium" | "overview" | "worlds" | "roster" | "codex" | "notes" | "downtime" | "tavern" | "combat" | "mapBuilder" | "shop" | "inventory" | "gallery" | "profile" | "myCharacter" | "billing" | "moderation" | "users" | "stats";
@@ -44,6 +45,21 @@ const SUBTAB_LABELS: Record<SubTab, string> = {
   shop: "Shop", inventory: "Inventory", gallery: "Gallery", profile: "Profile",
   myCharacter: "My Character", billing: "Billing", moderation: "Moderation", users: "Users", stats: "Stats",
 };
+
+// World's 7 subtabs (Gallery lives in Account — it's cross-campaign public
+// content, not per-world content) grouped so the sidebar shows 3 group
+// buttons instead of 7 flat ones.
+type WorldSubTab = "overview" | "worlds" | "roster" | "codex" | "notes" | "downtime" | "tavern";
+type WorldGroup = "campaign" | "records" | "downtime";
+const WORLD_GROUPS: Record<WorldGroup, WorldSubTab[]> = {
+  campaign: ["overview", "worlds"],
+  records: ["roster", "codex", "notes"],
+  downtime: ["downtime", "tavern"],
+};
+const WORLD_GROUP_LABELS: Record<WorldGroup, string> = { campaign: "Campaign", records: "Records", downtime: "Downtime" };
+const WORLD_SUBTAB_TO_GROUP = Object.fromEntries(
+  (Object.keys(WORLD_GROUPS) as WorldGroup[]).flatMap((g) => WORLD_GROUPS[g].map((t) => [t, g])),
+) as Record<WorldSubTab, WorldGroup>;
 
 function App() {
   const { user, loading, pendingRecoveryCode, justSignedUp, dismissOnboarding } = useAuth();
@@ -187,22 +203,20 @@ function AppShell({ initialLandOnOverview = false }: { initialLandOnOverview?: b
           </>
         )}
         {area === "world" && (
-          <>
-            <span className="area-sidebar-group-label">World</span>
-            <button className={subTab === "overview" ? "active" : ""} aria-current={subTab === "overview" ? "true" : undefined} onClick={() => selectSubTab("overview")}>Overview</button>
-            <button className={subTab === "worlds" ? "active" : ""} aria-current={subTab === "worlds" ? "true" : undefined} onClick={() => selectSubTab("worlds")}>Worlds</button>
-            <button className={subTab === "roster" ? "active" : ""} aria-current={subTab === "roster" ? "true" : undefined} onClick={() => selectSubTab("roster")}>Roster</button>
-            <button className={subTab === "codex" ? "active" : ""} aria-current={subTab === "codex" ? "true" : undefined} onClick={() => selectSubTab("codex")}>
-              Codex{codexUnseen && <span className="nav-badge" aria-label="New codex activity" />}
-            </button>
-            <button className={subTab === "notes" ? "active" : ""} aria-current={subTab === "notes" ? "true" : undefined} onClick={() => selectSubTab("notes")}>
-              Notes{notesUnseen && <span className="nav-badge" aria-label="New notes activity" />}
-            </button>
-            <span className="area-sidebar-group-label">Downtime</span>
-            <button className={subTab === "downtime" ? "active" : ""} aria-current={subTab === "downtime" ? "true" : undefined} onClick={() => selectSubTab("downtime")}>Downtime</button>
-            <button className={subTab === "tavern" ? "active" : ""} aria-current={subTab === "tavern" ? "true" : undefined} onClick={() => selectSubTab("tavern")}>Tavern</button>
-            <button className={subTab === "gallery" ? "active" : ""} aria-current={subTab === "gallery" ? "true" : undefined} onClick={() => selectSubTab("gallery")}>Gallery</button>
-          </>
+          <GroupedTabs
+            className="area-sidebar-grouped-tabs"
+            groups={WORLD_GROUPS}
+            groupLabels={WORLD_GROUP_LABELS}
+            itemLabels={SUBTAB_LABELS}
+            groupOf={(t) => WORLD_SUBTAB_TO_GROUP[t]}
+            active={subTab as WorldSubTab}
+            onSelect={(t) => selectSubTab(t)}
+            itemBadge={(t) =>
+              (t === "codex" && codexUnseen) || (t === "notes" && notesUnseen)
+                ? <span className="nav-badge" aria-label="New activity" />
+                : null
+            }
+          />
         )}
         {area === "play" && (
           <>
@@ -221,6 +235,7 @@ function AppShell({ initialLandOnOverview = false }: { initialLandOnOverview?: b
             <button className={subTab === "profile" ? "active" : ""} aria-current={subTab === "profile" ? "true" : undefined} onClick={() => selectSubTab("profile")}>Profile</button>
             <button className={subTab === "myCharacter" ? "active" : ""} aria-current={subTab === "myCharacter" ? "true" : undefined} onClick={() => selectSubTab("myCharacter")}>My Character</button>
             <button className={subTab === "billing" ? "active" : ""} aria-current={subTab === "billing" ? "true" : undefined} onClick={() => selectSubTab("billing")}>Billing</button>
+            <button className={subTab === "gallery" ? "active" : ""} aria-current={subTab === "gallery" ? "true" : undefined} onClick={() => selectSubTab("gallery")}>Gallery</button>
             {user?.role === "admin" && (
               <>
                 <button className={subTab === "moderation" ? "active" : ""} aria-current={subTab === "moderation" ? "true" : undefined} onClick={() => selectSubTab("moderation")}>Moderation</button>
@@ -258,6 +273,7 @@ function AppShell({ initialLandOnOverview = false }: { initialLandOnOverview?: b
         {subTab === "profile" && <ProfilePage />}
         {subTab === "myCharacter" && <MyCharacterPage onViewRoster={viewRosterForWorld} />}
         {subTab === "billing" && <BillingPage />}
+        {subTab === "gallery" && <GalleryPage />}
         {subTab === "moderation" && user?.role === "admin" && <ModerationPage />}
         {subTab === "users" && user?.role === "admin" && <AdminUsersPage />}
         {subTab === "stats" && user?.role === "admin" && <AdminStatsPage />}
@@ -273,7 +289,6 @@ function AppShell({ initialLandOnOverview = false }: { initialLandOnOverview?: b
           />
         )}
         {subTab === "codex" && <CodexPage />}
-        {subTab === "gallery" && <GalleryPage />}
         {subTab === "notes" && <SessionNotesPage onOpenInRoster={openInRoster} />}
         {subTab === "downtime" && (
           <DowntimePage craftedItemHandoff={craftedItemHandoff} onConsumeCraftedItemHandoff={() => setCraftedItemHandoff(null)} />

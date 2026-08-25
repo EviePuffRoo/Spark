@@ -2,7 +2,7 @@ import { Router } from "express";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../db.js";
 import { toDowntimeActivityDTO } from "../serialize.js";
-import { getMemberWorldIds } from "../worldAccess.js";
+import { getMemberWorldIds, authorizeEntityWrite } from "../worldAccess.js";
 import { publishWorldChange } from "../worldEvents.js";
 import {
   DOWNTIME_ACTIVITY_TYPES, DOWNTIME_ACTIVITY_TYPE_LABELS, DOWNTIME_OUTCOME_ACTIVITY_TYPES,
@@ -145,9 +145,9 @@ downtimeRouter.delete("/:id", async (req, res) => {
   const row = await prisma.downtimeActivity.findUnique({ where: { id: req.params.id } });
   if (!row) return res.status(404).json({ error: "Downtime activity not found" });
 
-  const world = await prisma.world.findUnique({ where: { id: row.worldId } });
-  const canDelete = row.userId === req.userId || world?.userId === req.userId;
-  if (!canDelete) return res.status(403).json({ error: "You can't delete this downtime activity" });
+  if (!(await authorizeEntityWrite(req.userId!, row))) {
+    return res.status(403).json({ error: "You can't delete this downtime activity" });
+  }
 
   await prisma.downtimeActivity.delete({ where: { id: req.params.id } });
   res.status(204).end();

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
 import { toRollLogEntryDTO } from "../serialize.js";
-import { findAccessibleWorld } from "../worldAccess.js";
+import { findAccessibleWorld, authorizeEntityWrite } from "../worldAccess.js";
 import { publishWorldChange } from "../worldEvents.js";
 import { RECENT_HISTORY_LIMIT } from "@spark/shared";
 
@@ -87,9 +87,9 @@ rollLogRouter.delete("/:id", async (req, res) => {
   const row = await prisma.rollLogEntry.findUnique({ where: { id: req.params.id } });
   if (!row) return res.status(404).json({ error: "Roll not found" });
 
-  const world = await prisma.world.findUnique({ where: { id: row.worldId } });
-  const canDelete = row.userId === req.userId || world?.userId === req.userId;
-  if (!canDelete) return res.status(403).json({ error: "You can't delete this roll" });
+  if (!(await authorizeEntityWrite(req.userId!, row))) {
+    return res.status(403).json({ error: "You can't delete this roll" });
+  }
 
   await prisma.rollLogEntry.delete({ where: { id: req.params.id } });
   publishWorldChange(row.worldId, "rollLog");

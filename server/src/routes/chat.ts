@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
 import { toChatMessageDTO } from "../serialize.js";
-import { findAccessibleWorld } from "../worldAccess.js";
+import { findAccessibleWorld, authorizeEntityWrite } from "../worldAccess.js";
 import { publishWorldChange } from "../worldEvents.js";
 import { RECENT_HISTORY_LIMIT } from "@spark/shared";
 
@@ -85,9 +85,9 @@ chatRouter.delete("/:id", async (req, res) => {
   const row = await prisma.chatMessage.findUnique({ where: { id: req.params.id } });
   if (!row) return res.status(404).json({ error: "Message not found" });
 
-  const world = await prisma.world.findUnique({ where: { id: row.worldId } });
-  const canDelete = row.userId === req.userId || world?.userId === req.userId;
-  if (!canDelete) return res.status(403).json({ error: "You can't delete this message" });
+  if (!(await authorizeEntityWrite(req.userId!, row))) {
+    return res.status(403).json({ error: "You can't delete this message" });
+  }
 
   await prisma.chatMessage.delete({ where: { id: req.params.id } });
   publishWorldChange(row.worldId, "chat");

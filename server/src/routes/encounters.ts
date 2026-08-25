@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
 import { toEncounterDTO } from "../serialize.js";
-import { findAccessibleWorld } from "../worldAccess.js";
+import { findAccessibleWorld, canWriteWorld } from "../worldAccess.js";
 import { publishWorldChange, publishTokenMoved } from "../worldEvents.js";
 import { computeCurrentVisibility } from "../gridVisibility.js";
 import type { LiveCombatant, LiveCombatantCondition, CombatantKind, EncounterZone, EncounterZoneEffect, ZoneHazard, ParsedAttack, AbilityKey, SizeCategory, PlacedTile, LegendaryAction, StatBlockAction } from "@spark/shared";
@@ -184,8 +184,10 @@ encountersRouter.get("/:worldId", async (req, res) => {
 
 encountersRouter.put("/:worldId", async (req, res) => {
   const { worldId } = req.params;
-  const world = await prisma.world.findFirst({ where: { id: worldId, userId: req.userId } });
-  if (!world) return res.status(403).json({ error: "Only the world's owner can update its encounter" });
+  const world = await prisma.world.findUnique({ where: { id: worldId } });
+  if (!world || !(await canWriteWorld(req.userId!, worldId))) {
+    return res.status(403).json({ error: "You don't have write access to this world's encounter" });
+  }
 
   const body = req.body ?? {};
   if (!Array.isArray(body.combatants)) {

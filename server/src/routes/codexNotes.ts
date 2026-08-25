@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { toCodexNoteDTO } from "../serialize.js";
 import { getAdapter, isEntityType } from "../entityAdapters.js";
-import { getMemberWorldIds } from "../worldAccess.js";
+import { getMemberWorldIds, authorizeEntityWrite } from "../worldAccess.js";
 import type { EntityType } from "@spark/shared";
 
 export const codexNotesRouter = Router();
@@ -60,9 +60,9 @@ codexNotesRouter.delete("/:id", async (req, res) => {
   const row = await prisma.codexNote.findUnique({ where: { id: req.params.id } });
   if (!row) return res.status(404).json({ error: "Note not found" });
 
-  const world = await prisma.world.findUnique({ where: { id: row.worldId } });
-  const canDelete = row.userId === req.userId || world?.userId === req.userId;
-  if (!canDelete) return res.status(403).json({ error: "You can't delete this note" });
+  if (!(await authorizeEntityWrite(req.userId!, row))) {
+    return res.status(403).json({ error: "You can't delete this note" });
+  }
 
   await prisma.codexNote.delete({ where: { id: req.params.id } });
   res.status(204).end();

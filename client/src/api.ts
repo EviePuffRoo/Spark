@@ -35,6 +35,7 @@ import type {
   SpellDef, ConditionDef, RuleDef, StatBlockTemplate, MagicItemDef,
   WorldMemberRole,
   WorldWebhookInfo, WorldWebhookSecretResult, WebhookTestResult,
+  ApiKeySummary, ApiKeyCreateResult,
 } from "@spark/shared";
 
 let onSessionExpired: (() => void) | null = null;
@@ -441,6 +442,12 @@ export const api = {
   deleteWorldWebhook: (worldId: string) => request<void>(`/worlds/${worldId}/webhook`, { method: "DELETE" }),
   testWorldWebhook: (worldId: string) =>
     request<WebhookTestResult>(`/worlds/${worldId}/webhook/test`, { method: "POST" }),
+
+  listApiKeys: () => request<ApiKeySummary[]>("/api-keys"),
+  // Returns the raw key exactly once — shown, then never fetchable again.
+  createApiKey: (label: string) =>
+    request<ApiKeyCreateResult>("/api-keys", { method: "POST", body: JSON.stringify({ label }) }),
+  revokeApiKey: (id: string) => request<void>(`/api-keys/${id}`, { method: "DELETE" }),
 
   search: (q: string, type?: EntityType) =>
     request<{ query: string; results: SearchResult[] }>(

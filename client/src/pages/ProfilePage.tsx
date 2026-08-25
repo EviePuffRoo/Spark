@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "../AuthContext";
 import { useTheme } from "../useTheme";
 import { useLocalStorage } from "../useLocalStorage";
 import { api } from "../api";
 import { LegacyPanel } from "../components/LegacyPanel";
+import { CopyButton } from "../components/CopyButton";
+import type { ApiKeySummary, ApiKeyCreateResult } from "@spark/shared";
 
 export function ProfilePage() {
   const { user, logout, regenerateRecoveryCode, deleteAccount, updateDisplayName } = useAuth();
@@ -20,6 +22,44 @@ export function ProfilePage() {
 
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const [apiKeys, setApiKeys] = useState<ApiKeySummary[] | null>(null);
+  const [newKeyLabel, setNewKeyLabel] = useState("");
+  const [creatingKey, setCreatingKey] = useState(false);
+  const [keyError, setKeyError] = useState<string | null>(null);
+  const [justCreatedKey, setJustCreatedKey] = useState<ApiKeyCreateResult | null>(null);
+
+  useEffect(() => {
+    api.listApiKeys().then(setApiKeys).catch(() => setApiKeys([]));
+  }, []);
+
+  async function handleCreateApiKey(e: React.FormEvent) {
+    e.preventDefault();
+    setKeyError(null);
+    if (!newKeyLabel.trim()) return;
+    setCreatingKey(true);
+    try {
+      const created = await api.createApiKey(newKeyLabel.trim());
+      setJustCreatedKey(created);
+      setApiKeys((keys) => [created, ...(keys ?? [])]);
+      setNewKeyLabel("");
+    } catch (e) {
+      setKeyError((e as Error).message);
+    } finally {
+      setCreatingKey(false);
+    }
+  }
+
+  async function handleRevokeApiKey(id: string) {
+    if (!confirm("Revoke this API key? Anything using it will stop working immediately.")) return;
+    try {
+      await api.revokeApiKey(id);
+      setApiKeys((keys) => (keys ?? []).filter((k) => k.id !== id));
+      if (justCreatedKey?.id === id) setJustCreatedKey(null);
+    } catch (e) {
+      setKeyError((e as Error).message);
+    }
+  }
 
   const [displayName, setDisplayName] = useState(user?.displayName ?? "");
   const [savingDisplayName, setSavingDisplayName] = useState(false);
@@ -153,6 +193,46 @@ export function ProfilePage() {
             </form>
           )}
           {passwordStatus && <p className="success">{passwordStatus}</p>}
+        </div>
+
+        <h3 className="section-heading">API Keys</h3>
+        <div className="save-panel">
+          <p className="hint">Read-only access to your own worlds' characters, locations, factions, quests, session notes, and campaign events, for external tools. Send a key as <code>Authorization: Bearer &lt;key&gt;</code> to <code>/api/v1/public/...</code>.</p>
+
+          {justCreatedKey && (
+            <div className="api-key-reveal">
+              <p className="hint">Copy this key now — it won't be shown again.</p>
+              <p className="api-key-value">{justCreatedKey.key}</p>
+              <div className="button-row">
+                <CopyButton value={justCreatedKey.key} />
+                <button className="btn-secondary" onClick={() => setJustCreatedKey(null)}>Done</button>
+              </div>
+            </div>
+          )}
+
+          <form className="account-change-password" onSubmit={handleCreateApiKey}>
+            <label className="field">
+              <span>Label</span>
+              <input type="text" value={newKeyLabel} onChange={(e) => setNewKeyLabel(e.target.value)} placeholder="e.g. CLI tool" maxLength={60} />
+            </label>
+            {keyError && <p className="error">{keyError}</p>}
+            <button className="btn-primary" type="submit" disabled={creatingKey || !newKeyLabel.trim()}>{creatingKey ? "Generating…" : "Generate New Key"}</button>
+          </form>
+
+          {apiKeys && apiKeys.length > 0 && (
+            <ul className="api-key-list">
+              {apiKeys.map((key) => (
+                <li key={key.id}>
+                  <div>
+                    <strong>{key.label}</strong>
+                    <span className="entity-meta"> {key.keyPrefix}… · {key.lastUsedAt ? `last used ${new Date(key.lastUsedAt).toLocaleDateString()}` : "never used"}</span>
+                  </div>
+                  <button className="btn-secondary" onClick={() => handleRevokeApiKey(key.id)}>Revoke</button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {apiKeys && apiKeys.length === 0 && <p className="hint">No API keys yet.</p>}
         </div>
 
         <h3 className="section-heading">Preferences</h3>

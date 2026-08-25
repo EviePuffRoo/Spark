@@ -1486,3 +1486,22 @@ export interface WebhookTestResult {
   status?: number;
   error?: string;
 }
+
+// A Public API credential, as seen in the account's own key list — never
+// includes the raw key itself. keyPrefix is the raw key's first 8 chars,
+// kept around purely so the owner can tell keys apart without ever seeing
+// the rest again.
+export interface ApiKeySummary {
+  id: string;
+  label: string;
+  keyPrefix: string;
+  enabled: boolean;
+  createdAt: string;
+  lastUsedAt: string | null;
+}
+
+// Returned exactly once, immediately after creating a key — same
+// one-time-reveal pattern as WorldWebhookSecretResult above.
+export interface ApiKeyCreateResult extends ApiKeySummary {
+  key: string;
+}

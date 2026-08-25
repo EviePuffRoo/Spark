@@ -52,6 +52,7 @@ model User {
   worldTickLogs   WorldTickLog[]
   doomClocks      DoomClock[]
   campaignEventLogs CampaignEventLog[]
+  apiKeys         ApiKey[]
 }
 
 model World {
@@ -934,5 +935,29 @@ model Link {
 
   @@index([fromType, fromId])
   @@index([toType, toId])
+  @@index([userId])
+}
+
+// A read-only credential for the Public API — one key = the owner's full
+// read access across their own worlds, mirroring the cookie-authed
+// endpoints' own view (never the party-redacted one). keyHash is a plain
+// SHA-256 hex digest, not bcrypt: the raw key already carries 256 bits of
+// its own entropy, so a fast indexed equality lookup on the hash is
+// exactly as safe as a slow deliberately-non-indexed hash would be here,
+// and every public request needs one. keyPrefix is the raw key's first 8
+// chars, kept in plaintext purely so the owner can tell keys apart in a
+// list without ever seeing the rest again — the full key is returned
+// exactly once, at creation, and never stored or reconstructable.
+model ApiKey {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label      String
+  keyHash    String    @unique
+  keyPrefix  String
+  enabled    Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+
   @@index([userId])
 }

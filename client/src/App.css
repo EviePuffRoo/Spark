@@ -58,6 +58,77 @@
   transform: translateY(-50%);
 }
 
+/* GroupedTabs is normally used in a wide, top-of-page context
+   (CreatePage) as horizontal, wrapping pill tabs — the World sidebar
+   is a narrow 190px vertical rail, so its two rows need to render as
+   full-width vertical button stacks matching .area-sidebar button's
+   own look instead. */
+.area-sidebar-grouped-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.area-sidebar-grouped-tabs .grouped-tabs-groups,
+.area-sidebar-grouped-tabs .grouped-tabs-items {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: 4px;
+  justify-content: flex-start;
+  margin-bottom: 0;
+}
+
+.area-sidebar-grouped-tabs .grouped-tabs-items {
+  margin-left: 4px;
+  padding-left: 8px;
+  border-left: 2px solid var(--border);
+}
+
+.area-sidebar-grouped-tabs .grouped-tabs-groups button,
+.area-sidebar-grouped-tabs .grouped-tabs-items button {
+  width: 100%;
+  text-align: left;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+}
+
+.area-sidebar-grouped-tabs .grouped-tabs-groups button:hover,
+.area-sidebar-grouped-tabs .grouped-tabs-items button:hover {
+  color: var(--text);
+  background: var(--bg-elevated-2);
+}
+
+.area-sidebar-grouped-tabs .grouped-tabs-groups button.active,
+.area-sidebar-grouped-tabs .grouped-tabs-items button.active {
+  background: var(--gradient);
+  color: var(--accent-contrast);
+  box-shadow: 0 6px 18px -6px var(--glow);
+}
+
+@media (max-width: 800px) {
+  .area-sidebar-grouped-tabs {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .area-sidebar-grouped-tabs .grouped-tabs-groups,
+  .area-sidebar-grouped-tabs .grouped-tabs-items {
+    flex-direction: row;
+  }
+
+  .area-sidebar-grouped-tabs .grouped-tabs-items {
+    margin-left: 0;
+    padding-left: 12px;
+    border-left: 1px solid var(--border);
+  }
+}
+
 .area-sidebar-group-label {
   font-family: var(--font-mono);
   font-size: 0.68rem;
@@ -2798,10 +2869,77 @@ textarea {
   color: var(--accent);
 }
 
+/* Combat page — its own layout class (not .generator-layout/.roster-layout)
+   so the tools-collapse column width can change without affecting Create
+   or Roster, which share that grid rule. */
+.combat-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.combat-layout.combat-tools-collapsed {
+  grid-template-columns: 56px 1fr;
+}
+
+@media (max-width: 800px) {
+  .combat-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .combat-left-column {
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+.combat-tools-toggle {
+  align-self: flex-start;
+}
+
+.combat-tools-collapsed-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+/* Battle Grid / Zone Map get their own region once a map is toggled on,
+   instead of sharing scroll space with the combatant list. Default
+   (no map open) stays a single stacked column, matching the layout
+   before this split existed. */
+.tracker-body {
+  display: block;
+}
+
+.tracker-map-region:empty {
+  display: none;
+}
+
+@media (min-width: 801px) {
+  .tracker-body.map-active {
+    display: grid;
+    grid-template-columns: minmax(360px, 1fr) minmax(280px, 340px);
+    align-items: start;
+    gap: 20px;
+  }
+
+  .tracker-body.map-active .tracker-editor-rail {
+    max-height: calc(100vh - 160px);
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+
+  /* Scoped override — the base .grid-map-svg/.zone-map-svg height (55vh)
+     must stay untouched since PresentationView and PlayerCompanionView
+     also render these components outside the tracker's wide-map layout. */
+  .tracker-body.map-active .grid-map-svg,
+  .tracker-body.map-active .zone-map-svg {
+    height: min(78vh, calc(100vh - 220px));
+  }
 }
 
 .chat-panel-messages {

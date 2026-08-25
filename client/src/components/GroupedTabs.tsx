@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 // A two-level tab selector: a short row of category groups, and beneath it
@@ -6,7 +7,7 @@ import { useEffect, useState } from "react";
 // plus entity types) — grouping keeps every row to a handful of items so
 // none of them ever wrap, regardless of window width.
 export function GroupedTabs<T extends string, G extends string>({
-  groups, groupLabels, itemLabels, groupOf, active, onSelect, className,
+  groups, groupLabels, itemLabels, groupOf, active, onSelect, className, itemBadge,
 }: {
   groups: Record<G, T[]>;
   groupLabels: Record<G, string>;
@@ -15,6 +16,10 @@ export function GroupedTabs<T extends string, G extends string>({
   active: T;
   onSelect: (item: T) => void;
   className?: string;
+  // Optional per-item indicator (e.g. an unseen-activity dot) rendered
+  // after the item's label. Additive/optional so existing callers that
+  // only pass plain string labels are unaffected.
+  itemBadge?: (item: T) => ReactNode;
 }) {
   const [activeGroup, setActiveGroup] = useState<G>(() => groupOf(active));
 
@@ -52,6 +57,7 @@ export function GroupedTabs<T extends string, G extends string>({
             onClick={() => onSelect(item)}
           >
             {itemLabels[item]}
+            {itemBadge?.(item)}
           </button>
         ))}
       </div>

@@ -37,9 +37,12 @@ describe("player character ownership transfer", () => {
     // The player can now edit their own sheet...
     const playerEdit = await player.patch(`/api/player-characters/${pc.body.id}`).send({ currentHp: 5 });
     expect(playerEdit.status).toBe(200);
-    // ...and the DM, no longer the owner, can't.
+    // ...and the DM, though no longer the PC's owner, still can — the
+    // world's owner always has write access to entities in their own
+    // world (Organizations Phase B), independent of per-entity ownership.
     const dmEdit = await dm.patch(`/api/player-characters/${pc.body.id}`).send({ currentHp: 1 });
-    expect(dmEdit.status).toBe(404);
+    expect(dmEdit.status).toBe(200);
+    expect(dmEdit.body.currentHp).toBe(1);
   });
 
   it("lets the world owner reassign a PC back to themselves", async () => {

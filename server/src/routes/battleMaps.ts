@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
 import { toBattleMapDTO } from "../serialize.js";
-import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
+import { findAccessibleWorld, getMemberWorldIds, authorizeEntityWrite } from "../worldAccess.js";
 import { BATTLE_MAP_MAX_WIDTH, BATTLE_MAP_MAX_HEIGHT, BATTLE_TILE_BY_ID } from "@spark/shared";
 import type { PlacedTile } from "@spark/shared";
 
@@ -74,8 +74,10 @@ battleMapsRouter.post("/", async (req, res) => {
 
 battleMapsRouter.patch("/:id", async (req, res) => {
   const body = req.body ?? {};
-  const existing = await prisma.battleMap.findFirst({ where: { id: req.params.id, userId: req.userId } });
-  if (!existing) return res.status(404).json({ error: "Battle map not found" });
+  const existing = await prisma.battleMap.findUnique({ where: { id: req.params.id } });
+  if (!existing || !(await authorizeEntityWrite(req.userId!, existing))) {
+    return res.status(404).json({ error: "Battle map not found" });
+  }
 
   const data: Record<string, unknown> = {};
   for (const field of ["name", "notes", "hiddenFromParty"] as const) {
@@ -111,7 +113,10 @@ battleMapsRouter.patch("/:id", async (req, res) => {
 });
 
 battleMapsRouter.delete("/:id", async (req, res) => {
-  const result = await prisma.battleMap.deleteMany({ where: { id: req.params.id, userId: req.userId } });
-  if (result.count === 0) return res.status(404).json({ error: "Battle map not found" });
+  const existing = await prisma.battleMap.findUnique({ where: { id: req.params.id } });
+  if (!existing || !(await authorizeEntityWrite(req.userId!, existing))) {
+    return res.status(404).json({ error: "Battle map not found" });
+  }
+  await prisma.battleMap.delete({ where: { id: req.params.id } });
   res.status(204).end();
 });

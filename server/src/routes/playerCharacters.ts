@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { toPlayerCharacterDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
-import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
+import { findAccessibleWorld, getMemberWorldIds, authorizeEntityWrite } from "../worldAccess.js";
 import { BASE_UPGRADES, PC_CLASSES, PC_PROFICIENCY_BONUS_BY_LEVEL, levelForXp, computeLevelUpChanges, abilityModifier } from "@spark/shared";
 import type { DeathSaves, SpellSlotLevel, ClassResource } from "@spark/shared";
 
@@ -141,10 +141,12 @@ playerCharactersRouter.patch("/:id", async (req, res) => {
     data.attunedItems = JSON.stringify(attuned);
   }
 
-  const result = await prisma.playerCharacter.updateMany({ where: { id: req.params.id, userId: req.userId }, data });
-  if (result.count === 0) return res.status(404).json({ error: "Player character not found" });
-  const row = await prisma.playerCharacter.findUnique({ where: { id: req.params.id } });
-  res.json(toPlayerCharacterDTO(row!));
+  const existing = await prisma.playerCharacter.findUnique({ where: { id: req.params.id } });
+  if (!(await authorizeEntityWrite(req.userId!, existing))) {
+    return res.status(404).json({ error: "Player character not found" });
+  }
+  const row = await prisma.playerCharacter.update({ where: { id: req.params.id }, data });
+  res.json(toPlayerCharacterDTO(row));
 });
 
 // Hands a player character to a different account — e.g. a DM pre-rolled a
@@ -177,8 +179,10 @@ playerCharactersRouter.patch("/:id/owner", async (req, res) => {
 
 playerCharactersRouter.post("/:id/rest", async (req, res) => {
   const kind = req.body?.kind === "short" ? "short" : "long";
-  const row = await prisma.playerCharacter.findFirst({ where: { id: req.params.id, userId: req.userId } });
-  if (!row) return res.status(404).json({ error: "Player character not found" });
+  const row = await prisma.playerCharacter.findUnique({ where: { id: req.params.id } });
+  if (!row || !(await authorizeEntityWrite(req.userId!, row))) {
+    return res.status(404).json({ error: "Player character not found" });
+  }
 
   const spellSlots = coerceSpellSlots(JSON.parse(row.spellSlots)).map((s) => (kind === "long" ? { ...s, current: s.max } : s));
   // Long rest refills everything; short rest only refills resources flagged for it.
@@ -218,8 +222,10 @@ playerCharactersRouter.post("/:id/rest", async (req, res) => {
 // as before — this endpoint is the "smart" convenience action layered on
 // top, not a replacement for it.
 playerCharactersRouter.post("/:id/level-up", async (req, res) => {
-  const row = await prisma.playerCharacter.findFirst({ where: { id: req.params.id, userId: req.userId } });
-  if (!row) return res.status(404).json({ error: "Player character not found" });
+  const row = await prisma.playerCharacter.findUnique({ where: { id: req.params.id } });
+  if (!row || !(await authorizeEntityWrite(req.userId!, row))) {
+    return res.status(404).json({ error: "Player character not found" });
+  }
 
   const toLevel = typeof req.body?.toLevel === "number" ? Math.trunc(req.body.toLevel) : levelForXp(row.xp);
   if (!Number.isFinite(toLevel) || toLevel <= row.level || toLevel > 20) {
@@ -248,8 +254,11 @@ playerCharactersRouter.post("/:id/level-up", async (req, res) => {
 });
 
 playerCharactersRouter.delete("/:id", async (req, res) => {
-  const result = await prisma.playerCharacter.deleteMany({ where: { id: req.params.id, userId: req.userId } });
-  if (result.count === 0) return res.status(404).json({ error: "Player character not found" });
+  const existing = await prisma.playerCharacter.findUnique({ where: { id: req.params.id } });
+  if (!(await authorizeEntityWrite(req.userId!, existing))) {
+    return res.status(404).json({ error: "Player character not found" });
+  }
+  await prisma.playerCharacter.delete({ where: { id: req.params.id } });
   await deleteLinksForEntity("playerCharacter", req.params.id, req.userId!);
   res.status(204).end();
 });

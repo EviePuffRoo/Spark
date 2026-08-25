@@ -2,7 +2,7 @@ import { Router } from "express";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../db.js";
 import { toFactionRelationshipDTO, toCampaignEventDTO } from "../serialize.js";
-import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
+import { findAccessibleWorld, getMemberWorldIds, authorizeEntityWrite } from "../worldAccess.js";
 import { logCampaignEventOp } from "../campaignEventLog.js";
 import { dispatchWebhookEvent } from "../webhookDispatch.js";
 import { FACTION_RELATIONSHIP_STANCES, resolveFactionBattle } from "@spark/shared";
@@ -15,9 +15,9 @@ export const factionRelationshipsRouter = Router();
 // "monster"-kind soldier), weighted by the same statBlock.xp each
 // character was generated or hand-entered with, so battle strength never
 // needs a second, parallel power system.
-async function loadBattleSide(userId: string, factionId: string, factionName: string): Promise<FactionBattleSideInput> {
+async function loadBattleSide(worldId: string, factionId: string, factionName: string): Promise<FactionBattleSideInput> {
   const characters = await prisma.character.findMany({
-    where: { factionId, userId, status: "active" },
+    where: { factionId, worldId, status: "active" },
     select: { id: true, name: true, statBlock: true },
   });
   return {
@@ -37,8 +37,8 @@ async function loadBattleSide(userId: string, factionId: string, factionName: st
 // computation is cheap, fully deterministic, and this way there's nothing
 // for a stale or tampered client payload to lie about.
 async function computeBattleProposal(userId: string, relationshipId: string): Promise<FactionBattleProposal | null> {
-  const relationship = await prisma.factionRelationship.findFirst({ where: { id: relationshipId, userId } });
-  if (!relationship) return null;
+  const relationship = await prisma.factionRelationship.findUnique({ where: { id: relationshipId } });
+  if (!relationship || !(await authorizeEntityWrite(userId, relationship))) return null;
   const world = await prisma.world.findUnique({ where: { id: relationship.worldId } });
   if (!world) return null;
   const [factionA, factionB] = await Promise.all([
@@ -48,8 +48,8 @@ async function computeBattleProposal(userId: string, relationshipId: string): Pr
   if (!factionA || !factionB) return null;
 
   const [sideA, sideB] = await Promise.all([
-    loadBattleSide(userId, factionA.id, factionA.name),
-    loadBattleSide(userId, factionB.id, factionB.name),
+    loadBattleSide(relationship.worldId, factionA.id, factionA.name),
+    loadBattleSide(relationship.worldId, factionB.id, factionB.name),
   ]);
 
   return resolveFactionBattle({ worldId: world.id, relationshipId, day: world.currentDay, sideA, sideB });
@@ -118,8 +118,11 @@ factionRelationshipsRouter.post("/", async (req, res) => {
 });
 
 factionRelationshipsRouter.delete("/:id", async (req, res) => {
-  const result = await prisma.factionRelationship.deleteMany({ where: { id: req.params.id, userId: req.userId } });
-  if (result.count === 0) return res.status(404).json({ error: "Faction relationship not found" });
+  const existing = await prisma.factionRelationship.findUnique({ where: { id: req.params.id } });
+  if (!existing || !(await authorizeEntityWrite(req.userId!, existing))) {
+    return res.status(404).json({ error: "Faction relationship not found" });
+  }
+  await prisma.factionRelationship.delete({ where: { id: req.params.id } });
   res.status(204).end();
 });
 
@@ -143,7 +146,7 @@ factionRelationshipsRouter.post("/:id/apply-battle", async (req, res) => {
   const proposal = await computeBattleProposal(req.userId!, req.params.id);
   if (!proposal) return res.status(404).json({ error: "Faction relationship not found" });
 
-  const relationship = await prisma.factionRelationship.findFirst({ where: { id: req.params.id, userId: req.userId } });
+  const relationship = await prisma.factionRelationship.findUnique({ where: { id: req.params.id } });
   if (!relationship) return res.status(404).json({ error: "Faction relationship not found" });
 
   const user = await prisma.user.findUnique({ where: { id: req.userId } });

@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { toShopDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
-import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
+import { findAccessibleWorld, getMemberWorldIds, authorizeEntityWrite } from "../worldAccess.js";
 import type { ShopStockEntry } from "@spark/shared";
 
 export const shopsRouter = Router();
@@ -54,7 +54,8 @@ shopsRouter.post("/", async (req, res) => {
     if (!world) return res.status(403).json({ error: "You don't have access to this world" });
   }
   if (typeof settlementId === "string") {
-    const settlement = await prisma.settlement.findFirst({ where: { id: settlementId, userId: req.userId } });
+    const memberWorldIds = await getMemberWorldIds(req.userId!);
+    const settlement = await prisma.settlement.findFirst({ where: { id: settlementId, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }] } });
     if (!settlement) return res.status(403).json({ error: "You don't have access to this settlement" });
   }
   const coercedStock = stock.map(coerceStockEntry).filter((s: ShopStockEntry | null): s is ShopStockEntry => s !== null);
@@ -95,22 +96,28 @@ shopsRouter.patch("/:id", async (req, res) => {
   }
   if ("settlementId" in body) {
     if (typeof body.settlementId === "string") {
-      const settlement = await prisma.settlement.findFirst({ where: { id: body.settlementId, userId: req.userId } });
+      const memberWorldIds = await getMemberWorldIds(req.userId!);
+      const settlement = await prisma.settlement.findFirst({ where: { id: body.settlementId, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }] } });
       if (!settlement) return res.status(403).json({ error: "You don't have access to this settlement" });
     }
     data.settlementId = body.settlementId ?? null;
   }
   if ("tags" in body) data.tags = JSON.stringify(Array.isArray(body.tags) ? body.tags : []);
 
-  const result = await prisma.shop.updateMany({ where: { id: req.params.id, userId: req.userId }, data });
-  if (result.count === 0) return res.status(404).json({ error: "Shop not found" });
-  const row = await prisma.shop.findUnique({ where: { id: req.params.id } });
-  res.json(toShopDTO(row!));
+  const existing = await prisma.shop.findUnique({ where: { id: req.params.id } });
+  if (!(await authorizeEntityWrite(req.userId!, existing))) {
+    return res.status(404).json({ error: "Shop not found" });
+  }
+  const row = await prisma.shop.update({ where: { id: req.params.id }, data });
+  res.json(toShopDTO(row));
 });
 
 shopsRouter.delete("/:id", async (req, res) => {
-  const result = await prisma.shop.deleteMany({ where: { id: req.params.id, userId: req.userId } });
-  if (result.count === 0) return res.status(404).json({ error: "Shop not found" });
+  const existing = await prisma.shop.findUnique({ where: { id: req.params.id } });
+  if (!(await authorizeEntityWrite(req.userId!, existing))) {
+    return res.status(404).json({ error: "Shop not found" });
+  }
+  await prisma.shop.delete({ where: { id: req.params.id } });
   await deleteLinksForEntity("shop", req.params.id, req.userId!);
   res.status(204).end();
 });

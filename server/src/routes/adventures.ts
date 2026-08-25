@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { toAdventureDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
-import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
+import { findAccessibleWorld, getMemberWorldIds, authorizeEntityWrite } from "../worldAccess.js";
 
 export const adventuresRouter = Router();
 
@@ -65,15 +65,20 @@ adventuresRouter.patch("/:id", async (req, res) => {
   }
   if ("tags" in body) data.tags = JSON.stringify(Array.isArray(body.tags) ? body.tags : []);
 
-  const result = await prisma.adventure.updateMany({ where: { id: req.params.id, userId: req.userId }, data });
-  if (result.count === 0) return res.status(404).json({ error: "Adventure not found" });
-  const row = await prisma.adventure.findUnique({ where: { id: req.params.id } });
-  res.json(toAdventureDTO(row!));
+  const existing = await prisma.adventure.findUnique({ where: { id: req.params.id } });
+  if (!(await authorizeEntityWrite(req.userId!, existing))) {
+    return res.status(404).json({ error: "Adventure not found" });
+  }
+  const row = await prisma.adventure.update({ where: { id: req.params.id }, data });
+  res.json(toAdventureDTO(row));
 });
 
 adventuresRouter.delete("/:id", async (req, res) => {
-  const result = await prisma.adventure.deleteMany({ where: { id: req.params.id, userId: req.userId } });
-  if (result.count === 0) return res.status(404).json({ error: "Adventure not found" });
+  const existing = await prisma.adventure.findUnique({ where: { id: req.params.id } });
+  if (!(await authorizeEntityWrite(req.userId!, existing))) {
+    return res.status(404).json({ error: "Adventure not found" });
+  }
+  await prisma.adventure.delete({ where: { id: req.params.id } });
   await deleteLinksForEntity("adventure", req.params.id, req.userId!);
   res.status(204).end();
 });

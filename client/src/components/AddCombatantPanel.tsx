@@ -1,6 +1,8 @@
 import { useState } from "react";
 import type { SearchResult, LiveCombatant, EncounterTable, SizeCategory, Item } from "@spark/shared";
-import { computeEquipmentBonuses, parseStatBlockAttacks, parseSizeCategory, parseSpeedFeet, abilityModifier } from "@spark/shared";
+import { computeEquipmentBonuses, parseStatBlockAttacks, parseSizeCategory, parseSpeedFeet, getRuleset } from "@spark/shared";
+
+const abilityModifier = getRuleset().abilityModifier;
 import { api } from "../api";
 import { EntitySearchPicker } from "./EntitySearchPicker";
 import { rollTableIndex } from "../rollTable";

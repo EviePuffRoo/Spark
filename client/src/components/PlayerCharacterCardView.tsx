@@ -1,5 +1,7 @@
 import type { PlayerCharacterInput, PlayerCharacter, AbilityKey } from "@spark/shared";
-import { XP_THRESHOLDS, formatModifier as modifier } from "@spark/shared";
+import { XP_THRESHOLDS, getRuleset } from "@spark/shared";
+
+const modifier = getRuleset().formatModifier;
 
 const ABILITY_ORDER: { key: AbilityKey; label: string }[] = [
   { key: "str", label: "STR" },

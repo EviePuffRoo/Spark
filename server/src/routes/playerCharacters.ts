@@ -3,13 +3,10 @@ import { prisma } from "../db.js";
 import { toPlayerCharacterDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
 import { findAccessibleWorld, getMemberWorldIds, authorizeEntityWrite } from "../worldAccess.js";
-import { BASE_UPGRADES, PC_CLASSES, PC_PROFICIENCY_BONUS_BY_LEVEL, levelForXp, computeLevelUpChanges, abilityModifier } from "@spark/shared";
+import { BASE_UPGRADES, PC_CLASSES, levelForXp, computeLevelUpChanges, getRuleset } from "@spark/shared";
 import type { DeathSaves, SpellSlotLevel, ClassResource } from "@spark/shared";
 
-function proficiencyBonusForLevel(level: number): number {
-  return PC_PROFICIENCY_BONUS_BY_LEVEL[Math.min(19, Math.max(0, Math.trunc(level) - 1))];
-}
-
+const ruleset = getRuleset();
 const BASE_UPGRADE_BY_ID = new Map(BASE_UPGRADES.map((u) => [u.id, u]));
 
 function coerceDeathSaves(raw: unknown): DeathSaves {
@@ -98,7 +95,7 @@ playerCharactersRouter.post("/", async (req, res) => {
       notes: notes ?? null,
       spellSlots: JSON.stringify(coerceSpellSlots(body.spellSlots)),
       classResources: JSON.stringify(coerceClassResources(body.classResources)),
-      proficiencyBonus: proficiencyBonusForLevel(Number(level)),
+      proficiencyBonus: ruleset.proficiencyBonusForLevel(Number(level)),
       hiddenFromParty: !!hiddenFromParty,
       userId: req.userId!,
     },
@@ -234,7 +231,7 @@ playerCharactersRouter.post("/:id/level-up", async (req, res) => {
 
   const pcClass = PC_CLASSES.find((c) => c.name === row.className);
   const abilityScores = JSON.parse(row.abilityScores) as Record<string, number>;
-  const conMod = abilityModifier(abilityScores.con ?? 10);
+  const conMod = ruleset.abilityModifier(abilityScores.con ?? 10);
   const changes = computeLevelUpChanges(pcClass, row.level, toLevel, conMod);
 
   const data: Record<string, unknown> = {

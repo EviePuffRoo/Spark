@@ -51,12 +51,29 @@ export function PlayerCharacterEditor({
   const [prepared, setPrepared] = useState(preparedSpells ?? []);
   const [resources, setResources] = useState(classResources ?? []);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   function set<K extends keyof PlayerCharacterInput>(key: K, val: PlayerCharacterInput[K]) {
     setDraft({ ...draft, [key]: val });
   }
 
   async function handleSave() {
+    // Mirrors the server's own required-field check (playerCharacters.ts)
+    // so a blank Class/Race is caught here, on the form that still shows
+    // the fields, instead of surfacing as a generic error after Continue
+    // has already swapped this editor out for the review/save panel.
+    const missing: string[] = [];
+    if (!draft.name.trim()) missing.push("Name");
+    if (!draft.className.trim()) missing.push("Class");
+    if (!draft.race.trim()) missing.push("Race");
+    if (!draft.level) missing.push("Level");
+    if (!draft.armorClass) missing.push("Armor Class");
+    if (!draft.maxHp) missing.push("Max HP");
+    if (missing.length > 0) {
+      setError(`Fill in: ${missing.join(", ")}.`);
+      return;
+    }
+    setError(null);
     setSaving(true);
     try {
       const patch: PlayerCharacterInput & PlayerCharacterLivingStatePatch = { ...draft };
@@ -146,6 +163,7 @@ export function PlayerCharacterEditor({
         <ClassResourcePanel resource={resources[0]} onChange={(r) => setResources([r])} />
       )}
 
+      {error && <p className="error">{error}</p>}
       <div className="button-row editor-actions">
         <button className="btn-primary" onClick={handleSave} disabled={saving}>{saving ? "Saving…" : saveLabel}</button>
         <button className="btn-secondary" onClick={onCancel}>Cancel</button>

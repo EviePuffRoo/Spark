@@ -61,7 +61,13 @@ export function computeWorldTickProposal(input: WorldTickInput): WorldTickPropos
       const delta = sign * (magnitude + jitter);
       if (delta === 0) continue;
       items.push({
-        id: `factionReputation:${self.id}:${fromDay}:${toDay}`,
+        // Keyed by relationship, not just faction — a faction touched by
+        // more than one active relationship in the same tick (e.g. an ally
+        // and a separate war at once) otherwise produces two proposal items
+        // that collide on id, which breaks their React list key and, worse,
+        // makes the two share one checkbox in WorldTickPanel's `checked`
+        // map so they can never be included/excluded independently.
+        id: `factionReputation:${rel.id}:${self.id}:${fromDay}:${toDay}`,
         kind: "factionReputation",
         factionId: self.id,
         delta,

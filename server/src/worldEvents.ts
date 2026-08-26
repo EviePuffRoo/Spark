@@ -20,7 +20,7 @@ import type { TokenMovedBroadcast } from "@spark/shared";
 // changes based on whether Redis is configured, so every existing call site
 // (routes, worldLive.ts) and worldEvents.test.ts need no changes either way.
 
-export type WorldChangeKind = "encounter" | "ledger" | "rollLog" | "chat";
+export type WorldChangeKind = "encounter" | "ledger" | "rollLog" | "chat" | "doomClock";
 
 // The one deliberate exception to "no payload" above: an in-progress token
 // drag is broadcast directly, bypassing the full encounter redaction pass

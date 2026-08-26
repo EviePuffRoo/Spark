@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { DoomClock } from "@spark/shared";
 import { api } from "../api";
+import { useWorldLiveChannel } from "../useWorldLiveChannel";
 
 const SIZE = 88;
 const RADIUS = 38;
@@ -47,14 +48,16 @@ export function DoomClockPanel({ worldId, canEdit }: { worldId: string; canEdit:
   const [newVisible, setNewVisible] = useState(false);
 
   function refresh() {
-    setLoading(true);
-    api.listDoomClocks(worldId).then(setClocks).catch((e) => setError((e as Error).message)).finally(() => setLoading(false));
+    api.listDoomClocks(worldId).then(setClocks).catch((e) => setError((e as Error).message));
   }
 
-  useEffect(() => {
-    refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [worldId]);
+  // Same "push does the resync, refresh() after a local mutation just
+  // keeps the actor's own action feeling instant" pattern as InventoryPage's
+  // ledger live channel — the pushed update from the server's own
+  // publishWorldChange call would arrive a beat later regardless.
+  useWorldLiveChannel(worldId, {
+    onDoomClock: (c) => { setClocks(c); setLoading(false); },
+  });
 
   async function createClock() {
     if (!newLabel.trim()) return;

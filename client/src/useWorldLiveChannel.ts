@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { Encounter, LedgerSummary, RollLogEntry, ChatMessage, TokenMovedBroadcast } from "@spark/shared";
+import type { Encounter, LedgerSummary, RollLogEntry, ChatMessage, TokenMovedBroadcast, DoomClock } from "@spark/shared";
 import { api } from "./api";
 
 interface WorldLiveOptions {
@@ -7,7 +7,8 @@ interface WorldLiveOptions {
   onLedger?: (summary: LedgerSummary) => void;
   onRollLog?: (rows: RollLogEntry[]) => void;
   onChat?: (messages: ChatMessage[]) => void;
-  // Unlike the four above, this one has no REST counterpart to resync
+  onDoomClock?: (clocks: DoomClock[]) => void;
+  // Unlike the five above, this one has no REST counterpart to resync
   // from on (re)connect — it's a pure, unpersisted push of an in-progress
   // token drag (see worldEvents.ts's publishTokenMoved), so the handler
   // just applies the tiny payload directly instead of triggering a fetch.
@@ -47,6 +48,7 @@ export function useWorldLiveChannel(worldId: string | null | undefined, options:
       if (opts.onLedger) api.getLedger(worldId).then((s) => { if (!cancelled) opts.onLedger?.(s); }).catch(() => {});
       if (opts.onRollLog) api.listRollLog(worldId).then((r) => { if (!cancelled) opts.onRollLog?.(r); }).catch(() => {});
       if (opts.onChat) api.listChat(worldId).then((c) => { if (!cancelled) opts.onChat?.(c); }).catch(() => {});
+      if (opts.onDoomClock) api.listDoomClocks(worldId).then((c) => { if (!cancelled) opts.onDoomClock?.(c); }).catch(() => {});
     };
 
     es.onerror = () => {
@@ -77,6 +79,10 @@ export function useWorldLiveChannel(worldId: string | null | undefined, options:
     es.addEventListener("chat", (ev) => {
       if (cancelled) return;
       optionsRef.current.onChat?.(JSON.parse((ev as MessageEvent).data));
+    });
+    es.addEventListener("doomClock", (ev) => {
+      if (cancelled) return;
+      optionsRef.current.onDoomClock?.(JSON.parse((ev as MessageEvent).data));
     });
     es.addEventListener("tokenMoved", (ev) => {
       if (cancelled) return;

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { toDoomClockDTO } from "../serialize.js";
 import { findAccessibleWorld, canWriteWorld, authorizeEntityWrite } from "../worldAccess.js";
+import { publishWorldChange } from "../worldEvents.js";
 
 export const doomClocksRouter = Router();
 
@@ -40,6 +41,7 @@ doomClocksRouter.post("/", async (req, res) => {
   const row = await prisma.doomClock.create({
     data: { worldId, label: label.trim(), segments, visibleToParty: !!visibleToParty, userId: req.userId! },
   });
+  publishWorldChange(worldId, "doomClock");
   res.status(201).json(toDoomClockDTO(row));
 });
 
@@ -67,6 +69,7 @@ doomClocksRouter.patch("/:id", async (req, res) => {
   if ("visibleToParty" in body) data.visibleToParty = !!body.visibleToParty;
 
   const row = await prisma.doomClock.update({ where: { id: existing.id }, data });
+  publishWorldChange(existing.worldId, "doomClock");
   res.json(toDoomClockDTO(row));
 });
 
@@ -76,6 +79,7 @@ doomClocksRouter.delete("/:id", async (req, res) => {
     return res.status(404).json({ error: "Doom clock not found" });
   }
   await prisma.doomClock.delete({ where: { id: req.params.id } });
+  publishWorldChange(existing.worldId, "doomClock");
   res.status(204).end();
 });
 
@@ -91,6 +95,7 @@ doomClocksRouter.post("/:id/advance", async (req, res) => {
 
   const filled = Math.max(0, Math.min(row.segments, row.filled + amount));
   const updated = await prisma.doomClock.update({ where: { id: row.id }, data: { filled } });
+  publishWorldChange(row.worldId, "doomClock");
   res.json(toDoomClockDTO(updated));
 });
 
@@ -100,5 +105,6 @@ doomClocksRouter.post("/:id/reset", async (req, res) => {
     return res.status(404).json({ error: "Doom clock not found" });
   }
   const row = await prisma.doomClock.update({ where: { id: req.params.id }, data: { filled: 0 } });
+  publishWorldChange(existing.worldId, "doomClock");
   res.json(toDoomClockDTO(row));
 });

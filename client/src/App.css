@@ -1873,6 +1873,14 @@ textarea {
     padding-top: 24px;
   }
 
+  /* The pitch copy is long enough to fill the whole first screen on a
+     phone, pushing the form (and the legal/FAQ links inside it) below
+     the fold. Flex `order` puts the form first visually without
+     touching DOM/tab order, which stays pitch-then-form. */
+  .auth-panel {
+    order: -1;
+  }
+
   .auth-wordmark {
     justify-content: center;
   }

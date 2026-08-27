@@ -113,7 +113,7 @@ export function AuthPage() {
 
         <p className="hint auth-legal-links">
           By continuing you agree to our <a href="/terms">Terms of Service</a> and{" "}
-          <a href="/privacy">Privacy Policy</a>.
+          <a href="/privacy">Privacy Policy</a>. Have questions? See the <a href="/faq">FAQ</a>.
         </p>
       </div>
     </main>

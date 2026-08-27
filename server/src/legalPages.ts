@@ -231,3 +231,68 @@ legalPagesRouter.get("/about", (_req, res) => {
     </p>
   `, false));
 });
+
+legalPagesRouter.get("/faq", (_req, res) => {
+  res.send(page("FAQ", `
+    <h1>Frequently Asked Questions</h1>
+
+    <h2>Is Spark free?</h2>
+    <p>
+      Yes. A free account can run up to 3 worlds, with full access to the generators, roster,
+      and live play tools, including real-time combat, chat, and party sync, which aren't
+      gated behind a paid tier. Upgrading ($4.99/mo) removes the world limit. See the
+      <a href="/privacy">Privacy Policy</a> for how payment is handled.
+    </p>
+
+    <h2>Are the generators powered by AI?</h2>
+    <p>
+      No. Every generator draws from hand-built content pools, not a live call to a language
+      model. Nothing you generate is scraped prose or laundered from a model's training data.
+      More on the philosophy behind that in the <a href="/about">About page</a>.
+    </p>
+
+    <h2>Does any of my campaign content get used to train AI?</h2>
+    <p>
+      No. Nothing you create is sent to or processed by a third-party AI or language model,
+      sold, or used for anything beyond showing it back to you and the people you've explicitly
+      shared it with. (Separately, Spark's own codebase was built with the help of AI-assisted
+      development tools. That's a fact about how we write code, not about what happens to your
+      data. See the <a href="/about">About page</a> for the distinction.)
+    </p>
+
+    <h2>How do my players join a world?</h2>
+    <p>
+      From the Worlds screen, share your world's join code with your players. They enter it
+      under "Join World" to get access. Once in, encounters, dice rolls, HP, chat, and party
+      inventory all sync live to everyone at the table.
+    </p>
+
+    <h2>I forgot my password. Now what?</h2>
+    <p>
+      Spark doesn't require an email address, so password resets work through a one-time
+      account-recovery code instead. You're shown that code once, when you create your account
+      (and again any time you regenerate it from your account settings), so save it somewhere
+      safe. On the login screen, choose "Forgot password?" and enter your username and recovery
+      code to set a new password.
+    </p>
+
+    <h2>Can I use Spark on my phone during a session?</h2>
+    <p>
+      Yes. The app can be installed to your phone's home screen like a native app, and the
+      interface it loads is cached so it still comes up even on a spotty connection. Live
+      features like combat sync and chat still need a working connection to actually update.
+    </p>
+
+    <h2>Can I delete my account?</h2>
+    <p>
+      Yes, at any time from your account settings. See the <a href="/privacy">Privacy Policy</a>
+      for what that does and doesn't remove.
+    </p>
+
+    <h2>Where do I read the fine print?</h2>
+    <p>
+      The <a href="/terms">Terms of Service</a> and <a href="/privacy">Privacy Policy</a> cover
+      the legal details. This page is just a plain-language summary.
+    </p>
+  `, false));
+});

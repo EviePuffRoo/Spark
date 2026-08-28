@@ -1,10 +1,12 @@
 import { Router } from "express";
+import { z } from "zod";
 import { prisma } from "../db.js";
 import { toEncounterDTO } from "../serialize.js";
 import { findAccessibleWorld, canWriteWorld } from "../worldAccess.js";
 import { publishWorldChange, publishTokenMoved } from "../worldEvents.js";
 import { computeCurrentVisibility } from "../gridVisibility.js";
-import type { LiveCombatant, LiveCombatantCondition, CombatantKind, EncounterZone, EncounterZoneEffect, ZoneHazard, ParsedAttack, AbilityKey, SizeCategory, PlacedTile, LegendaryAction, StatBlockAction } from "@spark/shared";
+import { parseArray, parseOptional } from "../validation.js";
+import type { LiveCombatant, EncounterZone, EncounterZoneEffect, ZoneHazard, ParsedAttack, PlacedTile, LegendaryAction, StatBlockAction } from "@spark/shared";
 import { SIZE_FOOTPRINT, computeReachableCells, computeVisionForTokens, extendWithLightSources, isDoorTileAt } from "@spark/shared";
 
 export const encountersRouter = Router();
@@ -31,40 +33,30 @@ function parseOpenDoors(openDoorCells: string | null | undefined): Set<string> {
   return new Set(JSON.parse(openDoorCells ?? "[]") as string[]);
 }
 
-const ABILITY_KEYS: AbilityKey[] = ["str", "dex", "con", "int", "wis", "cha"];
-const SIZE_CATEGORIES: SizeCategory[] = ["tiny", "small", "medium", "large", "huge", "gargantuan"];
-
 // Conditions used to be a plain string[]; a raw string entry from an
 // encounter saved before duration tracking existed is treated as an
 // indefinite condition rather than dropped, so older saved encounters
 // keep working without a migration.
-function coerceCondition(raw: unknown): LiveCombatantCondition | null {
-  if (typeof raw === "string") return raw ? { name: raw, expiresAtRound: null } : null;
-  if (!raw || typeof raw !== "object") return null;
-  const c = raw as Record<string, unknown>;
-  if (typeof c.name !== "string" || !c.name) return null;
-  return { name: c.name, expiresAtRound: typeof c.expiresAtRound === "number" ? c.expiresAtRound : null };
-}
+const liveCombatantConditionSchema = z.preprocess(
+  (raw) => (typeof raw === "string" ? (raw ? { name: raw, expiresAtRound: null } : undefined) : raw),
+  z.object({
+    name: z.string().min(1),
+    expiresAtRound: z.number().nullable().catch(null),
+  }),
+);
 
-function coerceAttack(raw: unknown): ParsedAttack | null {
-  if (!raw || typeof raw !== "object") return null;
-  const a = raw as Record<string, unknown>;
-  if (typeof a.name !== "string") return null;
-  let savingThrow: ParsedAttack["savingThrow"] = null;
-  if (a.savingThrow && typeof a.savingThrow === "object") {
-    const s = a.savingThrow as Record<string, unknown>;
-    if (ABILITY_KEYS.includes(s.ability as AbilityKey) && typeof s.dc === "number") {
-      savingThrow = { ability: s.ability as AbilityKey, dc: s.dc };
-    }
-  }
-  return {
-    name: a.name,
-    toHitBonus: typeof a.toHitBonus === "number" ? a.toHitBonus : null,
-    damageDice: typeof a.damageDice === "string" ? a.damageDice : null,
-    damageType: typeof a.damageType === "string" ? a.damageType : null,
-    savingThrow,
-  };
-}
+const savingThrowSchema = z.object({
+  ability: z.enum(["str", "dex", "con", "int", "wis", "cha"]),
+  dc: z.number(),
+});
+
+const parsedAttackSchema = z.object({
+  name: z.string(),
+  toHitBonus: z.number().nullable().catch(null),
+  damageDice: z.string().nullable().catch(null),
+  damageType: z.string().nullable().catch(null),
+  savingThrow: savingThrowSchema.nullable().catch(null),
+}) satisfies z.ZodType<ParsedAttack>;
 
 // Every field this clamps is user/DM-editable and gets replayed straight
 // into an O(radius^2) loop (vision/light radius, in shared/src/vision.ts)
@@ -78,101 +70,97 @@ function clampFinite(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-function coerceLegendaryAction(raw: unknown): LegendaryAction | null {
-  if (!raw || typeof raw !== "object") return null;
-  const a = raw as Record<string, unknown>;
-  if (typeof a.name !== "string" || typeof a.description !== "string") return null;
-  return { name: a.name, cost: typeof a.cost === "number" && a.cost > 0 ? a.cost : 1, description: a.description };
+function clampedOptionalNumber(min: number, max: number) {
+  return z.number().optional().transform((v) => (v === undefined ? undefined : clampFinite(v, min, max))).catch(undefined);
 }
 
-function coerceStatBlockAction(raw: unknown): StatBlockAction | null {
-  if (!raw || typeof raw !== "object") return null;
-  const a = raw as Record<string, unknown>;
-  if (typeof a.name !== "string" || typeof a.description !== "string") return null;
-  return { name: a.name, description: a.description };
-}
+const legendaryActionSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  cost: z.number().positive().catch(1),
+}) satisfies z.ZodType<LegendaryAction>;
 
-function coerceCombatant(raw: unknown): LiveCombatant | null {
-  if (!raw || typeof raw !== "object") return null;
-  const c = raw as Record<string, unknown>;
-  if (typeof c.id !== "string" || typeof c.name !== "string") return null;
-  const kind: CombatantKind = c.kind === "monster" || c.kind === "playerCharacter" ? c.kind : "custom";
-  const attacks = Array.isArray(c.attacks) ? c.attacks.map(coerceAttack).filter((a): a is ParsedAttack => a !== null) : undefined;
-  const legendaryActionsList = Array.isArray(c.legendaryActionsList)
-    ? c.legendaryActionsList.map(coerceLegendaryAction).filter((a): a is LegendaryAction => a !== null)
-    : undefined;
-  const lairActionsList = Array.isArray(c.lairActionsList)
-    ? c.lairActionsList.map(coerceStatBlockAction).filter((a): a is StatBlockAction => a !== null)
-    : undefined;
-  return {
-    id: c.id,
-    name: c.name,
-    kind,
-    initiative: Number(c.initiative) || 0,
-    maxHp: typeof c.maxHp === "number" ? c.maxHp : undefined,
-    currentHp: typeof c.currentHp === "number" ? c.currentHp : undefined,
-    hpStatus: "healthy", // recomputed server-side on every read, this value is discarded
-    armorClass: typeof c.armorClass === "number" ? c.armorClass : undefined,
-    conditions: Array.isArray(c.conditions) ? c.conditions.map(coerceCondition).filter((x): x is LiveCombatantCondition => x !== null) : [],
-    notes: typeof c.notes === "string" ? c.notes : "",
-    hpVisible: c.hpVisible !== false,
-    xp: typeof c.xp === "number" ? c.xp : undefined,
-    level: typeof c.level === "number" ? c.level : undefined,
-    zoneId: typeof c.zoneId === "string" ? c.zoneId : undefined,
-    hidden: c.hidden === true,
-    flying: c.flying === true ? true : undefined,
-    playerCharacterId: typeof c.playerCharacterId === "string" ? c.playerCharacterId : undefined,
-    attacks: attacks && attacks.length > 0 ? attacks : undefined,
-    gridX: typeof c.gridX === "number" ? c.gridX : undefined,
-    gridY: typeof c.gridY === "number" ? c.gridY : undefined,
-    sizeCategory: SIZE_CATEGORIES.includes(c.sizeCategory as SizeCategory) ? (c.sizeCategory as SizeCategory) : undefined,
-    speedFeet: typeof c.speedFeet === "number" ? c.speedFeet : undefined,
-    visionRadiusFeet: typeof c.visionRadiusFeet === "number" ? clampFinite(c.visionRadiusFeet, 0, 1000) : undefined,
-    lightRadiusFeet: typeof c.lightRadiusFeet === "number" ? clampFinite(c.lightRadiusFeet, 0, 1000) : undefined,
-    concentratingOn: typeof c.concentratingOn === "string" && c.concentratingOn ? c.concentratingOn : undefined,
-    legendaryActionsMax: typeof c.legendaryActionsMax === "number" ? clampFinite(c.legendaryActionsMax, 0, 20) : undefined,
-    legendaryActionsRemaining: typeof c.legendaryActionsRemaining === "number" ? clampFinite(c.legendaryActionsRemaining, 0, 20) : undefined,
-    legendaryActionsList: legendaryActionsList && legendaryActionsList.length > 0 ? legendaryActionsList : undefined,
-    lairActionsList: lairActionsList && lairActionsList.length > 0 ? lairActionsList : undefined,
-    lairActionUsedRound: typeof c.lairActionUsedRound === "number" ? c.lairActionUsedRound : undefined,
-  };
-}
+const statBlockActionSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+}) satisfies z.ZodType<StatBlockAction>;
 
-function coerceHazard(raw: unknown): ZoneHazard | undefined {
-  if (!raw || typeof raw !== "object") return undefined;
-  const h = raw as Record<string, unknown>;
-  if (typeof h.label !== "string" || typeof h.damage !== "number") return undefined;
-  return { label: h.label, damage: h.damage };
-}
+const sizeCategorySchema = z.enum(["tiny", "small", "medium", "large", "huge", "gargantuan"]);
+
+const optionalNumberSchema = z.number().optional().catch(undefined);
+const optionalStringSchema = z.string().optional().catch(undefined);
+
+const liveCombatantSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  kind: z.enum(["monster", "playerCharacter", "custom"]).catch("custom"),
+  initiative: z.coerce.number().catch(0),
+  maxHp: optionalNumberSchema,
+  currentHp: optionalNumberSchema,
+  // Recomputed server-side on every read (see serialize.ts) — this value is discarded.
+  hpStatus: z.any().optional().transform(() => "healthy" as const),
+  armorClass: optionalNumberSchema,
+  conditions: z.any().optional().transform((val) => parseArray(liveCombatantConditionSchema, val)),
+  notes: z.string().catch(""),
+  hpVisible: z.boolean().catch(true),
+  xp: optionalNumberSchema,
+  level: optionalNumberSchema,
+  zoneId: optionalStringSchema,
+  hidden: z.any().optional().transform((val) => val === true),
+  flying: z.any().optional().transform((val) => (val === true ? true : undefined)),
+  playerCharacterId: optionalStringSchema,
+  attacks: z.any().optional().transform((val) => {
+    const attacks = parseArray(parsedAttackSchema, val);
+    return attacks.length > 0 ? attacks : undefined;
+  }),
+  gridX: optionalNumberSchema,
+  gridY: optionalNumberSchema,
+  sizeCategory: sizeCategorySchema.optional().catch(undefined),
+  speedFeet: optionalNumberSchema,
+  visionRadiusFeet: clampedOptionalNumber(0, 1000),
+  lightRadiusFeet: clampedOptionalNumber(0, 1000),
+  concentratingOn: z.string().min(1).optional().catch(undefined),
+  legendaryActionsMax: clampedOptionalNumber(0, 20),
+  legendaryActionsRemaining: clampedOptionalNumber(0, 20),
+  legendaryActionsList: z.any().optional().transform((val) => {
+    const list = parseArray(legendaryActionSchema, val);
+    return list.length > 0 ? list : undefined;
+  }),
+  lairActionsList: z.any().optional().transform((val) => {
+    const list = parseArray(statBlockActionSchema, val);
+    return list.length > 0 ? list : undefined;
+  }),
+  lairActionUsedRound: optionalNumberSchema,
+}) satisfies z.ZodType<LiveCombatant>;
+
+const zoneHazardSchema = z.object({
+  label: z.string(),
+  damage: z.number(),
+}) satisfies z.ZodType<ZoneHazard>;
+
+const encounterZoneSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  tags: z.preprocess((val) => (Array.isArray(val) ? val.filter((x) => typeof x === "string") : []), z.array(z.string())),
+  x: z.number().catch(0),
+  y: z.number().catch(0),
+  connections: z.preprocess((val) => (Array.isArray(val) ? val.filter((x) => typeof x === "string") : []), z.array(z.string())),
+  revealed: z.boolean().catch(true),
+  locationId: optionalStringSchema,
+  hazard: z.any().optional().transform((val) => parseOptional(zoneHazardSchema, val)),
+}) satisfies z.ZodType<EncounterZone>;
 
 export function coerceZone(raw: unknown): EncounterZone | null {
-  if (!raw || typeof raw !== "object") return null;
-  const z = raw as Record<string, unknown>;
-  if (typeof z.id !== "string" || typeof z.name !== "string") return null;
-  return {
-    id: z.id,
-    name: z.name,
-    tags: Array.isArray(z.tags) ? z.tags.filter((x): x is string => typeof x === "string") : [],
-    x: typeof z.x === "number" ? z.x : 0,
-    y: typeof z.y === "number" ? z.y : 0,
-    connections: Array.isArray(z.connections) ? z.connections.filter((x): x is string => typeof x === "string") : [],
-    revealed: z.revealed !== false,
-    locationId: typeof z.locationId === "string" ? z.locationId : undefined,
-    hazard: coerceHazard(z.hazard),
-  };
+  const result = encounterZoneSchema.safeParse(raw);
+  return result.success ? result.data : null;
 }
 
-function coerceZoneEffect(raw: unknown): EncounterZoneEffect | null {
-  if (!raw || typeof raw !== "object") return null;
-  const e = raw as Record<string, unknown>;
-  if (typeof e.id !== "string" || typeof e.zoneId !== "string" || typeof e.label !== "string") return null;
-  return {
-    id: e.id,
-    zoneId: e.zoneId,
-    label: e.label,
-    expiresAtRound: typeof e.expiresAtRound === "number" ? e.expiresAtRound : 0,
-  };
-}
+const encounterZoneEffectSchema = z.object({
+  id: z.string(),
+  zoneId: z.string(),
+  label: z.string(),
+  expiresAtRound: z.number().catch(0),
+}) satisfies z.ZodType<EncounterZoneEffect>;
 
 encountersRouter.get("/:worldId", async (req, res) => {
   const { worldId } = req.params;
@@ -198,9 +186,9 @@ encountersRouter.put("/:worldId", async (req, res) => {
   if (!Array.isArray(body.combatants)) {
     return res.status(400).json({ error: "combatants must be an array" });
   }
-  const combatants = body.combatants.map(coerceCombatant).filter((c: LiveCombatant | null): c is LiveCombatant => c !== null);
-  const zones = Array.isArray(body.zones) ? body.zones.map(coerceZone).filter((z: EncounterZone | null): z is EncounterZone => z !== null) : [];
-  const zoneEffects = Array.isArray(body.zoneEffects) ? body.zoneEffects.map(coerceZoneEffect).filter((e: EncounterZoneEffect | null): e is EncounterZoneEffect => e !== null) : [];
+  const combatants = parseArray(liveCombatantSchema, body.combatants);
+  const zones = parseArray(encounterZoneSchema, body.zones);
+  const zoneEffects = parseArray(encounterZoneEffectSchema, body.zoneEffects);
   const activeDungeonId = typeof body.activeDungeonId === "string" ? body.activeDungeonId : null;
   const activeDungeonRoomId = typeof body.activeDungeonRoomId === "string" ? body.activeDungeonRoomId : null;
   const activeBattleMapId = typeof body.activeBattleMapId === "string" ? body.activeBattleMapId : null;

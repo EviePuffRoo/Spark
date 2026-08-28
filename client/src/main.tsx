@@ -1,9 +1,14 @@
-import { StrictMode } from 'react'
+import { StrictMode, Suspense, lazy } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import { AuthProvider } from './AuthContext.tsx'
-import { PresentationView } from './pages/PresentationView.tsx'
+
+// A normal app visitor never needs this, and a cast-to-table visitor never
+// needs the full tabbed app — split so neither pays for the other. This
+// isn't a component module so React Fast Refresh doesn't apply here.
+// oxlint-disable-next-line react/only-export-components
+const PresentationView = lazy(() => import('./pages/PresentationView.tsx').then((m) => ({ default: m.PresentationView })))
 
 // "Cast to Table" opens a second tab at ?present=<worldId> — a read-only,
 // big-screen view of the live encounter with no normal app chrome around
@@ -22,7 +27,9 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     {presentWorldId ? (
-      <PresentationView worldId={presentWorldId} />
+      <Suspense fallback={null}>
+        <PresentationView worldId={presentWorldId} />
+      </Suspense>
     ) : (
       <AuthProvider>
         <App />

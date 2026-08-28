@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import "./App.css";
 import type { EntityType, Item } from "@spark/shared";
 import { useAuth } from "./AuthContext";
@@ -7,31 +7,47 @@ import { useActivityBadges } from "./useActivityBadges";
 import { AuthPage } from "./pages/AuthPage";
 import { RecoveryCodeDisplay } from "./components/RecoveryCodeDisplay";
 import { OnboardingChoice } from "./components/OnboardingChoice";
-import { CreatePage } from "./pages/CreatePage";
-import { SessionNotesPage } from "./pages/SessionNotesPage";
-import { RosterPage, type RosterSelection } from "./pages/RosterPage";
-import { WorldsPage } from "./pages/WorldsPage";
-import { WorldOverviewPage, type OverviewNavTarget } from "./pages/WorldOverviewPage";
-import { CombatPage } from "./pages/CombatPage";
-import { MyCharacterPage } from "./pages/MyCharacterPage";
-import { PlayerCompanionView } from "./pages/PlayerCompanionView";
-import { CompendiumPage } from "./pages/CompendiumPage";
-import { BillingPage } from "./pages/BillingPage";
-import { ProfilePage } from "./pages/ProfilePage";
-import { CodexPage } from "./pages/CodexPage";
-import { GalleryPage } from "./pages/GalleryPage";
-import { ModerationPage } from "./pages/ModerationPage";
-import { AdminUsersPage } from "./pages/AdminUsersPage";
-import { AdminStatsPage } from "./pages/AdminStatsPage";
-import { InventoryPage } from "./pages/InventoryPage";
-import { DowntimePage } from "./pages/DowntimePage";
-import { ShopPage } from "./pages/ShopPage";
+import type { RosterSelection } from "./pages/RosterPage";
+import type { OverviewNavTarget } from "./pages/WorldOverviewPage";
 import { GlobalSearch } from "./components/GlobalSearch";
 import { PrintPane, type PrintItem } from "./components/PrintPane";
 import { PrepIcon, WorldIcon, PlayIcon, AccountIcon } from "./components/icons";
-import { TavernPage } from "./pages/TavernPage";
-import { MapBuilderPage } from "./pages/MapBuilderPage";
 import { GroupedTabs } from "./components/GroupedTabs";
+
+// Every tab body below is its own chunk, not part of the initial bundle —
+// a fresh visitor only ever pays for AuthPage/the shell up front, and each
+// tab's code downloads the first time it's actually opened. Named exports
+// need the .then(...) unwrap since React.lazy only accepts a module whose
+// *default* export is the component.
+const PlayerCompanionView = lazy(() => import("./pages/PlayerCompanionView").then((m) => ({ default: m.PlayerCompanionView })));
+const CreatePage = lazy(() => import("./pages/CreatePage").then((m) => ({ default: m.CreatePage })));
+const SessionNotesPage = lazy(() => import("./pages/SessionNotesPage").then((m) => ({ default: m.SessionNotesPage })));
+const RosterPage = lazy(() => import("./pages/RosterPage").then((m) => ({ default: m.RosterPage })));
+const WorldsPage = lazy(() => import("./pages/WorldsPage").then((m) => ({ default: m.WorldsPage })));
+const WorldOverviewPage = lazy(() => import("./pages/WorldOverviewPage").then((m) => ({ default: m.WorldOverviewPage })));
+const CombatPage = lazy(() => import("./pages/CombatPage").then((m) => ({ default: m.CombatPage })));
+const MyCharacterPage = lazy(() => import("./pages/MyCharacterPage").then((m) => ({ default: m.MyCharacterPage })));
+const CompendiumPage = lazy(() => import("./pages/CompendiumPage").then((m) => ({ default: m.CompendiumPage })));
+const BillingPage = lazy(() => import("./pages/BillingPage").then((m) => ({ default: m.BillingPage })));
+const ProfilePage = lazy(() => import("./pages/ProfilePage").then((m) => ({ default: m.ProfilePage })));
+const CodexPage = lazy(() => import("./pages/CodexPage").then((m) => ({ default: m.CodexPage })));
+const GalleryPage = lazy(() => import("./pages/GalleryPage").then((m) => ({ default: m.GalleryPage })));
+const ModerationPage = lazy(() => import("./pages/ModerationPage").then((m) => ({ default: m.ModerationPage })));
+const AdminUsersPage = lazy(() => import("./pages/AdminUsersPage").then((m) => ({ default: m.AdminUsersPage })));
+const AdminStatsPage = lazy(() => import("./pages/AdminStatsPage").then((m) => ({ default: m.AdminStatsPage })));
+const InventoryPage = lazy(() => import("./pages/InventoryPage").then((m) => ({ default: m.InventoryPage })));
+const DowntimePage = lazy(() => import("./pages/DowntimePage").then((m) => ({ default: m.DowntimePage })));
+const ShopPage = lazy(() => import("./pages/ShopPage").then((m) => ({ default: m.ShopPage })));
+const TavernPage = lazy(() => import("./pages/TavernPage").then((m) => ({ default: m.TavernPage })));
+const MapBuilderPage = lazy(() => import("./pages/MapBuilderPage").then((m) => ({ default: m.MapBuilderPage })));
+
+function TabLoading() {
+  return (
+    <div className="page">
+      <div className="panel"><p className="hint">Loading…</p></div>
+    </div>
+  );
+}
 
 type Area = "prep" | "world" | "play" | "account";
 type SubTab = "create" | "compendium" | "overview" | "worlds" | "roster" | "codex" | "notes" | "downtime" | "tavern" | "combat" | "mapBuilder" | "shop" | "inventory" | "gallery" | "profile" | "myCharacter" | "billing" | "moderation" | "users" | "stats";
@@ -93,7 +109,7 @@ function App() {
       {justSignedUp ? (
         <OnboardingChoice onDone={(overview) => { dismissOnboarding(); setLandOnOverview(overview); }} />
       ) : isPlayMode ? (
-        <PlayerCompanionView />
+        <Suspense fallback={<TabLoading />}><PlayerCompanionView /></Suspense>
       ) : (
         <AppShell initialLandOnOverview={landOnOverview} />
       )}
@@ -268,36 +284,38 @@ function AppShell({ initialLandOnOverview = false }: { initialLandOnOverview?: b
 
       <main>
         <h1 className="sr-only">Spark: {SUBTAB_LABELS[subTab]}</h1>
-        {subTab === "create" && <CreatePage onSendToDowntime={sendToDowntimeLog} />}
-        {subTab === "compendium" && <CompendiumPage />}
-        {subTab === "profile" && <ProfilePage />}
-        {subTab === "myCharacter" && <MyCharacterPage onViewRoster={viewRosterForWorld} />}
-        {subTab === "billing" && <BillingPage />}
-        {subTab === "gallery" && <GalleryPage />}
-        {subTab === "moderation" && user?.role === "admin" && <ModerationPage />}
-        {subTab === "users" && user?.role === "admin" && <AdminUsersPage />}
-        {subTab === "stats" && user?.role === "admin" && <AdminStatsPage />}
-        {subTab === "overview" && <WorldOverviewPage onNavigate={navigateFromOverview} />}
-        {subTab === "worlds" && <WorldsPage onViewRoster={viewRosterForWorld} onNavigateToBilling={navigateToBilling} />}
-        {subTab === "roster" && (
-          <RosterPage
-            worldFilter={rosterWorldFilter}
-            onWorldFilterChange={setRosterWorldFilter}
-            pendingSelection={rosterSelection}
-            onConsumeSelection={() => setRosterSelection(null)}
-            onPrint={setPrintItems}
-          />
-        )}
-        {subTab === "codex" && <CodexPage />}
-        {subTab === "notes" && <SessionNotesPage onOpenInRoster={openInRoster} />}
-        {subTab === "downtime" && (
-          <DowntimePage craftedItemHandoff={craftedItemHandoff} onConsumeCraftedItemHandoff={() => setCraftedItemHandoff(null)} />
-        )}
-        {subTab === "tavern" && <TavernPage onNavigateToBilling={navigateToBilling} />}
-        {subTab === "combat" && <CombatPage />}
-        {subTab === "mapBuilder" && <MapBuilderPage />}
-        {subTab === "shop" && <ShopPage />}
-        {subTab === "inventory" && <InventoryPage />}
+        <Suspense fallback={<TabLoading />}>
+          {subTab === "create" && <CreatePage onSendToDowntime={sendToDowntimeLog} />}
+          {subTab === "compendium" && <CompendiumPage />}
+          {subTab === "profile" && <ProfilePage />}
+          {subTab === "myCharacter" && <MyCharacterPage onViewRoster={viewRosterForWorld} />}
+          {subTab === "billing" && <BillingPage />}
+          {subTab === "gallery" && <GalleryPage />}
+          {subTab === "moderation" && user?.role === "admin" && <ModerationPage />}
+          {subTab === "users" && user?.role === "admin" && <AdminUsersPage />}
+          {subTab === "stats" && user?.role === "admin" && <AdminStatsPage />}
+          {subTab === "overview" && <WorldOverviewPage onNavigate={navigateFromOverview} />}
+          {subTab === "worlds" && <WorldsPage onViewRoster={viewRosterForWorld} onNavigateToBilling={navigateToBilling} />}
+          {subTab === "roster" && (
+            <RosterPage
+              worldFilter={rosterWorldFilter}
+              onWorldFilterChange={setRosterWorldFilter}
+              pendingSelection={rosterSelection}
+              onConsumeSelection={() => setRosterSelection(null)}
+              onPrint={setPrintItems}
+            />
+          )}
+          {subTab === "codex" && <CodexPage />}
+          {subTab === "notes" && <SessionNotesPage onOpenInRoster={openInRoster} />}
+          {subTab === "downtime" && (
+            <DowntimePage craftedItemHandoff={craftedItemHandoff} onConsumeCraftedItemHandoff={() => setCraftedItemHandoff(null)} />
+          )}
+          {subTab === "tavern" && <TavernPage onNavigateToBilling={navigateToBilling} />}
+          {subTab === "combat" && <CombatPage />}
+          {subTab === "mapBuilder" && <MapBuilderPage />}
+          {subTab === "shop" && <ShopPage />}
+          {subTab === "inventory" && <InventoryPage />}
+        </Suspense>
       </main>
 
       <PrintPane items={printItems} />

@@ -2,6 +2,7 @@ import { EventEmitter } from "node:events";
 import { randomUUID } from "node:crypto";
 import { Redis } from "ioredis";
 import type { TokenMovedBroadcast } from "@spark/shared";
+import { logger } from "./logger.js";
 
 // Pub/sub for "something changed in this world" signals, powering the SSE
 // live channel (routes/worldLive.ts). Deliberately carries no payload for
@@ -58,10 +59,10 @@ export class RealtimeBackbone {
   connectRedis(redisUrl: string): void {
     this.redisPub = new Redis(redisUrl);
     this.redisSub = new Redis(redisUrl);
-    this.redisPub.on("error", (err: Error) => console.error("[realtime] Redis publish connection error:", err));
-    this.redisSub.on("error", (err: Error) => console.error("[realtime] Redis subscribe connection error:", err));
+    this.redisPub.on("error", (err: Error) => logger.error({ err }, "[realtime] Redis publish connection error"));
+    this.redisSub.on("error", (err: Error) => logger.error({ err }, "[realtime] Redis subscribe connection error"));
     this.redisSub.subscribe(REDIS_CHANNEL).catch((err: unknown) => {
-      console.error("[realtime] Failed to subscribe to Redis channel:", err);
+      logger.error({ err }, "[realtime] Failed to subscribe to Redis channel");
     });
     this.redisSub.on("message", (_channel: string, raw: string) => {
       let msg: RedisMessage;
@@ -115,7 +116,7 @@ export class RealtimeBackbone {
   private publishToRedis(message: RedisPayload): void {
     if (!this.redisPub) return;
     this.redisPub.publish(REDIS_CHANNEL, JSON.stringify({ ...message, origin: this.instanceId })).catch((err: unknown) => {
-      console.error("[realtime] Failed to publish to Redis:", err);
+      logger.error({ err }, "[realtime] Failed to publish to Redis");
     });
   }
 
@@ -158,11 +159,11 @@ const defaultBackbone = new RealtimeBackbone();
 export function initRealtimeBackbone(): void {
   const redisUrl = process.env.REDIS_URL;
   if (!redisUrl) {
-    console.log("[realtime] REDIS_URL not set — world-change events stay in-process (fine for a single server instance).");
+    logger.info("[realtime] REDIS_URL not set — world-change events stay in-process (fine for a single server instance).");
     return;
   }
   defaultBackbone.connectRedis(redisUrl);
-  console.log("[realtime] REDIS_URL is set — world-change events fan out across processes via Redis pub/sub.");
+  logger.info("[realtime] REDIS_URL is set — world-change events fan out across processes via Redis pub/sub.");
 }
 
 export function publishWorldChange(worldId: string, kind: WorldChangeKind): void {

@@ -1,49 +1,48 @@
 import { Router } from "express";
+import { z } from "zod";
 import { prisma } from "../db.js";
 import { toPlayerCharacterDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
 import { findAccessibleWorld, getMemberWorldIds, authorizeEntityWrite } from "../worldAccess.js";
+import { parseArray } from "../validation.js";
 import { BASE_UPGRADES, PC_CLASSES, levelForXp, computeLevelUpChanges, getRuleset } from "@spark/shared";
 import type { DeathSaves, SpellSlotLevel, ClassResource } from "@spark/shared";
 
 const ruleset = getRuleset();
 const BASE_UPGRADE_BY_ID = new Map(BASE_UPGRADES.map((u) => [u.id, u]));
 
+// Each field independently defaults on a type mismatch — an object with
+// some wrong-typed fields is still kept (unlike dungeons.ts's per-item
+// arrays, which drop the whole item on a required-field mismatch). See
+// parseArray/parseOptional in validation.ts for that other pattern.
+const deathSavesSchema = z.object({
+  successes: z.number().catch(0),
+  failures: z.number().catch(0),
+}).catch({ successes: 0, failures: 0 });
+
 function coerceDeathSaves(raw: unknown): DeathSaves {
-  const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
-  return {
-    successes: typeof r.successes === "number" ? r.successes : 0,
-    failures: typeof r.failures === "number" ? r.failures : 0,
-  };
+  return deathSavesSchema.parse(raw);
 }
+
+const spellSlotLevelSchema = z.object({
+  level: z.number().catch(0),
+  max: z.number().catch(0),
+  current: z.number().catch(0),
+}) satisfies z.ZodType<SpellSlotLevel>;
 
 function coerceSpellSlots(raw: unknown): SpellSlotLevel[] {
-  if (!Array.isArray(raw)) return [];
-  return raw
-    .filter((s) => s && typeof s === "object")
-    .map((s) => {
-      const r = s as Record<string, unknown>;
-      return {
-        level: typeof r.level === "number" ? r.level : 0,
-        max: typeof r.max === "number" ? r.max : 0,
-        current: typeof r.current === "number" ? r.current : 0,
-      };
-    });
+  return parseArray(spellSlotLevelSchema, raw);
 }
 
+const classResourceSchema = z.object({
+  name: z.string().catch(""),
+  max: z.number().catch(0),
+  current: z.number().catch(0),
+  rechargeOn: z.enum(["short", "long"]).catch("long"),
+}) satisfies z.ZodType<ClassResource>;
+
 function coerceClassResources(raw: unknown): ClassResource[] {
-  if (!Array.isArray(raw)) return [];
-  return raw
-    .filter((s) => s && typeof s === "object")
-    .map((s) => {
-      const r = s as Record<string, unknown>;
-      return {
-        name: typeof r.name === "string" ? r.name : "",
-        max: typeof r.max === "number" ? r.max : 0,
-        current: typeof r.current === "number" ? r.current : 0,
-        rechargeOn: r.rechargeOn === "short" ? "short" : "long",
-      };
-    });
+  return parseArray(classResourceSchema, raw);
 }
 
 export const playerCharactersRouter = Router();

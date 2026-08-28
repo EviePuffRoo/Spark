@@ -9,13 +9,26 @@ import { FEET_PER_TILE } from "./gridMovement.js";
 // override knob.
 export const DEFAULT_VISION_RADIUS_FEET = 60;
 
-function tileAt(map: Pick<BattleMap, "tiles">, x: number, y: number): TileDef | undefined {
-  const placed = map.tiles.find((t) => t.x === x && t.y === y && (t.layer ?? "floor") === "floor");
-  return placed ? BATTLE_TILE_BY_ID[placed.tileId] : undefined;
-}
-
 function key(x: number, y: number): string {
   return `${x},${y}`;
+}
+
+// An open door (its "x,y" key present in openDoors) reads as fully passable
+// regardless of its base (closed) def — see TileDef.isDoor.
+function tileAt(map: Pick<BattleMap, "tiles">, x: number, y: number, openDoors?: Set<string>): TileDef | undefined {
+  const placed = map.tiles.find((t) => t.x === x && t.y === y && (t.layer ?? "floor") === "floor");
+  if (!placed) return undefined;
+  const def = BATTLE_TILE_BY_ID[placed.tileId];
+  if (def?.isDoor && openDoors?.has(key(x, y))) {
+    return { ...def, blocksMovement: false, blocksVision: false };
+  }
+  return def;
+}
+
+// Is there a door tile at this cell at all (open or closed)? Used by the
+// server to validate a toggle-door request targets a real door.
+export function isDoorTileAt(map: Pick<BattleMap, "tiles">, x: number, y: number): boolean {
+  return !!tileAt(map, x, y)?.isDoor;
 }
 
 // Is the straight line from (x0,y0) to (x1,y1) unobstructed? Walks the
@@ -25,7 +38,7 @@ function key(x: number, y: number): string {
 // checked here — you can always see a wall's near face, you just can't
 // see past it — so a raycast against a wall tile correctly reports "the
 // wall is visible" rather than "nothing beyond it is."
-function hasLineOfSight(map: Pick<BattleMap, "tiles">, x0: number, y0: number, x1: number, y1: number): boolean {
+function hasLineOfSight(map: Pick<BattleMap, "tiles">, x0: number, y0: number, x1: number, y1: number, openDoors?: Set<string>): boolean {
   const dx = x1 - x0;
   const dy = y1 - y0;
   const dist = Math.max(Math.abs(dx), Math.abs(dy));
@@ -45,13 +58,13 @@ function hasLineOfSight(map: Pick<BattleMap, "tiles">, x0: number, y0: number, x
     // otherwise leak sight straight through the gap between them. Block
     // the ray there too when both flanking cells are walls, same as a
     // squeezing-through-a-pinch-point rule.
-    if (cx !== prevCx && cy !== prevCy && tileAt(map, cx, prevCy)?.blocksVision && tileAt(map, prevCx, cy)?.blocksVision) {
+    if (cx !== prevCx && cy !== prevCy && tileAt(map, cx, prevCy, openDoors)?.blocksVision && tileAt(map, prevCx, cy, openDoors)?.blocksVision) {
       return false;
     }
     prevCx = cx;
     prevCy = cy;
     if (cx === x1 && cy === y1) continue;
-    if (tileAt(map, cx, cy)?.blocksVision) return false;
+    if (tileAt(map, cx, cy, openDoors)?.blocksVision) return false;
   }
   return true;
 }
@@ -61,7 +74,7 @@ function hasLineOfSight(map: Pick<BattleMap, "tiles">, x0: number, y0: number, x
 // painted tiles (their blocksVision flag), never a manually-drawn wall
 // layer. This is the whole point of the tileset system from Phase A: a
 // DM builds the room, and line-of-sight just works.
-export function computeVisibleCells(map: Pick<BattleMap, "width" | "height" | "tiles">, originX: number, originY: number, radiusTiles: number): Set<string> {
+export function computeVisibleCells(map: Pick<BattleMap, "width" | "height" | "tiles">, originX: number, originY: number, radiusTiles: number, openDoors?: Set<string>): Set<string> {
   const visible = new Set<string>();
   visible.add(key(originX, originY));
   const r = Math.ceil(radiusTiles);
@@ -73,7 +86,7 @@ export function computeVisibleCells(map: Pick<BattleMap, "width" | "height" | "t
       if (dx * dx + dy * dy > rSquared) continue;
       const x = originX + dx;
       if (x < 0 || x >= map.width) continue;
-      if (hasLineOfSight(map, originX, originY, x, y)) visible.add(key(x, y));
+      if (hasLineOfSight(map, originX, originY, x, y, openDoors)) visible.add(key(x, y));
     }
   }
   return visible;
@@ -87,12 +100,12 @@ function feetToTiles(feet: number): number {
 // own sight, unioned together. Monsters and custom combatants don't
 // contribute: fog-of-war is a player-facing memory of what the PARTY has
 // seen, not a simulation of every creature's eyesight.
-export function computeVisionForTokens(map: Pick<BattleMap, "width" | "height" | "tiles">, tokens: Pick<LiveCombatant, "kind" | "gridX" | "gridY" | "visionRadiusFeet">[]): Set<string> {
+export function computeVisionForTokens(map: Pick<BattleMap, "width" | "height" | "tiles">, tokens: Pick<LiveCombatant, "kind" | "gridX" | "gridY" | "visionRadiusFeet">[], openDoors?: Set<string>): Set<string> {
   const visible = new Set<string>();
   for (const t of tokens) {
     if (t.kind !== "playerCharacter" || t.gridX === undefined || t.gridY === undefined) continue;
     const radiusTiles = feetToTiles(t.visionRadiusFeet ?? DEFAULT_VISION_RADIUS_FEET);
-    for (const k of computeVisibleCells(map, t.gridX, t.gridY, radiusTiles)) visible.add(k);
+    for (const k of computeVisibleCells(map, t.gridX, t.gridY, radiusTiles, openDoors)) visible.add(k);
   }
   return visible;
 }
@@ -113,18 +126,19 @@ export function extendWithLightSources(
   map: Pick<BattleMap, "width" | "height" | "tiles">,
   baseVisible: Set<string>,
   carriers?: Pick<LiveCombatant, "gridX" | "gridY" | "lightRadiusFeet">[],
+  openDoors?: Set<string>,
 ): Set<string> {
   const extended = new Set(baseVisible);
   for (const tile of map.tiles) {
     if ((tile.layer ?? "floor") !== "floor") continue;
     const def = BATTLE_TILE_BY_ID[tile.tileId];
     if (!def?.lightRadius || !baseVisible.has(key(tile.x, tile.y))) continue;
-    for (const k of computeVisibleCells(map, tile.x, tile.y, def.lightRadius)) extended.add(k);
+    for (const k of computeVisibleCells(map, tile.x, tile.y, def.lightRadius, openDoors)) extended.add(k);
   }
   for (const c of carriers ?? []) {
     if (!c.lightRadiusFeet || c.gridX === undefined || c.gridY === undefined) continue;
     if (!baseVisible.has(key(c.gridX, c.gridY))) continue;
-    for (const k of computeVisibleCells(map, c.gridX, c.gridY, feetToTiles(c.lightRadiusFeet))) extended.add(k);
+    for (const k of computeVisibleCells(map, c.gridX, c.gridY, feetToTiles(c.lightRadiusFeet), openDoors)) extended.add(k);
   }
   return extended;
 }

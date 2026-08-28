@@ -790,6 +790,7 @@ model Encounter {
   activeDungeonRoomId String?
   activeBattleMapId   String?
   exploredCells       String   @default("[]")
+  openDoorCells       String   @default("[]")
   updatedAt   DateTime @updatedAt
 }
 

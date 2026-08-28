@@ -80,4 +80,16 @@ describe("computeReachableCells", () => {
       expect(y).toBeLessThan(3);
     }
   });
+
+  it("blocks movement through a closed door by default", () => {
+    const map = emptyMap(10, 10, [{ x: 6, y: 5, tileId: "wooden-door" }]);
+    const reachable = computeReachableCells(map, 5, 5, 30);
+    expect(reachable.has("6,5")).toBe(false);
+  });
+
+  it("allows movement through the door once it's toggled open", () => {
+    const map = emptyMap(10, 10, [{ x: 6, y: 5, tileId: "wooden-door" }]);
+    const reachable = computeReachableCells(map, 5, 5, 30, new Set(["6,5"]));
+    expect(reachable.has("6,5")).toBe(true);
+  });
 });

@@ -5,7 +5,7 @@ import { findAccessibleWorld, canWriteWorld } from "../worldAccess.js";
 import { publishWorldChange, publishTokenMoved } from "../worldEvents.js";
 import { computeCurrentVisibility } from "../gridVisibility.js";
 import type { LiveCombatant, LiveCombatantCondition, CombatantKind, EncounterZone, EncounterZoneEffect, ZoneHazard, ParsedAttack, AbilityKey, SizeCategory, PlacedTile, LegendaryAction, StatBlockAction } from "@spark/shared";
-import { SIZE_FOOTPRINT, computeReachableCells, computeVisionForTokens, extendWithLightSources } from "@spark/shared";
+import { SIZE_FOOTPRINT, computeReachableCells, computeVisionForTokens, extendWithLightSources, isDoorTileAt } from "@spark/shared";
 
 export const encountersRouter = Router();
 
@@ -25,6 +25,10 @@ function withEncounterLock<T>(worldId: string, fn: () => Promise<T>): Promise<T>
   const next = prior.then(fn, fn);
   encounterLocks.set(worldId, next.catch(() => {}));
   return next;
+}
+
+function parseOpenDoors(openDoorCells: string | null | undefined): Set<string> {
+  return new Set(JSON.parse(openDoorCells ?? "[]") as string[]);
 }
 
 const ABILITY_KEYS: AbilityKey[] = ["str", "dex", "con", "int", "wis", "cha"];
@@ -178,7 +182,7 @@ encountersRouter.get("/:worldId", async (req, res) => {
   if (!row) {
     return res.json({ worldId, combatants: [], round: 1, turnIndex: 0, zones: [], zoneEffects: [], updatedAt: null });
   }
-  const visibleCells = await computeCurrentVisibility(row.activeBattleMapId, JSON.parse(row.combatants));
+  const visibleCells = await computeCurrentVisibility(row.activeBattleMapId, JSON.parse(row.combatants), parseOpenDoors(row.openDoorCells));
   res.json(toEncounterDTO(row, req.userId!, world.userId, visibleCells ?? undefined));
 });
 
@@ -200,16 +204,21 @@ encountersRouter.put("/:worldId", async (req, res) => {
   const activeDungeonRoomId = typeof body.activeDungeonRoomId === "string" ? body.activeDungeonRoomId : null;
   const activeBattleMapId = typeof body.activeBattleMapId === "string" ? body.activeBattleMapId : null;
   const clientExploredCells: string[] = Array.isArray(body.exploredCells) ? body.exploredCells.filter((x: unknown): x is string => typeof x === "string") : [];
+  const clientOpenDoorCells: string[] = Array.isArray(body.openDoorCells) ? body.openDoorCells.filter((x: unknown): x is string => typeof x === "string") : [];
 
   const row = await withEncounterLock(worldId, async () => {
     const existing = await prisma.encounter.findUnique({ where: { worldId } });
-    // Switching (or first loading) a battle map starts fog fresh — the old
-    // map's explored memory has nothing to do with the new one. Staying on
-    // the same map (an ordinary HP/turn/etc. save) keeps accumulating it.
+    // Switching (or first loading) a battle map starts fog and door state
+    // fresh — neither means anything on a different map. Staying on the
+    // same map (an ordinary HP/turn/etc. save) keeps accumulating fog and
+    // preserves door state.
     const mapChanged = (existing?.activeBattleMapId ?? null) !== activeBattleMapId;
     const priorExplored: string[] = mapChanged || !existing ? [] : JSON.parse(existing.exploredCells ?? "[]");
-    const visible = await computeCurrentVisibility(activeBattleMapId, combatants);
+    const openDoorCellsList = mapChanged || !existing ? [] : [...new Set([...JSON.parse(existing.openDoorCells ?? "[]") as string[], ...clientOpenDoorCells])];
+    const openDoors = new Set(openDoorCellsList);
+    const visible = await computeCurrentVisibility(activeBattleMapId, combatants, openDoors);
     const exploredCells = JSON.stringify([...new Set([...priorExplored, ...clientExploredCells, ...(visible ?? [])])]);
+    const openDoorCells = JSON.stringify(openDoorCellsList);
 
     return prisma.encounter.upsert({
       where: { worldId },
@@ -224,6 +233,7 @@ encountersRouter.put("/:worldId", async (req, res) => {
         activeDungeonRoomId,
         activeBattleMapId,
         exploredCells,
+        openDoorCells,
       },
       update: {
         combatants: JSON.stringify(combatants),
@@ -235,11 +245,12 @@ encountersRouter.put("/:worldId", async (req, res) => {
         activeDungeonRoomId,
         activeBattleMapId,
         exploredCells,
+        openDoorCells,
       },
     });
   });
   publishWorldChange(worldId, "encounter");
-  const visibleCells = await computeCurrentVisibility(row.activeBattleMapId, JSON.parse(row.combatants));
+  const visibleCells = await computeCurrentVisibility(row.activeBattleMapId, JSON.parse(row.combatants), parseOpenDoors(row.openDoorCells));
   res.json(toEncounterDTO(row, req.userId!, world.userId, visibleCells ?? undefined));
 });
 
@@ -277,7 +288,7 @@ encountersRouter.post("/:worldId/adjust-hp", async (req, res) => {
   if (updated === null) return res.status(404).json({ error: "No active encounter for this world" });
   if (updated === undefined) return res.status(404).json({ error: "Combatant not found" });
   publishWorldChange(worldId, "encounter");
-  const visibleCells = await computeCurrentVisibility(updated.activeBattleMapId, JSON.parse(updated.combatants));
+  const visibleCells = await computeCurrentVisibility(updated.activeBattleMapId, JSON.parse(updated.combatants), parseOpenDoors(updated.openDoorCells));
   res.json(toEncounterDTO(updated, req.userId!, world.userId, visibleCells ?? undefined));
 });
 
@@ -332,7 +343,7 @@ encountersRouter.post("/:worldId/move-zone", async (req, res) => {
   });
   if ("error" in updated) return res.status(updated.error).json({ error: updated.message });
   publishWorldChange(worldId, "encounter");
-  const visibleCells = await computeCurrentVisibility(updated.activeBattleMapId, JSON.parse(updated.combatants));
+  const visibleCells = await computeCurrentVisibility(updated.activeBattleMapId, JSON.parse(updated.combatants), parseOpenDoors(updated.openDoorCells));
   res.json(toEncounterDTO(updated, req.userId!, world.userId, visibleCells ?? undefined));
 });
 
@@ -377,11 +388,13 @@ encountersRouter.post("/:worldId/move-grid", async (req, res) => {
       return { error: 400 as const, message: "That's off the edge of the map" };
     }
 
+    const openDoors = parseOpenDoors(row.openDoorCells);
+
     if (!isOwner && typeof target.gridX === "number" && typeof target.gridY === "number") {
       const mapTiles: PlacedTile[] = JSON.parse(map.tiles);
       const reachable = computeReachableCells(
         { width: map.width, height: map.height, tiles: mapTiles },
-        target.gridX, target.gridY, target.speedFeet ?? 30,
+        target.gridX, target.gridY, target.speedFeet ?? 30, openDoors,
       );
       if (!reachable.has(`${gridX},${gridY}`)) {
         return { error: 400 as const, message: "That's further than this combatant can move" };
@@ -393,7 +406,7 @@ encountersRouter.post("/:worldId/move-grid", async (req, res) => {
 
     const mapTiles: PlacedTile[] = JSON.parse(map.tiles);
     const mapShape = { width: map.width, height: map.height, tiles: mapTiles };
-    const visible = extendWithLightSources(mapShape, computeVisionForTokens(mapShape, combatants), combatants);
+    const visible = extendWithLightSources(mapShape, computeVisionForTokens(mapShape, combatants, openDoors), combatants, openDoors);
     const priorExplored: string[] = JSON.parse(row.exploredCells ?? "[]");
     const exploredCells = JSON.stringify([...new Set([...priorExplored, ...visible])]);
 
@@ -404,7 +417,60 @@ encountersRouter.post("/:worldId/move-grid", async (req, res) => {
   });
   if ("error" in updated) return res.status(updated.error).json({ error: updated.message });
   publishWorldChange(worldId, "encounter");
-  const visibleCells = await computeCurrentVisibility(updated.activeBattleMapId, JSON.parse(updated.combatants));
+  const visibleCells = await computeCurrentVisibility(updated.activeBattleMapId, JSON.parse(updated.combatants), parseOpenDoors(updated.openDoorCells));
+  res.json(toEncounterDTO(updated, req.userId!, world.userId, visibleCells ?? undefined));
+});
+
+// Narrow write path open to any party member, same permission model as
+// move-grid/adjust-hp/move-zone: no per-combatant ownership or adjacency
+// check, since the app doesn't enforce action economy anywhere else. A
+// secret (gmOnly-layer) door is naturally out of reach here regardless of
+// who's asking — isDoorTileAt only ever consults the floor layer (see
+// vision.ts's tileAt), and MapBuilderPage always places a gmOnly-category
+// tile like secret-door on the gmOnly layer, never floor, so there's no
+// extra owner-check needed to keep it un-toggleable.
+encountersRouter.post("/:worldId/toggle-door", async (req, res) => {
+  const { worldId } = req.params;
+  const world = await findAccessibleWorld(req.userId!, worldId);
+  if (!world) return res.status(403).json({ error: "You don't have access to this world" });
+
+  const { x, y } = req.body ?? {};
+  if (typeof x !== "number" || typeof y !== "number" || !Number.isInteger(x) || !Number.isInteger(y)) {
+    return res.status(400).json({ error: "x and y are required integers" });
+  }
+
+  const updated = await withEncounterLock(worldId, async () => {
+    const row = await prisma.encounter.findUnique({ where: { worldId } });
+    if (!row) return { error: 404 as const, message: "No active encounter for this world" };
+    if (!row.activeBattleMapId) return { error: 400 as const, message: "No battle map is loaded for this encounter" };
+
+    const map = await prisma.battleMap.findUnique({ where: { id: row.activeBattleMapId } });
+    if (!map) return { error: 404 as const, message: "Battle map not found" };
+    const mapTiles: PlacedTile[] = JSON.parse(map.tiles);
+    const mapShape = { width: map.width, height: map.height, tiles: mapTiles };
+    if (!isDoorTileAt(mapShape, x, y)) {
+      return { error: 400 as const, message: "There's no door at that cell" };
+    }
+
+    const cellKey = `${x},${y}`;
+    const openDoorCellsList = JSON.parse(row.openDoorCells ?? "[]") as string[];
+    const nowOpen = !openDoorCellsList.includes(cellKey);
+    const nextOpenDoorCellsList = nowOpen ? [...openDoorCellsList, cellKey] : openDoorCellsList.filter((k) => k !== cellKey);
+    const openDoors = new Set(nextOpenDoorCellsList);
+
+    const combatants: LiveCombatant[] = JSON.parse(row.combatants);
+    const visible = extendWithLightSources(mapShape, computeVisionForTokens(mapShape, combatants, openDoors), combatants, openDoors);
+    const priorExplored: string[] = JSON.parse(row.exploredCells ?? "[]");
+    const exploredCells = JSON.stringify([...new Set([...priorExplored, ...visible])]);
+
+    return prisma.encounter.update({
+      where: { worldId },
+      data: { openDoorCells: JSON.stringify(nextOpenDoorCellsList), exploredCells },
+    });
+  });
+  if ("error" in updated) return res.status(updated.error).json({ error: updated.message });
+  publishWorldChange(worldId, "encounter");
+  const visibleCells = await computeCurrentVisibility(updated.activeBattleMapId, JSON.parse(updated.combatants), parseOpenDoors(updated.openDoorCells));
   res.json(toEncounterDTO(updated, req.userId!, world.userId, visibleCells ?? undefined));
 });
 

@@ -17,7 +17,8 @@ async function sendEncounter(res: Response, worldId: string, viewerId: string, w
   if (!row) {
     dto = { worldId, combatants: [], round: 1, turnIndex: 0, zones: [], zoneEffects: [], updatedAt: null };
   } else {
-    const visibleCells = await computeCurrentVisibility(row.activeBattleMapId, JSON.parse(row.combatants));
+    const openDoors = new Set(JSON.parse(row.openDoorCells ?? "[]") as string[]);
+    const visibleCells = await computeCurrentVisibility(row.activeBattleMapId, JSON.parse(row.combatants), openDoors);
     dto = toEncounterDTO(row, viewerId, worldOwnerId, visibleCells ?? undefined);
   }
   res.write(`event: encounter\ndata: ${JSON.stringify(dto)}\n\n`);

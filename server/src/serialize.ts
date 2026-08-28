@@ -572,6 +572,9 @@ export function toEncounterDTO(row: EncounterRow, viewerId: string, worldOwnerId
     activeDungeonRoomId: row.activeDungeonRoomId ?? undefined,
     activeBattleMapId: row.activeBattleMapId ?? undefined,
     exploredCells: JSON.parse(row.exploredCells ?? "[]"),
+    // Not secret — same as exploredCells, every viewer sees which doors
+    // are currently open.
+    openDoorCells: JSON.parse(row.openDoorCells ?? "[]"),
     visibleCells: isOwner ? undefined : (visibleCells ? [...visibleCells] : undefined),
     updatedAt: row.updatedAt.toISOString(),
   };

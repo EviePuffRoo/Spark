@@ -184,6 +184,19 @@ export function PlayerCompanionView() {
     api.broadcastTokenPosition(worldId, combatantId, gridX, gridY).catch(() => {});
   }
 
+  function toggleDoor(x: number, y: number) {
+    if (!worldId) return;
+    if (canEdit && encounter) {
+      const key = `${x},${y}`;
+      const openDoorCells = (encounter.openDoorCells ?? []).includes(key)
+        ? (encounter.openDoorCells ?? []).filter((k) => k !== key)
+        : [...(encounter.openDoorCells ?? []), key];
+      api.saveEncounter(worldId, { ...encounter, openDoorCells }).then(setEncounter).catch(() => {});
+    } else {
+      api.toggleDoor(worldId, x, y).then(setEncounter).catch(() => {});
+    }
+  }
+
   async function handleToggleNotify() {
     if (notifyEnabled) {
       setNotifyEnabled(false);
@@ -291,11 +304,13 @@ export function PlayerCompanionView() {
                       canEdit={canEdit}
                       exploredCells={encounter?.exploredCells}
                       visibleCells={encounter?.visibleCells}
+                      openDoorCells={encounter?.openDoorCells}
                       onLoadBattleMap={loadBattleMap}
                       onLeaveBattleMap={leaveBattleMap}
                       onMoveCombatant={moveCombatantOnGrid}
                       onPlaceCombatant={moveCombatantOnGrid}
                       onDragBroadcast={broadcastTokenDrag}
+                      onToggleDoor={toggleDoor}
                     />
                   )}
                 </section>

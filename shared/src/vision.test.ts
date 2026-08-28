@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeVisibleCells, computeVisionForTokens, extendWithLightSources, DEFAULT_VISION_RADIUS_FEET } from "./vision.js";
+import { computeVisibleCells, computeVisionForTokens, extendWithLightSources, isDoorTileAt, DEFAULT_VISION_RADIUS_FEET } from "./vision.js";
 import type { BattleMap } from "./types.js";
 
 function emptyMap(width: number, height: number, tiles: BattleMap["tiles"] = []): Pick<BattleMap, "width" | "height" | "tiles"> {
@@ -137,5 +137,40 @@ describe("extendWithLightSources", () => {
     const base = new Set(["10,10"]);
     const extended = extendWithLightSources(map, base, [{ gridX: 10, gridY: 10 }, { gridX: undefined, gridY: undefined, lightRadiusFeet: 30 }]);
     expect(extended).toEqual(base);
+  });
+});
+
+describe("doors", () => {
+  it("blocks vision past a closed door by default", () => {
+    const map = emptyMap(10, 10, [{ x: 5, y: 3, tileId: "wooden-door" }]);
+    const visible = computeVisibleCells(map, 5, 5, 5);
+    expect(visible.has("5,3")).toBe(true); // the closed door itself is visible
+    expect(visible.has("5,1")).toBe(false); // straight behind it is not
+  });
+
+  it("lets vision pass once the door is toggled open", () => {
+    const map = emptyMap(10, 10, [{ x: 5, y: 3, tileId: "wooden-door" }]);
+    const visible = computeVisibleCells(map, 5, 5, 5, new Set(["5,3"]));
+    expect(visible.has("5,1")).toBe(true);
+  });
+
+  it("leaves an unrelated closed door elsewhere unaffected", () => {
+    const map = emptyMap(10, 10, [
+      { x: 5, y: 3, tileId: "wooden-door" },
+      { x: 2, y: 5, tileId: "wooden-door" },
+    ]);
+    const visible = computeVisibleCells(map, 5, 5, 5, new Set(["5,3"]));
+    expect(visible.has("5,1")).toBe(true); // through the opened door
+    expect(visible.has("0,5")).toBe(false); // the still-closed door blocks past it
+  });
+
+  it("isDoorTileAt is true for a door and false for a wall or bare floor", () => {
+    const map = emptyMap(10, 10, [
+      { x: 5, y: 3, tileId: "wooden-door" },
+      { x: 6, y: 3, tileId: "stone-wall" },
+    ]);
+    expect(isDoorTileAt(map, 5, 3)).toBe(true);
+    expect(isDoorTileAt(map, 6, 3)).toBe(false);
+    expect(isDoorTileAt(map, 0, 0)).toBe(false);
   });
 });

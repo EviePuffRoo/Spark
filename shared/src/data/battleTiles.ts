@@ -17,7 +17,11 @@ export const BATTLE_TILES: TileDef[] = [
 
   // Structure
   { id: "stone-wall", name: "Stone Wall", category: "structure", blocksMovement: true, blocksVision: true, difficultTerrain: false },
-  { id: "wooden-door", name: "Wooden Door", category: "structure", blocksMovement: false, blocksVision: false, difficultTerrain: false },
+  // Closed is the resting state — blocksMovement/blocksVision here
+  // describe a shut door. An Encounter can toggle it open per-cell (see
+  // EncounterStateInput.openDoorCells); vision.ts/gridMovement.ts's
+  // openDoors param overrides these to false for an open door.
+  { id: "wooden-door", name: "Wooden Door", category: "structure", blocksMovement: true, blocksVision: true, difficultTerrain: false, isDoor: true },
   { id: "window", name: "Window", category: "structure", blocksMovement: true, blocksVision: false, difficultTerrain: false },
   { id: "pillar", name: "Pillar", category: "structure", blocksMovement: true, blocksVision: true, difficultTerrain: false },
   { id: "wooden-fence", name: "Wooden Fence", category: "structure", blocksMovement: true, blocksVision: false, difficultTerrain: false },
@@ -69,7 +73,7 @@ export const BATTLE_TILES: TileDef[] = [
   // GM Only — markers painted on the gmOnly layer, stripped server-side
   // before ever reaching a non-owner viewer (see PlacedTile.layer). Mark
   // these mechanically inert too, as a second line of defense.
-  { id: "secret-door", name: "Secret Door", category: "gmOnly", blocksMovement: false, blocksVision: false, difficultTerrain: false },
+  { id: "secret-door", name: "Secret Door", category: "gmOnly", blocksMovement: true, blocksVision: true, difficultTerrain: false, isDoor: true },
   { id: "hidden-trap", name: "Hidden Trap", category: "gmOnly", blocksMovement: false, blocksVision: false, difficultTerrain: false },
   { id: "ambush-point", name: "Ambush Point", category: "gmOnly", blocksMovement: false, blocksVision: false, difficultTerrain: false },
   { id: "treasure-cache", name: "Treasure Cache", category: "gmOnly", blocksMovement: false, blocksVision: false, difficultTerrain: false },

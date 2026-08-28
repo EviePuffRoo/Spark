@@ -151,6 +151,7 @@ export function PresentationView({ worldId }: { worldId: string }) {
           canEdit={false}
           exploredCells={encounter.exploredCells}
           visibleCells={visibleCells ? [...visibleCells] : undefined}
+          openDoorCells={encounter.openDoorCells}
           onLoadBattleMap={noop}
           onLeaveBattleMap={noop}
           onMoveCombatant={noop}

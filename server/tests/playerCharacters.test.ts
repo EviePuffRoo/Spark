@@ -234,3 +234,29 @@ describe("rest and the home base's comfort bonus", () => {
     expect(res.body.currentHp).toBe(20);
   });
 });
+
+describe("skill proficiencies", () => {
+  it("defaults to an empty array and round-trips a PATCHed set through GET", async () => {
+    const { agent } = await signupAgent("skillsdm1");
+    const pc = await agent.post("/api/player-characters").send(PC_BODY);
+    expect(pc.body.skillProficiencies).toEqual([]);
+
+    const patched = await agent.patch(`/api/player-characters/${pc.body.id}`).send({
+      skillProficiencies: ["Athletics", "Perception"],
+    });
+    expect(patched.body.skillProficiencies).toEqual(["Athletics", "Perception"]);
+
+    const fetched = await agent.get(`/api/player-characters/${pc.body.id}`);
+    expect(fetched.body.skillProficiencies).toEqual(["Athletics", "Perception"]);
+  });
+
+  it("drops non-string entries instead of rejecting the whole request", async () => {
+    const { agent } = await signupAgent("skillsdm2");
+    const pc = await agent.post("/api/player-characters").send(PC_BODY);
+
+    const patched = await agent.patch(`/api/player-characters/${pc.body.id}`).send({
+      skillProficiencies: ["Stealth", 42, null, "Insight"],
+    });
+    expect(patched.body.skillProficiencies).toEqual(["Stealth", "Insight"]);
+  });
+});

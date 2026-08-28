@@ -602,6 +602,7 @@ export function toPlayerCharacterDTO(row: PlayerCharacterRow): PlayerCharacter {
     deathSaves: JSON.parse(row.deathSaves),
     spellSlots: JSON.parse(row.spellSlots),
     preparedSpells: JSON.parse(row.preparedSpells),
+    skillProficiencies: JSON.parse(row.skillProficiencies),
     classResources: JSON.parse(row.classResources),
     conditions: JSON.parse(row.conditions),
     xp: row.xp,

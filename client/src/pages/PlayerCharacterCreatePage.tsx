@@ -5,12 +5,8 @@ import { api, type ReferenceData } from "../api";
 import { useActiveWorld } from "../ActiveWorldContext";
 import { PlayerCharacterCardView } from "../components/PlayerCharacterCardView";
 import { PlayerCharacterEditor } from "../components/PlayerCharacterEditor";
+import { PlayerCharacterWizard } from "../components/PlayerCharacterWizard";
 import { SaveEntityFields } from "../components/SaveEntityFields";
-
-const BLANK_PC: PlayerCharacterInput = {
-  name: "", className: "", level: 1, race: "", armorClass: 10, maxHp: 10,
-  abilityScores: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 },
-};
 
 const IMPORT_FIELD_LABELS: Record<string, string> = {
   name: "Name", className: "Class", level: "Level", race: "Race",
@@ -207,13 +203,12 @@ export function PlayerCharacterCreatePage() {
       {creationMode === "manual" && !manualResult && (
         <div className="panel">
           <h2>Add a Player Character</h2>
-          <p className="hint">Enter the character exactly as your player built them.</p>
-          <PlayerCharacterEditor
+          <p className="hint">Build a character step by step — race and class, ability scores, skills — or use "Paste to Import" if your player already has a full sheet written out.</p>
+          <PlayerCharacterWizard
             key={resetKey}
-            value={BLANK_PC}
+            reference={reference}
             onSave={async (draft) => setManualResult(draft)}
             onCancel={() => setResetKey((k) => k + 1)}
-            saveLabel="Continue"
           />
         </div>
       )}

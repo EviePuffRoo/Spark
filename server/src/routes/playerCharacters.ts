@@ -45,6 +45,10 @@ function coerceClassResources(raw: unknown): ClassResource[] {
   return parseArray(classResourceSchema, raw);
 }
 
+function coerceSkillProficiencies(raw: unknown): string[] {
+  return parseArray(z.string(), raw);
+}
+
 export const playerCharactersRouter = Router();
 
 playerCharactersRouter.get("/", async (req, res) => {
@@ -93,6 +97,7 @@ playerCharactersRouter.post("/", async (req, res) => {
       tags: JSON.stringify(Array.isArray(tags) ? tags : []),
       notes: notes ?? null,
       spellSlots: JSON.stringify(coerceSpellSlots(body.spellSlots)),
+      skillProficiencies: JSON.stringify(coerceSkillProficiencies(body.skillProficiencies)),
       classResources: JSON.stringify(coerceClassResources(body.classResources)),
       proficiencyBonus: ruleset.proficiencyBonusForLevel(Number(level)),
       hiddenFromParty: !!hiddenFromParty,
@@ -123,6 +128,7 @@ playerCharactersRouter.patch("/:id", async (req, res) => {
   if ("tags" in body) data.tags = JSON.stringify(Array.isArray(body.tags) ? body.tags : []);
   if ("deathSaves" in body) data.deathSaves = JSON.stringify(coerceDeathSaves(body.deathSaves));
   if ("spellSlots" in body) data.spellSlots = JSON.stringify(coerceSpellSlots(body.spellSlots));
+  if ("skillProficiencies" in body) data.skillProficiencies = JSON.stringify(coerceSkillProficiencies(body.skillProficiencies));
   if ("preparedSpells" in body) data.preparedSpells = JSON.stringify(Array.isArray(body.preparedSpells) ? body.preparedSpells.filter((s: unknown) => typeof s === "string") : []);
   if ("classResources" in body) data.classResources = JSON.stringify(coerceClassResources(body.classResources));
   if ("conditions" in body) data.conditions = JSON.stringify(Array.isArray(body.conditions) ? body.conditions.filter((s: unknown) => typeof s === "string") : []);

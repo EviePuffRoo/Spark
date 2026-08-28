@@ -132,6 +132,7 @@ model PlayerCharacter {
   deathSaves    String   @default("{\"successes\":0,\"failures\":0}")
   spellSlots    String   @default("[]")
   preparedSpells String  @default("[]")
+  skillProficiencies String @default("[]")
   classResources String  @default("[]")
   conditions    String   @default("[]")
   xp            Int      @default(0)

@@ -59,6 +59,16 @@ const TILE_SHAPES: Record<string, ReactNode> = {
       <circle cx="7.5" cy="5" r="0.6" fill="#e8c574" />
     </>
   ),
+  // A door's open art: floor showing through the gap, with the door leaf
+  // swung to one side against the frame — same palette as the closed
+  // symbol above so the two clearly read as one tile's two states.
+  "wooden-door-open": (
+    <>
+      <rect width="10" height="10" fill="#8a8a86" />
+      <rect x="0.6" y="0.7" width="2" height="8.6" rx="0.4" fill="#6b4423" stroke="#4a2d16" strokeWidth="0.4" />
+      <circle cx="2.1" cy="5" r="0.4" fill="#e8c574" />
+    </>
+  ),
   window: (
     <>
       <rect width="10" height="10" fill="#cde8f5" />
@@ -348,6 +358,14 @@ export function BattleTileDefs() {
           {TILE_SHAPES[tile.id]}
         </symbol>
       ))}
+      {/* Not a real placeable tile — GridMap swaps to this symbol id for a
+          door currently toggled open (see Encounter.openDoorCells). Only
+          wooden-door needs one: a secret-door is always placed on the
+          gmOnly layer (see MapBuilderPage's layerForTile), which the
+          door-toggle system never reads in the first place. */}
+      <symbol id="tile-wooden-door-open" viewBox="0 0 10 10">
+        {TILE_SHAPES["wooden-door-open"]}
+      </symbol>
     </defs>
   );
 }

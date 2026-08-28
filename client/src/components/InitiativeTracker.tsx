@@ -673,6 +673,29 @@ export function InitiativeTracker({
     }
   }
 
+  // Same canEdit/party split as moveCombatantOnGrid: the DM's toggle is
+  // just a local field flip that rides the normal debounced encounter
+  // save, while a non-owner has to go through the narrow toggle-door
+  // endpoint (it's the one that actually recomputes fog server-side).
+  function toggleDoor(x: number, y: number) {
+    const key = `${x},${y}`;
+    if (canEdit) {
+      applyEncounterUpdate((e) => ({
+        ...e,
+        openDoorCells: (e.openDoorCells ?? []).includes(key)
+          ? (e.openDoorCells ?? []).filter((k) => k !== key)
+          : [...(e.openDoorCells ?? []), key],
+      }));
+    } else if (partyMode && partyWorldId) {
+      const requestWorldId = partyWorldId;
+      api.toggleDoor(partyWorldId, x, y)
+        .then((result) => {
+          if (liveContextRef.current.partyWorldId === requestWorldId && liveContextRef.current.partyMode) setLiveEncounter(result);
+        })
+        .catch((err) => setLiveError((err as Error).message));
+    }
+  }
+
   return (
     <div className="panel result-panel initiative-tracker">
       <div className="initiative-header">
@@ -832,12 +855,14 @@ export function InitiativeTracker({
               canEdit={canEdit}
               exploredCells={activeEncounter.exploredCells}
               visibleCells={activeEncounter.visibleCells}
+              openDoorCells={activeEncounter.openDoorCells}
               onLoadBattleMap={loadBattleMap}
               onLeaveBattleMap={leaveBattleMap}
               onMoveCombatant={moveCombatantOnGrid}
               onPlaceCombatant={moveCombatantOnGrid}
               onDragBroadcast={broadcastTokenDrag}
               onTemplateTargetsChange={setTemplateTargetIds}
+              onToggleDoor={toggleDoor}
             />
           )}
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { BattleMap, LiveCombatant, SizeCategory, AoeShapeKind } from "@spark/shared";
-import { SIZE_FOOTPRINT, computeReachableCells, chebyshevDistanceFeet, AOE_SHAPE_KINDS, computeAoeCells, footprintIntersectsTemplate } from "@spark/shared";
+import { SIZE_FOOTPRINT, computeReachableCells, chebyshevDistanceFeet, AOE_SHAPE_KINDS, computeAoeCells, footprintIntersectsTemplate, BATTLE_TILE_BY_ID } from "@spark/shared";
 import { api } from "../api";
 import { BattleTileDefs } from "./TileIcon";
 
@@ -24,8 +24,8 @@ interface RulerPoint {
 
 export function GridMap({
   worldId, battleMapId, combatants, activeId, canEdit,
-  exploredCells, visibleCells,
-  onLoadBattleMap, onLeaveBattleMap, onMoveCombatant, onPlaceCombatant, onDragBroadcast, onTemplateTargetsChange,
+  exploredCells, visibleCells, openDoorCells,
+  onLoadBattleMap, onLeaveBattleMap, onMoveCombatant, onPlaceCombatant, onDragBroadcast, onTemplateTargetsChange, onToggleDoor,
 }: {
   worldId?: string;
   battleMapId?: string;
@@ -39,6 +39,10 @@ export function GridMap({
   // skipped and the map renders fully lit, same as the owner's view.
   exploredCells?: string[];
   visibleCells?: string[];
+  // "x,y" keys of door tiles currently toggled open — every door defaults
+  // to closed. Always present when a map is active, owner or not (not
+  // secret, unlike vision).
+  openDoorCells?: string[];
   onLoadBattleMap: (mapId: string) => void;
   onLeaveBattleMap: () => void;
   onMoveCombatant: (combatantId: string, gridX: number, gridY: number) => void;
@@ -55,6 +59,10 @@ export function GridMap({
   // offer a batch action ("apply to all in template") without GridMap
   // itself needing to know about damage/conditions.
   onTemplateTargetsChange?: (ids: string[]) => void;
+  // Fired when a door tile is clicked to toggle it open/closed. Omitted by
+  // a read-only mirror (PresentationView), same as onMoveCombatant={noop}
+  // there — the map still renders correct open/closed art either way.
+  onToggleDoor?: (x: number, y: number) => void;
 }) {
   const [battleMap, setBattleMap] = useState<BattleMap | null>(null);
   const [loading, setLoading] = useState(false);
@@ -220,6 +228,7 @@ export function GridMap({
   const fogActive = !canEdit && visibleCells !== undefined;
   const exploredSet = useMemo(() => new Set(exploredCells ?? []), [exploredCells]);
   const visibleSet = useMemo(() => new Set(visibleCells ?? []), [visibleCells]);
+  const openDoorSet = useMemo(() => new Set(openDoorCells ?? []), [openDoorCells]);
 
   const templateCells = useMemo(() => {
     if (!battleMap || templatePoints.length !== 2) return null;
@@ -336,9 +345,30 @@ export function GridMap({
           />
           <g transform={`translate(${transform.x} ${transform.y}) scale(${transform.k})`}>
             <rect width={gridWidth} height={gridHeight} className="grid-map-bg" pointerEvents="none" />
-            {battleMap.tiles.filter((t) => (t.layer ?? "floor") === "floor").map((t) => (
-              <use key={`${t.x},${t.y}`} href={`#tile-${t.tileId}`} x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL} pointerEvents="none" />
-            ))}
+            {battleMap.tiles.filter((t) => (t.layer ?? "floor") === "floor").map((t) => {
+              const isDoor = !!BATTLE_TILE_BY_ID[t.tileId]?.isDoor;
+              const doorKey = `${t.x},${t.y}`;
+              const isOpen = isDoor && openDoorSet.has(doorKey);
+              const href = isOpen ? `#tile-${t.tileId}-open` : `#tile-${t.tileId}`;
+              // A door beyond current fog isn't clickable for a non-owner —
+              // you have to have at least seen it to act on it, same as
+              // everything else fog-gates in this component.
+              const canToggle = isDoor && !!onToggleDoor && !measuring && !placingTemplate && (canEdit || exploredSet.has(doorKey));
+              return (
+                <g key={doorKey}>
+                  <use href={href} x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL} pointerEvents="none" />
+                  {canToggle && (
+                    <rect
+                      x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL}
+                      className="grid-map-door-toggle"
+                      onClick={(e) => { e.stopPropagation(); onToggleDoor!(t.x, t.y); }}
+                    >
+                      <title>{isOpen ? "Close door" : "Open door"}</title>
+                    </rect>
+                  )}
+                </g>
+              );
+            })}
             {battleMap.tiles.filter((t) => t.layer === "decor").map((t) => (
               <use key={`decor-${t.x},${t.y}`} href={`#tile-${t.tileId}`} x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL} pointerEvents="none" />
             ))}

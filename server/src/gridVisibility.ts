@@ -7,11 +7,11 @@ import type { LiveCombatant, PlacedTile } from "@spark/shared";
 // by the write paths in encounters.ts (to grow exploredCells) and the
 // read paths (encounters GET, worldLive's sendEncounter) that need it to
 // redact non-owner combatants outside current sight.
-export async function computeCurrentVisibility(activeBattleMapId: string | null, combatants: LiveCombatant[]): Promise<Set<string> | null> {
+export async function computeCurrentVisibility(activeBattleMapId: string | null, combatants: LiveCombatant[], openDoors?: Set<string>): Promise<Set<string> | null> {
   if (!activeBattleMapId) return null;
   const map = await prisma.battleMap.findUnique({ where: { id: activeBattleMapId } });
   if (!map) return null;
   const tiles: PlacedTile[] = JSON.parse(map.tiles);
   const mapShape = { width: map.width, height: map.height, tiles };
-  return extendWithLightSources(mapShape, computeVisionForTokens(mapShape, combatants), combatants);
+  return extendWithLightSources(mapShape, computeVisionForTokens(mapShape, combatants, openDoors), combatants, openDoors);
 }

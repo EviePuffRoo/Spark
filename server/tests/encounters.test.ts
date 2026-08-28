@@ -484,3 +484,101 @@ describe("grid combat: dynamic vision and fog of war", () => {
     expect(res.body.exploredCells.length).toBeGreaterThan(beforeCount);
   });
 });
+
+describe("grid combat: doors", () => {
+  async function setupWorldWithDoor(dmUsername: string) {
+    const { agent: dm } = await signupAgent(dmUsername);
+    const world = await dm.post("/api/worlds").send({ name: "Door World" });
+    const worldId = world.body.id as string;
+    // A wall spans the whole row at y=1 except for the door at x=5, so a
+    // closed door is the only way through — same "wall off the detour"
+    // trick the difficult-terrain test above uses, otherwise an
+    // 8-directional flood fill can just route around a single blocked tile.
+    const tiles = Array.from({ length: 10 }, (_, x) => (x === 5 ? { x, y: 1, tileId: "wooden-door" } : { x, y: 1, tileId: "stone-wall" }));
+    const map = await dm.post("/api/battle-maps").send({ name: "Door Room", width: 10, height: 10, tiles });
+    return { dm, worldId, mapId: map.body.id as string };
+  }
+
+  it("blocks a monster beyond a closed door from a non-owner, and reveals it once opened", async () => {
+    const { dm, worldId, mapId } = await setupWorldWithDoor("doordm1");
+    const joinCode = await dm.post(`/api/worlds/${worldId}/join-code`);
+    const { agent: player } = await signupAgent("doorplayer1");
+    await player.post("/api/worlds/join").send({ code: joinCode.body.code });
+
+    await dm.put(`/api/encounters/${worldId}`).send({
+      combatants: [
+        { id: "pc1", name: "Fighter", kind: "playerCharacter", initiative: 10, conditions: [], notes: "", hpVisible: true, gridX: 5, gridY: 0, visionRadiusFeet: 30 },
+        { id: "beyond", name: "Hidden Goblin", kind: "monster", initiative: 8, conditions: [], notes: "", hpVisible: false, gridX: 5, gridY: 3 },
+      ],
+      round: 1, turnIndex: 0, activeBattleMapId: mapId,
+    });
+
+    const before = await player.get(`/api/encounters/${worldId}`);
+    expect(before.body.combatants.map((c: { name: string }) => c.name)).not.toContain("Hidden Goblin");
+
+    const toggle = await player.post(`/api/encounters/${worldId}/toggle-door`).send({ x: 5, y: 1 });
+    expect(toggle.status).toBe(200);
+    expect(toggle.body.openDoorCells).toContain("5,1");
+
+    const after = await player.get(`/api/encounters/${worldId}`);
+    expect(after.body.combatants.map((c: { name: string }) => c.name)).toContain("Hidden Goblin");
+  });
+
+  it("blocks move-grid through a closed door for a non-owner, allows it once open", async () => {
+    const { dm, worldId, mapId } = await setupWorldWithDoor("doordm2");
+    const joinCode = await dm.post(`/api/worlds/${worldId}/join-code`);
+    const { agent: player } = await signupAgent("doorplayer2");
+    await player.post("/api/worlds/join").send({ code: joinCode.body.code });
+
+    await dm.put(`/api/encounters/${worldId}`).send({
+      combatants: [{ id: "pc1", name: "Fighter", kind: "playerCharacter", initiative: 10, conditions: [], notes: "", hpVisible: true, gridX: 5, gridY: 0, speedFeet: 30 }],
+      round: 1, turnIndex: 0, activeBattleMapId: mapId,
+    });
+
+    const blocked = await player.post(`/api/encounters/${worldId}/move-grid`).send({ combatantId: "pc1", gridX: 5, gridY: 3 });
+    expect(blocked.status).toBe(400);
+
+    await player.post(`/api/encounters/${worldId}/toggle-door`).send({ x: 5, y: 1 });
+    const allowed = await player.post(`/api/encounters/${worldId}/move-grid`).send({ combatantId: "pc1", gridX: 5, gridY: 3 });
+    expect(allowed.status).toBe(200);
+  });
+
+  it("toggles closed again on a second call", async () => {
+    const { dm, worldId, mapId } = await setupWorldWithDoor("doordm3");
+    await dm.put(`/api/encounters/${worldId}`).send({
+      combatants: [{ id: "pc1", name: "Fighter", kind: "playerCharacter", initiative: 10, conditions: [], notes: "", hpVisible: true, gridX: 5, gridY: 0 }],
+      round: 1, turnIndex: 0, activeBattleMapId: mapId,
+    });
+    const opened = await dm.post(`/api/encounters/${worldId}/toggle-door`).send({ x: 5, y: 1 });
+    expect(opened.body.openDoorCells).toContain("5,1");
+    const closed = await dm.post(`/api/encounters/${worldId}/toggle-door`).send({ x: 5, y: 1 });
+    expect(closed.body.openDoorCells).not.toContain("5,1");
+  });
+
+  it("rejects toggling a cell with no door", async () => {
+    const { dm, worldId, mapId } = await setupWorldWithDoor("doordm4");
+    await dm.put(`/api/encounters/${worldId}`).send({
+      combatants: [{ id: "pc1", name: "Fighter", kind: "playerCharacter", initiative: 10, conditions: [], notes: "", hpVisible: true, gridX: 5, gridY: 0 }],
+      round: 1, turnIndex: 0, activeBattleMapId: mapId,
+    });
+    const res = await dm.post(`/api/encounters/${worldId}/toggle-door`).send({ x: 0, y: 0 });
+    expect(res.status).toBe(400);
+  });
+
+  it("resets open door state when the active battle map changes", async () => {
+    const { dm, worldId, mapId } = await setupWorldWithDoor("doordm5");
+    const map2 = await dm.post("/api/battle-maps").send({ name: "Other Room", width: 10, height: 10 });
+
+    await dm.put(`/api/encounters/${worldId}`).send({
+      combatants: [{ id: "pc1", name: "Fighter", kind: "playerCharacter", initiative: 10, conditions: [], notes: "", hpVisible: true, gridX: 5, gridY: 0 }],
+      round: 1, turnIndex: 0, activeBattleMapId: mapId,
+    });
+    await dm.post(`/api/encounters/${worldId}/toggle-door`).send({ x: 5, y: 1 });
+
+    const switched = await dm.put(`/api/encounters/${worldId}`).send({
+      combatants: [{ id: "pc1", name: "Fighter", kind: "playerCharacter", initiative: 10, conditions: [], notes: "", hpVisible: true, gridX: 1, gridY: 1 }],
+      round: 1, turnIndex: 0, activeBattleMapId: map2.body.id,
+    });
+    expect(switched.body.openDoorCells).toEqual([]);
+  });
+});

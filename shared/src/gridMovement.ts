@@ -12,9 +12,16 @@ export function chebyshevDistanceFeet(ax: number, ay: number, bx: number, by: nu
   return Math.max(Math.abs(ax - bx), Math.abs(ay - by)) * FEET_PER_TILE;
 }
 
-function tileAt(map: Pick<BattleMap, "tiles">, x: number, y: number): TileDef | undefined {
+// An open door (its "x,y" key present in openDoors) reads as fully passable
+// regardless of its base (closed) def — see TileDef.isDoor.
+function tileAt(map: Pick<BattleMap, "tiles">, x: number, y: number, openDoors?: Set<string>): TileDef | undefined {
   const placed = map.tiles.find((t) => t.x === x && t.y === y && (t.layer ?? "floor") === "floor");
-  return placed ? BATTLE_TILE_BY_ID[placed.tileId] : undefined;
+  if (!placed) return undefined;
+  const def = BATTLE_TILE_BY_ID[placed.tileId];
+  if (def?.isDoor && openDoors?.has(`${x},${y}`)) {
+    return { ...def, blocksMovement: false, blocksVision: false };
+  }
+  return def;
 }
 
 // Dijkstra flood-fill over the map's grid (8-directional, same flat 5ft-
@@ -29,6 +36,7 @@ export function computeReachableCells(
   originX: number,
   originY: number,
   speedFeet: number,
+  openDoors?: Set<string>,
 ): Set<string> {
   const key = (x: number, y: number) => `${x},${y}`;
   const dist = new Map<string, number>();
@@ -45,7 +53,7 @@ export function computeReachableCells(
       const nx = cur.x + dx;
       const ny = cur.y + dy;
       if (nx < 0 || ny < 0 || nx >= map.width || ny >= map.height) continue;
-      const tile = tileAt(map, nx, ny);
+      const tile = tileAt(map, nx, ny, openDoors);
       if (tile?.blocksMovement) continue;
 
       const stepCost = tile?.difficultTerrain ? FEET_PER_TILE * 2 : FEET_PER_TILE;

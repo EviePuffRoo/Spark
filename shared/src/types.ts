@@ -1051,6 +1051,11 @@ export interface EncounterStateInput {
   // loaded, which starts it fresh). A client MAY seed/extend this on PUT,
   // but never shrinks what the server already has recorded.
   exploredCells?: string[];
+  // "x,y" keys of door tiles on the active battle map currently toggled
+  // open — every door defaults to closed (see TileDef.isDoor). Reset to
+  // [] whenever activeBattleMapId changes, same rule as exploredCells:
+  // door state from one map means nothing on another.
+  openDoorCells?: string[];
 }
 
 export interface Encounter extends EncounterStateInput {
@@ -1369,6 +1374,11 @@ export interface TileDef {
   // Radius in tiles this tile lights on its own (a torch, a lava flow) —
   // feeds the vision system once it exists. Unlit tiles omit this.
   lightRadius?: number;
+  // A door: blocksMovement/blocksVision above describe its resting
+  // (closed) state, but an Encounter can toggle it open for this cell —
+  // see EncounterStateInput.openDoorCells and vision.ts/gridMovement.ts's
+  // openDoors parameter.
+  isDoor?: boolean;
 }
 
 export interface PlacedTile {

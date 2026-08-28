@@ -423,6 +423,16 @@ export interface PlayerCharacterInput {
   maxHp: number;
   abilityScores: AbilityScores;
   playerName?: string;
+  // Skill names (see data/skills.ts's SKILLS) this character is proficient
+  // in — set by the guided creation wizard's skill-picker step. Optional
+  // and omitted by the generate/paste-import paths, same as this app's
+  // existing "not every creation path fills in every field" posture.
+  skillProficiencies?: string[];
+  // Client-side preview only — the wizard sets this from
+  // proficiencyBonusForLevel(level) so its pre-save review screens show an
+  // accurate Passive Perception. The server always recomputes this from
+  // level on creation, ignoring whatever (if anything) is sent here.
+  proficiencyBonus?: number;
 }
 
 export interface DeathSaves {
@@ -461,6 +471,7 @@ export interface PlayerCharacter extends PlayerCharacterInput {
   deathSaves: DeathSaves;
   spellSlots: SpellSlotLevel[];
   preparedSpells: string[];
+  skillProficiencies: string[];
   classResources: ClassResource[];
   conditions: string[];
   // Two leveling styles coexist here, same as the rest of this app's

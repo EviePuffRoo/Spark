@@ -2,6 +2,7 @@ import type { PlayerCharacterInput, PlayerCharacter, AbilityKey } from "@spark/s
 import { XP_THRESHOLDS, getRuleset } from "@spark/shared";
 
 const modifier = getRuleset().formatModifier;
+const abilityModifier = getRuleset().abilityModifier;
 
 const ABILITY_ORDER: { key: AbilityKey; label: string }[] = [
   { key: "str", label: "STR" },
@@ -12,9 +13,17 @@ const ABILITY_ORDER: { key: AbilityKey; label: string }[] = [
   { key: "cha", label: "CHA" },
 ];
 
-type LivingStateProps = Partial<Pick<PlayerCharacter, "currentHp" | "deathSaves" | "spellSlots" | "preparedSpells" | "classResources" | "xp" | "proficiencyBonus">>;
+type LivingStateProps = Partial<Pick<PlayerCharacter, "currentHp" | "deathSaves" | "spellSlots" | "preparedSpells" | "classResources" | "xp" | "proficiencyBonus" | "skillProficiencies">>;
 
 export function PlayerCharacterCardView({ pc }: { pc: PlayerCharacterInput & LivingStateProps }) {
+  // A Perception-proficient character adds their proficiency bonus on top
+  // of the flat WIS-modifier baseline this card always showed before
+  // skill proficiencies existed — falls back to the old flat baseline for
+  // a character with no skillProficiencies data at all (generated/
+  // imported PCs, or an older saved one from before this field existed).
+  const perceptionBonus = pc.skillProficiencies?.includes("Perception") ? (pc.proficiencyBonus ?? 0) : 0;
+  const passivePerception = 10 + abilityModifier(pc.abilityScores.wis) + perceptionBonus;
+
   return (
     <div className="statblock item-card">
       <h2 className="statblock-name">{pc.name}</h2>
@@ -26,9 +35,7 @@ export function PlayerCharacterCardView({ pc }: { pc: PlayerCharacterInput & Liv
       <p><strong>Armor Class</strong> {pc.armorClass}</p>
       <p><strong>Hit Points</strong> {pc.currentHp !== undefined ? `${pc.currentHp} / ${pc.maxHp}` : pc.maxHp}</p>
       {pc.proficiencyBonus !== undefined && <p><strong>Proficiency Bonus</strong> +{pc.proficiencyBonus}</p>}
-      {/* 10 + WIS modifier only — this app doesn't track per-skill proficiencies,
-          so a flat proficiency bonus for Perception specifically can't be assumed. */}
-      <p><strong>Passive Perception</strong> {10 + Math.floor((pc.abilityScores.wis - 10) / 2)}</p>
+      <p><strong>Passive Perception</strong> {passivePerception}</p>
       {pc.xp !== undefined && (
         <p><strong>XP</strong> {pc.xp.toLocaleString()}{pc.level < 20 ? ` / ${XP_THRESHOLDS[pc.level].toLocaleString()} for next level` : " (max level)"}</p>
       )}

@@ -32,6 +32,7 @@ export * from "./data/encounters.js";
 export * from "./data/adventures.js";
 export * from "./data/dungeons.js";
 export * from "./data/classes.js";
+export * from "./data/skills.js";
 export * from "./data/shops.js";
 export * from "./data/regions.js";
 export * from "./data/settlements.js";

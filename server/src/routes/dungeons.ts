@@ -1,57 +1,53 @@
 import { Router } from "express";
+import { z } from "zod";
 import { prisma } from "../db.js";
 import { toDungeonDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
 import { findAccessibleWorld, getMemberWorldIds, authorizeEntityWrite } from "../worldAccess.js";
-import type { DungeonExit, DungeonRoom, DungeonRoomRect, DungeonRoomState } from "@spark/shared";
+import { parseArray, parseOptional } from "../validation.js";
+import type { DungeonRoom } from "@spark/shared";
 
 export const dungeonsRouter = Router();
 
-function coerceExit(raw: unknown): DungeonExit | null {
-  if (!raw || typeof raw !== "object") return null;
-  const e = raw as Record<string, unknown>;
-  if (typeof e.zoneId !== "string" || typeof e.toRoomId !== "string") return null;
-  return {
-    zoneId: e.zoneId,
-    toRoomId: e.toRoomId,
-    label: typeof e.label === "string" ? e.label : undefined,
-  };
-}
+const dungeonExitSchema = z.object({
+  zoneId: z.string(),
+  toRoomId: z.string(),
+  label: z.string().optional().catch(undefined),
+});
 
-function coerceRect(raw: unknown): DungeonRoomRect | undefined {
-  if (!raw || typeof raw !== "object") return undefined;
-  const r = raw as Record<string, unknown>;
-  if (typeof r.x !== "number" || typeof r.y !== "number" || typeof r.width !== "number" || typeof r.height !== "number") return undefined;
-  return { x: r.x, y: r.y, width: r.width, height: r.height };
-}
+const dungeonRoomRectSchema = z.object({
+  x: z.number(),
+  y: z.number(),
+  width: z.number(),
+  height: z.number(),
+});
 
-function coerceRoomState(raw: unknown): DungeonRoomState | undefined {
-  if (!raw || typeof raw !== "object") return undefined;
-  const s = raw as Record<string, unknown>;
-  return {
-    cleared: !!s.cleared,
-    alerted: !!s.alerted,
-    lastVisitedDay: typeof s.lastVisitedDay === "number" ? s.lastVisitedDay : undefined,
-    disarmedHazardZoneIds: Array.isArray(s.disarmedHazardZoneIds)
-      ? s.disarmedHazardZoneIds.filter((id): id is string => typeof id === "string")
-      : [],
-  };
-}
+const dungeonRoomStateSchema = z.object({
+  cleared: z.coerce.boolean(),
+  alerted: z.coerce.boolean(),
+  lastVisitedDay: z.number().optional().catch(undefined),
+  // A partial filter (keep the string entries, drop the rest), not an
+  // all-or-nothing array validation — matches the old
+  // `Array.isArray(...) ? arr.filter((id) => typeof id === "string") : []`.
+  disarmedHazardZoneIds: z.preprocess(
+    (val) => (Array.isArray(val) ? val.filter((id) => typeof id === "string") : []),
+    z.array(z.string()),
+  ),
+});
 
-function coerceRoom(raw: unknown): DungeonRoom | null {
-  if (!raw || typeof raw !== "object") return null;
-  const r = raw as Record<string, unknown>;
-  if (typeof r.id !== "string" || typeof r.name !== "string" || typeof r.templateId !== "string") return null;
-  return {
-    id: r.id,
-    name: r.name,
-    templateId: r.templateId,
-    exits: Array.isArray(r.exits) ? r.exits.map(coerceExit).filter((e): e is DungeonExit => e !== null) : [],
-    rect: coerceRect(r.rect),
-    battleMapId: typeof r.battleMapId === "string" ? r.battleMapId : undefined,
-    state: coerceRoomState(r.state),
-  };
-}
+// A malformed nested exits/rect/state value degrades gracefully (dropped
+// item, or undefined) via parseArray/parseOptional rather than failing the
+// whole room — only id/name/templateId being wrong-typed drops the room
+// itself, same split responsibility the old coerceRoom had.
+const dungeonRoomSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  templateId: z.string(),
+  exits: z.any().optional().transform((val) => parseArray(dungeonExitSchema, val)),
+  rect: z.any().optional().transform((val) => parseOptional(dungeonRoomRectSchema, val)),
+  battleMapId: z.string().optional().catch(undefined),
+  state: z.any().optional().transform((val) => parseOptional(dungeonRoomStateSchema, val)),
+}) satisfies z.ZodType<DungeonRoom>;
 
 dungeonsRouter.get("/", async (req, res) => {
   const { worldId } = req.query;
@@ -82,7 +78,7 @@ dungeonsRouter.post("/", async (req, res) => {
     const world = await findAccessibleWorld(req.userId!, worldId);
     if (!world) return res.status(403).json({ error: "You don't have access to this world" });
   }
-  const coercedRooms = rooms.map(coerceRoom).filter((r: DungeonRoom | null): r is DungeonRoom => r !== null);
+  const coercedRooms = parseArray(dungeonRoomSchema, rooms);
 
   const row = await prisma.dungeon.create({
     data: {
@@ -106,7 +102,7 @@ dungeonsRouter.patch("/:id", async (req, res) => {
     if (field in body) data[field] = body[field];
   }
   if ("rooms" in body) {
-    const coercedRooms = Array.isArray(body.rooms) ? body.rooms.map(coerceRoom).filter((r: DungeonRoom | null): r is DungeonRoom => r !== null) : [];
+    const coercedRooms = parseArray(dungeonRoomSchema, body.rooms);
     data.rooms = JSON.stringify(coercedRooms);
   }
   if ("worldId" in body) {

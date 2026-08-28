@@ -2075,6 +2075,31 @@ textarea {
   line-height: 1.5;
 }
 
+.getting-started-panel {
+  margin-bottom: 20px;
+}
+
+.getting-started-list {
+  list-style: none;
+  margin: 12px 0 16px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.getting-started-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--text);
+}
+
+.getting-started-list li.done {
+  color: var(--text-faint);
+  text-decoration: line-through;
+}
+
 /* Faction relationship web */
 .faction-web-header {
   display: flex;

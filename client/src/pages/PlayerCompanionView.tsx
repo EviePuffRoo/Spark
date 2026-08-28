@@ -20,6 +20,7 @@ import { PreparedSpellsPanel } from "../components/PreparedSpellsPanel";
 import { ClassResourcePanel } from "../components/ClassResourcePanel";
 import { AccountMenu } from "../components/AccountMenu";
 import { ThemeToggle } from "../components/ThemeToggle";
+import { CompanionWelcomePanel } from "../components/CompanionWelcomePanel";
 
 function backToDesktopHref(): string {
   const url = new URL(window.location.href);
@@ -221,6 +222,8 @@ export function PlayerCompanionView() {
           <AccountMenu />
         </div>
       </header>
+
+      <CompanionWelcomePanel />
 
       {worldsLoading ? (
         <p className="hint">Loading…</p>

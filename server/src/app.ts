@@ -11,7 +11,9 @@ import express from "express";
 import "express-async-errors";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import { pinoHttp } from "pino-http";
 import rateLimit from "express-rate-limit";
+import { logger } from "./logger.js";
 import { requireAuth } from "./auth.js";
 import { authRouter } from "./routes/auth.js";
 import { generateRouter } from "./routes/generate.js";
@@ -93,10 +95,10 @@ import { legalPagesRouter } from "./legalPages.js";
 // a small single-instance app, going down entirely on any one hiccup is a
 // worse failure mode than staying up with a logged error.
 process.on("unhandledRejection", (reason) => {
-  console.error("Unhandled rejection:", reason);
+  logger.error({ err: reason }, "Unhandled rejection");
 });
 process.on("uncaughtException", (err) => {
-  console.error("Uncaught exception:", err);
+  logger.error({ err }, "Uncaught exception");
 });
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -114,6 +116,19 @@ export const app = express();
 // unbounded chain, X-Forwarded-For becomes spoofable and the limiter does
 // nothing.
 app.set("trust proxy", 1);
+
+// Structured per-request logging (method, path, status, duration) — the
+// incoming Cookie/Authorization headers carry the session JWT and public-API
+// keys respectively, and login/signup's own response carries a fresh session
+// JWT right back out again via Set-Cookie, so all three are redacted rather
+// than logged verbatim. Render polls /api/health frequently as its own
+// deploy health check; excluding it keeps that noise out of what's
+// otherwise a request-by-request log.
+app.use(pinoHttp({
+  logger,
+  redact: ["req.headers.cookie", "req.headers.authorization", "res.headers[\"set-cookie\"]"],
+  autoLogging: { ignore: (req) => req.url === "/api/health" },
+}));
 
 app.use(cors());
 app.use(cookieParser());
@@ -135,7 +150,7 @@ app.get("/api/health", async (_req, res) => {
     await prisma.$queryRaw`SELECT 1`;
     res.json({ ok: true });
   } catch (err) {
-    console.error("Health check failed — database unreachable:", err);
+    logger.error({ err }, "Health check failed — database unreachable");
     res.status(503).json({ ok: false });
   }
 });
@@ -285,8 +300,11 @@ if (fs.existsSync(clientDist)) {
 // Catch-all: any error thrown or rejected inside a route handler (now
 // forwarded here by express-async-errors above) lands as a clean JSON 500
 // for that one request, instead of crashing the process for everyone.
-app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error(err);
+// req.log (attached by pino-http above) is a child logger already carrying
+// this request's id/method/path, so the error line correlates with its
+// own request's log entry rather than standing alone.
+app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  req.log.error({ err }, "Unhandled route error");
   if (res.headersSent) return;
   res.status(500).json({ error: "Something went wrong on our end — please try again." });
 });

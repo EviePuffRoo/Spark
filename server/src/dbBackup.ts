@@ -3,6 +3,7 @@ import os from "node:os";
 import { readFile, unlink } from "node:fs/promises";
 import Database from "better-sqlite3";
 import { S3Client, PutObjectCommand, ListObjectsV2Command, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { logger } from "./logger.js";
 
 const BACKUP_PREFIX = "db-backups/";
 const KEEP_COUNT = 14; // ~2 weeks of daily backups
@@ -93,7 +94,7 @@ function msUntilNextUtcHour(hour: number): number {
 export function scheduleBackups(): void {
   if (process.env.NODE_ENV === "test") return;
   if (!backupsConfigured()) {
-    console.log("[backup] R2 credentials not set — scheduled database backups are disabled.");
+    logger.info("[backup] R2 credentials not set — scheduled database backups are disabled.");
     return;
   }
 
@@ -101,17 +102,17 @@ export function scheduleBackups(): void {
     try {
       const result = await runDatabaseBackup();
       if (result.status === "uploaded") {
-        console.log(`[backup] Database backup uploaded: ${result.key} (pruned ${result.pruned} old backup${result.pruned === 1 ? "" : "s"})`);
+        logger.info(`[backup] Database backup uploaded: ${result.key} (pruned ${result.pruned} old backup${result.pruned === 1 ? "" : "s"})`);
       } else {
-        console.log(`[backup] Skipped: ${result.reason}`);
+        logger.info(`[backup] Skipped: ${result.reason}`);
       }
     } catch (err) {
-      console.error("[backup] Scheduled database backup failed:", err);
+      logger.error({ err }, "[backup] Scheduled database backup failed");
     }
     setTimeout(runAndReschedule, 24 * 60 * 60 * 1000);
   };
 
   const msUntilNextRun = msUntilNextUtcHour(8);
   setTimeout(runAndReschedule, msUntilNextRun);
-  console.log(`[backup] Scheduled daily database backups (next run in ${Math.round(msUntilNextRun / 60000)} min).`);
+  logger.info(`[backup] Scheduled daily database backups (next run in ${Math.round(msUntilNextRun / 60000)} min).`);
 }

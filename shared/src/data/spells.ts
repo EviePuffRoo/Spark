@@ -2,6 +2,9 @@
 // data, not AI-generated. Descriptions are concise paraphrases, not verbatim
 // rules text.
 
+import type { AbilityKey } from "../types.js";
+import type { AoeShapeKind } from "../aoeTemplates.js";
+
 export interface SpellComponents {
   verbal: boolean;
   somatic: boolean;
@@ -36,6 +39,61 @@ export const SPELL_CLASSES: string[] = [
 function c(verbal: boolean, somatic: boolean, material: boolean, materialText?: string): SpellComponents {
   return materialText ? { verbal, somatic, material, materialText } : { verbal, somatic, material };
 }
+
+export type SpellEffectResolution =
+  | { kind: "damage"; diceExpr: string; damageType: string; attackRoll: boolean; save?: { ability: AbilityKey; halfOnSuccess: boolean } }
+  | { kind: "heal"; diceExpr: string }
+  | { kind: "condition"; condition: string; save: { ability: AbilityKey } };
+
+export interface SpellEffect {
+  // Absent means single-target — InitiativeTracker's Cast panel picks a
+  // target with the same dropdown the Attack panel already uses. Present
+  // means an area spell — resolved against whoever the grid's existing
+  // AoE-template mechanism (GridMap.tsx) says is standing in a
+  // DM-placed template of this shape, the same "In Template" batch-apply
+  // path Combat Depth Phase B already built for manual damage/condition.
+  area?: AoeShapeKind;
+  resolve: SpellEffectResolution;
+}
+
+// Structured mechanical resolution data for a curated subset of the spell
+// list below — about 20 commonly-cast spells spanning cantrips through
+// 3rd level, across most casting classes — enough for InitiativeTracker's
+// "Cast" action to actually roll and apply a spell's effect (damage, a
+// save, a heal, a condition) instead of the slot tracker being pure
+// bookkeeping. The other ~300 spells in SPELLS have no entry here and
+// stay flavor-text only, exactly as before this existed — a DM narrates
+// and resolves those by hand. Damage dice are flattened to a single fixed
+// tier rather than modeling upcast/higher-level scaling, matching this
+// data file's existing "SRD-accurate but not a strict rules simulation"
+// posture (see PC_CLASSES's abilityPriority comment in data/classes.ts).
+export const SPELL_EFFECTS: Record<string, SpellEffect> = {
+  // Cantrips
+  "acid-splash": { resolve: { kind: "damage", diceExpr: "1d6", damageType: "acid", attackRoll: false, save: { ability: "dex", halfOnSuccess: false } } },
+  "chill-touch": { resolve: { kind: "damage", diceExpr: "1d8", damageType: "necrotic", attackRoll: true } },
+  "eldritch-blast": { resolve: { kind: "damage", diceExpr: "1d10", damageType: "force", attackRoll: true } },
+  "fire-bolt": { resolve: { kind: "damage", diceExpr: "1d10", damageType: "fire", attackRoll: true } },
+  "poison-spray": { resolve: { kind: "damage", diceExpr: "1d12", damageType: "poison", attackRoll: false, save: { ability: "con", halfOnSuccess: false } } },
+  "ray-of-frost": { resolve: { kind: "damage", diceExpr: "1d8", damageType: "cold", attackRoll: true } },
+  "sacred-flame": { resolve: { kind: "damage", diceExpr: "1d8", damageType: "radiant", attackRoll: false, save: { ability: "dex", halfOnSuccess: false } } },
+  "shocking-grasp": { resolve: { kind: "damage", diceExpr: "1d8", damageType: "lightning", attackRoll: true } },
+  "vicious-mockery": { resolve: { kind: "damage", diceExpr: "1d4", damageType: "psychic", attackRoll: false, save: { ability: "wis", halfOnSuccess: false } } },
+  // 1st level
+  "burning-hands": { area: "cone", resolve: { kind: "damage", diceExpr: "3d6", damageType: "fire", attackRoll: false, save: { ability: "dex", halfOnSuccess: true } } },
+  "charm-person": { resolve: { kind: "condition", condition: "Charmed", save: { ability: "wis" } } },
+  "chromatic-orb": { resolve: { kind: "damage", diceExpr: "3d8", damageType: "acid", attackRoll: true } },
+  "cure-wounds": { resolve: { kind: "heal", diceExpr: "1d8+3" } },
+  "healing-word": { resolve: { kind: "heal", diceExpr: "1d4+3" } },
+  "inflict-wounds": { resolve: { kind: "damage", diceExpr: "3d10", damageType: "necrotic", attackRoll: true } },
+  "magic-missile": { resolve: { kind: "damage", diceExpr: "3d4+3", damageType: "force", attackRoll: false } },
+  "thunderwave": { area: "square", resolve: { kind: "damage", diceExpr: "2d8", damageType: "thunder", attackRoll: false, save: { ability: "con", halfOnSuccess: true } } },
+  // 2nd level
+  "hold-person": { resolve: { kind: "condition", condition: "Paralyzed", save: { ability: "wis" } } },
+  "shatter": { area: "circle", resolve: { kind: "damage", diceExpr: "3d8", damageType: "thunder", attackRoll: false, save: { ability: "con", halfOnSuccess: true } } },
+  // 3rd level
+  "fireball": { area: "circle", resolve: { kind: "damage", diceExpr: "8d6", damageType: "fire", attackRoll: false, save: { ability: "dex", halfOnSuccess: true } } },
+  "lightning-bolt": { area: "line", resolve: { kind: "damage", diceExpr: "8d6", damageType: "lightning", attackRoll: false, save: { ability: "dex", halfOnSuccess: true } } },
+};
 
 export const SPELLS: SpellDef[] = [
   // ---------------------------------------------------------------------

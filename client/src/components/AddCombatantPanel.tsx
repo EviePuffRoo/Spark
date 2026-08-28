@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { SearchResult, LiveCombatant, EncounterTable, SizeCategory, Item } from "@spark/shared";
-import { computeEquipmentBonuses, parseStatBlockAttacks, parseSizeCategory, parseSpeedFeet, getRuleset } from "@spark/shared";
+import { computeEquipmentBonuses, parseStatBlockAttacks, parseSizeCategory, parseSpeedFeet, getRuleset, findCasterClass, computeSpellSaveDc, computeSpellAttackBonus } from "@spark/shared";
 
 const abilityModifier = getRuleset().abilityModifier;
 import { api } from "../api";
@@ -75,6 +75,13 @@ export function AddCombatantPanel({ onAddCombatant }: { onAddCombatant: (c: Live
     } else if (type === "playerCharacter") {
       const pc = await api.getPlayerCharacter(result.id);
       const acBonus = await equipmentAcBonusFor(pc.equippedItems, pc.attunedItems);
+      // Spellcasting snapshot: matched against the free-text className the
+      // same lenient way parseSizeCategory/parseSpeedFeet handle a monster
+      // stat block's free-text size/speed below — a non-caster class, an
+      // unrecognized/homebrew class name, or a caster with no prepared
+      // spells yet simply doesn't get Cast wired up for this combatant.
+      const casterClass = findCasterClass(pc.className);
+      const spellcastingMod = casterClass ? abilityModifier(pc.abilityScores[casterClass.spellcastingAbility!]) : 0;
       onAddCombatant({
         id: crypto.randomUUID(),
         name: pc.name,
@@ -96,6 +103,10 @@ export function AddCombatantPanel({ onAddCombatant }: { onAddCombatant: (c: Live
         // would parse to anyway.
         sizeCategory: "medium",
         speedFeet: 30,
+        preparedSpells: casterClass && pc.preparedSpells.length > 0 ? pc.preparedSpells : undefined,
+        spellSlots: casterClass && pc.spellSlots.length > 0 ? pc.spellSlots : undefined,
+        spellSaveDc: casterClass ? computeSpellSaveDc(pc.proficiencyBonus, spellcastingMod) : undefined,
+        spellAttackBonus: casterClass ? computeSpellAttackBonus(pc.proficiencyBonus, spellcastingMod) : undefined,
       });
     }
   }

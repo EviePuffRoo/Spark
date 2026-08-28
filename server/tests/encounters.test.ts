@@ -629,6 +629,31 @@ describe("grid combat: elevation", () => {
     expect(get.body.combatants[0].flying).toBe(true);
   });
 
+  it("round-trips a combatant's spellcasting snapshot (preparedSpells/spellSlots/spellSaveDc/spellAttackBonus) through PUT", async () => {
+    const { agent: dm } = await signupAgent("spellcasterdm1");
+    const world = await dm.post("/api/worlds").send({ name: "Spellcasting Test World" });
+    const worldId = world.body.id as string;
+
+    const put = await dm.put(`/api/encounters/${worldId}`).send({
+      combatants: [{
+        id: "wiz", name: "Elowen", kind: "playerCharacter", initiative: 8, conditions: [], notes: "", hpVisible: true,
+        preparedSpells: ["fire-bolt", "burning-hands"],
+        spellSlots: [{ level: 1, max: 2, current: 2 }],
+        spellSaveDc: 13,
+        spellAttackBonus: 5,
+      }],
+      round: 1, turnIndex: 0,
+    });
+    expect(put.body.combatants[0].preparedSpells).toEqual(["fire-bolt", "burning-hands"]);
+    expect(put.body.combatants[0].spellSlots).toEqual([{ level: 1, max: 2, current: 2 }]);
+    expect(put.body.combatants[0].spellSaveDc).toBe(13);
+    expect(put.body.combatants[0].spellAttackBonus).toBe(5);
+
+    const get = await dm.get(`/api/encounters/${worldId}`);
+    expect(get.body.combatants[0].preparedSpells).toEqual(["fire-bolt", "burning-hands"]);
+    expect(get.body.combatants[0].spellSlots).toEqual([{ level: 1, max: 2, current: 2 }]);
+  });
+
   it("round-trips a placed tile's elevation through the battle-maps route", async () => {
     const { agent: dm } = await signupAgent("elevdm3");
     const created = await dm.post("/api/battle-maps").send({

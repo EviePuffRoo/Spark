@@ -828,6 +828,16 @@ export interface LiveCombatant {
   // light, not just player characters — an ally NPC or even a monster
   // holding a torch still casts real light.
   lightRadiusFeet?: number;
+  // Ignores ground elevation entirely for both vision and movement — a
+  // flying or hovering creature. Narrow and specific: it does NOT grant
+  // passing through an ordinary blocksMovement obstacle in general (a
+  // wall still blocks a flying creature) — only (a) skips the climbing
+  // surcharge on an elevation change, and (b) crosses a blocksMovement
+  // tile the DM stamped with negative elevation (an authored gap, like a
+  // chasm, not a solid barrier) despite that flag. See gridMovement.ts's
+  // computeReachableCells and vision.ts's computeVisionForTokens/
+  // extendWithLightSources.
+  flying?: boolean;
   // Persisted copies of the source stat block's legendary/lair data, same
   // pattern as attacks above (see the comment on ParsedAttack) — captured
   // once when the combatant is added so combat state survives the source
@@ -1399,6 +1409,15 @@ export interface PlacedTile {
   // Free-text reminder for a gmOnly marker (why this door is secret, what
   // the trap does). Meaningless on any other layer.
   note?: string;
+  // Height in feet relative to this map's implicit ground plane — a
+  // raised dais, a ledge, a chasm floor (negative). Omitted means "never
+  // authored" and is NOT the same as an explicit 0: an unauthored
+  // blocksVision tile always blocks sight regardless of an observer's
+  // height (vision.ts's blocksSightAt), so ordinary walls and every map
+  // predating this feature are unaffected. Only the floor-layer placement
+  // for a cell carries mechanical weight, same rule as blocksMovement/
+  // difficultTerrain/isDoor above — see gridMovement.ts's elevationAt.
+  elevation?: number;
 }
 
 export const BATTLE_MAP_MAX_WIDTH = 40;

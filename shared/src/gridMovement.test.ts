@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { chebyshevDistanceFeet, computeReachableCells, FEET_PER_TILE } from "./gridMovement.js";
+import { chebyshevDistanceFeet, computeReachableCells, elevationAt, FEET_PER_TILE } from "./gridMovement.js";
 import type { BattleMap } from "./types.js";
 
 function emptyMap(width: number, height: number, tiles: BattleMap["tiles"] = []): Pick<BattleMap, "width" | "height" | "tiles"> {
@@ -91,5 +91,77 @@ describe("computeReachableCells", () => {
     const map = emptyMap(10, 10, [{ x: 6, y: 5, tileId: "wooden-door" }]);
     const reachable = computeReachableCells(map, 5, 5, 30, new Set(["6,5"]));
     expect(reachable.has("6,5")).toBe(true);
+  });
+});
+
+describe("elevationAt", () => {
+  it("is undefined for a cell with no placed tile", () => {
+    expect(elevationAt(emptyMap(10, 10), 3, 3)).toBeUndefined();
+  });
+
+  it("is undefined for a placed tile that never had elevation stamped", () => {
+    const map = emptyMap(10, 10, [{ x: 3, y: 3, tileId: "grass" }]);
+    expect(elevationAt(map, 3, 3)).toBeUndefined();
+  });
+
+  it("returns the stamped value, including an explicit 0", () => {
+    const map = emptyMap(10, 10, [
+      { x: 3, y: 3, tileId: "grass", elevation: 0 },
+      { x: 4, y: 3, tileId: "grass", elevation: 15 },
+    ]);
+    expect(elevationAt(map, 3, 3)).toBe(0);
+    expect(elevationAt(map, 4, 3)).toBe(15);
+  });
+});
+
+describe("elevation", () => {
+  it("charges double cost for stepping onto a differently-elevated cell", () => {
+    // Same wall-off-the-diagonals technique as the difficult-terrain test:
+    // forces the only route east straight through the elevated tile.
+    const map = emptyMap(10, 10, [
+      { x: 6, y: 5, tileId: "grass", elevation: 10 },
+      { x: 6, y: 4, tileId: "stone-wall" },
+      { x: 6, y: 6, tileId: "stone-wall" },
+    ]);
+    const reachable = computeReachableCells(map, 5, 5, 10);
+    // 10ft budget: climbing onto (6,5) costs 10ft (doubled) exactly —
+    // reachable — but any further step would need more than that.
+    expect(reachable.has("6,5")).toBe(true);
+    expect(reachable.has("7,5")).toBe(false);
+  });
+
+  it("does not double-charge a step between two cells at the same nonzero elevation", () => {
+    const map = emptyMap(10, 10, [
+      { x: 6, y: 5, tileId: "grass", elevation: 10 },
+      { x: 7, y: 5, tileId: "grass", elevation: 10 },
+    ]);
+    const reachable = computeReachableCells(map, 6, 5, 5);
+    expect(reachable.has("7,5")).toBe(true);
+  });
+
+  it("flying skips the climbing surcharge", () => {
+    const map = emptyMap(10, 10, [
+      { x: 6, y: 5, tileId: "grass", elevation: 10 },
+      { x: 6, y: 4, tileId: "stone-wall" },
+      { x: 6, y: 6, tileId: "stone-wall" },
+    ]);
+    expect(computeReachableCells(map, 5, 5, 5, undefined, false).has("6,5")).toBe(false);
+    expect(computeReachableCells(map, 5, 5, 5, undefined, true).has("6,5")).toBe(true);
+  });
+
+  it("lets a flying combatant cross a blocksMovement tile stamped with negative elevation, unlike a grounded one", () => {
+    const map = emptyMap(10, 10, [
+      { x: 6, y: 5, tileId: "chasm", elevation: -20 },
+      { x: 6, y: 4, tileId: "stone-wall" },
+      { x: 6, y: 6, tileId: "stone-wall" },
+    ]);
+    expect(computeReachableCells(map, 5, 5, 30, undefined, false).has("6,5")).toBe(false);
+    expect(computeReachableCells(map, 5, 5, 30, undefined, true).has("6,5")).toBe(true);
+  });
+
+  it("still blocks a flying combatant at an ordinary blocksMovement tile with no elevation stamped", () => {
+    const map = emptyMap(10, 10, [{ x: 6, y: 5, tileId: "stone-wall" }]);
+    const reachable = computeReachableCells(map, 5, 5, 30, undefined, true);
+    expect(reachable.has("6,5")).toBe(false);
   });
 });

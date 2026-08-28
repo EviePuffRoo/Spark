@@ -120,6 +120,7 @@ function coerceCombatant(raw: unknown): LiveCombatant | null {
     level: typeof c.level === "number" ? c.level : undefined,
     zoneId: typeof c.zoneId === "string" ? c.zoneId : undefined,
     hidden: c.hidden === true,
+    flying: c.flying === true ? true : undefined,
     playerCharacterId: typeof c.playerCharacterId === "string" ? c.playerCharacterId : undefined,
     attacks: attacks && attacks.length > 0 ? attacks : undefined,
     gridX: typeof c.gridX === "number" ? c.gridX : undefined,
@@ -394,7 +395,7 @@ encountersRouter.post("/:worldId/move-grid", async (req, res) => {
       const mapTiles: PlacedTile[] = JSON.parse(map.tiles);
       const reachable = computeReachableCells(
         { width: map.width, height: map.height, tiles: mapTiles },
-        target.gridX, target.gridY, target.speedFeet ?? 30, openDoors,
+        target.gridX, target.gridY, target.speedFeet ?? 30, openDoors, target.flying,
       );
       if (!reachable.has(`${gridX},${gridY}`)) {
         return { error: 400 as const, message: "That's further than this combatant can move" };

@@ -217,7 +217,7 @@ export function GridMap({
   const activeCombatant = combatants.find((c) => c.id === activeId) ?? null;
   const reachable = useMemo(() => {
     if (!battleMap || !activeCombatant || activeCombatant.gridX === undefined || activeCombatant.gridY === undefined) return null;
-    return computeReachableCells(battleMap, activeCombatant.gridX, activeCombatant.gridY, activeCombatant.speedFeet ?? 30);
+    return computeReachableCells(battleMap, activeCombatant.gridX, activeCombatant.gridY, activeCombatant.speedFeet ?? 30, undefined, activeCombatant.flying);
   }, [battleMap, activeCombatant]);
 
   // Fog of war only ever applies to a non-owner's own view — the DM's
@@ -357,6 +357,11 @@ export function GridMap({
               return (
                 <g key={doorKey}>
                   <use href={href} x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL} pointerEvents="none" />
+                  {t.elevation !== undefined && (
+                    <text x={t.x * CELL + CELL - 2} y={t.y * CELL + 9} className="grid-map-elevation-label" textAnchor="end" pointerEvents="none">
+                      {t.elevation > 0 ? `+${t.elevation}` : t.elevation}
+                    </text>
+                  )}
                   {canToggle && (
                     <rect
                       x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL}
@@ -432,7 +437,7 @@ export function GridMap({
               return (
                 <g
                   key={c.id}
-                  className={`grid-token grid-token-${c.kind}${c.id === activeId ? " grid-token-active-turn" : ""}${isDragging ? " grid-token-dragging" : ""}${overSpeed ? " grid-token-over-speed" : ""}${inTemplate ? " grid-token-in-template" : ""}`}
+                  className={`grid-token grid-token-${c.kind}${c.id === activeId ? " grid-token-active-turn" : ""}${isDragging ? " grid-token-dragging" : ""}${overSpeed ? " grid-token-over-speed" : ""}${inTemplate ? " grid-token-in-template" : ""}${c.flying ? " grid-token-flying" : ""}`}
                 >
                   <rect
                     x={gridX * CELL} y={gridY * CELL}
@@ -441,7 +446,9 @@ export function GridMap({
                     onPointerDown={(e) => handleTokenPointerDown(e, c)}
                     onPointerMove={(e) => handleTokenPointerMove(e, c)}
                     onPointerUp={(e) => handleTokenPointerUp(e, c)}
-                  />
+                  >
+                    {c.flying && <title>Flying</title>}
+                  </rect>
                   {isDragging ? (
                     <text x={gridX * CELL + (size * CELL) / 2} y={gridY * CELL - 8} textAnchor="middle" className="grid-token-drag-distance">
                       {movedFeet} ft

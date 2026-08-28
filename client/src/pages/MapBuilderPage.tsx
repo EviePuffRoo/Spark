@@ -88,20 +88,25 @@ function tilesToLayerMaps(tiles: PlacedTile[]): {
   decor: Map<string, string>;
   gmOnly: Map<string, string>;
   gmOnlyNotes: Map<string, string>;
+  floorElevation: Map<string, number>;
 } {
   const floor = new Map<string, string>();
   const decor = new Map<string, string>();
   const gmOnly = new Map<string, string>();
   const gmOnlyNotes = new Map<string, string>();
+  const floorElevation = new Map<string, number>();
   for (const t of tiles) {
     const key = tileKey(t.x, t.y);
     if (t.layer === "decor") decor.set(key, t.tileId);
     else if (t.layer === "gmOnly") {
       gmOnly.set(key, t.tileId);
       if (t.note) gmOnlyNotes.set(key, t.note);
-    } else floor.set(key, t.tileId);
+    } else {
+      floor.set(key, t.tileId);
+      if (t.elevation !== undefined) floorElevation.set(key, t.elevation);
+    }
   }
-  return { floor, decor, gmOnly, gmOnlyNotes };
+  return { floor, decor, gmOnly, gmOnlyNotes, floorElevation };
 }
 
 function layerMapsToTiles(
@@ -109,11 +114,13 @@ function layerMapsToTiles(
   decor: Map<string, string>,
   gmOnly: Map<string, string>,
   gmOnlyNotes: Map<string, string>,
+  floorElevation: Map<string, number>,
 ): PlacedTile[] {
   const out: PlacedTile[] = [];
   for (const [key, tileId] of floor) {
     const [x, y] = key.split(",").map(Number);
-    out.push({ x, y, tileId });
+    const elevation = floorElevation.get(key);
+    out.push({ x, y, tileId, ...(elevation !== undefined ? { elevation } : {}) });
   }
   for (const [key, tileId] of decor) {
     const [x, y] = key.split(",").map(Number);
@@ -143,6 +150,8 @@ export function MapBuilderPage() {
   const [decorTiles, setDecorTiles] = useState<Map<string, string>>(new Map());
   const [gmOnlyTiles, setGmOnlyTiles] = useState<Map<string, string>>(new Map());
   const [gmOnlyNotes, setGmOnlyNotes] = useState<Map<string, string>>(new Map());
+  const [floorElevation, setFloorElevation] = useState<Map<string, number>>(new Map());
+  const [brushElevation, setBrushElevation] = useState(0);
   const [dirty, setDirty] = useState(false);
   const [selectedTileId, setSelectedTileId] = useState(BATTLE_TILES[0].id);
   const [eraser, setEraser] = useState(false);
@@ -206,11 +215,13 @@ export function MapBuilderPage() {
 
   function openMap(map: BattleMap) {
     setActiveMap(map);
-    const { floor, decor, gmOnly, gmOnlyNotes: notes } = tilesToLayerMaps(map.tiles);
+    const { floor, decor, gmOnly, gmOnlyNotes: notes, floorElevation: elevation } = tilesToLayerMaps(map.tiles);
     setFloorTiles(floor);
     setDecorTiles(decor);
     setGmOnlyTiles(gmOnly);
     setGmOnlyNotes(notes);
+    setFloorElevation(elevation);
+    setBrushElevation(0);
     setDirty(false);
     setName(map.name);
     setSaveWorldId(map.worldId ?? "");
@@ -288,6 +299,7 @@ export function MapBuilderPage() {
         setDecorTiles((prev) => { const next = new Map(prev); next.delete(key); return next; });
       } else {
         setFloorTiles((prev) => { const next = new Map(prev); next.delete(key); return next; });
+        setFloorElevation((prev) => { const next = new Map(prev); next.delete(key); return next; });
       }
     } else if (selectedLayer === "gmOnly") {
       setGmOnlyTiles((prev) => new Map(prev).set(key, selectedTileId));
@@ -295,6 +307,12 @@ export function MapBuilderPage() {
       setDecorTiles((prev) => new Map(prev).set(key, selectedTileId));
     } else {
       setFloorTiles((prev) => new Map(prev).set(key, selectedTileId));
+      setFloorElevation((prev) => {
+        const next = new Map(prev);
+        if (brushElevation !== 0) next.set(key, brushElevation);
+        else next.delete(key);
+        return next;
+      });
     }
     setDirty(true);
   }
@@ -330,7 +348,7 @@ export function MapBuilderPage() {
 
   function exportToVtt() {
     if (!activeMap) return;
-    const tiles = layerMapsToTiles(floorTiles, decorTiles, gmOnlyTiles, gmOnlyNotes);
+    const tiles = layerMapsToTiles(floorTiles, decorTiles, gmOnlyTiles, gmOnlyNotes, floorElevation);
     const image = renderBattleMapBackgroundImage(activeMap.width, activeMap.height, floorTiles);
     const doc = battleMapToUvtt({ width: activeMap.width, height: activeMap.height, tiles }, image);
     downloadVttFile(`${activeMap.name.trim() || "battle-map"}.dd2vtt`, doc);
@@ -343,7 +361,7 @@ export function MapBuilderPage() {
     try {
       const updated = await api.updateBattleMap(activeMap.id, {
         name,
-        tiles: layerMapsToTiles(floorTiles, decorTiles, gmOnlyTiles, gmOnlyNotes),
+        tiles: layerMapsToTiles(floorTiles, decorTiles, gmOnlyTiles, gmOnlyNotes, floorElevation),
         worldId: saveWorldId || null,
         tags: saveTags.split(",").map((t) => t.trim()).filter(Boolean),
         notes: saveNotes || undefined,
@@ -370,6 +388,13 @@ export function MapBuilderPage() {
   const placedFloorTiles = useMemo(() => toPlacedList(floorTiles), [floorTiles]);
   const placedDecorTiles = useMemo(() => toPlacedList(decorTiles), [decorTiles]);
   const placedGmOnlyTiles = useMemo(() => toPlacedList(gmOnlyTiles), [gmOnlyTiles]);
+  const placedElevationLabels = useMemo(
+    () => [...floorElevation.entries()].map(([key, elevation]) => {
+      const [x, y] = key.split(",").map(Number);
+      return { key, x, y, elevation };
+    }),
+    [floorElevation],
+  );
 
   if (activeMap) {
     return (
@@ -406,6 +431,19 @@ export function MapBuilderPage() {
               <span className="tile-swatch tile-eraser">✕</span>
               Eraser
             </button>
+            <label className="field">
+              <span>Elevation (ft)</span>
+              <input
+                type="number"
+                step={5}
+                value={brushElevation}
+                onChange={(e) => setBrushElevation(Number(e.target.value) || 0)}
+              />
+            </label>
+            <p className="hint">
+              Stamped onto floor tiles as you paint. Leave at 0 for ground level. A negative elevation on an
+              otherwise-solid tile (like Chasm) also lets a flying combatant cross it during combat.
+            </p>
             {CATEGORIES.map((category) => (
               <div key={category} className="tile-category">
                 <h4 className="tile-category-heading">{CATEGORY_LABELS[category]}</h4>
@@ -455,6 +493,11 @@ export function MapBuilderPage() {
                 ))}
                 {placedGmOnlyTiles.map((t) => (
                   <use key={`gm-${t.key}`} href={`#tile-${t.tileId}`} x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL} pointerEvents="none" />
+                ))}
+                {placedElevationLabels.map((t) => (
+                  <text key={`elev-${t.key}`} x={t.x * CELL + CELL - 2} y={t.y * CELL + 9} className="grid-map-elevation-label" textAnchor="end" pointerEvents="none">
+                    {t.elevation > 0 ? `+${t.elevation}` : t.elevation}
+                  </text>
                 ))}
               </svg>
             </div>

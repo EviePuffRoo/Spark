@@ -174,3 +174,43 @@ describe("doors", () => {
     expect(isDoorTileAt(map, 0, 0)).toBe(false);
   });
 });
+
+describe("elevation", () => {
+  it("still blocks an observer at or below an elevation-stamped blocker's own height", () => {
+    const map = emptyMap(10, 10, [{ x: 5, y: 3, tileId: "stone-wall", elevation: 0 }]);
+    const visible = computeVisibleCells(map, 5, 5, 5);
+    expect(visible.has("5,1")).toBe(false);
+  });
+
+  it("lets an observer elevated past the threshold see past that specific blocker", () => {
+    const map = emptyMap(10, 10, [
+      { x: 5, y: 5, tileId: "grass", elevation: 20 },
+      { x: 5, y: 3, tileId: "stone-wall", elevation: 0 },
+    ]);
+    const visible = computeVisibleCells(map, 5, 5, 5);
+    expect(visible.has("5,1")).toBe(true);
+  });
+
+  it("an unauthored blocker still blocks sight even for a flying (effectively infinite-elevation) observer", () => {
+    const map = emptyMap(10, 10, [{ x: 5, y: 3, tileId: "stone-wall" }]);
+    const visible = computeVisibleCells(map, 5, 5, 5, undefined, Number.POSITIVE_INFINITY);
+    expect(visible.has("5,1")).toBe(false);
+  });
+
+  it("computeVisionForTokens threads a token's flying flag correctly", () => {
+    const map = emptyMap(10, 10, [{ x: 5, y: 3, tileId: "stone-wall", elevation: 5 }]);
+    const flying = computeVisionForTokens(map, [{ kind: "playerCharacter", gridX: 5, gridY: 5, visionRadiusFeet: 30, flying: true }]);
+    const grounded = computeVisionForTokens(map, [{ kind: "playerCharacter", gridX: 5, gridY: 5, visionRadiusFeet: 30, flying: false }]);
+    expect(flying.has("5,1")).toBe(true);
+    expect(grounded.has("5,1")).toBe(false);
+  });
+
+  it("extendWithLightSources threads a carrier's flying flag correctly", () => {
+    const map = emptyMap(20, 20, [{ x: 10, y: 8, tileId: "stone-wall", elevation: 0 }]);
+    const base = new Set(["10,10"]);
+    const flying = extendWithLightSources(map, base, [{ gridX: 10, gridY: 10, lightRadiusFeet: 20, flying: true }]);
+    const grounded = extendWithLightSources(map, base, [{ gridX: 10, gridY: 10, lightRadiusFeet: 20, flying: false }]);
+    expect(flying.has("10,6")).toBe(true);
+    expect(grounded.has("10,6")).toBe(false);
+  });
+});

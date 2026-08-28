@@ -1129,6 +1129,17 @@ export function InitiativeTracker({
               </div>
             )}
 
+            {activeEncounter.activeBattleMapId && (
+              <label className="condition-toggle">
+                <input
+                  type="checkbox"
+                  checked={!!c.flying}
+                  onChange={(e) => updateCombatant(c.id, { flying: e.target.checked })}
+                />
+                Flying
+              </label>
+            )}
+
             {c.legendaryActionsMax !== undefined && (
               <div className="combatant-legendary">
                 <span className="legendary-pips" title={`${c.legendaryActionsRemaining ?? 0} of ${c.legendaryActionsMax} legendary actions remaining`}>

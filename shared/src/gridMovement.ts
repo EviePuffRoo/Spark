@@ -24,6 +24,14 @@ function tileAt(map: Pick<BattleMap, "tiles">, x: number, y: number, openDoors?:
   return def;
 }
 
+// A cell's authored height in feet, or undefined if the DM never stamped
+// one (see PlacedTile.elevation). Only the floor layer carries mechanical
+// weight, same rule as tileAt above.
+export function elevationAt(map: Pick<BattleMap, "tiles">, x: number, y: number): number | undefined {
+  const placed = map.tiles.find((t) => t.x === x && t.y === y && (t.layer ?? "floor") === "floor");
+  return placed?.elevation;
+}
+
 // Dijkstra flood-fill over the map's grid (8-directional, same flat 5ft-
 // per-step rule as chebyshevDistanceFeet above) honoring each tile's own
 // blocksMovement/difficultTerrain — this is the "beyond a ruler" piece:
@@ -37,6 +45,7 @@ export function computeReachableCells(
   originY: number,
   speedFeet: number,
   openDoors?: Set<string>,
+  flying?: boolean,
 ): Set<string> {
   const key = (x: number, y: number) => `${x},${y}`;
   const dist = new Map<string, number>();
@@ -48,15 +57,26 @@ export function computeReachableCells(
     frontier.sort((a, b) => a.cost - b.cost);
     const cur = frontier.shift()!;
     if ((dist.get(key(cur.x, cur.y)) ?? Infinity) < cur.cost) continue;
+    const curElevation = elevationAt(map, cur.x, cur.y) ?? 0;
 
     for (const [dx, dy] of dirs) {
       const nx = cur.x + dx;
       const ny = cur.y + dy;
       if (nx < 0 || ny < 0 || nx >= map.width || ny >= map.height) continue;
       const tile = tileAt(map, nx, ny, openDoors);
-      if (tile?.blocksMovement) continue;
+      const nextElevation = elevationAt(map, nx, ny) ?? 0;
+      // A flying combatant crosses an authored gap (negative elevation —
+      // a chasm floor, a pit) freely; it still can't fly through a solid
+      // obstacle (a wall, a pillar), which blocksMovement independent of
+      // elevation. An ordinary chasm placement with no elevation stamped
+      // on it continues to block everyone, flying included — the DM
+      // opts into "this is an open-air drop, not a wall" by giving it a
+      // negative height.
+      const isFlyableGap = flying === true && nextElevation < 0;
+      if (tile?.blocksMovement && !isFlyableGap) continue;
 
-      const stepCost = tile?.difficultTerrain ? FEET_PER_TILE * 2 : FEET_PER_TILE;
+      const climbing = flying !== true && nextElevation !== curElevation;
+      const stepCost = (tile?.difficultTerrain || climbing) ? FEET_PER_TILE * 2 : FEET_PER_TILE;
       const nextCost = cur.cost + stepCost;
       if (nextCost > speedFeet) continue;
 

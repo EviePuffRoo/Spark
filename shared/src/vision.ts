@@ -1,6 +1,6 @@
 import type { BattleMap, LiveCombatant, TileDef } from "./types.js";
 import { BATTLE_TILE_BY_ID } from "./data/battleTiles.js";
-import { FEET_PER_TILE } from "./gridMovement.js";
+import { FEET_PER_TILE, elevationAt } from "./gridMovement.js";
 
 // Baseline sight radius for a token with no explicit override — a
 // generously-lit scene, the common case. DMs can shrink this per-combatant
@@ -31,6 +31,25 @@ export function isDoorTileAt(map: Pick<BattleMap, "tiles">, x: number, y: number
   return !!tileAt(map, x, y)?.isDoor;
 }
 
+// How far above a blocking tile's own authored height an observer must
+// stand (or fly) before that specific tile stops blocking their sight —
+// looking down over a low obstacle from a vantage point. Deliberately a
+// single flat threshold, not true partial-height ray occlusion: only the
+// observer's own elevation matters, not the target's, and nothing is
+// interpolated along the ray. A blocker with NO authored elevation is
+// never affected by this at all (see blocksSightAt) — every existing
+// map, and every ordinary wall, is byte-for-byte unaffected by this
+// feature until a DM deliberately stamps a height onto a blocker.
+const ELEVATION_SIGHT_OVERRIDE_FEET = 10;
+
+function blocksSightAt(map: Pick<BattleMap, "tiles">, x: number, y: number, openDoors: Set<string> | undefined, observerElevationFeet: number): boolean {
+  const def = tileAt(map, x, y, openDoors);
+  if (!def?.blocksVision) return false;
+  const tileElevation = elevationAt(map, x, y);
+  if (tileElevation === undefined) return true;
+  return observerElevationFeet < tileElevation + ELEVATION_SIGHT_OVERRIDE_FEET;
+}
+
 // Is the straight line from (x0,y0) to (x1,y1) unobstructed? Walks the
 // line in sub-tile steps (fine enough that no cell the line actually
 // passes through gets skipped) and fails as soon as an intermediate
@@ -38,11 +57,12 @@ export function isDoorTileAt(map: Pick<BattleMap, "tiles">, x: number, y: number
 // checked here — you can always see a wall's near face, you just can't
 // see past it — so a raycast against a wall tile correctly reports "the
 // wall is visible" rather than "nothing beyond it is."
-function hasLineOfSight(map: Pick<BattleMap, "tiles">, x0: number, y0: number, x1: number, y1: number, openDoors?: Set<string>): boolean {
+function hasLineOfSight(map: Pick<BattleMap, "tiles">, x0: number, y0: number, x1: number, y1: number, openDoors?: Set<string>, observerElevationFeet?: number): boolean {
   const dx = x1 - x0;
   const dy = y1 - y0;
   const dist = Math.max(Math.abs(dx), Math.abs(dy));
   if (dist === 0) return true;
+  const resolvedElevation = observerElevationFeet ?? elevationAt(map, x0, y0) ?? 0;
   const steps = dist * 4;
   let prevCx = x0;
   let prevCy = y0;
@@ -58,13 +78,13 @@ function hasLineOfSight(map: Pick<BattleMap, "tiles">, x0: number, y0: number, x
     // otherwise leak sight straight through the gap between them. Block
     // the ray there too when both flanking cells are walls, same as a
     // squeezing-through-a-pinch-point rule.
-    if (cx !== prevCx && cy !== prevCy && tileAt(map, cx, prevCy, openDoors)?.blocksVision && tileAt(map, prevCx, cy, openDoors)?.blocksVision) {
+    if (cx !== prevCx && cy !== prevCy && blocksSightAt(map, cx, prevCy, openDoors, resolvedElevation) && blocksSightAt(map, prevCx, cy, openDoors, resolvedElevation)) {
       return false;
     }
     prevCx = cx;
     prevCy = cy;
     if (cx === x1 && cy === y1) continue;
-    if (tileAt(map, cx, cy, openDoors)?.blocksVision) return false;
+    if (blocksSightAt(map, cx, cy, openDoors, resolvedElevation)) return false;
   }
   return true;
 }
@@ -74,7 +94,7 @@ function hasLineOfSight(map: Pick<BattleMap, "tiles">, x0: number, y0: number, x
 // painted tiles (their blocksVision flag), never a manually-drawn wall
 // layer. This is the whole point of the tileset system from Phase A: a
 // DM builds the room, and line-of-sight just works.
-export function computeVisibleCells(map: Pick<BattleMap, "width" | "height" | "tiles">, originX: number, originY: number, radiusTiles: number, openDoors?: Set<string>): Set<string> {
+export function computeVisibleCells(map: Pick<BattleMap, "width" | "height" | "tiles">, originX: number, originY: number, radiusTiles: number, openDoors?: Set<string>, observerElevationFeet?: number): Set<string> {
   const visible = new Set<string>();
   visible.add(key(originX, originY));
   const r = Math.ceil(radiusTiles);
@@ -86,7 +106,7 @@ export function computeVisibleCells(map: Pick<BattleMap, "width" | "height" | "t
       if (dx * dx + dy * dy > rSquared) continue;
       const x = originX + dx;
       if (x < 0 || x >= map.width) continue;
-      if (hasLineOfSight(map, originX, originY, x, y, openDoors)) visible.add(key(x, y));
+      if (hasLineOfSight(map, originX, originY, x, y, openDoors, observerElevationFeet)) visible.add(key(x, y));
     }
   }
   return visible;
@@ -100,12 +120,13 @@ function feetToTiles(feet: number): number {
 // own sight, unioned together. Monsters and custom combatants don't
 // contribute: fog-of-war is a player-facing memory of what the PARTY has
 // seen, not a simulation of every creature's eyesight.
-export function computeVisionForTokens(map: Pick<BattleMap, "width" | "height" | "tiles">, tokens: Pick<LiveCombatant, "kind" | "gridX" | "gridY" | "visionRadiusFeet">[], openDoors?: Set<string>): Set<string> {
+export function computeVisionForTokens(map: Pick<BattleMap, "width" | "height" | "tiles">, tokens: Pick<LiveCombatant, "kind" | "gridX" | "gridY" | "visionRadiusFeet" | "flying">[], openDoors?: Set<string>): Set<string> {
   const visible = new Set<string>();
   for (const t of tokens) {
     if (t.kind !== "playerCharacter" || t.gridX === undefined || t.gridY === undefined) continue;
     const radiusTiles = feetToTiles(t.visionRadiusFeet ?? DEFAULT_VISION_RADIUS_FEET);
-    for (const k of computeVisibleCells(map, t.gridX, t.gridY, radiusTiles, openDoors)) visible.add(k);
+    const observerElevationFeet = t.flying ? Number.POSITIVE_INFINITY : undefined;
+    for (const k of computeVisibleCells(map, t.gridX, t.gridY, radiusTiles, openDoors, observerElevationFeet)) visible.add(k);
   }
   return visible;
 }
@@ -125,7 +146,7 @@ export function computeVisionForTokens(map: Pick<BattleMap, "width" | "height" |
 export function extendWithLightSources(
   map: Pick<BattleMap, "width" | "height" | "tiles">,
   baseVisible: Set<string>,
-  carriers?: Pick<LiveCombatant, "gridX" | "gridY" | "lightRadiusFeet">[],
+  carriers?: Pick<LiveCombatant, "gridX" | "gridY" | "lightRadiusFeet" | "flying">[],
   openDoors?: Set<string>,
 ): Set<string> {
   const extended = new Set(baseVisible);
@@ -138,7 +159,8 @@ export function extendWithLightSources(
   for (const c of carriers ?? []) {
     if (!c.lightRadiusFeet || c.gridX === undefined || c.gridY === undefined) continue;
     if (!baseVisible.has(key(c.gridX, c.gridY))) continue;
-    for (const k of computeVisibleCells(map, c.gridX, c.gridY, feetToTiles(c.lightRadiusFeet), openDoors)) extended.add(k);
+    const observerElevationFeet = c.flying ? Number.POSITIVE_INFINITY : undefined;
+    for (const k of computeVisibleCells(map, c.gridX, c.gridY, feetToTiles(c.lightRadiusFeet), openDoors, observerElevationFeet)) extended.add(k);
   }
   return extended;
 }

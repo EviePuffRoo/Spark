@@ -13,6 +13,10 @@ export const BATTLE_TILES: TileDef[] = [
   { id: "wooden-floor", name: "Wooden Floor", category: "terrain", blocksMovement: false, blocksVision: false, difficultTerrain: false },
   { id: "water", name: "Water", category: "terrain", blocksMovement: false, blocksVision: false, difficultTerrain: true },
   { id: "rubble", name: "Rubble", category: "terrain", blocksMovement: false, blocksVision: false, difficultTerrain: true },
+  // Stamp a negative PlacedTile.elevation onto a placed chasm to mark it as
+  // an open-air drop rather than a solid barrier — a flying combatant can
+  // then cross it despite blocksMovement (see gridMovement.ts's
+  // computeReachableCells and LiveCombatant.flying).
   { id: "chasm", name: "Chasm", category: "terrain", blocksMovement: true, blocksVision: false, difficultTerrain: false },
 
   // Structure

@@ -582,3 +582,64 @@ describe("grid combat: doors", () => {
     expect(switched.body.openDoorCells).toEqual([]);
   });
 });
+
+describe("grid combat: elevation", () => {
+  it("lets a flying combatant cross a negative-elevation gap that blocks a grounded one via move-grid", async () => {
+    const { agent: dm } = await signupAgent("elevdm1");
+    const world = await dm.post("/api/worlds").send({ name: "Chasm World" });
+    const worldId = world.body.id as string;
+    // A wall spans the whole row at y=1 except for an open-air chasm gap
+    // at x=5 (negative elevation) — same "wall off the detour" technique
+    // the door tests above use.
+    const tiles = Array.from({ length: 10 }, (_, x) => (x === 5 ? { x, y: 1, tileId: "chasm", elevation: -20 } : { x, y: 1, tileId: "stone-wall" }));
+    const map = await dm.post("/api/battle-maps").send({ name: "Chasm Room", width: 10, height: 10, tiles });
+    const mapId = map.body.id as string;
+
+    const joinCode = await dm.post(`/api/worlds/${worldId}/join-code`);
+    const { agent: player } = await signupAgent("elevplayer1");
+    await player.post("/api/worlds/join").send({ code: joinCode.body.code });
+
+    await dm.put(`/api/encounters/${worldId}`).send({
+      combatants: [
+        { id: "grounded", name: "Fighter", kind: "playerCharacter", initiative: 10, conditions: [], notes: "", hpVisible: true, gridX: 5, gridY: 0, speedFeet: 30 },
+        { id: "flier", name: "Aarakocra", kind: "monster", initiative: 12, conditions: [], notes: "", hpVisible: false, gridX: 4, gridY: 0, speedFeet: 30, flying: true },
+      ],
+      round: 1, turnIndex: 0, activeBattleMapId: mapId,
+    });
+
+    const groundedMove = await player.post(`/api/encounters/${worldId}/move-grid`).send({ combatantId: "grounded", gridX: 5, gridY: 3 });
+    expect(groundedMove.status).toBe(400);
+
+    const flierMove = await player.post(`/api/encounters/${worldId}/move-grid`).send({ combatantId: "flier", gridX: 4, gridY: 3 });
+    expect(flierMove.status).toBe(200);
+  });
+
+  it("round-trips a combatant's flying flag through PUT", async () => {
+    const { agent: dm } = await signupAgent("elevdm2");
+    const world = await dm.post("/api/worlds").send({ name: "Flying Test World" });
+    const worldId = world.body.id as string;
+
+    const put = await dm.put(`/api/encounters/${worldId}`).send({
+      combatants: [{ id: "bird", name: "Owl", kind: "monster", initiative: 5, conditions: [], notes: "", hpVisible: false, flying: true }],
+      round: 1, turnIndex: 0,
+    });
+    expect(put.body.combatants[0].flying).toBe(true);
+
+    const get = await dm.get(`/api/encounters/${worldId}`);
+    expect(get.body.combatants[0].flying).toBe(true);
+  });
+
+  it("round-trips a placed tile's elevation through the battle-maps route", async () => {
+    const { agent: dm } = await signupAgent("elevdm3");
+    const created = await dm.post("/api/battle-maps").send({
+      name: "Ledge Room",
+      width: 10,
+      height: 10,
+      tiles: [{ x: 3, y: 3, tileId: "grass", elevation: 15 }],
+    });
+    expect(created.body.tiles[0].elevation).toBe(15);
+
+    const fetched = await dm.get(`/api/battle-maps/${created.body.id}`);
+    expect(fetched.body.tiles[0].elevation).toBe(15);
+  });
+});

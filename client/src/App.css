@@ -2755,9 +2755,18 @@ textarea {
   opacity: 0.25;
 }
 
+.grid-map-elevation-label {
+  fill: var(--text-faint);
+  font-size: 7px;
+}
+
 .grid-token.grid-token-in-template rect {
   stroke: var(--danger);
   stroke-width: 3px;
+}
+
+.grid-token.grid-token-flying rect {
+  stroke-dasharray: 4 2;
 }
 
 .grid-token {

@@ -15,7 +15,8 @@ function coerceTile(raw: unknown, width: number, height: number): PlacedTile | n
   if (!BATTLE_TILE_BY_ID[t.tileId]) return null;
   const layer = t.layer === "decor" || t.layer === "gmOnly" ? t.layer : undefined;
   const note = layer === "gmOnly" && typeof t.note === "string" ? t.note.slice(0, 500) : undefined;
-  return { x: t.x, y: t.y, tileId: t.tileId, ...(layer ? { layer } : {}), ...(note ? { note } : {}) };
+  const elevation = typeof t.elevation === "number" && Number.isFinite(t.elevation) ? t.elevation : undefined;
+  return { x: t.x, y: t.y, tileId: t.tileId, ...(layer ? { layer } : {}), ...(note ? { note } : {}), ...(elevation !== undefined ? { elevation } : {}) };
 }
 
 function coerceDimension(value: unknown, max: number): number | null {

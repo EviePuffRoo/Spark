@@ -34,6 +34,7 @@ export function AddCombatantPanel({ onAddCombatant }: { onAddCombatant: (c: Live
   const [customLevel, setCustomLevel] = useState<number | "">("");
   const [customSize, setCustomSize] = useState<SizeCategory>("medium");
   const [customSpeed, setCustomSpeed] = useState(30);
+  const [customFlying, setCustomFlying] = useState(false);
 
   async function handlePickFromRoster(result: SearchResult) {
     const type = rosterPickType;
@@ -139,6 +140,7 @@ export function AddCombatantPanel({ onAddCombatant }: { onAddCombatant: (c: Live
       level: customLevel === "" ? undefined : Number(customLevel),
       sizeCategory: customSize,
       speedFeet: customSpeed,
+      flying: customFlying || undefined,
     });
     setCustomName("");
     setCustomInitiative(10);
@@ -148,6 +150,7 @@ export function AddCombatantPanel({ onAddCombatant }: { onAddCombatant: (c: Live
     setCustomLevel("");
     setCustomSize("medium");
     setCustomSpeed(30);
+    setCustomFlying(false);
     setAddingCustom(false);
   }
 
@@ -231,6 +234,10 @@ export function AddCombatantPanel({ onAddCombatant }: { onAddCombatant: (c: Live
           <label className="field">
             <span>Speed, ft (for the battle grid)</span>
             <input type="number" min={0} value={customSpeed} onChange={(e) => setCustomSpeed(Number(e.target.value) || 0)} />
+          </label>
+          <label className="condition-toggle">
+            <input type="checkbox" checked={customFlying} onChange={(e) => setCustomFlying(e.target.checked)} />
+            Flying
           </label>
           <button className="btn-primary" onClick={handleAddCustom}>Add Combatant</button>
         </div>

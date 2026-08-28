@@ -11,6 +11,7 @@ import { NextSessionPanel } from "../components/NextSessionPanel";
 import { CalendarPanel } from "../components/CalendarPanel";
 import { WorldTickPanel } from "../components/WorldTickPanel";
 import { DoomClockPanel } from "../components/DoomClockPanel";
+import { GettingStartedPanel } from "../components/GettingStartedPanel";
 
 export type OverviewNavTarget = "worlds" | "roster" | "codex" | "notes" | "downtime" | "shop";
 
@@ -110,6 +111,8 @@ export function WorldOverviewPage({ onNavigate }: { onNavigate: (subTab: Overvie
 
   return (
     <div className="page">
+      <GettingStartedPanel world={world} />
+
       <div className="panel">
         <h2>{world.name}</h2>
         {world.description && <p className="hint">{world.description}</p>}

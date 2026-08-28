@@ -853,6 +853,19 @@ export interface LiveCombatant {
   // separate used/unused flag that would need its own reset step.
   lairActionsList?: StatBlockAction[];
   lairActionUsedRound?: number;
+  // Spellcasting snapshot, same "copied once at add-time, lives on the
+  // combatant, independent of the source character sheet" pattern as
+  // attacks/legendaryActionsList above. preparedSpells is a list of
+  // SpellDef ids (see data/spells.ts); spellSlots is a live in-combat
+  // copy that Cast decrements and Rest refills to max — the character
+  // sheet's own PlayerCharacter.spellSlots is untouched by combat.
+  // spellSaveDc/spellAttackBonus are computed once from the source PC's
+  // proficiency bonus and spellcasting ability modifier (see
+  // shared/src/spellcasting.ts) and omitted for a non-caster.
+  preparedSpells?: string[];
+  spellSlots?: SpellSlotLevel[];
+  spellSaveDc?: number;
+  spellAttackBonus?: number;
 }
 
 export interface ZoneHazard {

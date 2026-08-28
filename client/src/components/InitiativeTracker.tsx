@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
-import type { SearchResult, LiveCombatant, LiveCombatantCondition, EncounterStateInput, EncounterZone, Dungeon, DungeonRoomState, DifficultyRating } from "@spark/shared";
-import { computeConcentrationDc, isHostilePair, leftReach, CONDITIONS_COMPENDIUM, getRuleset } from "@spark/shared";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { SearchResult, LiveCombatant, LiveCombatantCondition, EncounterStateInput, EncounterZone, Dungeon, DungeonRoomState, DifficultyRating, SpellDef } from "@spark/shared";
+import { computeConcentrationDc, isHostilePair, leftReach, CONDITIONS_COMPENDIUM, getRuleset, SPELL_EFFECTS } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { useAuth } from "../AuthContext";
 import { EntitySearchPicker } from "./EntitySearchPicker";
@@ -72,6 +72,17 @@ export function InitiativeTracker({
   const [attackRollResult, setAttackRollResult] = useState<{ rolls: number[]; total: number; hit: boolean | null } | null>(null);
   const [attackDamageResult, setAttackDamageResult] = useState<{ total: number } | null>(null);
   const [attackError, setAttackError] = useState<string | null>(null);
+  const [spells, setSpells] = useState<SpellDef[]>([]);
+  const [castOpenFor, setCastOpenFor] = useState<string | null>(null);
+  const [castSpellId, setCastSpellId] = useState("");
+  const [castTargetId, setCastTargetId] = useState("");
+  const [castSaveBonus, setCastSaveBonus] = useState("0");
+  const [castAdvMode, setCastAdvMode] = useState<"normal" | "adv" | "dis">("normal");
+  const [castAttackRollResult, setCastAttackRollResult] = useState<{ rolls: number[]; total: number; hit: boolean | null } | null>(null);
+  const [castSaveRollResult, setCastSaveRollResult] = useState<{ rolls: number[]; total: number; success: boolean } | null>(null);
+  const [castDamageRolled, setCastDamageRolled] = useState<{ total: number } | null>(null);
+  const [castResolved, setCastResolved] = useState(false);
+  const [castError, setCastError] = useState<string | null>(null);
   const [showZoneMap, setShowZoneMap] = useState(false);
   const [showGridMap, setShowGridMap] = useState(false);
   const [showTableView, setShowTableView] = useState(false);
@@ -95,6 +106,8 @@ export function InitiativeTracker({
   const [templateCondition, setTemplateCondition] = useState("");
 
   useEffect(() => { if (!showGridMap) setTemplateTargetIds([]); }, [showGridMap]);
+  useEffect(() => { api.getCompendium().then((c) => setSpells(c.data.spells)).catch(() => {}); }, []);
+  const spellsById = useMemo(() => new Map(spells.map((s) => [s.id, s])), [spells]);
 
   const [opportunityPrompt, setOpportunityPrompt] = useState<{ moverName: string; leftName: string } | null>(null);
 
@@ -361,10 +374,19 @@ export function InitiativeTracker({
     applyEncounterUpdate(() => BLANK_ENCOUNTER);
   }
 
+  // Full HP restore models a long rest — refilling spellSlots to max
+  // alongside it matches that same posture (this app doesn't distinguish
+  // short vs. long rest at the encounter level, so Rest is the one
+  // "everything's back" action, same simplification restCombatant/restAll
+  // already made for HP and conditions).
+  function refillSpellSlots(c: LiveCombatant): LiveCombatant {
+    return c.spellSlots ? { ...c, spellSlots: c.spellSlots.map((s) => ({ ...s, current: s.max })) } : c;
+  }
+
   function restCombatant(id: string) {
     applyEncounterUpdate((e) => ({
       ...e,
-      combatants: e.combatants.map((c) => (c.id === id ? { ...c, currentHp: c.maxHp ?? 0, conditions: [] } : c)),
+      combatants: e.combatants.map((c) => (c.id === id ? refillSpellSlots({ ...c, currentHp: c.maxHp ?? 0, conditions: [] }) : c)),
     }));
   }
 
@@ -372,7 +394,7 @@ export function InitiativeTracker({
     if (!confirm("Rest the whole party? Everyone's HP will be restored to max and all conditions cleared.")) return;
     applyEncounterUpdate((e) => ({
       ...e,
-      combatants: e.combatants.map((c) => ({ ...c, currentHp: c.maxHp ?? 0, conditions: [] })),
+      combatants: e.combatants.map((c) => refillSpellSlots({ ...c, currentHp: c.maxHp ?? 0, conditions: [] })),
     }));
   }
 
@@ -504,6 +526,185 @@ export function InitiativeTracker({
     announceAttackRoll(attacker, {
       notation: attackDamageDice, results, modifier: parsed.modifier, total,
     }, `${attackChoice || "Attack"} damage: ${attacker.name} vs ${target.name}`);
+  }
+
+  function openCastFor(c: LiveCombatant) {
+    setCastOpenFor(c.id);
+    const firstCastable = (c.preparedSpells ?? []).find((id) => SPELL_EFFECTS[id]);
+    setCastSpellId(firstCastable ?? "");
+    const firstTarget = sorted.find((t) => t.id !== c.id);
+    setCastTargetId(firstTarget?.id ?? "");
+    setCastSaveBonus("0");
+    setCastAdvMode("normal");
+    setCastAttackRollResult(null);
+    setCastSaveRollResult(null);
+    setCastDamageRolled(null);
+    setCastResolved(false);
+    setCastError(null);
+  }
+
+  function selectCastSpell(id: string) {
+    setCastSpellId(id);
+    setCastAttackRollResult(null);
+    setCastSaveRollResult(null);
+    setCastDamageRolled(null);
+    setCastResolved(false);
+    setCastError(null);
+  }
+
+  // The commitment point of a cast: consumes the caster's matching-level
+  // spell slot (cantrips are level 0 and consume nothing) and sets
+  // concentration, exactly once per Cast panel session (guarded by
+  // castResolved) regardless of which roll — attack, save, or damage —
+  // happens to fire first for this spell's effect shape.
+  function commitCast(caster: LiveCombatant, spellId: string) {
+    if (castResolved) return;
+    setCastResolved(true);
+    const spell = spellsById.get(spellId);
+    if (!spell) return;
+    if (spell.level > 0) {
+      applyEncounterUpdate((e) => ({
+        ...e,
+        combatants: e.combatants.map((c) => {
+          if (c.id !== caster.id || !c.spellSlots) return c;
+          let spent = false;
+          return {
+            ...c,
+            spellSlots: c.spellSlots.map((s) => {
+              if (!spent && s.level === spell.level && s.current > 0) { spent = true; return { ...s, current: s.current - 1 }; }
+              return s;
+            }),
+          };
+        }),
+      }));
+    }
+    if (spell.concentration) updateCombatant(caster.id, { concentratingOn: spell.name });
+  }
+
+  function rollCastAttack(caster: LiveCombatant) {
+    const spell = spellsById.get(castSpellId);
+    const effect = SPELL_EFFECTS[castSpellId];
+    const target = sorted.find((t) => t.id === castTargetId);
+    if (!spell || !effect || effect.resolve.kind !== "damage") return;
+    commitCast(caster, castSpellId);
+    const bonus = caster.spellAttackBonus ?? 0;
+    const rolls = castAdvMode === "normal" ? [rollD20()] : [rollD20(), rollD20()];
+    const kept = castAdvMode === "dis" ? Math.min(...rolls) : Math.max(...rolls);
+    const total = kept + bonus;
+    const hit = target?.armorClass !== undefined ? total >= target.armorClass : null;
+    setCastAttackRollResult({ rolls, total, hit });
+    setCastDamageRolled(null);
+    if (target) {
+      const acNote = target.armorClass !== undefined ? ` (AC ${target.armorClass})` : "";
+      const outcome = hit === null ? "" : hit ? ": HIT" : ": MISS";
+      announceAttackRoll(caster, {
+        notation: "1d20", results: rolls, modifier: bonus, total, mode: castAdvMode === "normal" ? undefined : castAdvMode,
+      }, `${spell.name}: ${caster.name} vs ${target.name}${acNote}${outcome}`);
+    }
+  }
+
+  function rollCastSave(caster: LiveCombatant) {
+    const spell = spellsById.get(castSpellId);
+    const effect = SPELL_EFFECTS[castSpellId];
+    const target = sorted.find((t) => t.id === castTargetId);
+    if (!spell || !effect || !target) return;
+    const resolve = effect.resolve;
+    const save = resolve.kind === "damage" ? resolve.save : resolve.kind === "condition" ? resolve.save : undefined;
+    if (!save) return;
+    commitCast(caster, castSpellId);
+    const bonus = Number(castSaveBonus) || 0;
+    const roll = rollD20();
+    const total = roll + bonus;
+    const success = caster.spellSaveDc !== undefined && total >= caster.spellSaveDc;
+    setCastSaveRollResult({ rolls: [roll], total, success });
+    setCastDamageRolled(null);
+    const dcNote = caster.spellSaveDc !== undefined ? ` (DC ${caster.spellSaveDc})` : "";
+    announceAttackRoll(target, {
+      notation: "1d20", results: [roll], modifier: bonus, total,
+    }, `${spell.name}${dcNote}: ${target.name}'s ${save.ability.toUpperCase()} save${success ? " — SUCCESS" : " — FAIL"}`);
+    if (resolve.kind === "condition" && !success) {
+      const conditionName = resolve.condition;
+      applyEncounterUpdate((e) => ({
+        ...e,
+        combatants: e.combatants.map((c) => {
+          if (c.id !== target.id || c.conditions.some((cond) => cond.name === conditionName)) return c;
+          return { ...c, conditions: [...c.conditions, { name: conditionName, expiresAtRound: null }] };
+        }),
+      }));
+    }
+  }
+
+  // Handles every damage-kind spell's payoff: a single-target auto-hit
+  // (no attack roll, no save — e.g. Magic Missile), the damage step after
+  // a successful/missed attack roll, the damage step after a resolved
+  // save (full on a fail, halved or zeroed on a success per the spell's
+  // halfOnSuccess flag), and an area spell — which rolls once and prefills
+  // the existing "In Template" damage input (Combat Depth Phase B) rather
+  // than applying anything itself, since that's already the batch-apply
+  // path for whoever the grid says is standing in the placed template.
+  function rollCastDamage(caster: LiveCombatant) {
+    const spell = spellsById.get(castSpellId);
+    const effect = SPELL_EFFECTS[castSpellId];
+    if (!spell || !effect || effect.resolve.kind !== "damage") return;
+    const resolve = effect.resolve;
+    const parsed = parseNotation(resolve.diceExpr);
+    if (!parsed) {
+      setCastError(`Can't parse "${resolve.diceExpr}".`);
+      return;
+    }
+    setCastError(null);
+    const results = rollDice(parsed.count, parsed.sides);
+    const rolledTotal = Math.max(0, results.reduce((sum, r) => sum + r, 0) + parsed.modifier);
+
+    if (effect.area) {
+      commitCast(caster, castSpellId);
+      setCastDamageRolled({ total: rolledTotal });
+      setTemplateDamage(String(rolledTotal));
+      announceAttackRoll(caster, {
+        notation: resolve.diceExpr, results, modifier: parsed.modifier, total: rolledTotal,
+      }, `${spell.name} damage (${caster.name}) — apply to everyone in the template below`);
+      return;
+    }
+
+    const target = sorted.find((t) => t.id === castTargetId);
+    if (!target) return;
+
+    let appliedTotal = rolledTotal;
+    if (resolve.attackRoll) {
+      if (castAttackRollResult?.hit === false) return; // missed — nothing to apply
+    } else if (resolve.save) {
+      if (!castSaveRollResult) return; // roll the save first
+      if (castSaveRollResult.success) appliedTotal = resolve.save.halfOnSuccess ? Math.floor(rolledTotal / 2) : 0;
+    } else {
+      commitCast(caster, castSpellId); // auto-hit, no prior roll step
+    }
+
+    setCastDamageRolled({ total: appliedTotal });
+    adjustHp(target.id, -appliedTotal);
+    announceAttackRoll(caster, {
+      notation: resolve.diceExpr, results, modifier: parsed.modifier, total: rolledTotal,
+    }, `${spell.name} damage: ${caster.name} vs ${target.name} — applied ${appliedTotal}`);
+  }
+
+  function rollCastHeal(caster: LiveCombatant) {
+    const spell = spellsById.get(castSpellId);
+    const effect = SPELL_EFFECTS[castSpellId];
+    const target = sorted.find((t) => t.id === castTargetId);
+    if (!spell || !effect || effect.resolve.kind !== "heal" || !target) return;
+    const parsed = parseNotation(effect.resolve.diceExpr);
+    if (!parsed) {
+      setCastError(`Can't parse "${effect.resolve.diceExpr}".`);
+      return;
+    }
+    setCastError(null);
+    commitCast(caster, castSpellId);
+    const results = rollDice(parsed.count, parsed.sides);
+    const total = Math.max(0, results.reduce((sum, r) => sum + r, 0) + parsed.modifier);
+    setCastDamageRolled({ total });
+    adjustHp(target.id, total);
+    announceAttackRoll(caster, {
+      notation: effect.resolve.diceExpr, results, modifier: parsed.modifier, total,
+    }, `${spell.name}: ${caster.name} heals ${target.name} for ${total}`);
   }
 
   function openLootFor(c: LiveCombatant) {
@@ -932,6 +1133,15 @@ export function InitiativeTracker({
                   ⚔ Attack
                 </button>
               )}
+              {c.preparedSpells?.some((id) => SPELL_EFFECTS[id]) && (
+                <button
+                  className="btn-secondary"
+                  aria-expanded={castOpenFor === c.id}
+                  onClick={() => (castOpenFor === c.id ? setCastOpenFor(null) : openCastFor(c))}
+                >
+                  ✨ Cast
+                </button>
+              )}
               {c.kind === "monster" && activeEncounter.activeDungeonId && activeEncounter.activeDungeonRoomId && (
                 <button className="btn-secondary" onClick={() => fleeCombatant(c.id)} aria-label={`${c.name} flees`}>Flee</button>
               )}
@@ -995,6 +1205,116 @@ export function InitiativeTracker({
                     )}
                   </>
                 )}
+              </div>
+            )}
+
+            {castOpenFor === c.id && (
+              <div className="save-panel cast-panel">
+                <label className="field">
+                  <span>Spell</span>
+                  <select value={castSpellId} onChange={(e) => selectCastSpell(e.target.value)}>
+                    {(c.preparedSpells ?? []).filter((id) => SPELL_EFFECTS[id]).map((id) => {
+                      const spell = spellsById.get(id);
+                      return <option key={id} value={id}>{spell?.name ?? id}{spell ? ` (${spell.level === 0 ? "Cantrip" : `Lvl ${spell.level}`})` : ""}</option>;
+                    })}
+                  </select>
+                </label>
+                {(() => {
+                  const spell = spellsById.get(castSpellId);
+                  const effect = SPELL_EFFECTS[castSpellId];
+                  if (!spell || !effect) return null;
+                  const resolve = effect.resolve;
+                  const slotsAtLevel = spell.level > 0 ? c.spellSlots?.find((s) => s.level === spell.level) : undefined;
+                  const atkBonus = c.spellAttackBonus ?? 0;
+                  const save = resolve.kind === "damage" ? resolve.save : resolve.kind === "condition" ? resolve.save : undefined;
+
+                  return (
+                    <>
+                      {spell.level > 0 && (
+                        <p className="hint">Slots: {slotsAtLevel ? `${slotsAtLevel.current}/${slotsAtLevel.max}` : "none"} at level {spell.level}</p>
+                      )}
+
+                      {effect.area ? (
+                        <>
+                          <p className="hint">
+                            Area ({effect.area}) — place a matching template on the grid map below, then roll damage here to fill in the amount to apply to everyone caught in it.
+                            {resolve.kind === "damage" && resolve.save?.halfOnSuccess && " Half that for anyone who made their save."}
+                          </p>
+                          <button className="btn-primary" onClick={() => rollCastDamage(c)}>Roll Damage</button>
+                        </>
+                      ) : (
+                        <>
+                          <label className="field">
+                            <span>Target</span>
+                            <select value={castTargetId} onChange={(e) => setCastTargetId(e.target.value)}>
+                              {sorted.filter((t) => t.id !== c.id).map((t) => (
+                                <option key={t.id} value={t.id}>{t.name}{t.armorClass !== undefined ? ` (AC ${t.armorClass})` : ""}</option>
+                              ))}
+                            </select>
+                          </label>
+
+                          {resolve.kind === "damage" && resolve.attackRoll && (
+                            <>
+                              <p className="hint">Spell attack bonus: {atkBonus >= 0 ? `+${atkBonus}` : atkBonus}</p>
+                              <div className="tabs apply-mode-toggle" role="tablist">
+                                <button role="tab" className={castAdvMode === "normal" ? "active" : ""} aria-selected={castAdvMode === "normal"} onClick={() => setCastAdvMode("normal")}>Normal</button>
+                                <button role="tab" className={castAdvMode === "adv" ? "active" : ""} aria-selected={castAdvMode === "adv"} onClick={() => setCastAdvMode("adv")}>Advantage</button>
+                                <button role="tab" className={castAdvMode === "dis" ? "active" : ""} aria-selected={castAdvMode === "dis"} onClick={() => setCastAdvMode("dis")}>Disadvantage</button>
+                              </div>
+                              <button className="btn-primary" onClick={() => rollCastAttack(c)}>Roll to Hit</button>
+                              {castAttackRollResult && (
+                                <p className="encounter-roll-result" role="status">
+                                  Rolled [{castAttackRollResult.rolls.join(", ")}] + {atkBonus} = <strong className="mono">{castAttackRollResult.total}</strong>
+                                  {": "}
+                                  {castAttackRollResult.hit === null ? "target has no AC set" : castAttackRollResult.hit ? <strong>HIT</strong> : <strong>MISS</strong>}
+                                </p>
+                              )}
+                              {castAttackRollResult?.hit !== false && (
+                                <button className="btn-primary" onClick={() => rollCastDamage(c)}>Roll Damage &amp; Apply</button>
+                              )}
+                            </>
+                          )}
+
+                          {save && !(resolve.kind === "damage" && resolve.attackRoll) && (
+                            <>
+                              <p className="hint">Spell save DC {c.spellSaveDc ?? "—"} ({save.ability.toUpperCase()})</p>
+                              <label className="field">
+                                <span>Target's save bonus</span>
+                                <input type="number" value={castSaveBonus} onChange={(e) => setCastSaveBonus(e.target.value)} />
+                              </label>
+                              <button className="btn-primary" onClick={() => rollCastSave(c)}>Roll Save</button>
+                              {castSaveRollResult && (
+                                <p className="encounter-roll-result" role="status">
+                                  Rolled [{castSaveRollResult.rolls[0]}] + {Number(castSaveBonus) || 0} = <strong className="mono">{castSaveRollResult.total}</strong>
+                                  {": "}
+                                  {castSaveRollResult.success ? <strong>SUCCESS</strong> : <strong>FAIL</strong>}
+                                </p>
+                              )}
+                              {resolve.kind === "damage" && castSaveRollResult && (
+                                <button className="btn-primary" onClick={() => rollCastDamage(c)}>Roll Damage &amp; Apply</button>
+                              )}
+                            </>
+                          )}
+
+                          {resolve.kind === "damage" && !resolve.attackRoll && !resolve.save && (
+                            <button className="btn-primary" onClick={() => rollCastDamage(c)}>Roll Damage &amp; Apply</button>
+                          )}
+
+                          {resolve.kind === "heal" && (
+                            <button className="btn-primary" onClick={() => rollCastHeal(c)}>Roll Healing &amp; Apply</button>
+                          )}
+
+                          {castError && <p className="error">{castError}</p>}
+                          {castDamageRolled && (
+                            <p className="encounter-roll-result" role="status">
+                              {resolve.kind === "heal" ? `Healed ${castDamageRolled.total}.` : `Applied ${castDamageRolled.total} damage.`}
+                            </p>
+                          )}
+                        </>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             )}
 

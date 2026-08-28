@@ -6,7 +6,7 @@ import { findAccessibleWorld, canWriteWorld } from "../worldAccess.js";
 import { publishWorldChange, publishTokenMoved } from "../worldEvents.js";
 import { computeCurrentVisibility } from "../gridVisibility.js";
 import { parseArray, parseOptional } from "../validation.js";
-import type { LiveCombatant, EncounterZone, EncounterZoneEffect, ZoneHazard, ParsedAttack, PlacedTile, LegendaryAction, StatBlockAction } from "@spark/shared";
+import type { LiveCombatant, EncounterZone, EncounterZoneEffect, ZoneHazard, ParsedAttack, PlacedTile, LegendaryAction, StatBlockAction, SpellSlotLevel } from "@spark/shared";
 import { SIZE_FOOTPRINT, computeReachableCells, computeVisionForTokens, extendWithLightSources, isDoorTileAt } from "@spark/shared";
 
 export const encountersRouter = Router();
@@ -87,6 +87,12 @@ const statBlockActionSchema = z.object({
 
 const sizeCategorySchema = z.enum(["tiny", "small", "medium", "large", "huge", "gargantuan"]);
 
+const spellSlotLevelSchema = z.object({
+  level: z.number().catch(0),
+  max: z.number().catch(0),
+  current: z.number().catch(0),
+}) satisfies z.ZodType<SpellSlotLevel>;
+
 const optionalNumberSchema = z.number().optional().catch(undefined);
 const optionalStringSchema = z.string().optional().catch(undefined);
 
@@ -131,6 +137,16 @@ const liveCombatantSchema = z.object({
     return list.length > 0 ? list : undefined;
   }),
   lairActionUsedRound: optionalNumberSchema,
+  preparedSpells: z.any().optional().transform((val) => {
+    const ids = parseArray(z.string(), val);
+    return ids.length > 0 ? ids : undefined;
+  }),
+  spellSlots: z.any().optional().transform((val) => {
+    const slots = parseArray(spellSlotLevelSchema, val);
+    return slots.length > 0 ? slots : undefined;
+  }),
+  spellSaveDc: optionalNumberSchema,
+  spellAttackBonus: optionalNumberSchema,
 }) satisfies z.ZodType<LiveCombatant>;
 
 const zoneHazardSchema = z.object({

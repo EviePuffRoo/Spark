@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { SearchResult, LiveCombatant, LiveCombatantCondition, EncounterStateInput, EncounterZone, Dungeon, DungeonRoomState, DifficultyRating, SpellDef, TriggerRule, TriggerMatch } from "@spark/shared";
-import { computeConcentrationDc, isHostilePair, leftReach, CONDITIONS_COMPENDIUM, getRuleset, applyHouseRules, SPELL_EFFECTS, evaluateTriggers } from "@spark/shared";
+import { computeConcentrationDc, isHostilePair, leftReach, CONDITIONS_COMPENDIUM, getRuleset, applyHouseRules, SPELL_EFFECTS, evaluateTriggers, analyzeEncounterBalance } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { useAuth } from "../AuthContext";
 import { EntitySearchPicker } from "./EntitySearchPicker";
@@ -167,6 +167,7 @@ export function InitiativeTracker({
     .sort((a, b) => b.initiative - a.initiative);
   const activeId = sorted.length > 0 ? sorted[activeEncounter.turnIndex % sorted.length]?.id : null;
   const difficulty = applyHouseRules(getRuleset(), selectedWorld?.houseRules ?? {}).computeEncounterDifficulty(sorted);
+  const balance = analyzeEncounterBalance(sorted);
   const mapActive = showZoneMap || showGridMap;
 
   // Refetched whenever the selected world changes — trigger rules are
@@ -975,6 +976,19 @@ export function InitiativeTracker({
       {canEdit && difficulty && (
         <p className={`difficulty-readout difficulty-${difficulty.rating}`}>
           {DIFFICULTY_LABELS[difficulty.rating]} encounter: {difficulty.adjustedXp} XP (adjusted) vs. {difficulty.thresholds.easy}/{difficulty.thresholds.medium}/{difficulty.thresholds.hard}/{difficulty.thresholds.deadly} easy/medium/hard/deadly thresholds
+        </p>
+      )}
+
+      {canEdit && balance.partyCount > 0 && balance.monsterCount > 0 && (
+        <p className={`balance-readout${balance.partyOutnumbered ? " balance-outnumbered" : ""}`}>
+          {balance.monsterCount} monster{balance.monsterCount === 1 ? "" : "s"} vs. {balance.partyCount} PC{balance.partyCount === 1 ? "" : "s"}
+          {balance.partyOutnumbered && " (party is outnumbered)"}
+          {" · "}
+          {balance.expectedDamagePerRound > 0
+            ? `~${balance.expectedDamagePerRound} expected dmg/round to the party (${balance.roundsUntilPartyDowned} round${balance.roundsUntilPartyDowned === 1 ? "" : "s"} to down the party at that rate)`
+            : "no parsed monster attacks to estimate incoming damage"}
+          {" · "}
+          {balance.monsterTotalHp} total monster HP
         </p>
       )}
 

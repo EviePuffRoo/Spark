@@ -97,6 +97,7 @@ export function MyCharacterPage({ onViewRoster }: { onViewRoster: (worldId: stri
                   spellSlots={pc.spellSlots}
                   preparedSpells={pc.preparedSpells}
                   classResources={pc.classResources}
+                  houseRules={world?.houseRules}
                   onSave={(patch) => handleSave(pc.id, patch)}
                   onCancel={() => setEditingId(null)}
                 />
@@ -104,7 +105,7 @@ export function MyCharacterPage({ onViewRoster }: { onViewRoster: (worldId: stri
                 <>
                   <PlayerCharacterCardView pc={pc} />
                   <LevelUpPanel pc={pc} onUpdated={refresh} />
-                  <EquipmentPanel equippedItems={pc.equippedItems} attunedItems={pc.attunedItems} baseArmorClass={pc.armorClass} strengthScore={pc.abilityScores.str} />
+                  <EquipmentPanel equippedItems={pc.equippedItems} attunedItems={pc.attunedItems} baseArmorClass={pc.armorClass} strengthScore={pc.abilityScores.str} houseRules={world?.houseRules} />
                   <div className="button-row">
                     <button className="btn-secondary" onClick={() => setEditingId(pc.id)} disabled={status === "saving"}>Edit</button>
                     <button className="btn-secondary" onClick={() => handleRest(pc.id, "short")} disabled={status === "saving"}>Short Rest</button>

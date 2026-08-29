@@ -10,6 +10,7 @@ import { AchievementsPanel } from "../components/AchievementsPanel";
 import { NextSessionPanel } from "../components/NextSessionPanel";
 import { CalendarPanel } from "../components/CalendarPanel";
 import { WorldTickPanel } from "../components/WorldTickPanel";
+import { HouseRulesPanel } from "../components/HouseRulesPanel";
 import { DoomClockPanel } from "../components/DoomClockPanel";
 import { GettingStartedPanel } from "../components/GettingStartedPanel";
 
@@ -119,6 +120,7 @@ export function WorldOverviewPage({ onNavigate }: { onNavigate: (subTab: Overvie
         <NextSessionPanel world={world} onUpdated={refreshWorlds} />
         <CalendarPanel world={world} onUpdated={refreshWorlds} />
         <WorldTickPanel world={world} onUpdated={refreshWorlds} />
+        <HouseRulesPanel world={world} onUpdated={refreshWorlds} />
         <p className="entity-meta">
           {nonEmptyCounts.length === 0
             ? "Empty so far"

@@ -1,5 +1,6 @@
 import type { ParsedAttack } from "./statBlockAttacks.js";
 import type { SizeCategory } from "./creatureStats.js";
+import type { HouseRules } from "./rulesets/houseRules.js";
 
 export type AbilityKey = "str" | "dex" | "con" | "int" | "wis" | "cha";
 
@@ -149,6 +150,11 @@ export interface World {
   // auto-advancing on every logged activity would double-count when
   // multiple PCs act in parallel.
   currentDay: number;
+  // Per-world overrides tuning the active ruleset's math (see
+  // rulesets/houseRules.ts's applyHouseRules) — e.g. a different
+  // point-buy budget or carry-capacity multiplier. Absent/empty means
+  // "play the ruleset as written."
+  houseRules?: HouseRules;
   createdAt: string;
   updatedAt: string;
 }
@@ -1420,6 +1426,13 @@ export interface BaseState {
 
 export type TileCategory = "terrain" | "structure" | "nature" | "hazard" | "decor" | "gmOnly";
 
+// Which curated set a tile belongs to — lets Map Builder's palette filter
+// down to the tiles that fit a given map instead of one undifferentiated
+// list. "dungeon" is the original indoor/underground set; "wilderness"
+// covers open-air outdoor terrain. Purely a client-side filtering aid —
+// a placed tile's mechanics never depend on its pack.
+export type TilePack = "dungeon" | "wilderness";
+
 // A curated, first-party tile a DM paints onto a BattleMap grid — never an
 // uploaded image. Every mechanical property a tile carries (does it block
 // movement or sight, is it difficult terrain, does it hurt to stand on) is
@@ -1430,6 +1443,7 @@ export interface TileDef {
   id: string;
   name: string;
   category: TileCategory;
+  pack: TilePack;
   blocksMovement: boolean;
   blocksVision: boolean;
   difficultTerrain: boolean;

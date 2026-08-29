@@ -348,6 +348,92 @@ const TILE_SHAPES: Record<string, ReactNode> = {
       <circle cx="5" cy="5.4" r="0.55" fill="#8a4fd6" />
     </>
   ),
+
+  // Wilderness pack
+  "tall-grass": (
+    <>
+      <rect width="10" height="10" fill="#6b9c4a" />
+      <path d="M1.5 8.5l0-5M3 8.8l0-6M4.5 8.5l0-5.2M6 8.8l0-6M7.5 8.5l0-5M9 8.8l0-6" stroke="#3d6b2f" strokeWidth="0.5" strokeLinecap="round" />
+    </>
+  ),
+  thicket: (
+    <>
+      <rect width="10" height="10" fill="#2f4a24" />
+      <circle cx="2.8" cy="4" r="2" fill="#41623a" />
+      <circle cx="6.5" cy="3.2" r="1.9" fill="#41623a" />
+      <circle cx="5" cy="6.5" r="2.3" fill="#4a7038" />
+      <path d="M3 8.5l0-1.5M6.5 8.5l0-1.8" stroke="#2a3a1c" strokeWidth="0.4" />
+    </>
+  ),
+  "fallen-branches": (
+    <>
+      <rect width="10" height="10" fill="#3d5c30" />
+      <path d="M0.5 2.5l6 5M1 6.5l5-4.5M4 1l3 7.5" stroke="#6b4a2c" strokeWidth="0.7" strokeLinecap="round" />
+    </>
+  ),
+  "boulder-field": (
+    <>
+      <rect width="10" height="10" fill="#7a8a68" />
+      <path d="M1.5 6.5c-.5-1.3-.2-2.5.8-3.2.9-.6 2.1-.5 2.8.3.7.8.6 2-.2 2.9-.8.9-2.7.9-3.4 0z" fill="#94a382" stroke="#5c6b4f" strokeWidth="0.3" />
+      <path d="M6 8c-.4-1 0-1.9.9-2.3.9-.4 1.9 0 2.2.9.3.9-.2 1.8-1.1 2.1-.7.2-1.7-.1-2-.7z" fill="#8a9979" stroke="#5c6b4f" strokeWidth="0.3" />
+    </>
+  ),
+  ravine: (
+    <>
+      <rect width="10" height="10" fill="#3a2f22" />
+      <path d="M0 3.5q2.5 1.5 3.5 0t3 0.5 3.5-.5" stroke="#1c160f" strokeWidth="1.4" fill="none" />
+      <path d="M0 6.5q2.5 1.2 3.5 0t3 0.3 3.5-.3" stroke="#151009" strokeWidth="1.1" fill="none" />
+    </>
+  ),
+  "rope-bridge": (
+    <>
+      <rect width="10" height="10" fill="#6b8a4a" />
+      <path d="M0 4h10M0 6h10" stroke="#7a5a30" strokeWidth="0.6" />
+      <path d="M0.5 2.5q1 1 0 2M2.5 2.3q1 1 0 2M4.5 2.3q1 1 0 2M6.5 2.3q1 1 0 2M8.5 2.5q1 1 0 2" stroke="#c9a860" strokeWidth="0.4" fill="none" />
+    </>
+  ),
+  "cave-mouth": (
+    <>
+      <rect width="10" height="10" fill="#6a6a5f" />
+      <path d="M1 9V5.5a4 4 0 018 0V9z" fill="#100d0a" />
+      <path d="M1 9V5.5a4 4 0 018 0V9" fill="none" stroke="#4a4a40" strokeWidth="0.5" />
+    </>
+  ),
+  campfire: (
+    <>
+      <rect width="10" height="10" fill="#2f2a22" />
+      <path d="M2.5 7.5l5-2M2.5 5.5l5 2" stroke="#6b4a2c" strokeWidth="0.7" strokeLinecap="round" />
+      <path d="M5 2c-1.2 1.4-1.7 2.5-1.7 3.4a1.7 1.7 0 003.4 0c0-.9-.5-2-1.7-3.4z" fill="#e8631c" />
+      <path d="M5 3.8c-.7.9-1 1.5-1 2a1 1 0 002 0c0-.5-.3-1.1-1-2z" fill="#f5d76e" />
+    </>
+  ),
+  "hunting-trap": (
+    <>
+      <rect width="10" height="10" fill="#5c6b3f" />
+      <circle cx="5" cy="5" r="3.2" fill="none" stroke="#4a4a44" strokeWidth="0.5" />
+      <path d="M2.3 3.3l1.3 1.3M7.7 3.3L6.4 4.6M2.3 6.7l1.3-1.3M7.7 6.7L6.4 5.4" stroke="#c9c2b4" strokeWidth="0.7" strokeLinecap="round" />
+    </>
+  ),
+  wildflowers: (
+    <>
+      <circle cx="3" cy="4" r="0.7" fill="#e07ac9" />
+      <circle cx="6.5" cy="3.2" r="0.6" fill="#f5d76e" />
+      <circle cx="5" cy="6.5" r="0.7" fill="#7fa8e8" />
+      <circle cx="7.5" cy="7" r="0.55" fill="#e8631c" />
+      <path d="M3 4.7v2M6.5 3.8v2.5M5 7.2v1.3M7.5 7.5v1" stroke="#3d6b2f" strokeWidth="0.35" />
+    </>
+  ),
+  "game-trail": (
+    <>
+      <path d="M1 8.5q2-4 3.5-4.5t4.5-3" stroke="#8a6a40" strokeWidth="1.4" fill="none" opacity="0.6" />
+    </>
+  ),
+  "animal-den": (
+    <>
+      <ellipse cx="5" cy="6" rx="2.6" ry="1.8" fill="none" stroke="#8a4fd6" strokeWidth="0.6" strokeDasharray="1 0.8" />
+      <circle cx="5" cy="5.8" r="0.9" fill="#8a4fd6" />
+    </>
+  ),
 };
 
 export function BattleTileDefs() {

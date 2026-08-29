@@ -3,6 +3,7 @@ import type { RulesetDefinition } from "./types.js";
 
 export * from "./types.js";
 export * from "./dnd5e/index.js";
+export * from "./houseRules.js";
 
 const RULESETS: Record<string, RulesetDefinition> = {
   dnd5e: dnd5eRuleset,

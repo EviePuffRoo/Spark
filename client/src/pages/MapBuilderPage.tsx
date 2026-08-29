@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { BattleMap, PlacedTile, TileCategory } from "@spark/shared";
+import type { BattleMap, PlacedTile, TileCategory, TilePack } from "@spark/shared";
 import { BATTLE_TILES, BATTLE_TILE_BY_ID, BATTLE_MAP_MAX_WIDTH, BATTLE_MAP_MAX_HEIGHT, battleMapToUvtt, uvttToBattleMapInput } from "@spark/shared";
 import { api } from "../api";
 import { useActiveWorld } from "../ActiveWorldContext";
@@ -66,6 +66,12 @@ const CATEGORY_LABELS: Record<TileCategory, string> = {
   gmOnly: "GM Only",
 };
 const CATEGORIES = Object.keys(CATEGORY_LABELS) as TileCategory[];
+
+const PACK_LABELS: Record<TilePack, string> = {
+  dungeon: "Dungeon",
+  wilderness: "Wilderness",
+};
+const PACKS = Object.keys(PACK_LABELS) as TilePack[];
 
 function tileKey(x: number, y: number) {
   return `${x},${y}`;
@@ -154,6 +160,7 @@ export function MapBuilderPage() {
   const [brushElevation, setBrushElevation] = useState(0);
   const [dirty, setDirty] = useState(false);
   const [selectedTileId, setSelectedTileId] = useState(BATTLE_TILES[0].id);
+  const [activePack, setActivePack] = useState<TilePack>("dungeon");
   const [eraser, setEraser] = useState(false);
   const [name, setName] = useState("");
   const [saveWorldId, setSaveWorldId] = useState("");
@@ -444,11 +451,22 @@ export function MapBuilderPage() {
               Stamped onto floor tiles as you paint. Leave at 0 for ground level. A negative elevation on an
               otherwise-solid tile (like Chasm) also lets a flying combatant cross it during combat.
             </p>
+            <div className="tile-pack-selector">
+              {PACKS.map((pack) => (
+                <button
+                  key={pack}
+                  className={`tile-pack-button ${activePack === pack ? "active" : ""}`}
+                  onClick={() => setActivePack(pack)}
+                >
+                  {PACK_LABELS[pack]}
+                </button>
+              ))}
+            </div>
             {CATEGORIES.map((category) => (
               <div key={category} className="tile-category">
                 <h4 className="tile-category-heading">{CATEGORY_LABELS[category]}</h4>
                 <div className="tile-swatch-grid">
-                  {BATTLE_TILES.filter((t) => t.category === category).map((tile) => (
+                  {BATTLE_TILES.filter((t) => t.category === category && t.pack === activePack).map((tile) => (
                     <button
                       key={tile.id}
                       className={`tile-swatch-button ${!eraser && selectedTileId === tile.id ? "active" : ""}`}

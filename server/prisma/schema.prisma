@@ -63,6 +63,7 @@ model World {
   joinCodeRole String      @default("player")
   nextSessionAt DateTime?
   currentDay  Int         @default(1)
+  houseRules  String      @default("{}")
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   userId      String

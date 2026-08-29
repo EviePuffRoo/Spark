@@ -732,6 +732,7 @@ export function RosterPage({
           selectedNote={selectedNote}
           selectedAdventure={selectedAdventure}
           selectedPlayerCharacter={selectedPlayerCharacter}
+          selectedPlayerCharacterHouseRules={selectedPlayerCharacterWorld?.houseRules}
           selectedZoneMapTemplate={selectedZoneMapTemplate}
           selectedDungeon={selectedDungeon}
           selectedShop={selectedShop}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { PlayerCharacterInput, GeneratePlayerCharacterRequest, GeneratedPlayerCharacter } from "@spark/shared";
-import { parseCharacterText } from "@spark/shared";
+import { parseCharacterText, getRuleset, applyHouseRules } from "@spark/shared";
 import { api, type ReferenceData } from "../api";
 import { useActiveWorld } from "../ActiveWorldContext";
 import { PlayerCharacterCardView } from "../components/PlayerCharacterCardView";
@@ -16,6 +16,8 @@ const IMPORT_FIELD_LABELS: Record<string, string> = {
 export function PlayerCharacterCreatePage() {
   const [reference, setReference] = useState<ReferenceData | null>(null);
   const { worlds, worldId } = useActiveWorld();
+  const activeWorld = worlds.find((w) => w.id === worldId);
+  const ruleset = applyHouseRules(getRuleset(), activeWorld?.houseRules ?? {});
   const [creationMode, setCreationMode] = useState<"generate" | "manual" | "import">("generate");
   const [form, setForm] = useState<GeneratePlayerCharacterRequest>({});
   const [generated, setGenerated] = useState<GeneratedPlayerCharacter | null>(null);
@@ -207,6 +209,7 @@ export function PlayerCharacterCreatePage() {
           <PlayerCharacterWizard
             key={resetKey}
             reference={reference}
+            pointBuyBudget={ruleset.pointBuyBudget}
             onSave={async (draft) => setManualResult(draft)}
             onCancel={() => setResetKey((k) => k + 1)}
           />

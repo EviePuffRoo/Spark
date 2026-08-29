@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { SearchResult, LiveCombatant, LiveCombatantCondition, EncounterStateInput, EncounterZone, Dungeon, DungeonRoomState, DifficultyRating, SpellDef } from "@spark/shared";
-import { computeConcentrationDc, isHostilePair, leftReach, CONDITIONS_COMPENDIUM, getRuleset, applyHouseRules, SPELL_EFFECTS } from "@spark/shared";
+import type { SearchResult, LiveCombatant, LiveCombatantCondition, EncounterStateInput, EncounterZone, Dungeon, DungeonRoomState, DifficultyRating, SpellDef, TriggerRule, TriggerMatch } from "@spark/shared";
+import { computeConcentrationDc, isHostilePair, leftReach, CONDITIONS_COMPENDIUM, getRuleset, applyHouseRules, SPELL_EFFECTS, evaluateTriggers } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { useAuth } from "../AuthContext";
 import { EntitySearchPicker } from "./EntitySearchPicker";
@@ -168,6 +168,51 @@ export function InitiativeTracker({
   const activeId = sorted.length > 0 ? sorted[activeEncounter.turnIndex % sorted.length]?.id : null;
   const difficulty = applyHouseRules(getRuleset(), selectedWorld?.houseRules ?? {}).computeEncounterDifficulty(sorted);
   const mapActive = showZoneMap || showGridMap;
+
+  // Refetched whenever the selected world changes — trigger rules are
+  // authored ahead of time on World Overview (TriggerRulesPanel), not
+  // edited mid-combat, so a one-shot fetch here (same as the compendium
+  // spells fetch above) is enough; no live-channel wiring needed.
+  const [triggerRules, setTriggerRules] = useState<TriggerRule[]>([]);
+  useEffect(() => {
+    if (!partyWorldId) { setTriggerRules([]); return; }
+    api.listTriggerRules(partyWorldId).then(setTriggerRules).catch(() => {});
+  }, [partyWorldId]);
+
+  function triggerMatchKey(m: TriggerMatch): string {
+    return `${m.rule.id}:${m.combatantId ?? "encounter"}`;
+  }
+  const triggerMatches = useMemo(
+    () => evaluateTriggers(triggerRules, sorted, activeEncounter.round),
+    [triggerRules, sorted, activeEncounter.round]
+  );
+  // A match a DM dismissed stays hidden only while it keeps matching —
+  // once the underlying condition stops being true (HP recovers, the
+  // condition is cleared) and later becomes true again, it's a fresh
+  // match and reminds again, same as every other reminder banner here
+  // never needing a persisted "seen" flag.
+  const [dismissedTriggerKeys, setDismissedTriggerKeys] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    const currentKeys = new Set(triggerMatches.map(triggerMatchKey));
+    setDismissedTriggerKeys((prev) => {
+      const next = new Set([...prev].filter((k) => currentKeys.has(k)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [triggerMatches]);
+  const visibleTriggerMatches = triggerMatches.filter((m) => !dismissedTriggerKeys.has(triggerMatchKey(m)));
+  const [triggerChatStatus, setTriggerChatStatus] = useState<Record<string, "sending" | "sent">>({});
+
+  async function postTriggerToChat(m: TriggerMatch) {
+    if (!partyWorldId) return;
+    const key = triggerMatchKey(m);
+    setTriggerChatStatus((prev) => ({ ...prev, [key]: "sending" }));
+    try {
+      await api.postChatMessage({ worldId: partyWorldId, text: m.rule.message });
+      setTriggerChatStatus((prev) => ({ ...prev, [key]: "sent" }));
+    } catch {
+      setTriggerChatStatus((prev) => { const next = { ...prev }; delete next[key]; return next; });
+    }
+  }
 
   useEffect(() => {
     onMapActiveChange?.(mapActive);
@@ -1009,6 +1054,24 @@ export function InitiativeTracker({
           <button className="btn-secondary" onClick={() => setOpportunityPrompt(null)}>Dismiss</button>
         </div>
       )}
+
+      {canEdit && visibleTriggerMatches.map((m) => {
+        const key = triggerMatchKey(m);
+        const chatStatus = triggerChatStatus[key];
+        return (
+          <div key={key} className="button-row trigger-prompt">
+            <span>
+              🔔 {m.rule.name}{m.combatantName ? ` (${m.combatantName})` : ""}: {m.rule.message}
+            </span>
+            {m.rule.announceInChat && (
+              <button className="btn-secondary" onClick={() => postTriggerToChat(m)} disabled={chatStatus === "sending" || chatStatus === "sent"}>
+                {chatStatus === "sent" ? "Posted" : chatStatus === "sending" ? "Posting…" : "Post to Chat"}
+              </button>
+            )}
+            <button className="btn-secondary" onClick={() => setDismissedTriggerKeys((prev) => new Set(prev).add(key))}>Dismiss</button>
+          </div>
+        );
+      })}
 
       {showConditionRules && (
         <div className="save-panel condition-rules-panel">

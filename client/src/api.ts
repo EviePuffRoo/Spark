@@ -26,6 +26,7 @@ import type {
   WorldTickProposal, WorldTickApplyRequest, WorldTickLog,
   FactionBattleProposal,
   DoomClock, DoomClockInput,
+  TriggerRule, TriggerRuleInput,
   Region, GenerateRegionRequest, GeneratedRegion,
   Settlement, GenerateSettlementRequest, GeneratedSettlement,
   ActivitySummary,
@@ -227,6 +228,12 @@ export const api = {
   advanceDoomClock: (id: string, amount = 1) =>
     request<DoomClock>(`/doom-clocks/${id}/advance`, { method: "POST", body: JSON.stringify({ amount }) }),
   resetDoomClock: (id: string) => request<DoomClock>(`/doom-clocks/${id}/reset`, { method: "POST" }),
+
+  listTriggerRules: (worldId: string) => request<TriggerRule[]>(`/trigger-rules?worldId=${worldId}`),
+  createTriggerRule: (rule: TriggerRuleInput) => request<TriggerRule>("/trigger-rules", { method: "POST", body: JSON.stringify(rule) }),
+  updateTriggerRule: (id: string, patch: Partial<TriggerRuleInput>) =>
+    request<TriggerRule>(`/trigger-rules/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+  deleteTriggerRule: (id: string) => request<void>(`/trigger-rules/${id}`, { method: "DELETE" }),
 
   listEncounterTables: (worldId?: string) =>
     request<EncounterTable[]>(`/encounter-tables${worldId ? `?worldId=${worldId}` : ""}`),

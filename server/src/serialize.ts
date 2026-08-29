@@ -8,14 +8,14 @@ import type {
   DispositionLogEntry as DispositionLogEntryRow, ShopCommission as ShopCommissionRow,
   FactionLogEntry as FactionLogEntryRow, FactionRelationship as FactionRelationshipRow,
   CampaignEvent as CampaignEventRow, WorldTickLog as WorldTickLogRow, DoomClock as DoomClockRow,
-  CampaignEventLog as CampaignEventLogRow,
+  CampaignEventLog as CampaignEventLogRow, TriggerRule as TriggerRuleRow,
 } from "@prisma/client";
 import type {
   Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, PlayerCharacter, RollLogEntry,
   Encounter, LiveCombatant, HpStatus, CodexNote, EntityType, LedgerEntry, LedgerEntryKind, EncounterZone, EncounterZoneEffect,
   ZoneMapTemplate, Dungeon, DowntimeActivity, DowntimeActivityType, Shop, ShopStockEntry, Region, Settlement, ChatMessage, BattleMap,
   DispositionLogEntry, ShopCommission, FactionLogEntry, FactionRelationship, FactionRelationshipStance, CampaignEvent,
-  PlacedTile, WorldTickLog, DoomClock, CampaignEventLogEntry,
+  PlacedTile, WorldTickLog, DoomClock, CampaignEventLogEntry, TriggerRule, TriggerCondition,
 } from "@spark/shared";
 
 export function toCharacterDTO(row: CharacterRow): Character {
@@ -380,6 +380,21 @@ export function toDoomClockDTO(row: DoomClockRow): DoomClock {
     segments: row.segments,
     filled: row.filled,
     visibleToParty: row.visibleToParty,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+export function toTriggerRuleDTO(row: TriggerRuleRow): TriggerRule {
+  return {
+    id: row.id,
+    worldId: row.worldId,
+    userId: row.userId,
+    name: row.name,
+    condition: JSON.parse(row.condition) as TriggerCondition,
+    message: row.message,
+    announceInChat: row.announceInChat,
+    enabled: row.enabled,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };

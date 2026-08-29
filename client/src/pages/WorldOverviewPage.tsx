@@ -12,6 +12,7 @@ import { CalendarPanel } from "../components/CalendarPanel";
 import { WorldTickPanel } from "../components/WorldTickPanel";
 import { HouseRulesPanel } from "../components/HouseRulesPanel";
 import { DoomClockPanel } from "../components/DoomClockPanel";
+import { TriggerRulesPanel } from "../components/TriggerRulesPanel";
 import { GettingStartedPanel } from "../components/GettingStartedPanel";
 
 export type OverviewNavTarget = "worlds" | "roster" | "codex" | "notes" | "downtime" | "shop";
@@ -178,6 +179,7 @@ export function WorldOverviewPage({ onNavigate }: { onNavigate: (subTab: Overvie
         <SessionHighlightsPanel worldId={worldId} worldName={world.name} />
         <AchievementsPanel worldId={worldId} />
         <DoomClockPanel worldId={worldId} canEdit={world.isOwner} />
+        <TriggerRulesPanel worldId={worldId} canEdit={world.isOwner} />
       </div>
 
       <div className="panel">

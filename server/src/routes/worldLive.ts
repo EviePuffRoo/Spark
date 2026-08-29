@@ -1,6 +1,6 @@
 import { Router, type Response } from "express";
 import { prisma } from "../db.js";
-import { toEncounterDTO, toLedgerEntryDTO, toRollLogEntryDTO, toChatMessageDTO, toDoomClockDTO } from "../serialize.js";
+import { toEncounterDTO, toLedgerEntryDTO, toRollLogEntryDTO, toChatMessageDTO, toDoomClockDTO, toTriggerRuleDTO } from "../serialize.js";
 import { findAccessibleWorld } from "../worldAccess.js";
 import { subscribeToWorld, subscribeToTokenMoved, type WorldChangeKind, type TokenPositionBroadcast } from "../worldEvents.js";
 import { computeCurrentVisibility } from "../gridVisibility.js";
@@ -71,12 +71,19 @@ async function sendDoomClocks(res: Response, worldId: string, isOwner: boolean) 
   res.write(`event: doomClock\ndata: ${JSON.stringify(rows.map(toDoomClockDTO))}\n\n`);
 }
 
+async function sendTriggerRules(res: Response, worldId: string, isOwner: boolean) {
+  // Same enabled-only filter as triggerRulesRouter's GET / handler.
+  const where = isOwner ? { worldId } : { worldId, enabled: true };
+  const rows = await prisma.triggerRule.findMany({ where, orderBy: { createdAt: "asc" } });
+  res.write(`event: triggerRule\ndata: ${JSON.stringify(rows.map(toTriggerRuleDTO))}\n\n`);
+}
+
 // Multiplexed SSE channel for a world's live-updating data (encounter,
-// ledger, roll log, chat, doom clocks). One connection, five possible
-// `event:` names, so the client's EventSource can addEventListener per
-// kind. Sits behind the existing global requireAuth gate (server/src/
-// index.ts) — no auth changes, since EventSource sends cookies
-// automatically on same-origin requests.
+// ledger, roll log, chat, doom clocks, trigger rules). One connection,
+// six possible `event:` names, so the client's EventSource can
+// addEventListener per kind. Sits behind the existing global requireAuth
+// gate (server/src/index.ts) — no auth changes, since EventSource sends
+// cookies automatically on same-origin requests.
 worldLiveRouter.get("/:worldId/live", async (req, res) => {
   const { worldId } = req.params;
   const world = await findAccessibleWorld(req.userId!, worldId);
@@ -96,6 +103,7 @@ worldLiveRouter.get("/:worldId/live", async (req, res) => {
     else if (kind === "rollLog") sendRollLog(res, worldId, isOwner).catch(() => {});
     else if (kind === "chat") sendChat(res, worldId).catch(() => {});
     else if (kind === "doomClock") sendDoomClocks(res, worldId, isOwner).catch(() => {});
+    else if (kind === "triggerRule") sendTriggerRules(res, worldId, isOwner).catch(() => {});
   });
 
   // A hidden combatant's live drag position is withheld from every

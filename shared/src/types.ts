@@ -1353,6 +1353,55 @@ export interface DoomClock extends DoomClockInput {
   updatedAt: string;
 }
 
+export type TriggerConditionKind = "hpBelowPercent" | "hpBelowValue" | "conditionApplied" | "roundReached";
+
+// A DM-authored watch condition — bounded and typed, deliberately not a
+// freeform scripting DSL (same "deterministic, no eval" posture as house
+// rules). hpBelowPercent/hpBelowValue/conditionApplied match against
+// individual combatants; roundReached matches the encounter as a whole.
+export interface TriggerCondition {
+  kind: TriggerConditionKind;
+  // hpBelowPercent (0-100) | hpBelowValue | roundReached
+  threshold?: number;
+  // conditionApplied — matched case-insensitively as a substring against
+  // LiveCombatantCondition.name.
+  conditionName?: string;
+  // Restricts a per-combatant condition to one CombatantKind; omitted
+  // matches any kind. Meaningless for roundReached.
+  targetKind?: CombatantKind;
+  // Restricts a per-combatant condition to combatants whose name contains
+  // this, case-insensitively; omitted matches any name. Meaningless for
+  // roundReached.
+  namePattern?: string;
+}
+
+export interface TriggerRuleInput {
+  worldId: string;
+  name: string;
+  condition: TriggerCondition;
+  message: string;
+  // Also posts `message` to the world's chat (see ChatMessageInput) when
+  // the DM acts on a fired reminder, in addition to the DM-only banner.
+  announceInChat?: boolean;
+  enabled?: boolean;
+}
+
+// A reusable, campaign-wide "if X then remind me" rule. Deliberately NOT
+// a freeform DSL: condition is one of a small typed set (see
+// TriggerConditionKind above), and the "action" is always just surfacing
+// the DM's own message as a reminder — applying the actual mechanical
+// effect (damage, a condition, whatever) stays a manual step through the
+// combat tracker's existing controls, same trust-the-table stance as
+// zone hazards and the opportunity-attack reminder (see
+// InitiativeTracker's opportunityPrompt and leftReach).
+export interface TriggerRule extends TriggerRuleInput {
+  id: string;
+  userId: string;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface LegacyAchievements {
   worldCount: number;
   unlockedCount: number;

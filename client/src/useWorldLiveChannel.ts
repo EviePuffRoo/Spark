@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { Encounter, LedgerSummary, RollLogEntry, ChatMessage, TokenMovedBroadcast, DoomClock } from "@spark/shared";
+import type { Encounter, LedgerSummary, RollLogEntry, ChatMessage, TokenMovedBroadcast, DoomClock, TriggerRule } from "@spark/shared";
 import { api } from "./api";
 
 interface WorldLiveOptions {
@@ -8,6 +8,7 @@ interface WorldLiveOptions {
   onRollLog?: (rows: RollLogEntry[]) => void;
   onChat?: (messages: ChatMessage[]) => void;
   onDoomClock?: (clocks: DoomClock[]) => void;
+  onTriggerRules?: (rules: TriggerRule[]) => void;
   // Unlike the five above, this one has no REST counterpart to resync
   // from on (re)connect — it's a pure, unpersisted push of an in-progress
   // token drag (see worldEvents.ts's publishTokenMoved), so the handler
@@ -49,6 +50,7 @@ export function useWorldLiveChannel(worldId: string | null | undefined, options:
       if (opts.onRollLog) api.listRollLog(worldId).then((r) => { if (!cancelled) opts.onRollLog?.(r); }).catch(() => {});
       if (opts.onChat) api.listChat(worldId).then((c) => { if (!cancelled) opts.onChat?.(c); }).catch(() => {});
       if (opts.onDoomClock) api.listDoomClocks(worldId).then((c) => { if (!cancelled) opts.onDoomClock?.(c); }).catch(() => {});
+      if (opts.onTriggerRules) api.listTriggerRules(worldId).then((r) => { if (!cancelled) opts.onTriggerRules?.(r); }).catch(() => {});
     };
 
     es.onerror = () => {
@@ -83,6 +85,10 @@ export function useWorldLiveChannel(worldId: string | null | undefined, options:
     es.addEventListener("doomClock", (ev) => {
       if (cancelled) return;
       optionsRef.current.onDoomClock?.(JSON.parse((ev as MessageEvent).data));
+    });
+    es.addEventListener("triggerRule", (ev) => {
+      if (cancelled) return;
+      optionsRef.current.onTriggerRules?.(JSON.parse((ev as MessageEvent).data));
     });
     es.addEventListener("tokenMoved", (ev) => {
       if (cancelled) return;

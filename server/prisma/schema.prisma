@@ -53,6 +53,7 @@ model User {
   doomClocks      DoomClock[]
   campaignEventLogs CampaignEventLog[]
   apiKeys         ApiKey[]
+  triggerRules    TriggerRule[]
 }
 
 model World {
@@ -97,6 +98,7 @@ model World {
   worldTickLogs   WorldTickLog[]
   doomClocks      DoomClock[]
   campaignEventLogs CampaignEventLog[]
+  triggerRules    TriggerRule[]
   webhook         WorldWebhook?
 
   @@index([userId])
@@ -681,6 +683,26 @@ model DoomClock {
   segments       Int
   filled         Int      @default(0)
   visibleToParty Boolean  @default(false)
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([worldId])
+}
+
+// A DM-authored "if X then remind me" rule (see shared/src/triggers.ts's
+// evaluateTriggers) — condition is a JSON-encoded TriggerCondition, always
+// one of a small typed set rather than a freeform script.
+model TriggerRule {
+  id             String   @id @default(cuid())
+  worldId        String
+  world          World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  name           String
+  condition      String
+  message        String
+  announceInChat Boolean  @default(false)
+  enabled        Boolean  @default(true)
   userId         String
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt      DateTime @default(now())

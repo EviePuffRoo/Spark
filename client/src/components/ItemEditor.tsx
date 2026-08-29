@@ -89,6 +89,14 @@ export function ItemEditor({
           <span>Value (gp)</span>
           <input type="number" min={0} value={draft.value} onChange={(e) => set("value", Number(e.target.value))} />
         </label>
+        <label className="field">
+          <span>Weight (lbs, optional)</span>
+          <input
+            type="number" min={0} step={0.5}
+            value={draft.weight ?? ""}
+            onChange={(e) => set("weight", e.target.value === "" ? undefined : Number(e.target.value))}
+          />
+        </label>
       </div>
       <label className="field">
         <input

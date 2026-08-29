@@ -1,4 +1,4 @@
-import { abilityModifier, formatModifier, proficiencyBonusForLevel } from "./math.js";
+import { abilityModifier, formatModifier, proficiencyBonusForLevel, carryCapacityLbs } from "./math.js";
 import { computeEncounterDifficulty } from "./encounterDifficulty.js";
 import type { RulesetDefinition } from "../types.js";
 
@@ -11,5 +11,6 @@ export const dnd5eRuleset: RulesetDefinition = {
   abilityModifier,
   formatModifier,
   proficiencyBonusForLevel,
+  carryCapacityLbs,
   computeEncounterDifficulty,
 };

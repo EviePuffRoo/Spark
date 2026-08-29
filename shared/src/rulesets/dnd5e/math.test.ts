@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { abilityModifier, formatModifier, proficiencyBonusForLevel } from "./math.js";
+import { abilityModifier, formatModifier, proficiencyBonusForLevel, carryCapacityLbs } from "./math.js";
 import { getRuleset, dnd5eRuleset } from "../index.js";
 import type { LiveCombatant } from "../../types.js";
 
@@ -52,6 +52,19 @@ describe("proficiencyBonusForLevel", () => {
     expect(proficiencyBonusForLevel(0)).toBe(proficiencyBonusForLevel(1));
     expect(proficiencyBonusForLevel(-5)).toBe(proficiencyBonusForLevel(1));
     expect(proficiencyBonusForLevel(99)).toBe(proficiencyBonusForLevel(20));
+  });
+});
+
+describe("carryCapacityLbs", () => {
+  it("matches the standard 5e rule of STR score × 15", () => {
+    expect(carryCapacityLbs(10)).toBe(150);
+    expect(carryCapacityLbs(18)).toBe(270);
+    expect(carryCapacityLbs(8)).toBe(120);
+  });
+
+  it("never goes negative for a malformed/zero score", () => {
+    expect(carryCapacityLbs(0)).toBe(0);
+    expect(carryCapacityLbs(-5)).toBe(0);
   });
 });
 

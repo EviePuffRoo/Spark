@@ -22,3 +22,11 @@ export function formatModifier(score: number): string {
 export function proficiencyBonusForLevel(level: number): number {
   return PC_PROFICIENCY_BONUS_BY_LEVEL[Math.min(19, Math.max(0, Math.trunc(level) - 1))];
 }
+
+// 5e's carry-capacity rule: STR score × 15 lbs. Used only as a soft,
+// non-blocking indicator on the character sheet (see EquipmentPanel) —
+// never gates an action — so no encumbrance tiers (heavily encumbered,
+// etc.) are modeled here.
+export function carryCapacityLbs(strengthScore: number): number {
+  return Math.max(0, strengthScore) * 15;
+}

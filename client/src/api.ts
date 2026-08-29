@@ -300,6 +300,8 @@ export const api = {
   postChatMessage: (input: ChatMessageInput) =>
     request<ChatMessage>("/chat", { method: "POST", body: JSON.stringify(input) }),
   deleteChatMessage: (id: string) => request<void>(`/chat/${id}`, { method: "DELETE" }),
+  reactToChatMessage: (id: string, emoji: string) =>
+    request<ChatMessage>(`/chat/${id}/react`, { method: "POST", body: JSON.stringify({ emoji }) }),
   loadOlderChat: (worldId: string, before: string) =>
     request<ChatMessage[]>(`/chat/history?worldId=${worldId}&before=${before}`),
 
@@ -382,6 +384,10 @@ export const api = {
   updateShop: (id: string, patch: Partial<Shop>) =>
     request<Shop>(`/shops/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   deleteShop: (id: string) => request<void>(`/shops/${id}`, { method: "DELETE" }),
+  purchaseFromShop: (shopId: string, itemId: string, quantity: number, buyerName: string) =>
+    request<{ shop: Shop; goldEntry: LedgerEntry; itemEntry: LedgerEntry }>(`/shops/${shopId}/purchase`, {
+      method: "POST", body: JSON.stringify({ itemId, quantity, buyerName }),
+    }),
   listShopCommissions: (worldId: string) => request<ShopCommission[]>(`/shop-commissions?worldId=${worldId}`),
   postShopCommission: (commission: ShopCommissionInput) =>
     request<ShopCommission>("/shop-commissions", { method: "POST", body: JSON.stringify(commission) }),

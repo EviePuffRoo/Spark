@@ -199,6 +199,11 @@ export interface GeneratedItem {
   charges: number | null;
   rechargeRule: string | null;
   value: number;
+  // Carry weight in lbs, for the soft carry-capacity indicator on the
+  // character sheet (see EquipmentPanel / carryCapacityLbs). Optional and
+  // omitted by the generator — most existing items have no weight on
+  // file, and an unweighted item just doesn't count toward the total.
+  weight?: number;
 }
 
 export interface Item extends GeneratedItem {
@@ -662,9 +667,25 @@ export interface RollLogEntry extends RollLogEntryInput {
   createdAt: string;
 }
 
+// A posted-to-chat snapshot of a DiceRoller roll — deliberately just the
+// finished result (not live-recomputed later), same "snapshot, don't
+// recompute" posture as LiveCombatant's spell-effect fields.
+export interface ChatRoll {
+  notation: string;
+  results: number[];
+  modifier: number;
+  total: number;
+  label?: string;
+}
+
 export interface ChatMessageInput {
   worldId: string;
   text: string;
+  // Present only for a roll posted from DiceRoller's "Post to Chat"
+  // button; text still carries a plain-text fallback summary so clients
+  // that don't render ChatRoll specially (or old cached messages) degrade
+  // gracefully.
+  roll?: ChatRoll;
 }
 
 export interface ChatMessage {
@@ -673,8 +694,16 @@ export interface ChatMessage {
   userId: string;
   senderName: string;
   text: string;
+  roll?: ChatRoll;
+  // A small fixed emoji set only (see REACTION_EMOJI) — each key maps to
+  // the userIds who reacted with it. Absent/empty entries are never
+  // persisted, same "don't store empty state" convention as tags/notes.
+  reactions?: Record<string, string[]>;
   createdAt: string;
 }
+
+export const REACTION_EMOJI = ["👍", "❤️", "😂", "🎲", "⚔️"] as const;
+export type ReactionEmoji = (typeof REACTION_EMOJI)[number];
 
 export type LedgerEntryKind = "gold" | "item";
 

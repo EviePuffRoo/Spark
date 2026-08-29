@@ -838,6 +838,10 @@ textarea {
   margin-top: 10px;
 }
 
+.carry-weight-over {
+  color: var(--danger);
+}
+
 .success {
   color: var(--success);
   margin-top: 12px;
@@ -3010,6 +3014,50 @@ textarea {
 
 .chat-message-text {
   overflow-wrap: break-word;
+}
+
+.chat-message-roll {
+  overflow-wrap: break-word;
+  color: var(--accent);
+}
+
+.chat-message-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.chat-reaction-chip {
+  border: 1px solid var(--border);
+  background: transparent;
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.chat-reaction-chip.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.chat-reaction-add {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.chat-message-row:hover .chat-reaction-add,
+.chat-message-row:focus-within .chat-reaction-add {
+  opacity: 1;
+}
+
+.chat-reaction-add-one {
+  padding: 1px 5px;
 }
 
 .chat-input-row {

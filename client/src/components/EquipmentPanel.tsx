@@ -1,14 +1,13 @@
 import { useEffect, useState } from "react";
-import type { Item, SearchResult } from "@spark/shared";
-import { computeEquipmentBonuses, ITEM_BONUS_TYPE_LABELS, getRuleset } from "@spark/shared";
+import type { Item, SearchResult, HouseRules } from "@spark/shared";
+import { computeEquipmentBonuses, ITEM_BONUS_TYPE_LABELS, getRuleset, applyHouseRules } from "@spark/shared";
 import { api } from "../api";
 import { EntitySearchPicker } from "./EntitySearchPicker";
 
 const MAX_ATTUNED = 3;
-const carryCapacityLbs = getRuleset().carryCapacityLbs;
 
 export function EquipmentPanel({
-  equippedItems, attunedItems, baseArmorClass, strengthScore, onChange,
+  equippedItems, attunedItems, baseArmorClass, strengthScore, houseRules, onChange,
 }: {
   equippedItems: string[];
   attunedItems: string[];
@@ -17,8 +16,13 @@ export function EquipmentPanel({
   // EquipmentPanel omits it and the carry-weight indicator below simply
   // doesn't render. Soft indicator only, never blocks adding equipment.
   strengthScore?: number;
+  // The owning world's house rules, if any — tunes the carry-capacity
+  // multiplier used below. Omitted entirely (not just empty) is fine;
+  // applyHouseRules treats undefined the same as {}.
+  houseRules?: HouseRules;
   onChange?: (equippedItems: string[], attunedItems: string[]) => void;
 }) {
+  const carryCapacityLbs = applyHouseRules(getRuleset(), houseRules ?? {}).carryCapacityLbs;
   const [items, setItems] = useState<Item[]>([]);
   const [adding, setAdding] = useState(false);
 

@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { generateRecoveryCode, hashRecoveryCode, verifyRecoveryCode } from "../auth.js";
 import { getMemberWorldIds, canWriteWorld } from "../worldAccess.js";
-import { FREE_TIER_WORLD_LIMIT, type WorldMemberRole } from "@spark/shared";
+import { FREE_TIER_WORLD_LIMIT, type WorldMemberRole, type HouseRules } from "@spark/shared";
 import { seedStarterWorld } from "../seedStarterWorld.js";
 
 export const worldsRouter = Router();
@@ -12,6 +12,23 @@ function isWorldMemberRole(value: unknown): value is WorldMemberRole {
   return typeof value === "string" && (WORLD_MEMBER_ROLES as string[]).includes(value);
 }
 
+// Whitelist-coerces a House Rules payload to the known, bounded set of
+// tunable overrides — see shared/src/rulesets/houseRules.ts. Anything not
+// a positive finite number for a known key is silently dropped, same
+// "trust the shape, coerce what's reasonable" posture as this app's other
+// coerce* helpers, rather than 400ing the whole request over one bad field.
+const HOUSE_RULE_KEYS = ["carryCapacityMultiplier", "pointBuyBudget", "encounterDifficultyMultiplier"] as const;
+function coerceHouseRules(raw: unknown): HouseRules {
+  if (!raw || typeof raw !== "object") return {};
+  const r = raw as Record<string, unknown>;
+  const result: HouseRules = {};
+  for (const key of HOUSE_RULE_KEYS) {
+    const value = r[key];
+    if (typeof value === "number" && Number.isFinite(value) && value > 0) result[key] = value;
+  }
+  return result;
+}
+
 const COUNT_SELECT = {
   characters: true, items: true, locations: true, questHooks: true,
   factions: true, encounterTables: true, sessionNotes: true, adventures: true,
@@ -19,7 +36,7 @@ const COUNT_SELECT = {
 };
 
 function toSummary(
-  row: { id: string; name: string; description: string | null; nextSessionAt: Date | null; currentDay: number; createdAt: Date; updatedAt: Date; _count: Record<string, number> },
+  row: { id: string; name: string; description: string | null; nextSessionAt: Date | null; currentDay: number; houseRules: string; createdAt: Date; updatedAt: Date; _count: Record<string, number> },
   isOwner: boolean,
   ownerUsername?: string,
   canWrite = true
@@ -30,6 +47,7 @@ function toSummary(
     description: row.description ?? undefined,
     nextSessionAt: row.nextSessionAt?.toISOString(),
     currentDay: row.currentDay,
+    houseRules: coerceHouseRules(JSON.parse(row.houseRules)),
     isOwner,
     canWrite,
     ownerUsername,
@@ -77,6 +95,7 @@ worldsRouter.get("/:id", async (req, res) => {
     description: row.description ?? undefined,
     nextSessionAt: row.nextSessionAt?.toISOString(),
     currentDay: row.currentDay,
+    houseRules: coerceHouseRules(JSON.parse(row.houseRules)),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   });
@@ -98,7 +117,7 @@ worldsRouter.post("/", async (req, res) => {
   }
 
   const row = await prisma.world.create({ data: { name, description: description ?? null, userId: req.userId! } });
-  res.status(201).json(row);
+  res.status(201).json({ ...row, houseRules: coerceHouseRules(JSON.parse(row.houseRules)) });
 });
 
 // Gated to accounts with zero worlds so it can't be spammed to create
@@ -114,7 +133,7 @@ worldsRouter.post("/starter", async (req, res) => {
 });
 
 worldsRouter.patch("/:id", async (req, res) => {
-  const { name, description, nextSessionAt, currentDay } = req.body ?? {};
+  const { name, description, nextSessionAt, currentDay, houseRules } = req.body ?? {};
   const data: Record<string, unknown> = {};
   if (name !== undefined) data.name = name;
   if (description !== undefined) data.description = description;
@@ -133,12 +152,13 @@ worldsRouter.patch("/:id", async (req, res) => {
     }
     data.currentDay = currentDay;
   }
+  if (houseRules !== undefined) data.houseRules = JSON.stringify(coerceHouseRules(houseRules));
 
   if (!(await canWriteWorld(req.userId!, req.params.id))) {
     return res.status(404).json({ error: "World not found" });
   }
   const row = await prisma.world.update({ where: { id: req.params.id }, data });
-  res.json(row);
+  res.json({ ...row, houseRules: coerceHouseRules(JSON.parse(row.houseRules)) });
 });
 
 // Owner or coDM: moves the in-world calendar forward by a DM-chosen number

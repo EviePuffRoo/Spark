@@ -1464,6 +1464,30 @@ textarea {
   overflow-y: auto;
 }
 
+.tile-pack-selector {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.tile-pack-button {
+  flex: 1;
+  padding: 6px 4px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tile-pack-button.active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg));
+  color: var(--text);
+}
+
 .tile-category {
   margin-top: 14px;
 }

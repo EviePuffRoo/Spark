@@ -23,5 +23,9 @@ export interface RulesetDefinition {
   formatModifier(score: number): string;
   proficiencyBonusForLevel(level: number): number;
   carryCapacityLbs(strengthScore: number): number;
+  // Point-buy budget for ability-score assignment during character
+  // creation — a plain tunable number rather than a function, since
+  // there's no per-level or per-score variation to compute.
+  pointBuyBudget: number;
   computeEncounterDifficulty(combatants: LiveCombatant[]): DifficultyResult | null;
 }

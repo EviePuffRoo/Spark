@@ -1,4 +1,4 @@
-import type { Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, PlayerCharacter, ZoneMapTemplate, Dungeon, DungeonRoomRect, Shop, Region, Settlement } from "@spark/shared";
+import type { Character, Item, Location, QuestHook, Faction, EncounterTable, SessionNote, Adventure, PlayerCharacter, ZoneMapTemplate, Dungeon, DungeonRoomRect, Shop, Region, Settlement, HouseRules } from "@spark/shared";
 import { api } from "../api";
 import { StatBlockView } from "./StatBlockView";
 import { BackstoryView } from "./BackstoryView";
@@ -42,7 +42,7 @@ import { SettlementEditor } from "./SettlementEditor";
 export function RosterDetailPanel({
   editingContent, setEditingContent, selectedDisplayName, hasSelected, canEditSelected, refresh,
   selectedCharacter, selectedItem, selectedLocation, selectedQuest, selectedFaction, selectedEncounter,
-  selectedNote, selectedAdventure, selectedPlayerCharacter, selectedZoneMapTemplate, selectedDungeon,
+  selectedNote, selectedAdventure, selectedPlayerCharacter, selectedPlayerCharacterHouseRules, selectedZoneMapTemplate, selectedDungeon,
   selectedShop, selectedRegion, selectedSettlement,
   showDungeonMap, onUpdateDungeonRoomRect, onAutoArrangeDungeon,
 }: {
@@ -61,6 +61,7 @@ export function RosterDetailPanel({
   selectedNote: SessionNote | null;
   selectedAdventure: Adventure | null;
   selectedPlayerCharacter: PlayerCharacter | null;
+  selectedPlayerCharacterHouseRules?: HouseRules;
   selectedZoneMapTemplate: ZoneMapTemplate | null;
   selectedDungeon: Dungeon | null;
   selectedShop: Shop | null;
@@ -187,6 +188,7 @@ export function RosterDetailPanel({
             attunedItems={selectedPlayerCharacter.attunedItems}
             baseArmorClass={selectedPlayerCharacter.armorClass}
             strengthScore={selectedPlayerCharacter.abilityScores.str}
+            houseRules={selectedPlayerCharacterHouseRules}
           />
         </>
       )}
@@ -200,6 +202,7 @@ export function RosterDetailPanel({
           spellSlots={selectedPlayerCharacter.spellSlots}
           preparedSpells={selectedPlayerCharacter.preparedSpells}
           classResources={selectedPlayerCharacter.classResources}
+          houseRules={selectedPlayerCharacterHouseRules}
           onSave={async (patch) => { await api.updatePlayerCharacter(selectedPlayerCharacter.id, patch); setEditingContent(false); refresh(); }}
           onCancel={() => setEditingContent(false)}
         />

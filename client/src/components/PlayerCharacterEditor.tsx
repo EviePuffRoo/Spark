@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { PlayerCharacterInput, AbilityKey, DeathSaves, SpellSlotLevel, ClassResource } from "@spark/shared";
+import type { PlayerCharacterInput, AbilityKey, DeathSaves, SpellSlotLevel, ClassResource, HouseRules } from "@spark/shared";
 import { EquipmentPanel } from "./EquipmentPanel";
 import { HpTrackerPanel } from "./HpTrackerPanel";
 import { DeathSavesPanel } from "./DeathSavesPanel";
@@ -28,7 +28,7 @@ export interface PlayerCharacterLivingStatePatch {
 
 export function PlayerCharacterEditor({
   value, equippedItems, attunedItems, currentHp, deathSaves, spellSlots, preparedSpells, classResources,
-  onSave, onCancel, saveLabel = "Save Content",
+  houseRules, onSave, onCancel, saveLabel = "Save Content",
 }: {
   value: PlayerCharacterInput;
   equippedItems?: string[];
@@ -38,6 +38,9 @@ export function PlayerCharacterEditor({
   spellSlots?: SpellSlotLevel[];
   preparedSpells?: string[];
   classResources?: ClassResource[];
+  // The owning world's house rules, if any — passed through to
+  // EquipmentPanel's carry-weight indicator.
+  houseRules?: HouseRules;
   onSave: (patch: PlayerCharacterInput & PlayerCharacterLivingStatePatch) => Promise<void>;
   onCancel: () => void;
   saveLabel?: string;
@@ -140,6 +143,7 @@ export function PlayerCharacterEditor({
           attunedItems={attuned}
           baseArmorClass={draft.armorClass}
           strengthScore={draft.abilityScores.str}
+          houseRules={houseRules}
           onChange={(eq, at) => { setEquipped(eq); setAttuned(at); }}
         />
       )}

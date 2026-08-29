@@ -69,6 +69,78 @@ describe("worlds nextSessionAt", () => {
   });
 });
 
+describe("world house rules", () => {
+  it("defaults to an empty object for a new world", async () => {
+    const { agent } = await signupAgent("houserulesowner1");
+    const world = await agent.post("/api/worlds").send({ name: "House Rules World" });
+    expect(world.body.houseRules).toEqual({});
+
+    const single = await agent.get(`/api/worlds/${world.body.id}`);
+    expect(single.body.houseRules).toEqual({});
+  });
+
+  it("sets house rules, reflected in the list and single-world responses", async () => {
+    const { agent } = await signupAgent("houserulesowner2");
+    const world = await agent.post("/api/worlds").send({ name: "Gritty World" });
+    const worldId = world.body.id as string;
+
+    const patched = await agent.patch(`/api/worlds/${worldId}`).send({
+      houseRules: { carryCapacityMultiplier: 10, pointBuyBudget: 20, encounterDifficultyMultiplier: 0.8 },
+    });
+    expect(patched.status).toBe(200);
+    expect(patched.body.houseRules).toEqual({ carryCapacityMultiplier: 10, pointBuyBudget: 20, encounterDifficultyMultiplier: 0.8 });
+
+    const single = await agent.get(`/api/worlds/${worldId}`);
+    expect(single.body.houseRules).toEqual({ carryCapacityMultiplier: 10, pointBuyBudget: 20, encounterDifficultyMultiplier: 0.8 });
+
+    const list = await agent.get("/api/worlds");
+    expect(list.body.find((w: { id: string }) => w.id === worldId).houseRules).toEqual({ carryCapacityMultiplier: 10, pointBuyBudget: 20, encounterDifficultyMultiplier: 0.8 });
+  });
+
+  it("drops unknown keys and non-positive-number values, keeping the rest", async () => {
+    const { agent } = await signupAgent("houserulesowner3");
+    const world = await agent.post("/api/worlds").send({ name: "Malformed Rules World" });
+    const worldId = world.body.id as string;
+
+    const patched = await agent.patch(`/api/worlds/${worldId}`).send({
+      houseRules: { carryCapacityMultiplier: 12, pointBuyBudget: -5, someMadeUpRule: 999, encounterDifficultyMultiplier: "not a number" },
+    });
+    expect(patched.status).toBe(200);
+    expect(patched.body.houseRules).toEqual({ carryCapacityMultiplier: 12 });
+  });
+
+  it("clears house rules back to empty by patching an empty object", async () => {
+    const { agent } = await signupAgent("houserulesowner4");
+    const world = await agent.post("/api/worlds").send({ name: "Reset Rules World" });
+    const worldId = world.body.id as string;
+
+    await agent.patch(`/api/worlds/${worldId}`).send({ houseRules: { pointBuyBudget: 30 } });
+    const cleared = await agent.patch(`/api/worlds/${worldId}`).send({ houseRules: {} });
+    expect(cleared.body.houseRules).toEqual({});
+  });
+
+  it("shows a member the owner's house rules but doesn't let the member change them", async () => {
+    const { agent: owner } = await signupAgent("houserulesowner5");
+    const world = await owner.post("/api/worlds").send({ name: "Shared Rules World" });
+    const worldId = world.body.id as string;
+    const joinCode = await owner.post(`/api/worlds/${worldId}/join-code`);
+
+    const { agent: member } = await signupAgent("houserulesmember1");
+    await member.post("/api/worlds/join").send({ code: joinCode.body.code });
+
+    await owner.patch(`/api/worlds/${worldId}`).send({ houseRules: { pointBuyBudget: 25 } });
+
+    const list = await member.get("/api/worlds");
+    expect(list.body.find((w: { id: string }) => w.id === worldId).houseRules).toEqual({ pointBuyBudget: 25 });
+
+    const memberPatch = await member.patch(`/api/worlds/${worldId}`).send({ houseRules: { pointBuyBudget: 99 } });
+    expect(memberPatch.status).toBe(404);
+
+    const stillSet = await owner.get(`/api/worlds/${worldId}`);
+    expect(stillSet.body.houseRules).toEqual({ pointBuyBudget: 25 });
+  });
+});
+
 describe("world calendar", () => {
   it("defaults currentDay to 1 for a new world", async () => {
     const { agent } = await signupAgent("calendarowner1");

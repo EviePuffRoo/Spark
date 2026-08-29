@@ -31,11 +31,14 @@ const BLANK_SCORES: Record<AbilityKey, number> = { str: 8, dex: 8, con: 8, int: 
 // PC's living state (equipment/HP/spells/etc.), which this wizard has no
 // equivalent for.
 export function PlayerCharacterWizard({
-  reference, onSave, onCancel,
+  reference, onSave, onCancel, pointBuyBudget = POINT_BUY_BUDGET,
 }: {
   reference: ReferenceData | null;
   onSave: (draft: PlayerCharacterInput) => Promise<void>;
   onCancel: () => void;
+  // Defaults to the base ruleset's budget (27) — a world with a
+  // pointBuyBudget house rule passes its overridden value instead.
+  pointBuyBudget?: number;
 }) {
   const [step, setStep] = useState<WizardStep>("Basics");
   const [name, setName] = useState("");
@@ -76,7 +79,7 @@ export function PlayerCharacterWizard({
       const next = prev[key] + delta;
       if (next < 8 || next > 15) return prev;
       const cost = pointBuyCost(next) - pointBuyCost(prev[key]);
-      if (pointBuySpent + cost > POINT_BUY_BUDGET) return prev;
+      if (pointBuySpent + cost > pointBuyBudget) return prev;
       return { ...prev, [key]: next };
     });
   }
@@ -234,7 +237,7 @@ export function PlayerCharacterWizard({
 
           {abilityMode === "pointBuy" && (
             <>
-              <p className="hint">Budget: {pointBuySpent} / {POINT_BUY_BUDGET} points spent.</p>
+              <p className="hint">Budget: {pointBuySpent} / {pointBuyBudget} points spent.</p>
               <div className="ability-grid editable">
                 {ABILITY_ORDER.map(({ key, label }) => (
                   <div className="field ability-field" key={key}>

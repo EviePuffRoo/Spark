@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { SearchResult, LiveCombatant, LiveCombatantCondition, EncounterStateInput, EncounterZone, Dungeon, DungeonRoomState, DifficultyRating, SpellDef } from "@spark/shared";
-import { computeConcentrationDc, isHostilePair, leftReach, CONDITIONS_COMPENDIUM, getRuleset, SPELL_EFFECTS } from "@spark/shared";
+import { computeConcentrationDc, isHostilePair, leftReach, CONDITIONS_COMPENDIUM, getRuleset, applyHouseRules, SPELL_EFFECTS } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { useAuth } from "../AuthContext";
 import { EntitySearchPicker } from "./EntitySearchPicker";
@@ -166,7 +166,7 @@ export function InitiativeTracker({
     }))
     .sort((a, b) => b.initiative - a.initiative);
   const activeId = sorted.length > 0 ? sorted[activeEncounter.turnIndex % sorted.length]?.id : null;
-  const difficulty = getRuleset().computeEncounterDifficulty(sorted);
+  const difficulty = applyHouseRules(getRuleset(), selectedWorld?.houseRules ?? {}).computeEncounterDifficulty(sorted);
   const mapActive = showZoneMap || showGridMap;
 
   useEffect(() => {

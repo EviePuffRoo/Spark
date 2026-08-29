@@ -139,6 +139,7 @@ export function PlayerCharacterEditor({
           equippedItems={equipped}
           attunedItems={attuned}
           baseArmorClass={draft.armorClass}
+          strengthScore={draft.abilityScores.str}
           onChange={(eq, at) => { setEquipped(eq); setAttuned(at); }}
         />
       )}

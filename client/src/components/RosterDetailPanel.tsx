@@ -186,6 +186,7 @@ export function RosterDetailPanel({
             equippedItems={selectedPlayerCharacter.equippedItems}
             attunedItems={selectedPlayerCharacter.attunedItems}
             baseArmorClass={selectedPlayerCharacter.armorClass}
+            strengthScore={selectedPlayerCharacter.abilityScores.str}
           />
         </>
       )}

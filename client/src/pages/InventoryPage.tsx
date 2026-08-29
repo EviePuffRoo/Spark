@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { LedgerSummary, PlayerCharacter, SearchResult } from "@spark/shared";
+import type { LedgerSummary, PlayerCharacter, SearchResult, Shop } from "@spark/shared";
 import { api } from "../api";
 import { useAuth } from "../AuthContext";
 import { useActiveWorld } from "../ActiveWorldContext";
@@ -35,16 +35,27 @@ export function InventoryPage() {
   const [myCharacters, setMyCharacters] = useState<PlayerCharacter[]>([]);
   const [claimingKey, setClaimingKey] = useState<string | null>(null);
 
+  const [shops, setShops] = useState<Shop[]>([]);
+  const [shopId, setShopId] = useState("");
+  const [buyQuantities, setBuyQuantities] = useState<Record<string, string>>({});
+  const [buying, setBuying] = useState<string | null>(null);
+
   useEffect(() => { if (!worldId) setSummary(null); }, [worldId]);
   useEffect(() => {
     api.listMyPlayerCharacters().then(setMyCharacters).catch(() => {});
   }, []);
+  useEffect(() => {
+    setShopId("");
+    if (!worldId) { setShops([]); return; }
+    api.listShops(worldId).then(setShops).catch(() => {});
+  }, [worldId]);
 
   const { error: liveError } = useWorldLiveChannel(worldId || null, { onLedger: setSummary });
   useEffect(() => { setError(liveError ?? null); }, [liveError]);
 
   const selectedWorld = worlds.find((w) => w.id === worldId) ?? null;
   const isOwner = !!selectedWorld?.canWrite;
+  const selectedShop = shops.find((s) => s.id === shopId) ?? null;
 
   async function refresh() {
     if (!worldId) return;
@@ -105,6 +116,24 @@ export function InventoryPage() {
       refresh();
     } catch (e) {
       setError((e as Error).message);
+    }
+  }
+
+  async function buyItem(stockId: string, itemId: string) {
+    if (!worldId) return;
+    const quantity = Number(buyQuantities[stockId] ?? "1");
+    if (!quantity || !Number.isInteger(quantity) || quantity <= 0) return;
+    setError(null);
+    setBuying(stockId);
+    try {
+      const result = await api.purchaseFromShop(shopId, itemId, quantity, authorName.trim() || user!.displayName || user!.username);
+      setShops((prev) => prev.map((s) => (s.id === shopId ? result.shop : s)));
+      setBuyQuantities((prev) => ({ ...prev, [stockId]: "1" }));
+      refresh();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBuying(null);
     }
   }
 
@@ -187,6 +216,54 @@ export function InventoryPage() {
               </label>
               <button className="btn-primary" onClick={addItem}>Add Item</button>
             </div>
+
+            {shops.length > 0 && (
+              <div className="save-panel">
+                <h3 className="section-heading">Buy from Shop</h3>
+                <label className="field">
+                  <span>Shop</span>
+                  <select value={shopId} onChange={(e) => setShopId(e.target.value)}>
+                    <option value="">Select a shop…</option>
+                    {shops.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </label>
+                {selectedShop && (
+                  selectedShop.stock.length === 0 ? (
+                    <p className="hint">Nothing stocked yet.</p>
+                  ) : (
+                    <ul className="entity-list">
+                      {selectedShop.stock.map((entry) => (
+                        <li key={entry.id} className="world-row">
+                          <div>
+                            <span className="entity-name">{entry.itemName}</span>
+                            <span className="entity-meta">
+                              {entry.price} gp · {entry.quantity === -1 ? "unlimited" : `${entry.quantity} in stock`}
+                            </span>
+                          </div>
+                          {entry.quantity !== 0 && (
+                            <>
+                              <input
+                                type="number" min={1}
+                                value={buyQuantities[entry.id] ?? "1"}
+                                onChange={(e) => setBuyQuantities((prev) => ({ ...prev, [entry.id]: e.target.value }))}
+                                style={{ width: "4em" }}
+                              />
+                              <button
+                                className="btn-secondary"
+                                onClick={() => buyItem(entry.id, entry.itemId)}
+                                disabled={buying === entry.id}
+                              >
+                                {buying === entry.id ? "Buying…" : "Buy"}
+                              </button>
+                            </>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )
+                )}
+              </div>
+            )}
           </>
         )}
 

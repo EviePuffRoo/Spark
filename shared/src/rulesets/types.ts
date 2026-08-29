@@ -22,5 +22,6 @@ export interface RulesetDefinition {
   abilityModifier(score: number): number;
   formatModifier(score: number): string;
   proficiencyBonusForLevel(level: number): number;
+  carryCapacityLbs(strengthScore: number): number;
   computeEncounterDifficulty(combatants: LiveCombatant[]): DifficultyResult | null;
 }

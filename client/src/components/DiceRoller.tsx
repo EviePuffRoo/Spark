@@ -79,6 +79,8 @@ export function DiceRoller({
   const [applyMode, setApplyMode] = useState<"damage" | "heal">("damage");
   const [applyError, setApplyError] = useState<string | null>(null);
 
+  const [postedToChat, setPostedToChat] = useState<string | null>(null);
+
   const selectedWorld = worlds.find((w) => w.id === selectedWorldId) ?? null;
 
   useEffect(() => {
@@ -223,6 +225,23 @@ export function DiceRoller({
     }
   }
 
+  async function postRollToChat(roll: RollLogEntry) {
+    if (!selectedWorldId) return;
+    setApplyError(null);
+    const modifierText = roll.modifier ? ` ${roll.modifier > 0 ? "+" : ""}${roll.modifier}` : "";
+    const text = `🎲 ${roll.label ? `${roll.label}: ` : ""}${roll.notation}: [${roll.results.join(", ")}]${modifierText} = ${roll.total}`;
+    try {
+      await api.postChatMessage({
+        worldId: selectedWorldId, text,
+        roll: { notation: roll.notation, results: roll.results, modifier: roll.modifier, total: roll.total, label: roll.label },
+      });
+      setPostedToChat(roll.id);
+      setTimeout(() => setPostedToChat((cur) => (cur === roll.id ? null : cur)), 2000);
+    } catch (e) {
+      setApplyError((e as Error).message);
+    }
+  }
+
   const partyMode = mode === "party";
 
   return (
@@ -348,6 +367,9 @@ export function DiceRoller({
                   <div className="button-row">
                     <button className="btn-secondary" aria-expanded={applyOpenFor === r.id} onClick={() => toggleApplyPicker(r.id)}>
                       Apply to Combat
+                    </button>
+                    <button className="btn-secondary" onClick={() => postRollToChat(r)}>
+                      {postedToChat === r.id ? "Posted!" : "Post to Chat"}
                     </button>
                   </div>
                   {applyOpenFor === r.id && (

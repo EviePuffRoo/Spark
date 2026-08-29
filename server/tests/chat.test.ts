@@ -155,3 +155,64 @@ describe("chat", () => {
     expect(exhausted.body).toEqual([]);
   });
 });
+
+describe("chat roll posting", () => {
+  it("persists a well-formed roll payload alongside the message", async () => {
+    const { agent } = await signupAgent("chatroll1");
+    const world = await agent.post("/api/worlds").send({ name: "Roll Chat World" });
+    const worldId = world.body.id as string;
+
+    const roll = { notation: "2d6+3", results: [4, 6], modifier: 3, total: 13, label: "Attack" };
+    const res = await agent.post("/api/chat").send({ worldId, text: "🎲 2d6+3: 13", roll });
+    expect(res.status).toBe(201);
+    expect(res.body.roll).toEqual(roll);
+  });
+
+  it("drops a malformed roll payload but still posts the text", async () => {
+    const { agent } = await signupAgent("chatroll2");
+    const world = await agent.post("/api/worlds").send({ name: "Bad Roll Chat World" });
+    const worldId = world.body.id as string;
+
+    const res = await agent.post("/api/chat").send({ worldId, text: "not really a roll", roll: { notation: "d20" } });
+    expect(res.status).toBe(201);
+    expect(res.body.roll).toBeUndefined();
+  });
+});
+
+describe("POST /chat/:id/react", () => {
+  it("toggles the caller in and out of an emoji's reactor list", async () => {
+    const { agent } = await signupAgent("chatreact1");
+    const world = await agent.post("/api/worlds").send({ name: "Reaction World" });
+    const worldId = world.body.id as string;
+    const msg = await agent.post("/api/chat").send({ worldId, text: "nat 20!" });
+    const msgId = msg.body.id as string;
+
+    const react = await agent.post(`/api/chat/${msgId}/react`).send({ emoji: "🎲" });
+    expect(react.status).toBe(200);
+    expect(Object.keys(react.body.reactions)).toEqual(["🎲"]);
+
+    const unreact = await agent.post(`/api/chat/${msgId}/react`).send({ emoji: "🎲" });
+    expect(unreact.status).toBe(200);
+    expect(unreact.body.reactions).toBeUndefined();
+  });
+
+  it("400s an unsupported emoji", async () => {
+    const { agent } = await signupAgent("chatreact2");
+    const world = await agent.post("/api/worlds").send({ name: "Reaction World 2" });
+    const worldId = world.body.id as string;
+    const msg = await agent.post("/api/chat").send({ worldId, text: "hi" });
+
+    const react = await agent.post(`/api/chat/${msg.body.id}/react`).send({ emoji: "🍕" });
+    expect(react.status).toBe(400);
+  });
+
+  it("403s reacting to a message in a world you can't access", async () => {
+    const { agent: owner } = await signupAgent("chatreactowner1");
+    const world = await owner.post("/api/worlds").send({ name: "Private Reaction World" });
+    const msg = await owner.post("/api/chat").send({ worldId: world.body.id, text: "hi" });
+
+    const { agent: outsider } = await signupAgent("chatreactoutsider1");
+    const react = await outsider.post(`/api/chat/${msg.body.id}/react`).send({ emoji: "👍" });
+    expect(react.status).toBe(403);
+  });
+});

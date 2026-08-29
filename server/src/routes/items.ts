@@ -28,7 +28,7 @@ itemsRouter.post("/", async (req, res) => {
   const body = req.body ?? {};
   const {
     name, itemType, category, rarity, description, property, history, worldId, tags, notes,
-    rarityTier, bonusType, bonusValue, requiresAttunement, charges, rechargeRule, value, hiddenFromParty,
+    rarityTier, bonusType, bonusValue, requiresAttunement, charges, rechargeRule, value, weight, hiddenFromParty,
   } = body;
 
   if (!name || !itemType || !category || !rarity || !description || !property || !history) {
@@ -49,6 +49,7 @@ itemsRouter.post("/", async (req, res) => {
       charges: typeof charges === "number" ? charges : null,
       rechargeRule: rechargeRule ?? null,
       value: typeof value === "number" ? value : 0,
+      weight: typeof weight === "number" && Number.isFinite(weight) && weight >= 0 ? weight : null,
       worldId: worldId ?? null,
       tags: JSON.stringify(Array.isArray(tags) ? tags : []),
       notes: notes ?? null,
@@ -68,6 +69,9 @@ itemsRouter.patch("/:id", async (req, res) => {
     "rarityTier", "bonusType", "bonusValue", "requiresAttunement", "charges", "rechargeRule", "value",
   ] as const) {
     if (field in body) data[field] = body[field];
+  }
+  if ("weight" in body) {
+    data.weight = typeof body.weight === "number" && Number.isFinite(body.weight) && body.weight >= 0 ? body.weight : null;
   }
   if ("worldId" in body) {
     if (typeof body.worldId === "string") {

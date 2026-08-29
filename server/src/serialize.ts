@@ -78,6 +78,7 @@ export function toItemDTO(row: ItemRow): Item {
     charges: row.charges,
     rechargeRule: row.rechargeRule,
     value: row.value,
+    weight: row.weight ?? undefined,
     worldId: row.worldId,
     hiddenFromParty: row.hiddenFromParty,
     tags: JSON.parse(row.tags),
@@ -444,12 +445,15 @@ export function toRollLogEntryDTO(row: RollLogEntryRow): RollLogEntry {
 }
 
 export function toChatMessageDTO(row: ChatMessageRow): ChatMessage {
+  const reactions = JSON.parse(row.reactions ?? "{}") as Record<string, string[]>;
   return {
     id: row.id,
     worldId: row.worldId,
     userId: row.userId,
     senderName: row.senderName,
     text: row.text,
+    roll: row.rollData ? JSON.parse(row.rollData) : undefined,
+    reactions: Object.keys(reactions).length > 0 ? reactions : undefined,
     createdAt: row.createdAt.toISOString(),
   };
 }

@@ -231,6 +231,7 @@ model Item {
   charges     Int?
   rechargeRule String?
   value       Int      @default(0)
+  weight      Float?
   tags        String   @default("[]")
   notes       String?
   worldId     String?
@@ -720,6 +721,8 @@ model ChatMessage {
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   senderName String
   text       String
+  rollData   String?
+  reactions  String   @default("{}")
   createdAt  DateTime @default(now())
 
   @@index([worldId])

@@ -1,10 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import type { ChatMessage } from "@spark/shared";
-import { RECENT_HISTORY_LIMIT } from "@spark/shared";
+import { RECENT_HISTORY_LIMIT, REACTION_EMOJI } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { useAuth } from "../AuthContext";
 import { useWorldLiveChannel } from "../useWorldLiveChannel";
 import { timeAgo } from "./DiceRoller";
+
+function RollBadge({ roll }: { roll: NonNullable<ChatMessage["roll"]> }) {
+  return (
+    <span className="chat-message-roll">
+      🎲 {roll.label ? `${roll.label}: ` : ""}{roll.notation}: [{roll.results.join(", ")}]
+      {roll.modifier ? ` ${roll.modifier > 0 ? "+" : ""}${roll.modifier}` : ""} = <strong className="dice-total mono">{roll.total}</strong>
+    </span>
+  );
+}
 
 export function ChatPanel({ worldId, worlds }: { worldId: string; worlds: WorldSummary[] }) {
   const { user } = useAuth();
@@ -88,6 +97,14 @@ export function ChatPanel({ worldId, worlds }: { worldId: string; worlds: WorldS
     }
   }
 
+  async function handleReact(id: string, emoji: string) {
+    try {
+      await api.reactToChatMessage(id, emoji);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+
   return (
     <div className="panel chat-panel">
       <h3 className="section-heading">Party Chat</h3>
@@ -107,7 +124,30 @@ export function ChatPanel({ worldId, worlds }: { worldId: string; worlds: WorldS
                   <button className="dice-history-delete" onClick={() => handleDelete(m.id)} aria-label={`Delete message from ${m.senderName}`}>×</button>
                 )}
               </div>
-              <span className="chat-message-text">{m.text}</span>
+              {m.roll ? <RollBadge roll={m.roll} /> : <span className="chat-message-text">{m.text}</span>}
+              <div className="chat-message-reactions">
+                {REACTION_EMOJI.map((emoji) => {
+                  const reactors = m.reactions?.[emoji] ?? [];
+                  if (reactors.length === 0) return null;
+                  const reacted = user ? reactors.includes(user.id) : false;
+                  return (
+                    <button
+                      key={emoji}
+                      className={`chat-reaction-chip${reacted ? " active" : ""}`}
+                      onClick={() => handleReact(m.id, emoji)}
+                    >
+                      {emoji} {reactors.length}
+                    </button>
+                  );
+                })}
+                <span className="chat-reaction-add">
+                  {REACTION_EMOJI.filter((emoji) => !(m.reactions?.[emoji]?.length)).map((emoji) => (
+                    <button key={emoji} className="chat-reaction-chip chat-reaction-add-one" onClick={() => handleReact(m.id, emoji)} aria-label={`React with ${emoji}`}>
+                      {emoji}
+                    </button>
+                  ))}
+                </span>
+              </div>
             </li>
           );
         })}

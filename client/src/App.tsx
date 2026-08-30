@@ -4,6 +4,7 @@ import type { EntityType, Item } from "@spark/shared";
 import { useAuth } from "./AuthContext";
 import { ActiveWorldProvider, useActiveWorld } from "./ActiveWorldContext";
 import { useActivityBadges } from "./useActivityBadges";
+import { useLocalStorage } from "./useLocalStorage";
 import { AuthPage } from "./pages/AuthPage";
 import { RecoveryCodeDisplay } from "./components/RecoveryCodeDisplay";
 import { OnboardingChoice } from "./components/OnboardingChoice";
@@ -126,28 +127,53 @@ function AppShell({ initialLandOnOverview = false }: { initialLandOnOverview?: b
   const returningFromBilling = new URLSearchParams(window.location.search).has("billing");
   const [area, setArea] = useState<Area>(returningFromBilling ? "account" : initialLandOnOverview ? "world" : "prep");
   const [subTab, setSubTab] = useState<SubTab>(returningFromBilling ? "billing" : initialLandOnOverview ? "overview" : "create");
+  // Remembers the last subtab visited within each area, so switching areas
+  // and back doesn't dump the DM back on that area's default screen —
+  // e.g. leaving Codex for Combat and returning to World lands back on
+  // Codex, not Overview. GroupedTabs' own activeGroup re-derives from
+  // whatever subTab it's handed (see GroupedTabs.tsx), so remembering the
+  // subtab here is enough to also restore World's active sidebar group.
+  const [lastSubTabByArea, setLastSubTabByArea] = useLocalStorage<Record<Area, SubTab>>("spark-last-subtab-by-area", AREA_DEFAULT_SUBTAB);
   const [rosterWorldFilter, setRosterWorldFilter] = useState("");
   const [rosterSelection, setRosterSelection] = useState<RosterSelection | null>(null);
   const [printItems, setPrintItems] = useState<PrintItem[] | null>(null);
   const [craftedItemHandoff, setCraftedItemHandoff] = useState<{ item: Item; worldId: string } | null>(null);
 
+  // Single source of truth for every area/subtab change — explicit args
+  // rather than reading the `area`/`subTab` closures, since several call
+  // sites (viewRosterForWorld, openInRoster, ...) jump across areas in one
+  // gesture and a stale closure value would record the memory under the
+  // wrong (pre-jump) area.
+  function navigateTo(nextArea: Area, nextSubTab: SubTab) {
+    setArea(nextArea);
+    setSubTab(nextSubTab);
+    setLastSubTabByArea((prev) => ({ ...prev, [nextArea]: nextSubTab }));
+    if (nextSubTab === "codex") markSeen("codex");
+    else if (nextSubTab === "notes") markSeen("notes");
+    else if (nextSubTab === "combat") markSeen("combat");
+    else if (nextSubTab === "inventory") markSeen("inventory");
+  }
+
+  const ADMIN_ONLY_SUBTABS: SubTab[] = ["moderation", "users", "stats"];
+
   function selectArea(next: Area) {
-    setArea(next);
-    setSubTab(AREA_DEFAULT_SUBTAB[next]);
+    const remembered = lastSubTabByArea[next];
+    // Guards a stale localStorage value pointing at an admin-only tab for
+    // an account that (now) isn't an admin — falls back to the area
+    // default instead of landing on a screen with nothing rendered.
+    const target = remembered && !(ADMIN_ONLY_SUBTABS.includes(remembered) && user?.role !== "admin")
+      ? remembered
+      : AREA_DEFAULT_SUBTAB[next];
+    navigateTo(next, target);
   }
 
   function selectSubTab(next: SubTab) {
-    setSubTab(next);
-    if (next === "codex") markSeen("codex");
-    else if (next === "notes") markSeen("notes");
-    else if (next === "combat") markSeen("combat");
-    else if (next === "inventory") markSeen("inventory");
+    navigateTo(area, next);
   }
 
   function viewRosterForWorld(worldIdToView: string) {
     setRosterWorldFilter(worldIdToView);
-    setArea("world");
-    setSubTab("roster");
+    navigateTo("world", "roster");
   }
 
   // A just-forged item has no downtime activity of its own yet — this
@@ -157,13 +183,11 @@ function AppShell({ initialLandOnOverview = false }: { initialLandOnOverview?: b
   function sendToDowntimeLog(item: Item, itemWorldId: string) {
     setWorldId(itemWorldId);
     setCraftedItemHandoff({ item, worldId: itemWorldId });
-    setArea("world");
-    setSubTab("downtime");
+    navigateTo("world", "downtime");
   }
 
   function navigateToBilling() {
-    setArea("account");
-    setSubTab("billing");
+    navigateTo("account", "billing");
   }
 
   function openInRoster(type: EntityType, id: string) {
@@ -172,18 +196,19 @@ function AppShell({ initialLandOnOverview = false }: { initialLandOnOverview?: b
     // yet, but landing there is still correct, unlike RosterPage which has
     // no tab for this type at all.
     if (type === "battleMap") {
-      setArea("play");
-      setSubTab("mapBuilder");
+      navigateTo("play", "mapBuilder");
       return;
     }
     setRosterSelection({ type, id });
-    setArea("world");
-    setSubTab("roster");
+    navigateTo("world", "roster");
   }
 
   function navigateFromOverview(target: OverviewNavTarget) {
-    setArea(target === "shop" ? "play" : "world");
-    selectSubTab(target);
+    navigateTo(target === "shop" ? "play" : "world", target);
+  }
+
+  function navigateFromSearch(nextArea: Area, nextSubTab: SubTab) {
+    navigateTo(nextArea, nextSubTab);
   }
 
   const worldAreaUnseen = notesUnseen || codexUnseen;
@@ -279,7 +304,7 @@ function AppShell({ initialLandOnOverview = false }: { initialLandOnOverview?: b
           )}
           <a className="btn-secondary" href="?play=1">Player View</a>
         </div>
-        <GlobalSearch onSelect={openInRoster} />
+        <GlobalSearch onSelect={openInRoster} onNavigate={navigateFromSearch} />
       </header>
 
       <main>

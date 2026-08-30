@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FREE_TIER_WORLD_LIMIT, FREE_TIER_GENERATE_LIMIT, PAID_TIER_GENERATE_LIMIT, RECENT_HISTORY_LIMIT } from "@spark/shared";
+import { FREE_TIER_WORLD_LIMIT, FREE_TIER_GENERATE_LIMIT, PAID_TIER_GENERATE_LIMIT, RECENT_HISTORY_LIMIT, FREE_TIER_BATTLEMAP_LIMIT } from "@spark/shared";
 import { api } from "../api";
 import { useAuth } from "../AuthContext";
 
@@ -56,10 +56,11 @@ export function BillingPage() {
       <div className="panel">
         <h2>Billing</h2>
         <p className="hint">
-          Almost everything in Spark is free, forever. The paid plan raises usage caps (how many worlds you
-          can have, how fast you can generate content, and how far back you can browse roll log and chat
-          history) and unlocks the Home Base upgrade system for worlds you own. Paying isn't required to play
-          in someone else's world: a DM's subscription unlocks their Home Base for the whole table.
+          Almost everything in Spark is free, forever. The paid plan raises usage caps (how many worlds and
+          battle maps you can have, how fast you can generate content, and how far back you can browse roll
+          log and chat history) and unlocks the Home Base upgrade system and fog of war / dynamic lighting on
+          the battle grid for worlds you own. Paying isn't required to play in someone else's world: a DM's
+          subscription unlocks all of this for the whole table.
         </p>
 
         <table className="plan-comparison">
@@ -90,6 +91,16 @@ export function BillingPage() {
               <th scope="row">Home Base upgrades</th>
               <td>Locked</td>
               <td>Unlocked</td>
+            </tr>
+            <tr>
+              <th scope="row">Battle maps</th>
+              <td>{FREE_TIER_BATTLEMAP_LIMIT}</td>
+              <td>Unlimited</td>
+            </tr>
+            <tr>
+              <th scope="row">Fog of war &amp; dynamic lighting</th>
+              <td>Off</td>
+              <td>On</td>
             </tr>
           </tbody>
         </table>

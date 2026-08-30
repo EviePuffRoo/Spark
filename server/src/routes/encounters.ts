@@ -187,7 +187,7 @@ encountersRouter.get("/:worldId", async (req, res) => {
   if (!row) {
     return res.json({ worldId, combatants: [], round: 1, turnIndex: 0, zones: [], zoneEffects: [], updatedAt: null });
   }
-  const visibleCells = await computeCurrentVisibility(row.activeBattleMapId, JSON.parse(row.combatants), parseOpenDoors(row.openDoorCells));
+  const visibleCells = await computeCurrentVisibility(row.activeBattleMapId, JSON.parse(row.combatants), world.userId, parseOpenDoors(row.openDoorCells));
   res.json(toEncounterDTO(row, req.userId!, world.userId, visibleCells ?? undefined));
 });
 
@@ -221,7 +221,7 @@ encountersRouter.put("/:worldId", async (req, res) => {
     const priorExplored: string[] = mapChanged || !existing ? [] : JSON.parse(existing.exploredCells ?? "[]");
     const openDoorCellsList = mapChanged || !existing ? [] : [...new Set([...JSON.parse(existing.openDoorCells ?? "[]") as string[], ...clientOpenDoorCells])];
     const openDoors = new Set(openDoorCellsList);
-    const visible = await computeCurrentVisibility(activeBattleMapId, combatants, openDoors);
+    const visible = await computeCurrentVisibility(activeBattleMapId, combatants, world.userId, openDoors);
     const exploredCells = JSON.stringify([...new Set([...priorExplored, ...clientExploredCells, ...(visible ?? [])])]);
     const openDoorCells = JSON.stringify(openDoorCellsList);
 
@@ -255,7 +255,7 @@ encountersRouter.put("/:worldId", async (req, res) => {
     });
   });
   publishWorldChange(worldId, "encounter");
-  const visibleCells = await computeCurrentVisibility(row.activeBattleMapId, JSON.parse(row.combatants), parseOpenDoors(row.openDoorCells));
+  const visibleCells = await computeCurrentVisibility(row.activeBattleMapId, JSON.parse(row.combatants), world.userId, parseOpenDoors(row.openDoorCells));
   res.json(toEncounterDTO(row, req.userId!, world.userId, visibleCells ?? undefined));
 });
 
@@ -293,7 +293,7 @@ encountersRouter.post("/:worldId/adjust-hp", async (req, res) => {
   if (updated === null) return res.status(404).json({ error: "No active encounter for this world" });
   if (updated === undefined) return res.status(404).json({ error: "Combatant not found" });
   publishWorldChange(worldId, "encounter");
-  const visibleCells = await computeCurrentVisibility(updated.activeBattleMapId, JSON.parse(updated.combatants), parseOpenDoors(updated.openDoorCells));
+  const visibleCells = await computeCurrentVisibility(updated.activeBattleMapId, JSON.parse(updated.combatants), world.userId, parseOpenDoors(updated.openDoorCells));
   res.json(toEncounterDTO(updated, req.userId!, world.userId, visibleCells ?? undefined));
 });
 
@@ -348,7 +348,7 @@ encountersRouter.post("/:worldId/move-zone", async (req, res) => {
   });
   if ("error" in updated) return res.status(updated.error).json({ error: updated.message });
   publishWorldChange(worldId, "encounter");
-  const visibleCells = await computeCurrentVisibility(updated.activeBattleMapId, JSON.parse(updated.combatants), parseOpenDoors(updated.openDoorCells));
+  const visibleCells = await computeCurrentVisibility(updated.activeBattleMapId, JSON.parse(updated.combatants), world.userId, parseOpenDoors(updated.openDoorCells));
   res.json(toEncounterDTO(updated, req.userId!, world.userId, visibleCells ?? undefined));
 });
 
@@ -422,7 +422,7 @@ encountersRouter.post("/:worldId/move-grid", async (req, res) => {
   });
   if ("error" in updated) return res.status(updated.error).json({ error: updated.message });
   publishWorldChange(worldId, "encounter");
-  const visibleCells = await computeCurrentVisibility(updated.activeBattleMapId, JSON.parse(updated.combatants), parseOpenDoors(updated.openDoorCells));
+  const visibleCells = await computeCurrentVisibility(updated.activeBattleMapId, JSON.parse(updated.combatants), world.userId, parseOpenDoors(updated.openDoorCells));
   res.json(toEncounterDTO(updated, req.userId!, world.userId, visibleCells ?? undefined));
 });
 
@@ -475,7 +475,7 @@ encountersRouter.post("/:worldId/toggle-door", async (req, res) => {
   });
   if ("error" in updated) return res.status(updated.error).json({ error: updated.message });
   publishWorldChange(worldId, "encounter");
-  const visibleCells = await computeCurrentVisibility(updated.activeBattleMapId, JSON.parse(updated.combatants), parseOpenDoors(updated.openDoorCells));
+  const visibleCells = await computeCurrentVisibility(updated.activeBattleMapId, JSON.parse(updated.combatants), world.userId, parseOpenDoors(updated.openDoorCells));
   res.json(toEncounterDTO(updated, req.userId!, world.userId, visibleCells ?? undefined));
 });
 

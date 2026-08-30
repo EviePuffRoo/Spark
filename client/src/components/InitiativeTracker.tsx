@@ -15,6 +15,8 @@ import { parseNotation, rollDice } from "./DiceRoller";
 import { HpBar } from "./HpBar";
 import { AddCombatantPanel, rollD20 } from "./AddCombatantPanel";
 import { CombatantRowReadOnly } from "./CombatantRowReadOnly";
+import { ResizeDivider, useResizableColumn } from "./ResizeDivider";
+import type { CSSProperties } from "react";
 
 const LIGHT_PRESETS: { label: string; feet: number }[] = [
   { label: "Candle", feet: 5 },
@@ -58,6 +60,7 @@ export function InitiativeTracker({
   // order they were issued.
   const saveQueueRef = useRef<Promise<unknown>>(Promise.resolve());
   const [liveError, setLiveError] = useState<string | null>(null);
+  const { width: railWidth, dividerProps: railDividerProps } = useResizableColumn("spark-tracker-map-width", 320, 280, 480, -1);
 
   const [hpDelta, setHpDelta] = useState<Record<string, string>>({});
   const [openConditionsFor, setOpenConditionsFor] = useState<string | null>(null);
@@ -1100,7 +1103,10 @@ export function InitiativeTracker({
         </div>
       )}
 
-      <div className={`tracker-body${mapActive ? " map-active" : ""}`}>
+      <div
+        className={`tracker-body${mapActive ? " map-active" : ""}`}
+        style={mapActive ? ({ "--tracker-rail-width": `${railWidth}px` } as CSSProperties) : undefined}
+      >
         <div className="tracker-map-region">
           {showZoneMap && (
             <ZoneMap
@@ -1172,6 +1178,8 @@ export function InitiativeTracker({
             </div>
           )}
         </div>
+
+        {mapActive && <ResizeDivider {...railDividerProps} ariaLabel="Resize combatant list" />}
 
         <div className="tracker-editor-rail">
           {sorted.length === 0 && (

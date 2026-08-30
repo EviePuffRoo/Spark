@@ -2998,6 +2998,17 @@ textarea {
   }
 }
 
+/* Desktop-only resizable tools column, driven by the --tools-width custom
+   property CombatPage sets from useResizableColumn. Two classes beats the
+   single-class mobile-stacking rule above regardless of source order, and
+   the min-width gate means it simply doesn't exist below 801px. */
+@media (min-width: 801px) {
+  .combat-layout.combat-resizable {
+    grid-template-columns: var(--tools-width) 6px 1fr;
+    gap: 12px;
+  }
+}
+
 .combat-left-column {
   display: flex;
   flex-direction: column;
@@ -3031,9 +3042,9 @@ textarea {
 @media (min-width: 801px) {
   .tracker-body.map-active {
     display: grid;
-    grid-template-columns: minmax(360px, 1fr) minmax(280px, 340px);
+    grid-template-columns: minmax(360px, 1fr) 6px var(--tracker-rail-width);
     align-items: start;
-    gap: 20px;
+    gap: 14px;
   }
 
   .tracker-body.map-active .tracker-editor-rail {
@@ -3048,6 +3059,27 @@ textarea {
   .tracker-body.map-active .grid-map-svg,
   .tracker-body.map-active .zone-map-svg {
     height: min(78vh, calc(100vh - 220px));
+  }
+}
+
+.resize-divider {
+  align-self: stretch;
+  width: 6px;
+  min-height: 40px;
+  border-radius: 3px;
+  background: var(--border);
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.resize-divider:hover,
+.resize-divider:active {
+  background: var(--accent);
+}
+
+@media (max-width: 800px) {
+  .resize-divider {
+    display: none;
   }
 }
 

@@ -58,9 +58,10 @@ export function BillingPage() {
         <p className="hint">
           Almost everything in Spark is free, forever. The paid plan raises usage caps (how many worlds and
           battle maps you can have, how fast you can generate content, and how far back you can browse roll
-          log and chat history) and unlocks the Home Base upgrade system and fog of war / dynamic lighting on
-          the battle grid for worlds you own. Paying isn't required to play in someone else's world: a DM's
-          subscription unlocks all of this for the whole table.
+          log and chat history) and unlocks the Home Base upgrade system, fog of war / dynamic lighting on
+          the battle grid, and campaign automation (Doom Clocks, Trigger Rules, and locking in Autonomous
+          Wars or World Tick outcomes) for worlds you own. Paying isn't required to play in someone else's
+          world: a DM's subscription unlocks all of this for the whole table.
         </p>
 
         <table className="plan-comparison">
@@ -101,6 +102,16 @@ export function BillingPage() {
               <th scope="row">Fog of war &amp; dynamic lighting</th>
               <td>Off</td>
               <td>On</td>
+            </tr>
+            <tr>
+              <th scope="row">Doom Clocks &amp; Trigger Rules</th>
+              <td>View existing only</td>
+              <td>Create new</td>
+            </tr>
+            <tr>
+              <th scope="row">Autonomous Wars &amp; World Tick</th>
+              <td>Preview only</td>
+              <td>Apply outcomes</td>
             </tr>
           </tbody>
         </table>

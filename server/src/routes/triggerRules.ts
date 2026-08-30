@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db.js";
 import { toTriggerRuleDTO } from "../serialize.js";
-import { findAccessibleWorld, canWriteWorld, authorizeEntityWrite } from "../worldAccess.js";
+import { findAccessibleWorld, canWriteWorld, authorizeEntityWrite, worldOwnerIsPaid } from "../worldAccess.js";
 import { publishWorldChange } from "../worldEvents.js";
 import type { TriggerCondition } from "@spark/shared";
 
@@ -50,8 +50,12 @@ triggerRulesRouter.post("/", async (req, res) => {
     return res.status(400).json({ error: "worldId, a name, a message, and a valid condition are required" });
   }
 
-  if (!(await canWriteWorld(req.userId!, worldId))) {
+  const world = await prisma.world.findUnique({ where: { id: worldId } });
+  if (!world || !(await canWriteWorld(req.userId!, worldId))) {
     return res.status(403).json({ error: "You don't have write access to this world" });
+  }
+  if (!(await worldOwnerIsPaid(world.userId))) {
+    return res.status(403).json({ error: "Trigger rules are a paid feature — upgrade to create more.", code: "trigger_rules_paid_only" });
   }
 
   const row = await prisma.triggerRule.create({

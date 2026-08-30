@@ -2,7 +2,7 @@ import { Router } from "express";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../db.js";
 import { toFactionRelationshipDTO, toCampaignEventDTO } from "../serialize.js";
-import { findAccessibleWorld, getMemberWorldIds, authorizeEntityWrite } from "../worldAccess.js";
+import { findAccessibleWorld, getMemberWorldIds, authorizeEntityWrite, worldOwnerIsPaid } from "../worldAccess.js";
 import { logCampaignEventOp } from "../campaignEventLog.js";
 import { dispatchWebhookEvent } from "../webhookDispatch.js";
 import { FACTION_RELATIONSHIP_STANCES, resolveFactionBattle } from "@spark/shared";
@@ -148,6 +148,11 @@ factionRelationshipsRouter.post("/:id/apply-battle", async (req, res) => {
 
   const relationship = await prisma.factionRelationship.findUnique({ where: { id: req.params.id } });
   if (!relationship) return res.status(404).json({ error: "Faction relationship not found" });
+
+  const relationshipWorld = await prisma.world.findUnique({ where: { id: relationship.worldId } });
+  if (!relationshipWorld || !(await worldOwnerIsPaid(relationshipWorld.userId))) {
+    return res.status(403).json({ error: "Applying a resolved battle is a paid feature — upgrade to lock in the outcome. Simulating stays free.", code: "autonomous_wars_paid_only" });
+  }
 
   const user = await prisma.user.findUnique({ where: { id: req.userId } });
   const authorName = user?.displayName || user?.username || "The DM";

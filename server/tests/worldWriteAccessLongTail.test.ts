@@ -57,7 +57,10 @@ describe("world write access — Organizations Phase B, 1b long-tail entities", 
   });
 
   it("lets a coDM create, advance, and delete a doom clock, blocks a plain player from creating one", async () => {
-    const { agent: dm } = await signupAgent("wwltdm2");
+    const { agent: dm, userId: dmUserId } = await signupAgent("wwltdm2");
+    // Creating a doom clock is gated on the world OWNER's tier, not the
+    // acting coDM's — same rule as every other campaign-automation gate.
+    await prisma.user.update({ where: { id: dmUserId }, data: { tier: "paid" } });
     const world = await dm.post("/api/worlds").send({ name: "Doom Clock World" });
     const worldId = world.body.id as string;
     const { agent: coDm } = await signupAgent("wwltcodm2");

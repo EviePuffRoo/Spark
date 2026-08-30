@@ -15,9 +15,19 @@ async function signupAgent(username: string) {
   return { agent, userId: res.body.id as string };
 }
 
+// Creating a trigger rule is a paid feature (gated on the world owner's
+// tier), so every DM below needs paid tier to exercise the CRUD behavior
+// this suite actually tests. The dedicated free-tier gate test at the end
+// covers the free-tier-blocked case.
+async function paidDM(username: string) {
+  const { agent, userId } = await signupAgent(username);
+  await prisma.user.update({ where: { id: userId }, data: { tier: "paid" } });
+  return { agent, userId };
+}
+
 describe("trigger rules", () => {
   it("creates a rule and lists it for the owner", async () => {
-    const { agent: dm } = await signupAgent("triggerdm1");
+    const { agent: dm } = await paidDM("triggerdm1");
     const world = await dm.post("/api/worlds").send({ name: "Trigger World" });
     const worldId = world.body.id as string;
 
@@ -35,7 +45,7 @@ describe("trigger rules", () => {
   });
 
   it("400s a missing name, message, or invalid condition", async () => {
-    const { agent: dm } = await signupAgent("triggerdm2");
+    const { agent: dm } = await paidDM("triggerdm2");
     const world = await dm.post("/api/worlds").send({ name: "Trigger World 2" });
     const worldId = world.body.id as string;
 
@@ -56,7 +66,7 @@ describe("trigger rules", () => {
   });
 
   it("hides a disabled rule from a member but shows an enabled one", async () => {
-    const { agent: dm } = await signupAgent("triggerdm3");
+    const { agent: dm } = await paidDM("triggerdm3");
     const world = await dm.post("/api/worlds").send({ name: "Trigger World 3" });
     const worldId = world.body.id as string;
     const joinCode = await dm.post(`/api/worlds/${worldId}/join-code`);
@@ -81,7 +91,7 @@ describe("trigger rules", () => {
   });
 
   it("patches name, condition, and enabled", async () => {
-    const { agent: dm } = await signupAgent("triggerdm4");
+    const { agent: dm } = await paidDM("triggerdm4");
     const world = await dm.post("/api/worlds").send({ name: "Trigger World 4" });
     const worldId = world.body.id as string;
     const rule = await dm.post("/api/trigger-rules").send({
@@ -100,7 +110,7 @@ describe("trigger rules", () => {
   });
 
   it("rejects a patch with an invalid condition", async () => {
-    const { agent: dm } = await signupAgent("triggerdm5");
+    const { agent: dm } = await paidDM("triggerdm5");
     const world = await dm.post("/api/worlds").send({ name: "Trigger World 5" });
     const worldId = world.body.id as string;
     const rule = await dm.post("/api/trigger-rules").send({
@@ -114,7 +124,7 @@ describe("trigger rules", () => {
   });
 
   it("404s writes from a non-owner and lets the owner delete", async () => {
-    const { agent: dm } = await signupAgent("triggerdm6");
+    const { agent: dm } = await paidDM("triggerdm6");
     const world = await dm.post("/api/worlds").send({ name: "Trigger World 6" });
     const worldId = world.body.id as string;
     const rule = await dm.post("/api/trigger-rules").send({
@@ -136,5 +146,18 @@ describe("trigger rules", () => {
     expect(ownerDelete.status).toBe(204);
     const list = await dm.get(`/api/trigger-rules?worldId=${worldId}`);
     expect(list.body).toHaveLength(0);
+  });
+
+  it("403s creating a rule for a free-tier world with a machine-readable code", async () => {
+    const { agent: dm } = await signupAgent("triggerdmfree1");
+    const world = await dm.post("/api/worlds").send({ name: "Free Trigger World" });
+    const worldId = world.body.id as string;
+
+    const res = await dm.post("/api/trigger-rules").send({
+      worldId, name: "Bloodied", message: "The boss is bloodied!",
+      condition: { kind: "hpBelowPercent", threshold: 50 },
+    });
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe("trigger_rules_paid_only");
   });
 });

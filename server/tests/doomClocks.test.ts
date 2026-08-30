@@ -15,9 +15,19 @@ async function signupAgent(username: string) {
   return { agent, userId: res.body.id as string };
 }
 
+// Creating a doom clock is a paid feature (gated on the world owner's
+// tier), so every DM below needs paid tier to exercise the CRUD behavior
+// this suite actually tests. The dedicated free-tier gate test at the end
+// covers the free-tier-blocked case.
+async function paidDM(username: string) {
+  const { agent, userId } = await signupAgent(username);
+  await prisma.user.update({ where: { id: userId }, data: { tier: "paid" } });
+  return { agent, userId };
+}
+
 describe("doom clocks", () => {
   it("creates a clock and lists it for the owner", async () => {
-    const { agent: dm } = await signupAgent("clockdm1");
+    const { agent: dm } = await paidDM("clockdm1");
     const world = await dm.post("/api/worlds").send({ name: "Doom World" });
     const worldId = world.body.id as string;
 
@@ -32,7 +42,7 @@ describe("doom clocks", () => {
   });
 
   it("400s an invalid segment count", async () => {
-    const { agent: dm } = await signupAgent("clockdm2");
+    const { agent: dm } = await paidDM("clockdm2");
     const world = await dm.post("/api/worlds").send({ name: "Doom World 2" });
     const worldId = world.body.id as string;
 
@@ -43,7 +53,7 @@ describe("doom clocks", () => {
   });
 
   it("hides a party-invisible clock from a member but shows a visible one", async () => {
-    const { agent: dm } = await signupAgent("clockdm3");
+    const { agent: dm } = await paidDM("clockdm3");
     const world = await dm.post("/api/worlds").send({ name: "Doom World 3" });
     const worldId = world.body.id as string;
     const joinCode = await dm.post(`/api/worlds/${worldId}/join-code`);
@@ -62,7 +72,7 @@ describe("doom clocks", () => {
   });
 
   it("advance clamps at segments and never goes below zero", async () => {
-    const { agent: dm } = await signupAgent("clockdm4");
+    const { agent: dm } = await paidDM("clockdm4");
     const world = await dm.post("/api/worlds").send({ name: "Doom World 4" });
     const worldId = world.body.id as string;
     const clock = await dm.post("/api/doom-clocks").send({ worldId, label: "Clock", segments: 3 });
@@ -78,7 +88,7 @@ describe("doom clocks", () => {
   });
 
   it("shrinking segments below the current fill clamps fill down with it", async () => {
-    const { agent: dm } = await signupAgent("clockdm5");
+    const { agent: dm } = await paidDM("clockdm5");
     const world = await dm.post("/api/worlds").send({ name: "Doom World 5" });
     const worldId = world.body.id as string;
     const clock = await dm.post("/api/doom-clocks").send({ worldId, label: "Clock", segments: 8 });
@@ -92,7 +102,7 @@ describe("doom clocks", () => {
   });
 
   it("404s writes from a non-owner and lets the owner delete", async () => {
-    const { agent: dm } = await signupAgent("clockdm6");
+    const { agent: dm } = await paidDM("clockdm6");
     const world = await dm.post("/api/worlds").send({ name: "Doom World 6" });
     const worldId = world.body.id as string;
     const clock = await dm.post("/api/doom-clocks").send({ worldId, label: "Clock", segments: 4 });
@@ -113,5 +123,15 @@ describe("doom clocks", () => {
     expect(ownerDelete.status).toBe(204);
     const list = await dm.get(`/api/doom-clocks?worldId=${worldId}`);
     expect(list.body).toHaveLength(0);
+  });
+
+  it("403s creating a clock for a free-tier world with a machine-readable code", async () => {
+    const { agent: dm } = await signupAgent("clockdmfree1");
+    const world = await dm.post("/api/worlds").send({ name: "Free Doom World" });
+    const worldId = world.body.id as string;
+
+    const res = await dm.post("/api/doom-clocks").send({ worldId, label: "The Ritual Completes", segments: 6 });
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe("doom_clock_paid_only");
   });
 });

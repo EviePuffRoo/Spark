@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import { AuthProvider } from './AuthContext.tsx'
+import { ErrorBoundary } from './components/ErrorBoundary.tsx'
 
 // A normal app visitor never needs this, and a cast-to-table visitor never
 // needs the full tabbed app — split so neither pays for the other. This
@@ -26,14 +27,16 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    {presentWorldId ? (
-      <Suspense fallback={null}>
-        <PresentationView worldId={presentWorldId} />
-      </Suspense>
-    ) : (
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    )}
+    <ErrorBoundary>
+      {presentWorldId ? (
+        <Suspense fallback={null}>
+          <PresentationView worldId={presentWorldId} />
+        </Suspense>
+      ) : (
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      )}
+    </ErrorBoundary>
   </StrictMode>,
 )

@@ -2,7 +2,7 @@
   "name": "spark",
   "private": true,
   "version": "0.1.0",
-  "description": "Lean NPC & monster generator for TTRPGs",
+  "description": "Prep-and-run companion for tabletop RPGs, from content generation to a live shared Battle Grid",
   "workspaces": [
     "shared",
     "server",

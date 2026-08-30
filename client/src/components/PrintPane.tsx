@@ -9,7 +9,7 @@ import { FactionCardView } from "./FactionCardView";
 import { EncounterTableCardView } from "./EncounterTableCardView";
 import { SessionNoteCardView } from "./SessionNoteCardView";
 import { AdventureCardView } from "./AdventureCardView";
-import { PlayerCharacterCardView } from "./PlayerCharacterCardView";
+import { PlayerCharacterPrintSheet } from "./PlayerCharacterPrintSheet";
 
 export type PrintItem =
   | { type: "character"; data: Character }
@@ -52,7 +52,7 @@ export function PrintPane({ items }: { items: PrintItem[] | null }) {
           {item.type === "encounterTable" && <EncounterTableCardView table={item.data} />}
           {item.type === "sessionNote" && <SessionNoteCardView note={item.data} />}
           {item.type === "adventure" && <AdventureCardView adventure={item.data} />}
-          {item.type === "playerCharacter" && <PlayerCharacterCardView pc={item.data} />}
+          {item.type === "playerCharacter" && <PlayerCharacterPrintSheet pc={item.data} />}
         </div>
       ))}
     </div>

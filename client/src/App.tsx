@@ -288,7 +288,7 @@ function AppShell({ initialLandOnOverview = false }: { initialLandOnOverview?: b
           {subTab === "create" && <CreatePage onSendToDowntime={sendToDowntimeLog} />}
           {subTab === "compendium" && <CompendiumPage />}
           {subTab === "profile" && <ProfilePage />}
-          {subTab === "myCharacter" && <MyCharacterPage onViewRoster={viewRosterForWorld} />}
+          {subTab === "myCharacter" && <MyCharacterPage onViewRoster={viewRosterForWorld} onPrint={setPrintItems} />}
           {subTab === "billing" && <BillingPage />}
           {subTab === "gallery" && <GalleryPage />}
           {subTab === "moderation" && user?.role === "admin" && <ModerationPage />}

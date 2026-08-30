@@ -5,8 +5,9 @@ import { PlayerCharacterCardView } from "../components/PlayerCharacterCardView";
 import { PlayerCharacterEditor, type PlayerCharacterLivingStatePatch } from "../components/PlayerCharacterEditor";
 import { LevelUpPanel } from "../components/LevelUpPanel";
 import { EquipmentPanel } from "../components/EquipmentPanel";
+import type { PrintItem } from "../components/PrintPane";
 
-export function MyCharacterPage({ onViewRoster }: { onViewRoster: (worldId: string) => void }) {
+export function MyCharacterPage({ onViewRoster, onPrint }: { onViewRoster: (worldId: string) => void; onPrint: (items: PrintItem[]) => void }) {
   const [characters, setCharacters] = useState<PlayerCharacter[]>([]);
   const [worlds, setWorlds] = useState<WorldSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -108,6 +109,7 @@ export function MyCharacterPage({ onViewRoster }: { onViewRoster: (worldId: stri
                   <EquipmentPanel equippedItems={pc.equippedItems} attunedItems={pc.attunedItems} baseArmorClass={pc.armorClass} strengthScore={pc.abilityScores.str} houseRules={world?.houseRules} />
                   <div className="button-row">
                     <button className="btn-secondary" onClick={() => setEditingId(pc.id)} disabled={status === "saving"}>Edit</button>
+                    <button className="btn-secondary" onClick={() => onPrint([{ type: "playerCharacter", data: pc }])}>Print</button>
                     <button className="btn-secondary" onClick={() => handleRest(pc.id, "short")} disabled={status === "saving"}>Short Rest</button>
                     <button className="btn-secondary" onClick={() => handleRest(pc.id, "long")} disabled={status === "saving"}>Long Rest</button>
                     {world && <button className="btn-secondary" onClick={() => onViewRoster(world.id)}>View {world.name}</button>}

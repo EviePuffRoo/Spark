@@ -1,5 +1,5 @@
-import { useState } from "react";
 import type { Item } from "@spark/shared";
+import { useLocalStorage } from "../useLocalStorage";
 import { WelcomePanel } from "../components/WelcomePanel";
 import { GroupedTabs } from "../components/GroupedTabs";
 import { GeneratorPage } from "./GeneratorPage";
@@ -52,7 +52,11 @@ const CREATE_TYPE_TO_GROUP = Object.fromEntries(
 ) as Record<CreateType, CreateGroup>;
 
 export function CreatePage({ onSendToDowntime }: { onSendToDowntime?: (item: Item, worldId: string) => void }) {
-  const [createType, setCreateType] = useState<CreateType>("npc");
+  // Persisted rather than plain useState so leaving Create (the page
+  // unmounts whenever another subtab is active) and coming back doesn't
+  // reset to NPCs every time — same "remember where the DM was" reasoning
+  // as App.tsx's per-area subtab memory.
+  const [createType, setCreateType] = useLocalStorage<CreateType>("spark-create-type", "npc");
 
   return (
     <div>

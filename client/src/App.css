@@ -478,6 +478,10 @@
   color: var(--text-muted);
 }
 
+.global-search-nav-result {
+  border-left: 3px solid var(--accent);
+}
+
 .linked-entities {
   margin-top: 16px;
   padding-top: 16px;

@@ -20,11 +20,55 @@ const TYPE_LABELS: Record<EntityType, string> = {
   battleMap: "Battle Map",
 };
 
-export function GlobalSearch({ onSelect }: { onSelect: (type: EntityType, id: string) => void }) {
+// A narrow subset of App.tsx's own Area/SubTab string-literal unions —
+// kept local rather than imported, matching the existing convention where
+// a leaf component (see WorldOverviewPage.tsx's OverviewNavTarget) defines
+// its own nav-target type and the parent's callback accepts it, not the
+// reverse. Admin-only screens (moderation/users/stats) are deliberately
+// left out of quick-nav.
+type NavArea = "prep" | "world" | "play" | "account";
+type NavSubTab =
+  | "create" | "compendium" | "overview" | "worlds" | "roster" | "codex" | "notes"
+  | "downtime" | "tavern" | "combat" | "mapBuilder" | "shop" | "inventory"
+  | "gallery" | "profile" | "myCharacter" | "billing";
+
+const NAV_DESTINATIONS: { label: string; area: NavArea; subTab: NavSubTab }[] = [
+  { label: "Combat", area: "play", subTab: "combat" },
+  { label: "Map Builder", area: "play", subTab: "mapBuilder" },
+  { label: "Shop", area: "play", subTab: "shop" },
+  { label: "Inventory", area: "play", subTab: "inventory" },
+  { label: "World Overview", area: "world", subTab: "overview" },
+  { label: "Doom Clock", area: "world", subTab: "overview" },
+  { label: "Trigger Rules", area: "world", subTab: "overview" },
+  { label: "Roster", area: "world", subTab: "roster" },
+  { label: "Codex", area: "world", subTab: "codex" },
+  { label: "Session Notes", area: "world", subTab: "notes" },
+  { label: "Downtime", area: "world", subTab: "downtime" },
+  { label: "Tavern", area: "world", subTab: "tavern" },
+  { label: "Worlds", area: "world", subTab: "worlds" },
+  { label: "Create", area: "prep", subTab: "create" },
+  { label: "Compendium", area: "prep", subTab: "compendium" },
+  { label: "Profile", area: "account", subTab: "profile" },
+  { label: "My Character", area: "account", subTab: "myCharacter" },
+  { label: "Billing", area: "account", subTab: "billing" },
+  { label: "Gallery", area: "account", subTab: "gallery" },
+];
+
+export function GlobalSearch({
+  onSelect, onNavigate,
+}: {
+  onSelect: (type: EntityType, id: string) => void;
+  onNavigate: (area: NavArea, subTab: NavSubTab) => void;
+}) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const trimmedQuery = query.trim().toLowerCase();
+  const navMatches = trimmedQuery
+    ? NAV_DESTINATIONS.filter((d) => d.label.toLowerCase().includes(trimmedQuery))
+    : [];
 
   useEffect(() => {
     const trimmed = query.trim();
@@ -40,6 +84,14 @@ export function GlobalSearch({ onSelect }: { onSelect: (type: EntityType, id: st
     }, 250);
     return () => clearTimeout(handle);
   }, [query]);
+
+  // Nav-destination matches are computed synchronously from the query (no
+  // debounce needed, it's a small in-memory list), but still need to open
+  // the results panel the moment a match appears rather than waiting on
+  // the entity-search effect above.
+  useEffect(() => {
+    if (navMatches.length > 0) setOpen(true);
+  }, [navMatches.length]);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -58,6 +110,15 @@ export function GlobalSearch({ onSelect }: { onSelect: (type: EntityType, id: st
     setOpen(false);
   }
 
+  function handleNavigate(dest: (typeof NAV_DESTINATIONS)[number]) {
+    onNavigate(dest.area, dest.subTab);
+    setQuery("");
+    setResults([]);
+    setOpen(false);
+  }
+
+  const hasAnyMatches = navMatches.length > 0 || results.length > 0;
+
   return (
     <div className="global-search" ref={containerRef}>
       <input
@@ -66,15 +127,21 @@ export function GlobalSearch({ onSelect }: { onSelect: (type: EntityType, id: st
         aria-label="Search everything"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        onFocus={() => results.length > 0 && setOpen(true)}
+        onFocus={() => hasAnyMatches && setOpen(true)}
         onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
       />
       <span className="sr-only" role="status">
-        {open && (results.length > 0 ? `${results.length} result${results.length === 1 ? "" : "s"} found.` : "No matches found.")}
+        {open && (hasAnyMatches ? `${navMatches.length + results.length} result${navMatches.length + results.length === 1 ? "" : "s"} found.` : "No matches found.")}
       </span>
       {open && (
         <div className="global-search-results">
-          {results.length === 0 && <div className="global-search-empty">No matches.</div>}
+          {!hasAnyMatches && <div className="global-search-empty">No matches.</div>}
+          {navMatches.map((d) => (
+            <button key={`nav-${d.area}-${d.subTab}-${d.label}`} className="global-search-result global-search-nav-result" onClick={() => handleNavigate(d)}>
+              <span className="global-search-name">{d.label}</span>
+              <span className="global-search-type">Go to</span>
+            </button>
+          ))}
           {results.map((r) => (
             <button key={`${r.type}-${r.id}`} className="global-search-result" onClick={() => handleSelect(r)}>
               <span className="global-search-name">{r.name}</span>

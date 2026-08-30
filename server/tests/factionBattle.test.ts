@@ -15,6 +15,16 @@ async function signupAgent(username: string) {
   return { agent, userId: res.body.id as string };
 }
 
+// Applying (not simulating) a resolved battle is a paid feature (gated on
+// the world owner's tier), so any DM below that calls apply-battle needs
+// paid tier. The dedicated free-tier gate test at the end covers the
+// free-tier-blocked case.
+async function paidDM(username: string) {
+  const { agent, userId } = await signupAgent(username);
+  await prisma.user.update({ where: { id: userId }, data: { tier: "paid" } });
+  return { agent, userId };
+}
+
 function factionPayload(name: string, worldId: string) {
   return { name, factionType: "criminal", agenda: "profit", methods: "theft", publicFace: "merchants", hook: "hook", worldId };
 }
@@ -90,7 +100,7 @@ describe("autonomous faction battles", () => {
   });
 
   it("apply-battle writes casualty status, reputation deltas + log entries, and a campaign event", async () => {
-    const { agent: dm } = await signupAgent("battledm4");
+    const { agent: dm } = await paidDM("battledm4");
     const { worldId, relationshipId, factionAId, factionBId } = await setupBattle(dm, 100000, 1);
 
     const proposal = (await dm.get(`/api/faction-relationships/${relationshipId}/simulate-battle`)).body;
@@ -121,7 +131,7 @@ describe("autonomous faction battles", () => {
   });
 
   it("only counts active characters toward a faction's power, and never resurrects a prior casualty", async () => {
-    const { agent: dm } = await signupAgent("battledm5");
+    const { agent: dm } = await paidDM("battledm5");
     const { relationshipId, factionAId } = await setupBattle(dm, 100, 100, 3, 3);
     await dm.post(`/api/faction-relationships/${relationshipId}/apply-battle`);
 
@@ -134,5 +144,17 @@ describe("autonomous faction battles", () => {
     // casualty ids and status just reasserts the same state.
     const secondApply = await dm.post(`/api/faction-relationships/${relationshipId}/apply-battle`);
     expect(secondApply.status).toBe(201);
+  });
+
+  it("lets a free-tier DM simulate a battle, but 403s applying it with a machine-readable code", async () => {
+    const { agent: dm } = await signupAgent("battledmfree1");
+    const { relationshipId } = await setupBattle(dm, 100000, 1);
+
+    const simulate = await dm.get(`/api/faction-relationships/${relationshipId}/simulate-battle`);
+    expect(simulate.status).toBe(200);
+
+    const apply = await dm.post(`/api/faction-relationships/${relationshipId}/apply-battle`);
+    expect(apply.status).toBe(403);
+    expect(apply.body.code).toBe("autonomous_wars_paid_only");
   });
 });

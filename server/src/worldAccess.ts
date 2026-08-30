@@ -35,6 +35,15 @@ export async function canWriteWorld(userId: string, worldId: string): Promise<bo
   return membership?.role === "coDM";
 }
 
+// The world-owner-tier gate shared by every paid campaign-automation
+// feature (Trigger Rules, Doom Clock, Autonomous Wars, World Tick) — same
+// rule as Home Base's own inline check (base.ts): the DM's subscription,
+// not the acting member's, is what unlocks a feature for the whole table.
+export async function worldOwnerIsPaid(worldOwnerId: string): Promise<boolean> {
+  const owner = await prisma.user.findUnique({ where: { id: worldOwnerId }, select: { tier: true } });
+  return owner?.tier === "paid";
+}
+
 // Authorizes writing to a row shaped like every per-world entity (its own
 // creator's userId, plus a nullable worldId it's attached to): direct
 // ownership always wins, otherwise coDM write access to the attached

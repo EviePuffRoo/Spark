@@ -115,7 +115,10 @@ describe("campaign event log (unified dual-write)", () => {
   });
 
   it("mirrors a full World Tick apply as one row per faction/character/event delta plus one whole-tick summary row", async () => {
-    const { agent } = await signupAgent("logdm6");
+    const { agent, userId } = await signupAgent("logdm6");
+    // Applying a World Tick is a paid feature; this test is about the
+    // campaign-event-log mirroring the apply causes, not the gate itself.
+    await prisma.user.update({ where: { id: userId }, data: { tier: "paid" } });
     const world = await agent.post("/api/worlds").send({ name: "Log World 6" });
     const worldId = world.body.id as string;
     const a = await agent.post("/api/factions").send(factionPayload("Thieves Guild", worldId));

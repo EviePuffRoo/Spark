@@ -2,7 +2,7 @@ import { Router } from "express";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../db.js";
 import { toWorldTickLogDTO } from "../serialize.js";
-import { findAccessibleWorld } from "../worldAccess.js";
+import { findAccessibleWorld, worldOwnerIsPaid } from "../worldAccess.js";
 import { logCampaignEventOp } from "../campaignEventLog.js";
 import { dispatchWebhookEvent, type WebhookEventInput } from "../webhookDispatch.js";
 import { computeWorldTickProposal } from "@spark/shared";
@@ -61,6 +61,9 @@ worldTickRouter.post("/:worldId/apply", async (req, res) => {
   const { worldId } = req.params;
   const world = await requireOwnerWorld(req.userId!, worldId);
   if (!world) return res.status(403).json({ error: "Only the world's owner can run a World Tick" });
+  if (!(await worldOwnerIsPaid(world.userId))) {
+    return res.status(403).json({ error: "Applying a World Tick is a paid feature — upgrade to lock in the changes. Previewing a proposal stays free.", code: "world_tick_paid_only" });
+  }
 
   const body = req.body ?? {};
   const { fromDay, toDay, items } = body;

@@ -15,6 +15,16 @@ async function signupAgent(username: string) {
   return { agent, userId: res.body.id as string };
 }
 
+// Applying (not previewing) a World Tick is a paid feature (gated on the
+// world owner's tier), so any DM below that calls POST .../apply needs
+// paid tier. The dedicated free-tier gate test at the end covers the
+// free-tier-blocked case.
+async function paidDM(username: string) {
+  const { agent, userId } = await signupAgent(username);
+  await prisma.user.update({ where: { id: userId }, data: { tier: "paid" } });
+  return { agent, userId };
+}
+
 function factionPayload(name: string, worldId: string) {
   return { name, factionType: "criminal", agenda: "profit", methods: "theft", publicFace: "merchants", hook: "hook", worldId };
 }
@@ -68,7 +78,7 @@ describe("world tick", () => {
   });
 
   it("applies a proposal and writes through to faction reputation, character disposition, campaign events, shop stock, and the tick log", async () => {
-    const { agent: dm } = await signupAgent("tickdm3");
+    const { agent: dm } = await paidDM("tickdm3");
     const { worldId, factionAId, characterId, shopId } = await setupWarWorld(dm);
 
     const proposal = (await dm.get(`/api/world-tick/${worldId}/proposal`)).body;
@@ -117,7 +127,7 @@ describe("world tick", () => {
   });
 
   it("only applies checked items (a subset of the proposal), leaving the rest untouched", async () => {
-    const { agent: dm } = await signupAgent("tickdm4");
+    const { agent: dm } = await paidDM("tickdm4");
     const { worldId, factionAId } = await setupWarWorld(dm);
 
     const proposal = (await dm.get(`/api/world-tick/${worldId}/proposal`)).body;
@@ -133,7 +143,7 @@ describe("world tick", () => {
   });
 
   it("advances fromDay after an apply so a second proposal doesn't re-propose the same days", async () => {
-    const { agent: dm } = await signupAgent("tickdm5");
+    const { agent: dm } = await paidDM("tickdm5");
     const { worldId } = await setupWarWorld(dm);
 
     const first = (await dm.get(`/api/world-tick/${worldId}/proposal`)).body;
@@ -148,7 +158,7 @@ describe("world tick", () => {
   });
 
   it("lists the tick log for a world member, not just the owner", async () => {
-    const { agent: dm } = await signupAgent("tickdm6");
+    const { agent: dm } = await paidDM("tickdm6");
     const { worldId } = await setupWarWorld(dm);
     const joinCode = await dm.post(`/api/worlds/${worldId}/join-code`);
     const { agent: player } = await signupAgent("tickplayer6");
@@ -162,5 +172,19 @@ describe("world tick", () => {
     const res = await player.get(`/api/world-tick/${worldId}/log`);
     expect(res.status).toBe(200);
     expect(res.body).toHaveLength(1);
+  });
+
+  it("lets a free-tier DM preview a proposal, but 403s applying it with a machine-readable code", async () => {
+    const { agent: dm } = await signupAgent("tickdmfree1");
+    const { worldId } = await setupWarWorld(dm);
+
+    const proposal = (await dm.get(`/api/world-tick/${worldId}/proposal`)).body;
+    expect(proposal.items.length).toBeGreaterThan(0);
+
+    const applyRes = await dm.post(`/api/world-tick/${worldId}/apply`).send({
+      worldId, fromDay: proposal.fromDay, toDay: proposal.toDay, items: proposal.items,
+    });
+    expect(applyRes.status).toBe(403);
+    expect(applyRes.body.code).toBe("world_tick_paid_only");
   });
 });

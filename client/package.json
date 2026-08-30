@@ -12,6 +12,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@sentry/react": "^10.72.0",
     "@spark/shared": "*",
     "d3-force": "^3.0.0",
     "react": "^19.2.8",

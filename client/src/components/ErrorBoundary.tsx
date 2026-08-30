@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import * as Sentry from "@sentry/react";
 
 // A class component because React's error-boundary API (getDerivedStateFromError
 // / componentDidCatch) has no hook equivalent. Catches render/lifecycle errors
@@ -15,6 +16,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, { error: E
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error("Unhandled render error", error, info.componentStack);
+    Sentry.captureException(error, { contexts: { react: { componentStack: info.componentStack } } });
   }
 
   render() {

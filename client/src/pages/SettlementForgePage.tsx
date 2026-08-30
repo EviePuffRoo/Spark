@@ -5,7 +5,7 @@ import { useActiveWorld } from "../ActiveWorldContext";
 import { SettlementCardView } from "../components/SettlementCardView";
 import { SettlementEditor } from "../components/SettlementEditor";
 import { EntitySearchPicker } from "../components/EntitySearchPicker";
-import { SaveEntityFields } from "../components/SaveEntityFields";
+import { SaveToRosterControl, type SaveToRosterFields } from "../components/SaveToRosterControl";
 
 const BLANK_SETTLEMENT: GeneratedSettlement = { name: "", settlementType: "", description: "" };
 
@@ -20,14 +20,9 @@ export function SettlementForgePage() {
   const [manualResult, setManualResult] = useState<GeneratedSettlement | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [saveOpen, setSaveOpen] = useState(false);
-  const [saveWorldId, setSaveWorldId] = useState(worldId);
-  const [saveTags, setSaveTags] = useState("");
-  const [saveNotes, setSaveNotes] = useState("");
-  const [saveHidden, setSaveHidden] = useState(false);
+  const [saveGeneration, setSaveGeneration] = useState(0);
   const [saveRegion, setSaveRegion] = useState<SearchResult | null>(null);
   const [pickingRegion, setPickingRegion] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
 
   useEffect(() => {
     api.getReference().then(setReference).catch((e) => setError(e.message));
@@ -42,10 +37,7 @@ export function SettlementForgePage() {
     setGenerated(null);
     setManualResult(null);
     setResetKey((k) => k + 1);
-    setSaveOpen(false);
-    setSaveStatus("idle");
-    setSaveTags("");
-    setSaveNotes("");
+    setSaveGeneration((g) => g + 1);
     setSaveRegion(null);
     setPickingRegion(false);
     setError(null);
@@ -54,8 +46,7 @@ export function SettlementForgePage() {
   async function handleGenerate() {
     setLoading(true);
     setError(null);
-    setSaveOpen(false);
-    setSaveStatus("idle");
+    setSaveGeneration((g) => g + 1);
     try {
       setGenerated(await api.generateSettlement(form));
     } catch (e) {
@@ -67,60 +58,38 @@ export function SettlementForgePage() {
 
   const result = creationMode === "generate" ? generated : manualResult;
 
-  async function handleSave() {
+  async function handleSave(fields: SaveToRosterFields) {
     if (!result) return;
-    setSaveStatus("saving");
-    setError(null);
-    try {
-      await api.saveSettlement({
-        ...result,
-        worldId: saveWorldId || null,
-        regionId: saveRegion?.id ?? null,
-        tags: saveTags.split(",").map((t) => t.trim()).filter(Boolean),
-        notes: saveNotes || undefined,
-        hiddenFromParty: saveHidden,
-      });
-      setSaveStatus("saved");
-    } catch (e) {
-      setError((e as Error).message);
-      setSaveStatus("idle");
-    }
+    await api.saveSettlement({ ...result, ...fields, regionId: saveRegion?.id ?? null });
   }
 
   const fullyRandom = !!form.fullyRandom;
 
+  const regionPicker = (
+    <label className="field">
+      <span>Region (optional)</span>
+      {saveRegion ? (
+        <div className="role-slot-filled">
+          <span className="role-slot-value">{saveRegion.name}</span>
+          <button className="btn-secondary" onClick={() => setSaveRegion(null)}>Clear</button>
+        </div>
+      ) : pickingRegion ? (
+        <EntitySearchPicker type="region" onSelect={(r) => { setSaveRegion(r); setPickingRegion(false); }} placeholder="Search regions…" />
+      ) : (
+        <button className="btn-secondary" onClick={() => setPickingRegion(true)}>+ Anchor to a Region</button>
+      )}
+    </label>
+  );
+
   const savePanel = (
     <>
-      {!saveOpen && saveStatus !== "saved" && (
-        <button className="btn-secondary" onClick={() => setSaveOpen(true)}>Save to Roster</button>
-      )}
-      {saveStatus === "saved" && <p className="success">Saved to roster.</p>}
-      {saveOpen && saveStatus !== "saved" && (
-        <div className="save-panel">
-          <label className="field">
-            <span>Region (optional)</span>
-            {saveRegion ? (
-              <div className="role-slot-filled">
-                <span className="role-slot-value">{saveRegion.name}</span>
-                <button className="btn-secondary" onClick={() => setSaveRegion(null)}>Clear</button>
-              </div>
-            ) : pickingRegion ? (
-              <EntitySearchPicker type="region" onSelect={(r) => { setSaveRegion(r); setPickingRegion(false); }} placeholder="Search regions…" />
-            ) : (
-              <button className="btn-secondary" onClick={() => setPickingRegion(true)}>+ Anchor to a Region</button>
-            )}
-          </label>
-          <SaveEntityFields
-            worlds={worlds} worldId={saveWorldId} setWorldId={setSaveWorldId}
-            tags={saveTags} setTags={setSaveTags} tagsPlaceholder="capital, act-1"
-            notes={saveNotes} setNotes={setSaveNotes}
-            hiddenFromParty={saveHidden} setHiddenFromParty={setSaveHidden}
-          />
-          <button className="btn-primary" onClick={handleSave} disabled={saveStatus === "saving"}>
-            {saveStatus === "saving" ? "Saving…" : "Confirm Save"}
-          </button>
-        </div>
-      )}
+      <SaveToRosterControl
+        key={saveGeneration}
+        worlds={worlds} defaultWorldId={worldId} onSave={handleSave}
+        saveLabel="Save to Roster" savedLabel="Saved to roster."
+        tagsPlaceholder="capital, act-1"
+        extraFields={regionPicker}
+      />
       {error && <p className="error">{error}</p>}
     </>
   );

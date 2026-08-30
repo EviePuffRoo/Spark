@@ -350,8 +350,13 @@ describe("grid combat: ephemeral drag-position broadcast", () => {
 });
 
 describe("grid combat: dynamic vision and fog of war", () => {
+  // Fog of war is a paid-tier feature (gated on the world owner's tier), so
+  // every test below that exercises actual fog behavior needs a paid DM —
+  // a free-tier DM's world never computes vision at all (see the dedicated
+  // free-tier test at the end of this block).
   async function setupWorldWithMap(dmUsername: string) {
-    const { agent: dm } = await signupAgent(dmUsername);
+    const { agent: dm, userId } = await signupAgent(dmUsername);
+    await prisma.user.update({ where: { id: userId }, data: { tier: "paid" } });
     const world = await dm.post("/api/worlds").send({ name: "Vision World" });
     const worldId = world.body.id as string;
     const map = await dm.post("/api/battle-maps").send({ name: "Vision Room", width: 10, height: 10 });
@@ -483,11 +488,40 @@ describe("grid combat: dynamic vision and fog of war", () => {
     expect(res.status).toBe(200);
     expect(res.body.exploredCells.length).toBeGreaterThan(beforeCount);
   });
+
+  it("never fog-gates a free-tier DM's world — every monster stays visible to everyone", async () => {
+    const { agent: dm } = await signupAgent("visionfreedm1");
+    const world = await dm.post("/api/worlds").send({ name: "Free Tier Vision World" });
+    const worldId = world.body.id as string;
+    const map = await dm.post("/api/battle-maps").send({ name: "Free Room", width: 10, height: 10 });
+    const mapId = map.body.id as string;
+
+    const joinCode = await dm.post(`/api/worlds/${worldId}/join-code`);
+    const { agent: player } = await signupAgent("visionfreeplayer1");
+    await player.post("/api/worlds/join").send({ code: joinCode.body.code });
+
+    await dm.put(`/api/encounters/${worldId}`).send({
+      combatants: [
+        { id: "pc1", name: "Fighter", kind: "playerCharacter", initiative: 10, conditions: [], notes: "", hpVisible: true, gridX: 1, gridY: 1, visionRadiusFeet: 5 },
+        { id: "far", name: "Distant Ogre", kind: "monster", initiative: 8, conditions: [], notes: "", hpVisible: false, gridX: 9, gridY: 9 },
+      ],
+      round: 1, turnIndex: 0, activeBattleMapId: mapId,
+    });
+
+    const playerView = await player.get(`/api/encounters/${worldId}`);
+    expect(playerView.body.visibleCells).toBeUndefined();
+    const playerNames = playerView.body.combatants.map((c: { name: string }) => c.name);
+    expect(playerNames).toContain("Distant Ogre");
+  });
 });
 
 describe("grid combat: doors", () => {
   async function setupWorldWithDoor(dmUsername: string) {
-    const { agent: dm } = await signupAgent(dmUsername);
+    const { agent: dm, userId } = await signupAgent(dmUsername);
+    // The first test below relies on fog hiding a monster beyond a closed
+    // door — a paid-tier feature — so this DM needs paid tier the same way
+    // setupWorldWithMap above does.
+    await prisma.user.update({ where: { id: userId }, data: { tier: "paid" } });
     const world = await dm.post("/api/worlds").send({ name: "Door World" });
     const worldId = world.body.id as string;
     // A wall spans the whole row at y=1 except for the door at x=5, so a

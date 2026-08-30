@@ -5,6 +5,7 @@
 export const FREE_TIER_WORLD_LIMIT = 3;
 export const FREE_TIER_GENERATE_LIMIT = 60;
 export const PAID_TIER_GENERATE_LIMIT = 240;
+export const FREE_TIER_BATTLEMAP_LIMIT = 3;
 
 // The roll log and party chat live views (rollLog.ts, chat.ts, worldLive.ts)
 // all cap at this many most-recent rows for every account — this constant

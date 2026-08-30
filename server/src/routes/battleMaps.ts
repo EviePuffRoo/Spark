@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { toBattleMapDTO } from "../serialize.js";
 import { findAccessibleWorld, getMemberWorldIds, authorizeEntityWrite } from "../worldAccess.js";
-import { BATTLE_MAP_MAX_WIDTH, BATTLE_MAP_MAX_HEIGHT, BATTLE_TILE_BY_ID } from "@spark/shared";
+import { BATTLE_MAP_MAX_WIDTH, BATTLE_MAP_MAX_HEIGHT, BATTLE_TILE_BY_ID, FREE_TIER_BATTLEMAP_LIMIT } from "@spark/shared";
 import type { PlacedTile } from "@spark/shared";
 
 export const battleMapsRouter = Router();
@@ -55,6 +55,15 @@ battleMapsRouter.post("/", async (req, res) => {
     const world = await findAccessibleWorld(req.userId!, worldId);
     if (!world) return res.status(403).json({ error: "You don't have access to this world" });
   }
+
+  const user = await prisma.user.findUnique({ where: { id: req.userId }, select: { tier: true } });
+  if (user?.tier !== "paid") {
+    const mapCount = await prisma.battleMap.count({ where: { userId: req.userId } });
+    if (mapCount >= FREE_TIER_BATTLEMAP_LIMIT) {
+      return res.status(403).json({ error: `Free accounts are limited to ${FREE_TIER_BATTLEMAP_LIMIT} battle maps — upgrade to create more.`, code: "battlemap_limit" });
+    }
+  }
+
   const tiles = Array.isArray(body.tiles) ? body.tiles.map((t: unknown) => coerceTile(t, width, height)).filter((t: PlacedTile | null): t is PlacedTile => t !== null) : [];
 
   const row = await prisma.battleMap.create({

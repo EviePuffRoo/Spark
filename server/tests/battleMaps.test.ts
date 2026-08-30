@@ -150,4 +150,19 @@ describe("battle maps", () => {
     const row = await prisma.battleMap.findUnique({ where: { id } });
     expect(row).toBeNull();
   });
+
+  it("403s a free-tier account's 4th battle map with a machine-readable code, but lets a paid account past it", async () => {
+    const { agent, userId } = await signupAgent("mapfreecap1");
+    for (let i = 0; i < 3; i++) {
+      const res = await agent.post("/api/battle-maps").send({ name: `Map ${i}`, width: 5, height: 5 });
+      expect(res.status).toBe(201);
+    }
+    const blocked = await agent.post("/api/battle-maps").send({ name: "Map 4", width: 5, height: 5 });
+    expect(blocked.status).toBe(403);
+    expect(blocked.body.code).toBe("battlemap_limit");
+
+    await prisma.user.update({ where: { id: userId }, data: { tier: "paid" } });
+    const allowed = await agent.post("/api/battle-maps").send({ name: "Map 4 (paid)", width: 5, height: 5 });
+    expect(allowed.status).toBe(201);
+  });
 });

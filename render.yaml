@@ -37,3 +37,10 @@ services:
         sync: false
       - key: REDIS_URL
         sync: false
+      - key: SENTRY_DSN
+        sync: false
+      # Read by the client build (buildCommand below), not at runtime —
+      # Vite inlines VITE_-prefixed vars into the built bundle. Still set
+      # here (not just locally) so it's present in Render's build environment.
+      - key: VITE_SENTRY_DSN
+        sync: false

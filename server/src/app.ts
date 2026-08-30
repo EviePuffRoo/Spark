@@ -2,6 +2,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import express from "express";
+import * as Sentry from "@sentry/node";
 // Express 4 doesn't forward a rejected promise from an async route handler
 // to error-handling middleware on its own — it becomes an unhandled
 // rejection that crashes the whole process (and every other in-flight
@@ -96,9 +97,11 @@ import { legalPagesRouter } from "./legalPages.js";
 // a small single-instance app, going down entirely on any one hiccup is a
 // worse failure mode than staying up with a logged error.
 process.on("unhandledRejection", (reason) => {
+  Sentry.captureException(reason);
   logger.error({ err: reason }, "Unhandled rejection");
 });
 process.on("uncaughtException", (err) => {
+  Sentry.captureException(err);
   logger.error({ err }, "Uncaught exception");
 });
 
@@ -306,6 +309,7 @@ if (fs.existsSync(clientDist)) {
 // this request's id/method/path, so the error line correlates with its
 // own request's log entry rather than standing alone.
 app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  Sentry.captureException(err);
   req.log.error({ err }, "Unhandled route error");
   if (res.headersSent) return;
   res.status(500).json({ error: "Something went wrong on our end — please try again." });

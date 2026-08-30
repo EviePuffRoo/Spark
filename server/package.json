@@ -18,6 +18,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1114.0",
     "@prisma/client": "^5.20.0",
+    "@sentry/node": "^10.72.0",
     "@spark/shared": "*",
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^13.0.3",

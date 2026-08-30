@@ -1,5 +1,6 @@
 import { StrictMode, Suspense, lazy } from 'react'
 import { createRoot } from 'react-dom/client'
+import './sentry.ts'
 import './index.css'
 import App from './App.tsx'
 import { AuthProvider } from './AuthContext.tsx'

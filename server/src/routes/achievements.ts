@@ -111,7 +111,19 @@ achievementsRouter.get("/", async (req, res) => {
 // world this account owns or has joined. No worldId — this is always the
 // caller's own career, private by construction (there's no other user's
 // legacy this endpoint could even be asked for).
+//
+// Gated on the requesting user's own tier (not a world owner's — this is
+// a personal, cross-campaign profile feature, not something a DM shares
+// with their table, same distinction the World cap and generation-rate
+// limit already draw). It's also the priciest endpoint in the app: a
+// 9-query-per-world computation fanned out across every world the account
+// touches, including two unbounded scans (roll log, gold ledger) each.
 achievementsRouter.get("/legacy", async (req, res) => {
+  const user = await prisma.user.findUnique({ where: { id: req.userId }, select: { tier: true } });
+  if (user?.tier !== "paid") {
+    return res.status(403).json({ error: "Cross-campaign Legacy is a paid feature — upgrade to see your career across every world.", code: "legacy_paid_only" });
+  }
+
   const worldIds = await getMemberWorldIds(req.userId!);
   const perWorldCurrent = await Promise.all(worldIds.map(computeCurrentForWorld));
 

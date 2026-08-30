@@ -312,7 +312,7 @@ function AppShell({ initialLandOnOverview = false }: { initialLandOnOverview?: b
         <Suspense fallback={<TabLoading />}>
           {subTab === "create" && <CreatePage onSendToDowntime={sendToDowntimeLog} />}
           {subTab === "compendium" && <CompendiumPage />}
-          {subTab === "profile" && <ProfilePage />}
+          {subTab === "profile" && <ProfilePage onNavigateToBilling={navigateToBilling} />}
           {subTab === "myCharacter" && <MyCharacterPage onViewRoster={viewRosterForWorld} onPrint={setPrintItems} />}
           {subTab === "billing" && <BillingPage />}
           {subTab === "gallery" && <GalleryPage />}

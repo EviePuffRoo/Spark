@@ -7,7 +7,7 @@ import { LegacyPanel } from "../components/LegacyPanel";
 import { CopyButton } from "../components/CopyButton";
 import type { ApiKeySummary, ApiKeyCreateResult } from "@spark/shared";
 
-export function ProfilePage() {
+export function ProfilePage({ onNavigateToBilling }: { onNavigateToBilling?: () => void } = {}) {
   const { user, logout, regenerateRecoveryCode, deleteAccount, updateDisplayName } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const [notifyEnabled, setNotifyEnabled] = useLocalStorage("spark-notify-my-turn", false);
@@ -163,7 +163,7 @@ export function ProfilePage() {
           </form>
         </div>
 
-        <LegacyPanel />
+        <LegacyPanel onNavigateToBilling={onNavigateToBilling} />
 
         <h3 className="section-heading">Account</h3>
         <div className="save-panel">

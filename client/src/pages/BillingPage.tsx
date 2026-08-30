@@ -61,7 +61,8 @@ export function BillingPage() {
           log and chat history) and unlocks the Home Base upgrade system, fog of war / dynamic lighting on
           the battle grid, and campaign automation (Doom Clocks, Trigger Rules, and locking in Autonomous
           Wars or World Tick outcomes) for worlds you own. Paying isn't required to play in someone else's
-          world: a DM's subscription unlocks all of this for the whole table.
+          world: a DM's subscription unlocks all of this for the whole table. The one exception is
+          Cross-Campaign Legacy, which follows your own account, not any one world.
         </p>
 
         <table className="plan-comparison">
@@ -112,6 +113,11 @@ export function BillingPage() {
               <th scope="row">Autonomous Wars &amp; World Tick</th>
               <td>Preview only</td>
               <td>Apply outcomes</td>
+            </tr>
+            <tr>
+              <th scope="row">Cross-Campaign Legacy</th>
+              <td>Locked</td>
+              <td>Unlocked</td>
             </tr>
           </tbody>
         </table>

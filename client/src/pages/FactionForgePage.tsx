@@ -4,7 +4,7 @@ import { api, type ReferenceData } from "../api";
 import { useActiveWorld } from "../ActiveWorldContext";
 import { FactionCardView } from "../components/FactionCardView";
 import { FactionEditor } from "../components/FactionEditor";
-import { SaveEntityFields } from "../components/SaveEntityFields";
+import { SaveToRosterControl, type SaveToRosterFields } from "../components/SaveToRosterControl";
 
 const BLANK_FACTION: GeneratedFaction = { name: "", factionType: "", agenda: "", methods: "", publicFace: "", hook: "" };
 
@@ -19,12 +19,7 @@ export function FactionForgePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [saveOpen, setSaveOpen] = useState(false);
-  const [saveWorldId, setSaveWorldId] = useState(worldId);
-  const [saveTags, setSaveTags] = useState("");
-  const [saveNotes, setSaveNotes] = useState("");
-  const [saveHidden, setSaveHidden] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [saveGeneration, setSaveGeneration] = useState(0);
 
   useEffect(() => {
     api.getReference().then(setReference).catch((e) => setError(e.message));
@@ -34,16 +29,14 @@ export function FactionForgePage() {
     setCreationMode(next);
     setResults([]);
     setManualResult(null);
-    setSaveOpen(false);
-    setSaveStatus("idle");
+    setSaveGeneration((g) => g + 1);
   }
 
   async function handleGenerate() {
     const qty = Math.min(10, Math.max(1, Number(quantity) || 1));
     setLoading(true);
     setError(null);
-    setSaveOpen(false);
-    setSaveStatus("idle");
+    setSaveGeneration((g) => g + 1);
     try {
       const generated = await Promise.all(Array.from({ length: qty }, () => api.generateFaction(form)));
       setResults(generated);
@@ -59,52 +52,17 @@ export function FactionForgePage() {
     setResults(results.filter((_, i) => i !== index));
   }
 
-  async function handleSaveAll() {
+  async function handleSaveAll(fields: SaveToRosterFields) {
     if (results.length === 0) return;
-    setSaveStatus("saving");
-    try {
-      await Promise.all(results.map((r) => api.saveFaction({
-        ...r,
-        worldId: saveWorldId || null,
-        tags: saveTags.split(",").map((t) => t.trim()).filter(Boolean),
-        notes: saveNotes || undefined,
-        hiddenFromParty: saveHidden,
-      })));
-      setSaveStatus("saved");
-    } catch (e) {
-      setError((e as Error).message);
-      setSaveStatus("idle");
-    }
+    await Promise.all(results.map((r) => api.saveFaction({ ...r, ...fields })));
   }
 
-  async function handleSaveManual() {
+  async function handleSaveManual(fields: SaveToRosterFields) {
     if (!manualResult) return;
-    setSaveStatus("saving");
-    try {
-      await api.saveFaction({
-        ...manualResult,
-        worldId: saveWorldId || null,
-        tags: saveTags.split(",").map((t) => t.trim()).filter(Boolean),
-        notes: saveNotes || undefined,
-        hiddenFromParty: saveHidden,
-      });
-      setSaveStatus("saved");
-    } catch (e) {
-      setError((e as Error).message);
-      setSaveStatus("idle");
-    }
+    await api.saveFaction({ ...manualResult, ...fields });
   }
 
   const fullyRandom = !!form.fullyRandom;
-
-  const savePanelFields = (
-    <SaveEntityFields
-      worlds={worlds} worldId={saveWorldId} setWorldId={setSaveWorldId}
-      tags={saveTags} setTags={setSaveTags} tagsPlaceholder="antagonist, act-2, city"
-      notes={saveNotes} setNotes={setSaveNotes} notesPlaceholder="Where this fits in your world…"
-      hiddenFromParty={saveHidden} setHiddenFromParty={setSaveHidden}
-    />
-  );
 
   const batchResultPanel = (
     <div className="panel result-panel">
@@ -114,27 +72,20 @@ export function FactionForgePage() {
           {results.map((faction, index) => (
             <div className="batch-result-card" key={index}>
               <FactionCardView faction={faction} />
-              {results.length > 1 && saveStatus !== "saved" && (
+              {results.length > 1 && (
                 <button className="btn-danger" onClick={() => removeResult(index)} aria-label={`Remove ${faction.name} from batch`}>Remove from batch</button>
               )}
             </div>
           ))}
 
-          {!saveOpen && saveStatus !== "saved" && (
-            <button className="btn-secondary" onClick={() => setSaveOpen(true)}>
-              {results.length > 1 ? `Save All ${results.length} to Roster` : "Save to Roster"}
-            </button>
-          )}
-          {saveStatus === "saved" && <p className="success">Saved {results.length > 1 ? `all ${results.length}` : "it"} to roster.</p>}
-
-          {saveOpen && saveStatus !== "saved" && (
-            <div className="save-panel">
-              {savePanelFields}
-              <button className="btn-primary" onClick={handleSaveAll} disabled={saveStatus === "saving"}>
-                {saveStatus === "saving" ? "Saving…" : results.length > 1 ? `Confirm Save (${results.length})` : "Confirm Save"}
-              </button>
-            </div>
-          )}
+          <SaveToRosterControl
+            key={saveGeneration}
+            worlds={worlds} defaultWorldId={worldId} onSave={handleSaveAll}
+            saveLabel={results.length > 1 ? `Save All ${results.length} to Roster` : "Save to Roster"}
+            savedLabel={`Saved ${results.length > 1 ? `all ${results.length}` : "it"} to roster.`}
+            tagsPlaceholder="antagonist, act-2, city"
+            notesPlaceholder="Where this fits in your world…"
+          />
         </>
       )}
     </div>
@@ -221,19 +172,12 @@ export function FactionForgePage() {
           <div className="panel result-panel">
             <FactionCardView faction={manualResult} />
 
-            {!saveOpen && saveStatus !== "saved" && (
-              <button className="btn-secondary" onClick={() => setSaveOpen(true)}>Save to Roster</button>
-            )}
-            {saveStatus === "saved" && <p className="success">Saved to roster.</p>}
-
-            {saveOpen && saveStatus !== "saved" && (
-              <div className="save-panel">
-                {savePanelFields}
-                <button className="btn-primary" onClick={handleSaveManual} disabled={saveStatus === "saving"}>
-                  {saveStatus === "saving" ? "Saving…" : "Confirm Save"}
-                </button>
-              </div>
-            )}
+            <SaveToRosterControl
+              worlds={worlds} defaultWorldId={worldId} onSave={handleSaveManual}
+              saveLabel="Save to Roster" savedLabel="Saved to roster."
+              tagsPlaceholder="antagonist, act-2, city"
+              notesPlaceholder="Where this fits in your world…"
+            />
           </div>
         </div>
       )}

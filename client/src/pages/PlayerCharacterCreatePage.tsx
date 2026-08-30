@@ -6,7 +6,7 @@ import { useActiveWorld } from "../ActiveWorldContext";
 import { PlayerCharacterCardView } from "../components/PlayerCharacterCardView";
 import { PlayerCharacterEditor } from "../components/PlayerCharacterEditor";
 import { PlayerCharacterWizard } from "../components/PlayerCharacterWizard";
-import { SaveEntityFields } from "../components/SaveEntityFields";
+import { SaveToRosterControl, type SaveToRosterFields } from "../components/SaveToRosterControl";
 
 const IMPORT_FIELD_LABELS: Record<string, string> = {
   name: "Name", className: "Class", level: "Level", race: "Race",
@@ -31,12 +31,7 @@ export function PlayerCharacterCreatePage() {
   const [importMatched, setImportMatched] = useState<string[]>([]);
   const [importResult, setImportResult] = useState<PlayerCharacterInput | null>(null);
 
-  const [saveOpen, setSaveOpen] = useState(false);
-  const [saveWorldId, setSaveWorldId] = useState(worldId);
-  const [saveTags, setSaveTags] = useState("");
-  const [saveNotes, setSaveNotes] = useState("");
-  const [saveHidden, setSaveHidden] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [saveGeneration, setSaveGeneration] = useState(0);
 
   useEffect(() => {
     api.getReference().then(setReference).catch((e) => setError(e.message));
@@ -55,10 +50,7 @@ export function PlayerCharacterCreatePage() {
     setImportMatched([]);
     setImportResult(null);
     setResetKey((k) => k + 1);
-    setSaveOpen(false);
-    setSaveStatus("idle");
-    setSaveTags("");
-    setSaveNotes("");
+    setSaveGeneration((g) => g + 1);
     setError(null);
   }
 
@@ -71,8 +63,7 @@ export function PlayerCharacterCreatePage() {
   async function handleGenerate() {
     setLoading(true);
     setError(null);
-    setSaveOpen(false);
-    setSaveStatus("idle");
+    setSaveGeneration((g) => g + 1);
     try {
       setGenerated(await api.generatePlayerCharacter(form));
     } catch (e) {
@@ -84,46 +75,21 @@ export function PlayerCharacterCreatePage() {
 
   const result = creationMode === "generate" ? generated : creationMode === "manual" ? manualResult : importResult;
 
-  async function handleSave() {
+  async function handleSave(fields: SaveToRosterFields) {
     if (!result) return;
-    setSaveStatus("saving");
-    setError(null);
-    try {
-      await api.savePlayerCharacter({
-        ...result,
-        worldId: saveWorldId || null,
-        tags: saveTags.split(",").map((t) => t.trim()).filter(Boolean),
-        notes: saveNotes || undefined,
-        hiddenFromParty: saveHidden,
-      });
-      setSaveStatus("saved");
-    } catch (e) {
-      setError((e as Error).message);
-      setSaveStatus("idle");
-    }
+    await api.savePlayerCharacter({ ...result, ...fields });
   }
 
   const fullyRandom = !!form.fullyRandom;
 
   const savePanel = (
     <>
-      {!saveOpen && saveStatus !== "saved" && (
-        <button className="btn-secondary" onClick={() => setSaveOpen(true)}>Save to Roster</button>
-      )}
-      {saveStatus === "saved" && <p className="success">Saved to roster.</p>}
-      {saveOpen && saveStatus !== "saved" && (
-        <div className="save-panel">
-          <SaveEntityFields
-            worlds={worlds} worldId={saveWorldId} setWorldId={setSaveWorldId}
-            tags={saveTags} setTags={setSaveTags} tagsPlaceholder="party, act-1"
-            notes={saveNotes} setNotes={setSaveNotes}
-            hiddenFromParty={saveHidden} setHiddenFromParty={setSaveHidden}
-          />
-          <button className="btn-primary" onClick={handleSave} disabled={saveStatus === "saving"}>
-            {saveStatus === "saving" ? "Saving…" : "Confirm Save"}
-          </button>
-        </div>
-      )}
+      <SaveToRosterControl
+        key={saveGeneration}
+        worlds={worlds} defaultWorldId={worldId} onSave={handleSave}
+        saveLabel="Save to Roster" savedLabel="Saved to roster."
+        tagsPlaceholder="party, act-1"
+      />
       {error && <p className="error">{error}</p>}
     </>
   );

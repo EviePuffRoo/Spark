@@ -5,7 +5,7 @@ import { api, type ReferenceData } from "../api";
 import { useActiveWorld } from "../ActiveWorldContext";
 import { ItemCardView } from "../components/ItemCardView";
 import { ItemEditor } from "../components/ItemEditor";
-import { SaveEntityFields } from "../components/SaveEntityFields";
+import { SaveToRosterControl, type SaveToRosterFields } from "../components/SaveToRosterControl";
 
 const TIER_0 = ITEM_RARITY_TIER_INFO[0];
 const BLANK_ITEM: GeneratedItem = {
@@ -26,12 +26,7 @@ export function ItemForgePage({ onSendToDowntime }: { onSendToDowntime?: (item: 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [saveOpen, setSaveOpen] = useState(false);
-  const [saveWorldId, setSaveWorldId] = useState(worldId);
-  const [saveTags, setSaveTags] = useState("");
-  const [saveNotes, setSaveNotes] = useState("");
-  const [saveHidden, setSaveHidden] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [saveGeneration, setSaveGeneration] = useState(0);
 
   useEffect(() => {
     api.getReference().then(setReference).catch((e) => setError(e.message));
@@ -42,8 +37,7 @@ export function ItemForgePage({ onSendToDowntime }: { onSendToDowntime?: (item: 
     setResults([]);
     setEditingIndex(null);
     setManualResult(null);
-    setSaveOpen(false);
-    setSaveStatus("idle");
+    setSaveGeneration((g) => g + 1);
   }
 
   async function handleGenerate() {
@@ -51,8 +45,7 @@ export function ItemForgePage({ onSendToDowntime }: { onSendToDowntime?: (item: 
     setLoading(true);
     setError(null);
     setEditingIndex(null);
-    setSaveOpen(false);
-    setSaveStatus("idle");
+    setSaveGeneration((g) => g + 1);
     try {
       const generated = await Promise.all(Array.from({ length: qty }, () => api.generateItem(form)));
       setResults(generated);
@@ -74,53 +67,23 @@ export function ItemForgePage({ onSendToDowntime }: { onSendToDowntime?: (item: 
     setEditingIndex(null);
   }
 
-  async function handleSaveAll() {
+  async function handleSaveAll(fields: SaveToRosterFields) {
     if (results.length === 0) return;
-    setSaveStatus("saving");
-    try {
-      await Promise.all(results.map((r) => api.saveItem({
-        ...r,
-        worldId: saveWorldId || null,
-        tags: saveTags.split(",").map((t) => t.trim()).filter(Boolean),
-        notes: saveNotes || undefined,
-        hiddenFromParty: saveHidden,
-      })));
-      setSaveStatus("saved");
-    } catch (e) {
-      setError((e as Error).message);
-      setSaveStatus("idle");
-    }
+    await Promise.all(results.map((r) => api.saveItem({ ...r, ...fields })));
   }
 
-  async function handleSaveManual(sendToDowntime = false) {
+  async function handleSaveManual(fields: SaveToRosterFields) {
     if (!manualResult) return;
-    setSaveStatus("saving");
-    try {
-      const saved = await api.saveItem({
-        ...manualResult,
-        worldId: saveWorldId || null,
-        tags: saveTags.split(",").map((t) => t.trim()).filter(Boolean),
-        notes: saveNotes || undefined,
-        hiddenFromParty: saveHidden,
-      });
-      setSaveStatus("saved");
-      if (sendToDowntime && saveWorldId) onSendToDowntime?.(saved, saveWorldId);
-    } catch (e) {
-      setError((e as Error).message);
-      setSaveStatus("idle");
-    }
+    await api.saveItem({ ...manualResult, ...fields });
+  }
+
+  async function handleSaveManualAndSendToDowntime(fields: SaveToRosterFields) {
+    if (!manualResult) return;
+    const saved = await api.saveItem({ ...manualResult, ...fields });
+    if (fields.worldId) onSendToDowntime?.(saved, fields.worldId);
   }
 
   const fullyRandom = !!form.fullyRandom;
-
-  const savePanelFields = (
-    <SaveEntityFields
-      worlds={worlds} worldId={saveWorldId} setWorldId={setSaveWorldId}
-      tags={saveTags} setTags={setSaveTags} tagsPlaceholder="quest reward, cursed, market find"
-      notes={saveNotes} setNotes={setSaveNotes} notesPlaceholder="Where and how you plan to use it…"
-      hiddenFromParty={saveHidden} setHiddenFromParty={setSaveHidden}
-    />
-  );
 
   const batchResultPanel = (
     <div className="panel result-panel">
@@ -142,33 +105,26 @@ export function ItemForgePage({ onSendToDowntime }: { onSendToDowntime?: (item: 
                   <p className="hint">
                     Craft it yourself: {computeCraftingCost(item).goldCost} gp, {computeCraftingCost(item).daysRequired}d
                   </p>
-                  {saveStatus !== "saved" && (
-                    <div className="batch-result-actions">
-                      <button className="btn-secondary" onClick={() => setEditingIndex(index)}>Edit</button>
-                      {results.length > 1 && (
-                        <button className="btn-danger" onClick={() => removeResult(index)} aria-label={`Remove ${item.name} from batch`}>Remove from batch</button>
-                      )}
-                    </div>
-                  )}
+                  <div className="batch-result-actions">
+                    <button className="btn-secondary" onClick={() => setEditingIndex(index)}>Edit</button>
+                    {results.length > 1 && (
+                      <button className="btn-danger" onClick={() => removeResult(index)} aria-label={`Remove ${item.name} from batch`}>Remove from batch</button>
+                    )}
+                  </div>
                 </>
               )}
             </div>
           ))}
 
-          {editingIndex === null && !saveOpen && saveStatus !== "saved" && (
-            <button className="btn-secondary" onClick={() => setSaveOpen(true)}>
-              {results.length > 1 ? `Save All ${results.length} to Roster` : "Save to Roster"}
-            </button>
-          )}
-          {saveStatus === "saved" && <p className="success">Saved {results.length > 1 ? `all ${results.length}` : "it"} to roster.</p>}
-
-          {saveOpen && saveStatus !== "saved" && (
-            <div className="save-panel">
-              {savePanelFields}
-              <button className="btn-primary" onClick={handleSaveAll} disabled={saveStatus === "saving"}>
-                {saveStatus === "saving" ? "Saving…" : results.length > 1 ? `Confirm Save (${results.length})` : "Confirm Save"}
-              </button>
-            </div>
+          {editingIndex === null && (
+            <SaveToRosterControl
+              key={saveGeneration}
+              worlds={worlds} defaultWorldId={worldId} onSave={handleSaveAll}
+              saveLabel={results.length > 1 ? `Save All ${results.length} to Roster` : "Save to Roster"}
+              savedLabel={`Saved ${results.length > 1 ? `all ${results.length}` : "it"} to roster.`}
+              tagsPlaceholder="quest reward, cursed, market find"
+              notesPlaceholder="Where and how you plan to use it…"
+            />
           )}
         </>
       )}
@@ -266,26 +222,17 @@ export function ItemForgePage({ onSendToDowntime }: { onSendToDowntime?: (item: 
               Craft it yourself: {computeCraftingCost(manualResult).goldCost} gp, {computeCraftingCost(manualResult).daysRequired}d
             </p>
 
-            {!saveOpen && saveStatus !== "saved" && (
-              <button className="btn-secondary" onClick={() => setSaveOpen(true)}>Save to Roster</button>
-            )}
-            {saveStatus === "saved" && <p className="success">Saved to roster.</p>}
-
-            {saveOpen && saveStatus !== "saved" && (
-              <div className="save-panel">
-                {savePanelFields}
-                <div className="button-row">
-                  <button className="btn-primary" onClick={() => handleSaveManual(false)} disabled={saveStatus === "saving"}>
-                    {saveStatus === "saving" ? "Saving…" : "Confirm Save"}
-                  </button>
-                  {saveWorldId && (
-                    <button className="btn-secondary" onClick={() => handleSaveManual(true)} disabled={saveStatus === "saving"}>
-                      Save &amp; Send to Downtime Log
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
+            <SaveToRosterControl
+              worlds={worlds} defaultWorldId={worldId} onSave={handleSaveManual}
+              saveLabel="Save to Roster" savedLabel="Saved to roster."
+              tagsPlaceholder="quest reward, cursed, market find"
+              notesPlaceholder="Where and how you plan to use it…"
+              extraActions={[{
+                label: "Save & Send to Downtime Log",
+                onSave: handleSaveManualAndSendToDowntime,
+                show: (fields) => !!fields.worldId,
+              }]}
+            />
           </div>
         </div>
       )}

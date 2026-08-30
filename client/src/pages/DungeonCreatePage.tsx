@@ -6,7 +6,7 @@ import { useActiveWorld } from "../ActiveWorldContext";
 import { DungeonCardView } from "../components/DungeonCardView";
 import { DungeonEditor } from "../components/DungeonEditor";
 import { DungeonMapView } from "../components/DungeonMapView";
-import { SaveEntityFields } from "../components/SaveEntityFields";
+import { SaveToRosterControl, type SaveToRosterFields } from "../components/SaveToRosterControl";
 
 const BLANK_DUNGEON: DungeonInput = { name: "", rooms: [] };
 const noopUpdateRoomRect = () => {};
@@ -28,12 +28,7 @@ export function DungeonCreatePage() {
   const [manualResult, setManualResult] = useState<DungeonInput | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [saveOpen, setSaveOpen] = useState(false);
-  const [saveWorldId, setSaveWorldId] = useState(worldId);
-  const [saveTags, setSaveTags] = useState("");
-  const [saveNotes, setSaveNotes] = useState("");
-  const [saveHidden, setSaveHidden] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [saveGeneration, setSaveGeneration] = useState(0);
 
   // Computed once per generation (it uses Math.random() internally) so the
   // pre-save preview and the actual save payload always show the same map.
@@ -52,18 +47,14 @@ export function DungeonCreatePage() {
     setGenerated(null);
     setManualResult(null);
     setResetKey((k) => k + 1);
-    setSaveOpen(false);
-    setSaveStatus("idle");
-    setSaveTags("");
-    setSaveNotes("");
+    setSaveGeneration((g) => g + 1);
     setError(null);
   }
 
   async function handleGenerate() {
     setLoading(true);
     setError(null);
-    setSaveOpen(false);
-    setSaveStatus("idle");
+    setSaveGeneration((g) => g + 1);
     try {
       setGenerated(await api.generateDungeon(form));
     } catch (e) {
@@ -92,24 +83,11 @@ export function DungeonCreatePage() {
     await api.saveDungeon({ name: outline.name, rooms, worldId: resolvedWorldId, tags, notes, hiddenFromParty: hidden });
   }
 
-  async function handleSave() {
-    setSaveStatus("saving");
-    setError(null);
-    try {
-      const resolvedWorldId = saveWorldId || null;
-      const tags = saveTags.split(",").map((t) => t.trim()).filter(Boolean);
-      const notes = saveNotes || undefined;
-      if (creationMode === "generate" && generated) {
-        await saveGenerated(generated, resolvedWorldId, tags, notes, saveHidden);
-      } else if (manualResult) {
-        await api.saveDungeon({ ...manualResult, worldId: resolvedWorldId, tags, notes, hiddenFromParty: saveHidden });
-      } else {
-        return;
-      }
-      setSaveStatus("saved");
-    } catch (e) {
-      setError((e as Error).message);
-      setSaveStatus("idle");
+  async function handleSave(fields: SaveToRosterFields) {
+    if (creationMode === "generate" && generated) {
+      await saveGenerated(generated, fields.worldId, fields.tags, fields.notes, fields.hiddenFromParty);
+    } else if (manualResult) {
+      await api.saveDungeon({ ...manualResult, ...fields });
     }
   }
 
@@ -117,23 +95,12 @@ export function DungeonCreatePage() {
 
   const savePanel = (
     <>
-      {!saveOpen && saveStatus !== "saved" && (
-        <button className="btn-secondary" onClick={() => setSaveOpen(true)}>Save to Roster</button>
-      )}
-      {saveStatus === "saved" && <p className="success">Saved to roster.</p>}
-      {saveOpen && saveStatus !== "saved" && (
-        <div className="save-panel">
-          <SaveEntityFields
-            worlds={worlds} worldId={saveWorldId} setWorldId={setSaveWorldId}
-            tags={saveTags} setTags={setSaveTags} tagsPlaceholder="dungeon, act-1"
-            notes={saveNotes} setNotes={setSaveNotes}
-            hiddenFromParty={saveHidden} setHiddenFromParty={setSaveHidden}
-          />
-          <button className="btn-primary" onClick={handleSave} disabled={saveStatus === "saving"}>
-            {saveStatus === "saving" ? "Saving…" : "Confirm Save"}
-          </button>
-        </div>
-      )}
+      <SaveToRosterControl
+        key={saveGeneration}
+        worlds={worlds} defaultWorldId={worldId} onSave={handleSave}
+        saveLabel="Save to Roster" savedLabel="Saved to roster."
+        tagsPlaceholder="dungeon, act-1"
+      />
       {error && <p className="error">{error}</p>}
     </>
   );

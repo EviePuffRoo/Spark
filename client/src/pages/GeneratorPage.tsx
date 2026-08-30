@@ -4,7 +4,7 @@ import { api, type ReferenceData } from "../api";
 import { useActiveWorld } from "../ActiveWorldContext";
 import { StatBlockView } from "../components/StatBlockView";
 import { BackstoryView } from "../components/BackstoryView";
-import { SaveEntityFields } from "../components/SaveEntityFields";
+import { SaveToRosterControl, type SaveToRosterFields } from "../components/SaveToRosterControl";
 
 const CR_OPTIONS = ["0", "1/8", "1/4", "1/2", "1", "2", "3", "5", "6", "8"];
 
@@ -17,12 +17,7 @@ export function GeneratorPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [saveOpen, setSaveOpen] = useState(false);
-  const [saveWorldId, setSaveWorldId] = useState(worldId);
-  const [saveTags, setSaveTags] = useState("");
-  const [saveNotes, setSaveNotes] = useState("");
-  const [saveHidden, setSaveHidden] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [saveGeneration, setSaveGeneration] = useState(0);
 
   useEffect(() => {
     api.getReference().then(setReference).catch((e) => setError(e.message));
@@ -32,8 +27,7 @@ export function GeneratorPage() {
     const qty = Math.min(10, Math.max(1, Number(quantity) || 1));
     setLoading(true);
     setError(null);
-    setSaveOpen(false);
-    setSaveStatus("idle");
+    setSaveGeneration((g) => g + 1);
     try {
       const generated = await Promise.all(Array.from({ length: qty }, () => api.generate(form)));
       setResults(generated);
@@ -49,22 +43,9 @@ export function GeneratorPage() {
     setResults(results.filter((_, i) => i !== index));
   }
 
-  async function handleSaveAll() {
+  async function handleSaveAll(fields: SaveToRosterFields) {
     if (results.length === 0) return;
-    setSaveStatus("saving");
-    try {
-      await Promise.all(results.map((r) => api.saveCharacter({
-        ...r,
-        worldId: saveWorldId || null,
-        tags: saveTags.split(",").map((t) => t.trim()).filter(Boolean),
-        notes: saveNotes || undefined,
-        hiddenFromParty: saveHidden,
-      })));
-      setSaveStatus("saved");
-    } catch (e) {
-      setError((e as Error).message);
-      setSaveStatus("idle");
-    }
+    await Promise.all(results.map((r) => api.saveCharacter({ ...r, ...fields })));
   }
 
   const fullyRandom = !!form.fullyRandom;
@@ -190,34 +171,20 @@ export function GeneratorPage() {
                     statBlock={result.statBlock}
                   />
                   <BackstoryView backstory={result.backstory} />
-                  {results.length > 1 && saveStatus !== "saved" && (
+                  {results.length > 1 && (
                     <button className="btn-danger" onClick={() => removeResult(index)} aria-label={`Remove ${result.name} from batch`}>Remove from batch</button>
                   )}
                 </div>
               ))}
 
-              {!saveOpen && saveStatus !== "saved" && (
-                <button className="btn-secondary" onClick={() => setSaveOpen(true)}>
-                  {results.length > 1 ? `Save All ${results.length} to Roster` : "Save to Roster"}
-                </button>
-              )}
-              {saveStatus === "saved" && (
-                <p className="success">Saved {results.length > 1 ? `all ${results.length}` : "it"} to roster.</p>
-              )}
-
-              {saveOpen && saveStatus !== "saved" && (
-                <div className="save-panel">
-                  <SaveEntityFields
-                    worlds={worlds} worldId={saveWorldId} setWorldId={setSaveWorldId}
-                    tags={saveTags} setTags={setSaveTags} tagsPlaceholder="tavern, ally, act-1"
-                    notes={saveNotes} setNotes={setSaveNotes} notesPlaceholder="Where and how you plan to use them…"
-                    hiddenFromParty={saveHidden} setHiddenFromParty={setSaveHidden}
-                  />
-                  <button className="btn-primary" onClick={handleSaveAll} disabled={saveStatus === "saving"}>
-                    {saveStatus === "saving" ? "Saving…" : results.length > 1 ? `Confirm Save (${results.length})` : "Confirm Save"}
-                  </button>
-                </div>
-              )}
+              <SaveToRosterControl
+                key={saveGeneration}
+                worlds={worlds} defaultWorldId={worldId} onSave={handleSaveAll}
+                saveLabel={results.length > 1 ? `Save All ${results.length} to Roster` : "Save to Roster"}
+                savedLabel={`Saved ${results.length > 1 ? `all ${results.length}` : "it"} to roster.`}
+                tagsPlaceholder="tavern, ally, act-1"
+                notesPlaceholder="Where and how you plan to use them…"
+              />
             </>
           )}
         </div>

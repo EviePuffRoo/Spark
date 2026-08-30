@@ -7,7 +7,7 @@ import { api } from "../api";
 import { useActiveWorld } from "../ActiveWorldContext";
 import { AdventureCardView } from "../components/AdventureCardView";
 import { EntitySearchPicker } from "../components/EntitySearchPicker";
-import { SaveEntityFields } from "../components/SaveEntityFields";
+import { SaveToRosterControl, type SaveToRosterFields } from "../components/SaveToRosterControl";
 
 type RoleSlot<T> = { kind: "new"; data: T } | { kind: "existing"; id: string; name: string };
 
@@ -112,12 +112,7 @@ export function AdventureForgePage() {
   const [weaving, setWeaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [saveOpen, setSaveOpen] = useState(false);
-  const [saveWorldId, setSaveWorldId] = useState(worldId);
-  const [saveTags, setSaveTags] = useState("");
-  const [saveNotes, setSaveNotes] = useState("");
-  const [saveHidden, setSaveHidden] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [saveGeneration, setSaveGeneration] = useState(0);
 
   const allCoreFilled = !!(questGiver && antagonist && startLocation && climaxLocation && reward);
 
@@ -150,64 +145,37 @@ export function AdventureForgePage() {
     setEncounterTable(null);
     setComposed(null);
     setError(null);
-    setSaveOpen(false);
-    setSaveStatus("idle");
-    setSaveTags("");
-    setSaveNotes("");
+    setSaveGeneration((g) => g + 1);
   }
 
-  async function handleSaveAdventure(patch?: GeneratedAdventure) {
+  async function handleSaveAdventure(fields: SaveToRosterFields) {
     if (!composed) return;
-    setSaveStatus("saving");
-    setError(null);
-    const worldId = saveWorldId || null;
-    try {
-      const [questGiverId, antagonistId, startLocationId, climaxLocationId, rewardId, encounterTableId] = await Promise.all([
-        persistSlot(questGiver, (data, w) => api.saveCharacter({ ...data, worldId: w }), worldId),
-        persistSlot(antagonist, (data, w) => api.saveCharacter({ ...data, worldId: w }), worldId),
-        persistSlot(startLocation, (data, w) => api.saveLocation({ ...data, worldId: w }), worldId),
-        persistSlot(climaxLocation, (data, w) => api.saveLocation({ ...data, worldId: w }), worldId),
-        persistSlot(reward, (data, w) => api.saveItem({ ...data, worldId: w }), worldId),
-        persistSlot(encounterTable, (data, w) => api.saveEncounterTable({ ...data, worldId: w }), worldId),
-      ]);
+    const worldId = fields.worldId;
+    const [questGiverId, antagonistId, startLocationId, climaxLocationId, rewardId, encounterTableId] = await Promise.all([
+      persistSlot(questGiver, (data, w) => api.saveCharacter({ ...data, worldId: w }), worldId),
+      persistSlot(antagonist, (data, w) => api.saveCharacter({ ...data, worldId: w }), worldId),
+      persistSlot(startLocation, (data, w) => api.saveLocation({ ...data, worldId: w }), worldId),
+      persistSlot(climaxLocation, (data, w) => api.saveLocation({ ...data, worldId: w }), worldId),
+      persistSlot(reward, (data, w) => api.saveItem({ ...data, worldId: w }), worldId),
+      persistSlot(encounterTable, (data, w) => api.saveEncounterTable({ ...data, worldId: w }), worldId),
+    ]);
 
-      const adventure = await api.saveAdventure({
-        ...(patch ?? composed),
-        worldId,
-        tags: saveTags.split(",").map((t) => t.trim()).filter(Boolean),
-        notes: saveNotes || undefined,
-        hiddenFromParty: saveHidden,
-      });
+    const adventure = await api.saveAdventure({ ...composed, ...fields });
 
-      const cast: [string | null, EntityType, string][] = [
-        [questGiverId, "character", "Quest Giver"],
-        [antagonistId, "character", "Antagonist"],
-        [startLocationId, "location", "Starting Location"],
-        [climaxLocationId, "location", "Climax Location"],
-        [rewardId, "item", "Reward"],
-        [encounterTableId, "encounterTable", "Random Encounters"],
-      ];
-      await Promise.all(
-        cast
-          .filter(([id]) => id)
-          .map(([id, type, label]) => api.createLink("adventure", adventure.id, type, id as string, label))
-      );
-
-      setSaveStatus("saved");
-    } catch (e) {
-      setError((e as Error).message);
-      setSaveStatus("idle");
-    }
+    const cast: [string | null, EntityType, string][] = [
+      [questGiverId, "character", "Quest Giver"],
+      [antagonistId, "character", "Antagonist"],
+      [startLocationId, "location", "Starting Location"],
+      [climaxLocationId, "location", "Climax Location"],
+      [rewardId, "item", "Reward"],
+      [encounterTableId, "encounterTable", "Random Encounters"],
+    ];
+    await Promise.all(
+      cast
+        .filter(([id]) => id)
+        .map(([id, type, label]) => api.createLink("adventure", adventure.id, type, id as string, label))
+    );
   }
-
-  const savePanelFields = (
-    <SaveEntityFields
-      worlds={worlds} worldId={saveWorldId} setWorldId={setSaveWorldId}
-      tags={saveTags} setTags={setSaveTags} tagsPlaceholder="one-shot, act-1"
-      notes={saveNotes} setNotes={setSaveNotes} notesPlaceholder="Anything else for your table…"
-      hiddenFromParty={saveHidden} setHiddenFromParty={setSaveHidden}
-    />
-  );
 
   return (
     <div className="page">
@@ -289,20 +257,13 @@ export function AdventureForgePage() {
           <div className="panel result-panel">
             <AdventureCardView adventure={composed} />
 
-            {!saveOpen && saveStatus !== "saved" && (
-              <button className="btn-secondary" onClick={() => setSaveOpen(true)}>Save to Roster</button>
-            )}
-            {saveStatus === "saved" && <p className="success">Saved to roster.</p>}
-
-            {saveOpen && saveStatus !== "saved" && (
-              <div className="save-panel">
-                {savePanelFields}
-                <button className="btn-primary" onClick={() => handleSaveAdventure()} disabled={saveStatus === "saving"}>
-                  {saveStatus === "saving" ? "Saving…" : "Confirm Save"}
-                </button>
-              </div>
-            )}
-            {error && <p className="error">{error}</p>}
+            <SaveToRosterControl
+              key={saveGeneration}
+              worlds={worlds} defaultWorldId={worldId} onSave={handleSaveAdventure}
+              saveLabel="Save to Roster" savedLabel="Saved to roster."
+              tagsPlaceholder="one-shot, act-1"
+              notesPlaceholder="Anything else for your table…"
+            />
           </div>
         </div>
       )}

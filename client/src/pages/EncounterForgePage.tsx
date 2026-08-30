@@ -4,7 +4,7 @@ import { api, type ReferenceData } from "../api";
 import { useActiveWorld } from "../ActiveWorldContext";
 import { EncounterTableCardView } from "../components/EncounterTableCardView";
 import { EncounterTableEditor } from "../components/EncounterTableEditor";
-import { SaveEntityFields } from "../components/SaveEntityFields";
+import { SaveToRosterControl, type SaveToRosterFields } from "../components/SaveToRosterControl";
 
 const BLANK_ENCOUNTER_TABLE: GeneratedEncounterTable = { name: "", terrain: "", entries: [{ roll: "1", description: "" }] };
 
@@ -19,12 +19,7 @@ export function EncounterForgePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [saveOpen, setSaveOpen] = useState(false);
-  const [saveWorldId, setSaveWorldId] = useState(worldId);
-  const [saveTags, setSaveTags] = useState("");
-  const [saveNotes, setSaveNotes] = useState("");
-  const [saveHidden, setSaveHidden] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [saveGeneration, setSaveGeneration] = useState(0);
 
   useEffect(() => {
     api.getReference().then(setReference).catch((e) => setError(e.message));
@@ -34,16 +29,14 @@ export function EncounterForgePage() {
     setCreationMode(next);
     setResults([]);
     setManualResult(null);
-    setSaveOpen(false);
-    setSaveStatus("idle");
+    setSaveGeneration((g) => g + 1);
   }
 
   async function handleGenerate() {
     const qty = Math.min(10, Math.max(1, Number(quantity) || 1));
     setLoading(true);
     setError(null);
-    setSaveOpen(false);
-    setSaveStatus("idle");
+    setSaveGeneration((g) => g + 1);
     try {
       const generated = await Promise.all(Array.from({ length: qty }, () => api.generateEncounterTable(form)));
       setResults(generated);
@@ -59,52 +52,17 @@ export function EncounterForgePage() {
     setResults(results.filter((_, i) => i !== index));
   }
 
-  async function handleSaveAll() {
+  async function handleSaveAll(fields: SaveToRosterFields) {
     if (results.length === 0) return;
-    setSaveStatus("saving");
-    try {
-      await Promise.all(results.map((r) => api.saveEncounterTable({
-        ...r,
-        worldId: saveWorldId || null,
-        tags: saveTags.split(",").map((t) => t.trim()).filter(Boolean),
-        notes: saveNotes || undefined,
-        hiddenFromParty: saveHidden,
-      })));
-      setSaveStatus("saved");
-    } catch (e) {
-      setError((e as Error).message);
-      setSaveStatus("idle");
-    }
+    await Promise.all(results.map((r) => api.saveEncounterTable({ ...r, ...fields })));
   }
 
-  async function handleSaveManual() {
+  async function handleSaveManual(fields: SaveToRosterFields) {
     if (!manualResult) return;
-    setSaveStatus("saving");
-    try {
-      await api.saveEncounterTable({
-        ...manualResult,
-        worldId: saveWorldId || null,
-        tags: saveTags.split(",").map((t) => t.trim()).filter(Boolean),
-        notes: saveNotes || undefined,
-        hiddenFromParty: saveHidden,
-      });
-      setSaveStatus("saved");
-    } catch (e) {
-      setError((e as Error).message);
-      setSaveStatus("idle");
-    }
+    await api.saveEncounterTable({ ...manualResult, ...fields });
   }
 
   const fullyRandom = !!form.fullyRandom;
-
-  const savePanelFields = (
-    <SaveEntityFields
-      worlds={worlds} worldId={saveWorldId} setWorldId={setSaveWorldId}
-      tags={saveTags} setTags={setSaveTags} tagsPlaceholder="travel, act-1"
-      notes={saveNotes} setNotes={setSaveNotes} notesPlaceholder="Where you plan to use this…"
-      hiddenFromParty={saveHidden} setHiddenFromParty={setSaveHidden}
-    />
-  );
 
   const batchResultPanel = (
     <div className="panel result-panel">
@@ -114,27 +72,20 @@ export function EncounterForgePage() {
           {results.map((table, index) => (
             <div className="batch-result-card" key={index}>
               <EncounterTableCardView table={table} />
-              {results.length > 1 && saveStatus !== "saved" && (
+              {results.length > 1 && (
                 <button className="btn-danger" onClick={() => removeResult(index)} aria-label={`Remove ${table.name} from batch`}>Remove from batch</button>
               )}
             </div>
           ))}
 
-          {!saveOpen && saveStatus !== "saved" && (
-            <button className="btn-secondary" onClick={() => setSaveOpen(true)}>
-              {results.length > 1 ? `Save All ${results.length} to Roster` : "Save to Roster"}
-            </button>
-          )}
-          {saveStatus === "saved" && <p className="success">Saved {results.length > 1 ? `all ${results.length}` : "it"} to roster.</p>}
-
-          {saveOpen && saveStatus !== "saved" && (
-            <div className="save-panel">
-              {savePanelFields}
-              <button className="btn-primary" onClick={handleSaveAll} disabled={saveStatus === "saving"}>
-                {saveStatus === "saving" ? "Saving…" : results.length > 1 ? `Confirm Save (${results.length})` : "Confirm Save"}
-              </button>
-            </div>
-          )}
+          <SaveToRosterControl
+            key={saveGeneration}
+            worlds={worlds} defaultWorldId={worldId} onSave={handleSaveAll}
+            saveLabel={results.length > 1 ? `Save All ${results.length} to Roster` : "Save to Roster"}
+            savedLabel={`Saved ${results.length > 1 ? `all ${results.length}` : "it"} to roster.`}
+            tagsPlaceholder="travel, act-1"
+            notesPlaceholder="Where you plan to use this…"
+          />
         </>
       )}
     </div>
@@ -221,19 +172,12 @@ export function EncounterForgePage() {
           <div className="panel result-panel">
             <EncounterTableCardView table={manualResult} />
 
-            {!saveOpen && saveStatus !== "saved" && (
-              <button className="btn-secondary" onClick={() => setSaveOpen(true)}>Save to Roster</button>
-            )}
-            {saveStatus === "saved" && <p className="success">Saved to roster.</p>}
-
-            {saveOpen && saveStatus !== "saved" && (
-              <div className="save-panel">
-                {savePanelFields}
-                <button className="btn-primary" onClick={handleSaveManual} disabled={saveStatus === "saving"}>
-                  {saveStatus === "saving" ? "Saving…" : "Confirm Save"}
-                </button>
-              </div>
-            )}
+            <SaveToRosterControl
+              worlds={worlds} defaultWorldId={worldId} onSave={handleSaveManual}
+              saveLabel="Save to Roster" savedLabel="Saved to roster."
+              tagsPlaceholder="travel, act-1"
+              notesPlaceholder="Where you plan to use this…"
+            />
           </div>
         </div>
       )}

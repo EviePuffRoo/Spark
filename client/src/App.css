@@ -858,6 +858,17 @@ textarea {
   border-top: 1px dashed var(--border);
 }
 
+.save-to-roster-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.save-to-roster-actions .link-button {
+  margin-top: 0;
+}
+
 .world-tick-panel {
   margin-top: 16px;
   padding-top: 16px;

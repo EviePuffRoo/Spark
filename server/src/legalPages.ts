@@ -101,9 +101,11 @@ legalPagesRouter.get("/terms", (_req, res) => {
     <h2>6. Account deletion</h2>
     <p>
       You can permanently delete your account and its data at any time from your account
-      settings. <span class="fill-in">[FILL IN: confirm exact deletion behavior, immediate vs.
-      grace period, and whether backups are excluded from the deletion (see Privacy Policy §5),
-      to be certain this section matches what the account-deletion feature actually does]</span>.
+      settings, after confirming your password. Deletion is immediate, not a grace period — your
+      account and everything tied to it (worlds, characters, session notes, and everything else)
+      is removed from the live database right away. As noted in the Privacy Policy §5, deleted
+      data may still exist in disaster-recovery backups until those age out, on a rolling 14-day
+      window.
     </p>
 
     <h2>7. Disclaimers and liability</h2>
@@ -154,25 +156,23 @@ legalPagesRouter.get("/privacy", (_req, res) => {
     <h2>4. Cookies</h2>
     <p>
       We use a single authentication cookie to keep you signed in. We don't use third-party
-      advertising or tracking cookies.
-      <span class="fill-in">[FILL IN: confirm this is accurate, and add an analytics disclosure
-      here if/when any analytics tool is added]</span>.
+      advertising or tracking cookies, and no analytics tool is integrated into the app today.
+      If that changes, this section will be updated first.
     </p>
 
     <h2>5. Backups</h2>
     <p>
-      We keep encrypted backups of the database for disaster-recovery purposes, retained for a
-      rolling window of <span class="fill-in">[FILL IN: confirm retention window, currently 14
-      days by default]</span>. Deleting your account removes your data from the live database;
-      it may persist in backups until they age out of that window.
+      We keep encrypted backups of the database for disaster-recovery purposes, retained on a
+      rolling 14-day window (the most recent 14 daily backups; older ones are automatically
+      deleted). Deleting your account removes your data from the live database immediately; it
+      may persist in backups until they age out of that 14-day window.
     </p>
 
     <h2>6. Who we share data with</h2>
     <p>
-      Only the infrastructure providers needed to run the service: <span class="fill-in">[FILL
-      IN: name your hosting provider]</span> for hosting, Stripe for payment processing, and
-      Cloudflare (R2) for backup storage. None of them use your data for anything beyond
-      providing that infrastructure to us.
+      Only the infrastructure providers needed to run the service: Render for hosting, Stripe
+      for payment processing, and Cloudflare (R2) for backup storage. None of them use your data
+      for anything beyond providing that infrastructure to us.
     </p>
 
     <h2>7. Your rights</h2>

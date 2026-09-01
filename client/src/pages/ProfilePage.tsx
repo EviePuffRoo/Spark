@@ -251,6 +251,16 @@ export function ProfilePage({ onNavigateToBilling }: { onNavigateToBilling?: () 
           <p className="hint">Turn notifications fire while you're in Player View during live combat.</p>
         </div>
 
+        <h3 className="section-heading">Legal</h3>
+        <div className="save-panel">
+          <div className="button-row">
+            <a className="btn-secondary" href="/terms" target="_blank" rel="noreferrer">Terms of Service</a>
+            <a className="btn-secondary" href="/privacy" target="_blank" rel="noreferrer">Privacy Policy</a>
+            <a className="btn-secondary" href="/faq" target="_blank" rel="noreferrer">FAQ</a>
+            <a className="btn-secondary" href="/about" target="_blank" rel="noreferrer">About</a>
+          </div>
+        </div>
+
         <div className="danger-zone">
           <h3 className="section-heading">Danger Zone</h3>
           <p className="hint">Permanently delete your account and everything in it. This cannot be undone.</p>

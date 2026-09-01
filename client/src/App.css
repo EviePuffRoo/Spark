@@ -111,10 +111,16 @@
 }
 
 @media (max-width: 800px) {
+  /* The groups row and items row must stay stacked (not side by side) —
+     .area-sidebar's own row+overflow-x below already turns each of these
+     two rows into its own horizontal scroller; laying them out as a
+     single row here as well used to cram both tablists into one strip,
+     pushing the actual World subtabs (Overview, Roster, ...) off-screen
+     with no indication they existed. */
   .area-sidebar-grouped-tabs {
-    flex-direction: row;
-    align-items: flex-start;
-    gap: 12px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
   }
 
   .area-sidebar-grouped-tabs .grouped-tabs-groups,
@@ -124,8 +130,10 @@
 
   .area-sidebar-grouped-tabs .grouped-tabs-items {
     margin-left: 0;
-    padding-left: 12px;
-    border-left: 1px solid var(--border);
+    padding-left: 0;
+    padding-top: 8px;
+    border-left: none;
+    border-top: 1px solid var(--border);
   }
 }
 
@@ -297,6 +305,12 @@
     border-right: none;
     border-bottom: 1px solid var(--border);
     -webkit-overflow-scrolling: touch;
+    /* A row that overflows scrolls fine on touch, but nothing else hints
+       that there's more to the right — fade the trailing edge so a
+       partially-visible next item reads as "swipe for more" instead of
+       looking like the row was simply cut off. */
+    mask-image: linear-gradient(to right, black calc(100% - 28px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, black calc(100% - 28px), transparent 100%);
   }
 
   .area-sidebar button {

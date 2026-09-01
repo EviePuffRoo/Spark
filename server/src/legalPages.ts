@@ -55,10 +55,10 @@ legalPagesRouter.get("/terms", (_req, res) => {
 
     <h2>1. Who this agreement is with</h2>
     <p>
-      Spark ("we", "us") is operated by <span class="fill-in">[FILL IN: legal entity name, or
-      your name if operating as an individual]</span>, based in
-      <span class="fill-in">[FILL IN: country/state]</span>. Questions about these terms can be
-      sent to <span class="fill-in">[FILL IN: contact email]</span>.
+      Spark ("we", "us") is operated by <span class="fill-in">[FILL IN: LLC's registered legal
+      name — formation is in progress]</span>, based in
+      <span class="fill-in">[FILL IN: LLC's state of formation]</span>. Questions about these
+      terms can be sent to <span class="fill-in">[FILL IN: contact email]</span>.
     </p>
 
     <h2>2. The service</h2>
@@ -74,9 +74,7 @@ legalPagesRouter.get("/terms", (_req, res) => {
     <h2>3. Accounts</h2>
     <p>
       You're responsible for keeping your account credentials secure and for what happens under
-      your account. You must be at least <span class="fill-in">[FILL IN: minimum age, commonly
-      13 in the US under COPPA, sometimes 16 depending on jurisdiction; confirm the right
-      threshold]</span> years old to create an account.
+      your account. You must be at least 16 years old to create an account.
     </p>
 
     <h2>4. Your content</h2>
@@ -85,17 +83,16 @@ legalPagesRouter.get("/terms", (_req, res) => {
       yours. By using shared features (inviting players to a world, publishing to the public
       Gallery), you're granting the people you share it with the access those features imply.
       Content published to the public Gallery is visible to other users and subject to our
-      moderation and reporting process; we may remove content that violates
-      <span class="fill-in">[FILL IN: link to or define community guidelines, if any beyond what
-      exists in-app]</span>.
+      moderation and reporting process: any user can report a published entry, and an admin can
+      remove it or revoke an account's ability to publish. There's no separate community
+      guidelines document beyond that in-app process today.
     </p>
 
     <h2>5. Paid subscriptions</h2>
     <p>
       Paid tiers are billed through Stripe on a recurring basis until cancelled. You can manage
-      or cancel your subscription at any time from your account.
-      <span class="fill-in">[FILL IN: refund policy, e.g. no refunds for partial billing
-      periods, or your actual policy]</span>.
+      or cancel your subscription at any time from your account. Cancelling stops future billing,
+      but we don't offer refunds for the remainder of a billing period already paid for.
     </p>
 
     <h2>6. Account deletion</h2>
@@ -116,8 +113,8 @@ legalPagesRouter.get("/terms", (_req, res) => {
 
     <h2>8. Changes to these terms</h2>
     <p>
-      We may update these terms as the service changes. <span class="fill-in">[FILL IN: how
-      you'll notify users of material changes]</span>.
+      We may update these terms as the service changes. We'll show an in-app notice on your next
+      login after a material change, in addition to updating the date on this page.
     </p>
   `));
 });
@@ -185,7 +182,8 @@ legalPagesRouter.get("/privacy", (_req, res) => {
 
     <h2>8. Contact</h2>
     <p>
-      Questions about this policy: <span class="fill-in">[FILL IN: contact email]</span>.
+      Questions about this policy: <span class="fill-in">[FILL IN: contact email — same as Terms
+      §1]</span>.
     </p>
   `));
 });

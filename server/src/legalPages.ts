@@ -55,10 +55,8 @@ legalPagesRouter.get("/terms", (_req, res) => {
 
     <h2>1. Who this agreement is with</h2>
     <p>
-      Spark ("we", "us") is operated by <span class="fill-in">[FILL IN: LLC's registered legal
-      name — formation is in progress]</span>, based in
-      <span class="fill-in">[FILL IN: LLC's state of formation]</span>. Questions about these
-      terms can be sent to <span class="fill-in">[FILL IN: contact email]</span>.
+      Spark ("we", "us") is operated by SparkDM Ltd., based in Cincinnati, Ohio. Questions about
+      these terms can be sent to <span class="fill-in">[FILL IN: contact email]</span>.
     </p>
 
     <h2>2. The service</h2>

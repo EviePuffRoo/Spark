@@ -6,6 +6,7 @@ import { CompendiumIcon } from "../components/icons";
 import { EmptyState } from "../components/EmptyState";
 import { StatBlockView } from "../components/StatBlockView";
 import { ItemCardView } from "../components/ItemCardView";
+import { RulesLinkedText } from "../components/RulesLinkedText";
 import { useScrollDetailOnSelect } from "../useScrollDetailOnSelect";
 import { timeAgo } from "../components/DiceRoller";
 
@@ -320,14 +321,14 @@ export function CompendiumPage() {
               <li><strong>Duration:</strong> {selectedSpell.duration}{selectedSpell.concentration ? " (concentration)" : ""}</li>
               <li><strong>Classes:</strong> {selectedSpell.classes.join(", ")}</li>
             </ul>
-            <p>{selectedSpell.description}</p>
+            <p><RulesLinkedText text={selectedSpell.description} /></p>
           </div>
         )}
 
         {selectedCondition && (
           <div className="statblock">
             <h3 className="statblock-name">{selectedCondition.name}</h3>
-            <p>{selectedCondition.description}</p>
+            <p><RulesLinkedText text={selectedCondition.description} /></p>
           </div>
         )}
 
@@ -335,7 +336,7 @@ export function CompendiumPage() {
           <div className="statblock">
             <h3 className="statblock-name">{selectedRule.name}</h3>
             <p className="statblock-subtitle">{selectedRule.category}</p>
-            <p>{selectedRule.description}</p>
+            <p><RulesLinkedText text={selectedRule.description} /></p>
           </div>
         )}
 

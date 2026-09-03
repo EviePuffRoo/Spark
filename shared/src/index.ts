@@ -41,6 +41,7 @@ export * from "./data/settlements.js";
 export * from "./data/spells.js";
 export * from "./data/conditionsCompendium.js";
 export * from "./data/rulesReference.js";
+export * from "./rulesGlossary.js";
 export * from "./data/achievements.js";
 export * from "./data/baseUpgrades.js";
 export * from "./data/battleTiles.js";

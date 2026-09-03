@@ -56,7 +56,7 @@ legalPagesRouter.get("/terms", (_req, res) => {
     <h2>1. Who this agreement is with</h2>
     <p>
       Spark ("we", "us") is operated by SparkDM Ltd., based in Cincinnati, Ohio. Questions about
-      these terms can be sent to <span class="fill-in">[FILL IN: contact email]</span>.
+      these terms can be sent to <a href="mailto:support@sparkdm.quest">support@sparkdm.quest</a>.
     </p>
 
     <h2>2. The service</h2>
@@ -180,8 +180,7 @@ legalPagesRouter.get("/privacy", (_req, res) => {
 
     <h2>8. Contact</h2>
     <p>
-      Questions about this policy: <span class="fill-in">[FILL IN: contact email — same as Terms
-      §1]</span>.
+      Questions about this policy: <a href="mailto:support@sparkdm.quest">support@sparkdm.quest</a>.
     </p>
   `));
 });

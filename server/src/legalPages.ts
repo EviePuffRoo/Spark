@@ -7,11 +7,16 @@ import { Router } from "express";
 //
 // IMPORTANT: the Terms and Privacy pages below are a starting draft, not a
 // finished legal document. They're grounded in what the app actually does
-// today (see the comments below each section), but every [FILL IN: ...]
-// marker needs a real answer, and the whole thing needs review by an
-// actual lawyer before it's something to rely on, especially given real
-// payment processing is live. Treat this as the first draft to hand to
-// that review, not the final artifact. The About page has no such
+// today (see the comments below each section). Every factual [FILL IN: ...]
+// (entity name, jurisdiction, contact email, business decisions like the
+// refund policy) has been resolved; the liability/disclaimer/governing-law
+// clause (Terms §7) and the GDPR/CCPA rights section (Privacy §7) use
+// generic, widely-used template language instead — not something drafted
+// or reviewed by a lawyer for this business specifically. The whole
+// document still needs an actual legal review before it's something to
+// rely on, especially given real payment processing is live — this is a
+// reasonable draft to operate on in the meantime, not a substitute for
+// that review once it's affordable. The About page has no such
 // disclaimer: it's plain product copy, not a legal document.
 
 const PAGE_STYLE = `
@@ -20,8 +25,8 @@ const PAGE_STYLE = `
   h2 { font-size: 1.15rem; margin-top: 2rem; }
   .draft-banner { background: #fff3cd; border: 1px solid #d9a441; border-radius: 8px; padding: 14px 16px; margin: 20px 0 32px; font-size: 0.95rem; }
   .draft-banner strong { display: block; margin-bottom: 4px; }
-  .fill-in { background: #ffe0e0; padding: 1px 4px; border-radius: 3px; font-weight: 600; }
   .updated { color: #666; font-size: 0.9rem; }
+  .hint { color: #666; font-size: 0.9rem; font-style: italic; }
   a { color: #4a3aff; }
 `;
 
@@ -37,9 +42,9 @@ function page(title: string, bodyHtml: string, showDraftBanner = true): string {
 <body>
   ${showDraftBanner ? `<div class="draft-banner">
     <strong>Draft. Not final, not legal advice.</strong>
-    This document has not been reviewed by a lawyer and is not yet in effect. Fields marked
-    <span class="fill-in">like this</span> still need real answers before this page should be
-    relied on or linked from signup/checkout.
+    This document has not been reviewed by a lawyer and is not yet in effect. Sections noted
+    inline use generic, widely-used template language rather than terms drafted or reviewed by
+    a lawyer for this business specifically.
   </div>` : ""}
   ${bodyHtml}
 </body>
@@ -56,7 +61,7 @@ legalPagesRouter.get("/terms", (_req, res) => {
     <h2>1. Who this agreement is with</h2>
     <p>
       Spark ("we", "us") is operated by SparkDM Ltd., based in Cincinnati, Ohio. Questions about
-      these terms can be sent to <span class="fill-in">[FILL IN: contact email]</span>.
+      these terms can be sent to <a href="mailto:support@sparkdm.quest">support@sparkdm.quest</a>.
     </p>
 
     <h2>2. The service</h2>
@@ -104,9 +109,29 @@ legalPagesRouter.get("/terms", (_req, res) => {
     </p>
 
     <h2>7. Disclaimers and liability</h2>
-    <p><span class="fill-in">[FILL IN: standard "as-is" disclaimer, limitation of liability, and
-      governing law clause. This section in particular should not be written without a lawyer,
-      since it's the part doing the actual legal protection]</span>.
+    <p class="hint" style="margin-bottom: 12px;">
+      This section uses standard, widely-used template language rather than terms drafted or
+      reviewed by a lawyer for SparkDM Ltd. specifically.
+    </p>
+    <p>
+      Spark is provided "as is" and "as available," without warranties of any kind, express or
+      implied, including implied warranties of merchantability, fitness for a particular
+      purpose, and non-infringement. We don't guarantee the service will be uninterrupted,
+      timely, secure, or error-free, or that any data loss won't occur.
+    </p>
+    <p>
+      To the maximum extent permitted by law, SparkDM Ltd. is not liable for any indirect,
+      incidental, special, consequential, or punitive damages, or any loss of profits, revenue,
+      or data, arising from your use of (or inability to use) Spark, even if advised of the
+      possibility of such damages. Our total liability for any claim arising from these terms or
+      the service is limited to the greater of (a) the amount you paid us in the 12 months
+      before the claim arose, or (b) $50. Some jurisdictions don't allow the exclusion of certain
+      warranties or the limitation of certain damages, so some of the above may not apply to you.
+    </p>
+    <p>
+      These terms are governed by the laws of the State of Ohio, without regard to its
+      conflict-of-law principles, and any dispute not otherwise resolved is subject to the
+      exclusive jurisdiction of the state and federal courts located in Hamilton County, Ohio.
     </p>
 
     <h2>8. Changes to these terms</h2>
@@ -171,17 +196,33 @@ legalPagesRouter.get("/privacy", (_req, res) => {
     </p>
 
     <h2>7. Your rights</h2>
+    <p class="hint" style="margin-bottom: 12px;">
+      This section uses standard, widely-used template language rather than terms drafted or
+      reviewed by a lawyer for SparkDM Ltd. specifically.
+    </p>
     <p>
       You can view, edit, or delete any of your content at any time from within the app, and you
-      can permanently delete your account and its data from your account settings.
-      <span class="fill-in">[FILL IN: if you have users in the EU/UK or California, add GDPR/CCPA
-      specific rights language here. This needs legal review to get right]</span>.
+      can permanently delete your account and its data from your account settings — this covers
+      the practical substance of the rights below for every user, regardless of location.
+    </p>
+    <p>
+      We process your account data (username, saved content) because it's necessary to provide
+      the service to you under these terms; optional features (like turn notifications) are
+      based on your consent, which you can withdraw at any time by turning them off.
+    </p>
+    <p>
+      If you're located in the EU, UK, or EEA, you have rights under the GDPR to access, correct,
+      delete, or export a copy of your personal data, and to restrict or object to certain
+      processing of it. If you're a California resident, you have similar rights under the CCPA,
+      including the right to know what personal information we hold and to request its deletion
+      — and, as noted above, we don't sell or share your personal information, so there's nothing
+      to opt out of on that front. To exercise any of these rights beyond what you can already do
+      in-app, contact <a href="mailto:support@sparkdm.quest">support@sparkdm.quest</a>.
     </p>
 
     <h2>8. Contact</h2>
     <p>
-      Questions about this policy: <span class="fill-in">[FILL IN: contact email — same as Terms
-      §1]</span>.
+      Questions about this policy: <a href="mailto:support@sparkdm.quest">support@sparkdm.quest</a>.
     </p>
   `));
 });

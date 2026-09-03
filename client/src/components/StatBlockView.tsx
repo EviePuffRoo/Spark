@@ -1,5 +1,6 @@
 import type { AbilityKey, StatBlock } from "@spark/shared";
 import { getRuleset } from "@spark/shared";
+import { RulesLinkedText } from "./RulesLinkedText";
 
 const modifier = getRuleset().formatModifier;
 
@@ -35,7 +36,7 @@ export function StatBlockView({ name, subtitle, statBlock }: { name: string; sub
       {statBlock.skills && <p><strong>Skills</strong> {statBlock.skills}</p>}
       {statBlock.damageResistances && <p><strong>Damage Resistances</strong> {statBlock.damageResistances}</p>}
       {statBlock.damageImmunities && <p><strong>Damage Immunities</strong> {statBlock.damageImmunities}</p>}
-      {statBlock.conditionImmunities && <p><strong>Condition Immunities</strong> {statBlock.conditionImmunities}</p>}
+      {statBlock.conditionImmunities && <p><strong>Condition Immunities</strong> <RulesLinkedText text={statBlock.conditionImmunities} /></p>}
       <p><strong>Senses</strong> {statBlock.senses}</p>
       <p><strong>Languages</strong> {statBlock.languages}</p>
       <p><strong>Challenge</strong> {statBlock.challengeRating} ({statBlock.xp} XP) &nbsp; <strong>Prof. Bonus</strong> +{statBlock.proficiencyBonus}</p>
@@ -43,7 +44,7 @@ export function StatBlockView({ name, subtitle, statBlock }: { name: string; sub
         <>
           <hr className="rule" />
           {statBlock.traits.map((trait) => (
-            <p key={trait.name}><em><strong>{trait.name}.</strong></em> {trait.description}</p>
+            <p key={trait.name}><em><strong>{trait.name}.</strong></em> <RulesLinkedText text={trait.description} /></p>
           ))}
         </>
       )}
@@ -51,7 +52,7 @@ export function StatBlockView({ name, subtitle, statBlock }: { name: string; sub
         <>
           <h3 className="section-heading">Actions</h3>
           {statBlock.actions.map((action) => (
-            <p key={action.name}><em><strong>{action.name}.</strong></em> {action.description}</p>
+            <p key={action.name}><em><strong>{action.name}.</strong></em> <RulesLinkedText text={action.description} /></p>
           ))}
         </>
       )}
@@ -59,7 +60,7 @@ export function StatBlockView({ name, subtitle, statBlock }: { name: string; sub
         <>
           <h3 className="section-heading">Reactions</h3>
           {statBlock.reactions.map((reaction) => (
-            <p key={reaction.name}><em><strong>{reaction.name}.</strong></em> {reaction.description}</p>
+            <p key={reaction.name}><em><strong>{reaction.name}.</strong></em> <RulesLinkedText text={reaction.description} /></p>
           ))}
         </>
       )}

@@ -2414,6 +2414,47 @@ textarea {
   pointer-events: none;
 }
 
+/* Rules cross-linking (RulesLinkedText) */
+.rules-term {
+  position: relative;
+}
+
+.rules-term-trigger {
+  background: none;
+  border: none;
+  border-bottom: 1px dotted var(--accent);
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.rules-term-trigger:hover,
+.rules-term-trigger:focus-visible {
+  border-bottom-style: solid;
+}
+
+.rules-term-popover {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 30;
+  width: max-content;
+  max-width: 260px;
+  margin-top: 4px;
+  padding: 8px 10px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 20px -8px rgba(0, 0, 0, 0.35);
+  font-size: 0.85rem;
+  font-weight: 400;
+  font-style: normal;
+  line-height: 1.4;
+  text-align: left;
+}
+
 /* Zone Map */
 .zone-map {
   margin: 16px 0;

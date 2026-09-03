@@ -15,6 +15,7 @@ import { parseNotation, rollDice } from "./DiceRoller";
 import { HpBar } from "./HpBar";
 import { AddCombatantPanel, rollD20 } from "./AddCombatantPanel";
 import { CombatantRowReadOnly } from "./CombatantRowReadOnly";
+import { RulesLinkedText } from "./RulesLinkedText";
 import { ResizeDivider, useResizableColumn } from "./ResizeDivider";
 import type { CSSProperties } from "react";
 
@@ -1004,7 +1005,7 @@ export function InitiativeTracker({
             <h3 className="section-heading">Lair Actions ({lairSource.name})</h3>
             <ul className="lair-actions-list">
               {lairSource.lairActionsList!.map((a) => (
-                <li key={a.name}><strong>{a.name}.</strong> {a.description}</li>
+                <li key={a.name}><strong>{a.name}.</strong> <RulesLinkedText text={a.description} /></li>
               ))}
             </ul>
             <button className="btn-secondary" disabled={usedThisRound} onClick={() => triggerLairAction(lairSource.id)}>

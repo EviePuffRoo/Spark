@@ -1,0 +1,46 @@
+name: Discord Changelog
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post commits to Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
+            echo "DISCORD_WEBHOOK_URL secret is not set; skipping."
+            exit 0
+          fi
+
+          COMMITS=$(jq -r '
+            [.commits[] | select(.message | startswith("Merge ") | not)
+              | "- [\(.message | split("\n")[0])](\(.url)) — \(.author.name)"]
+            | join("\n")
+          ' "$GITHUB_EVENT_PATH" | cut -c1-3800)
+
+          if [ -z "$COMMITS" ]; then
+            echo "No non-merge commits in this push; skipping."
+            exit 0
+          fi
+
+          PAYLOAD=$(jq -n \
+            --arg title "$GITHUB_REPOSITORY" \
+            --arg url "$(jq -r '.compare' "$GITHUB_EVENT_PATH")" \
+            --arg desc "$COMMITS" \
+            --arg author "$(jq -r '.pusher.name' "$GITHUB_EVENT_PATH")" \
+            '{
+              embeds: [{
+                title: ($title + " — shipped"),
+                url: $url,
+                description: $desc,
+                color: 10327295,
+                footer: { text: ("pushed by " + $author) }
+              }]
+            }')
+
+          curl -sf -H "Content-Type: application/json" -d "$PAYLOAD" "$DISCORD_WEBHOOK_URL"

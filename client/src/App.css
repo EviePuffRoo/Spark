@@ -1598,8 +1598,14 @@ textarea {
   fill: var(--bg-panel);
 }
 
+/* Deliberately not var(--border): that's a UI panel token, and in the light
+   theme it resolves to a near-white lavender, which draws bright lines all
+   over dark dungeon art and dominates the map. Battle-map art doesn't follow
+   the theme, so its grid shouldn't either — a low-alpha black reads as a
+   ruled overlay on light and dark tiles alike, present enough to count
+   squares against without competing with the map. */
 .map-builder-grid-line {
-  stroke: var(--border);
+  stroke: rgba(0, 0, 0, 0.2);
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
 }
@@ -2818,7 +2824,8 @@ textarea {
 }
 
 .grid-map-line {
-  stroke: var(--border);
+  /* Same reasoning as .map-builder-grid-line above. */
+  stroke: rgba(0, 0, 0, 0.2);
   stroke-width: 1px;
   vector-effect: non-scaling-stroke;
 }

@@ -20,5 +20,5 @@ client/playwright-report/
 # One-off Playwright specs used to drive the real app for screenshots or
 # manual verification, and whatever they capture. These are scratch work,
 # not tests — committing one would also add it to the e2e suite CI runs.
-client/e2e/tmp-*.spec.ts
+client/e2e/tmp-*
 client/showcase-out/

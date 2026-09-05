@@ -3,6 +3,7 @@ import type { BattleMap, LiveCombatant, SizeCategory, AoeShapeKind, PlacedTile }
 import { SIZE_FOOTPRINT, computeReachableCells, chebyshevDistanceFeet, AOE_SHAPE_KINDS, computeAoeCells, footprintIntersectsTemplate, BATTLE_TILE_BY_ID } from "@spark/shared";
 import { api } from "../api";
 import { BattleTileDefs } from "./TileIcon";
+import { TileShading, TileShadingDefs, buildTileShading } from "./TileShading";
 
 const CELL = 32;
 const VIEWPORT_WIDTH = 800;
@@ -252,6 +253,11 @@ export function GridMap({
     return { floor, decor, gmOnly };
   }, [battleMap]);
 
+  const shading = useMemo(
+    () => (battleMap ? buildTileShading(battleMap.tiles, battleMap.width, battleMap.height, CELL) : null),
+    [battleMap],
+  );
+
   // The three tile layers as finished elements. None of their inputs change
   // while a token is being dragged, so React reuses these whole subtrees and
   // reconciles only the token that actually moved — instead of rebuilding
@@ -417,6 +423,7 @@ export function GridMap({
           onWheel={handleWheel}
         >
           <BattleTileDefs />
+          <defs><TileShadingDefs /></defs>
           <rect
             x={-2000} y={-2000} width={4000} height={4000} fill="transparent"
             onPointerDown={handleBackgroundPointerDown}
@@ -427,6 +434,7 @@ export function GridMap({
           <g transform={`translate(${transform.x} ${transform.y}) scale(${transform.k})`}>
             <rect width={gridWidth} height={gridHeight} className="grid-map-bg" pointerEvents="none" />
             {floorTileElements}
+            {shading && <TileShading shading={shading} />}
             {decorTileElements}
             {gmOnlyTileElements}
             {gridLines}

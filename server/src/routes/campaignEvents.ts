@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
 import { toCampaignEventDTO } from "../serialize.js";
-import { findAccessibleWorld, getMemberWorldIds, authorizeEntityWrite } from "../worldAccess.js";
+import { findAccessibleWorld, getMemberWorldIds, authorizeEntityWrite, visibleEntityWhere } from "../worldAccess.js";
 import { logCampaignEventOp } from "../campaignEventLog.js";
 import { dispatchWebhookEvent } from "../webhookDispatch.js";
 
@@ -36,7 +36,7 @@ campaignEventsRouter.post("/", async (req, res) => {
 
   if (typeof factionId === "string") {
     const memberWorldIds = await getMemberWorldIds(req.userId!);
-    const faction = await prisma.faction.findFirst({ where: { id: factionId, worldId, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }] } });
+    const faction = await prisma.faction.findFirst({ where: { id: factionId, worldId, ...visibleEntityWhere(req.userId!, memberWorldIds) } });
     if (!faction) return res.status(403).json({ error: "You don't have access to this faction" });
   }
 

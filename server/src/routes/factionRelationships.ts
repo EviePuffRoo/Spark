@@ -2,7 +2,7 @@ import { Router } from "express";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../db.js";
 import { toFactionRelationshipDTO, toCampaignEventDTO } from "../serialize.js";
-import { findAccessibleWorld, getMemberWorldIds, authorizeEntityWrite, worldOwnerIsPaid } from "../worldAccess.js";
+import { findAccessibleWorld, getMemberWorldIds, authorizeEntityWrite, worldOwnerIsPaid, visibleEntityWhere } from "../worldAccess.js";
 import { logCampaignEventOp } from "../campaignEventLog.js";
 import { dispatchWebhookEvent } from "../webhookDispatch.js";
 import { FACTION_RELATIONSHIP_STANCES, resolveFactionBattle } from "@spark/shared";
@@ -103,8 +103,8 @@ factionRelationshipsRouter.post("/", async (req, res) => {
 
   const memberWorldIds = await getMemberWorldIds(req.userId!);
   const [factionA, factionB] = await Promise.all([
-    prisma.faction.findFirst({ where: { id: factionAId, worldId, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }] } }),
-    prisma.faction.findFirst({ where: { id: factionBId, worldId, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }] } }),
+    prisma.faction.findFirst({ where: { id: factionAId, worldId, ...visibleEntityWhere(req.userId!, memberWorldIds) } }),
+    prisma.faction.findFirst({ where: { id: factionBId, worldId, ...visibleEntityWhere(req.userId!, memberWorldIds) } }),
   ]);
   if (!factionA || !factionB) return res.status(404).json({ error: "Both factions must exist in this world" });
 

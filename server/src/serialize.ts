@@ -16,7 +16,42 @@ import type {
   ZoneMapTemplate, Dungeon, DowntimeActivity, DowntimeActivityType, Shop, ShopStockEntry, Region, Settlement, ChatMessage, BattleMap,
   DispositionLogEntry, ShopCommission, FactionLogEntry, FactionRelationship, FactionRelationshipStance, CampaignEvent,
   PlacedTile, WorldTickLog, DoomClock, CampaignEventLogEntry, TriggerRule, TriggerCondition,
+  StatBlock, Backstory, AbilityScores,
 } from "@spark/shared";
+
+// Every JSON column here is written by this server via JSON.stringify, so
+// under normal operation it always parses. It can still be malformed if a
+// row arrived another way — a hand-edited backup file coming back through
+// the import route, a dump restored from an older schema, a direct edit of
+// the database — and a throw inside a serializer fails the whole request,
+// so one damaged row would take down an entire list endpoint (and with it
+// the user's roster or inventory) rather than just itself. Falling back
+// keeps the rest of the response intact and renders the damaged row as
+// empty, which the user can see and fix, instead of an opaque 500 with no
+// way out through the UI.
+function parseColumn<T>(raw: string | null | undefined, fallback: T): T {
+  if (raw === null || raw === undefined) return fallback;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+// Stand-ins for the structured columns above, used only when a row's JSON
+// won't parse. They're deliberately blank rather than plausible-looking:
+// a character showing 0s and empty strings reads as damaged data the user
+// can go fix, where invented values would look like real content.
+const EMPTY_ABILITY_SCORES: AbilityScores = { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 };
+const EMPTY_STAT_BLOCK: StatBlock = {
+  size: "", creatureType: "", alignment: "", armorClass: 0, hitPointsAverage: 0,
+  hitDiceFormula: "", speed: "", abilityScores: EMPTY_ABILITY_SCORES, senses: "",
+  languages: "", challengeRating: "", proficiencyBonus: 0, xp: 0, traits: [], actions: [],
+};
+const EMPTY_BACKSTORY: Backstory = {
+  occupationOrRole: "", personalityTrait: "", ideal: "", bond: "", flaw: "",
+  appearance: "", mannerism: "", motivation: "", secret: "",
+};
 
 export function toCharacterDTO(row: CharacterRow): Character {
   return {
@@ -29,16 +64,16 @@ export function toCharacterDTO(row: CharacterRow): Character {
     alignment: row.alignment,
     templateId: row.templateId,
     templateName: row.templateName,
-    statBlock: JSON.parse(row.statBlock),
-    backstory: JSON.parse(row.backstory),
+    statBlock: parseColumn(row.statBlock, EMPTY_STAT_BLOCK),
+    backstory: parseColumn(row.backstory, EMPTY_BACKSTORY),
     worldId: row.worldId,
     hiddenFromParty: row.hiddenFromParty,
-    tags: JSON.parse(row.tags),
+    tags: parseColumn(row.tags, []),
     notes: row.notes ?? undefined,
-    equippedItems: JSON.parse(row.equippedItems),
-    attunedItems: JSON.parse(row.attunedItems),
+    equippedItems: parseColumn(row.equippedItems, []),
+    attunedItems: parseColumn(row.attunedItems, []),
     disposition: row.disposition,
-    perPcDisposition: JSON.parse(row.perPcDisposition),
+    perPcDisposition: parseColumn(row.perPcDisposition, {}),
     status: row.status as Character["status"],
     factionId: row.factionId,
     settlementId: row.settlementId,
@@ -81,7 +116,7 @@ export function toItemDTO(row: ItemRow): Item {
     weight: row.weight ?? undefined,
     worldId: row.worldId,
     hiddenFromParty: row.hiddenFromParty,
-    tags: JSON.parse(row.tags),
+    tags: parseColumn(row.tags, []),
     notes: row.notes ?? undefined,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -102,7 +137,7 @@ export function toLocationDTO(row: LocationRow): Location {
     worldId: row.worldId,
     hiddenFromParty: row.hiddenFromParty,
     settlementId: row.settlementId,
-    tags: JSON.parse(row.tags),
+    tags: parseColumn(row.tags, []),
     notes: row.notes ?? undefined,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -121,8 +156,8 @@ export function toRegionDTO(row: RegionRow): Region {
     hiddenFromParty: row.hiddenFromParty,
     x: row.x,
     y: row.y,
-    connections: JSON.parse(row.connections),
-    tags: JSON.parse(row.tags),
+    connections: parseColumn(row.connections, []),
+    tags: parseColumn(row.tags, []),
     notes: row.notes ?? undefined,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -144,7 +179,7 @@ export function toSettlementDTO(row: SettlementRow): Settlement {
     regionId: row.regionId,
     worldId: row.worldId,
     hiddenFromParty: row.hiddenFromParty,
-    tags: JSON.parse(row.tags),
+    tags: parseColumn(row.tags, []),
     notes: row.notes ?? undefined,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -164,7 +199,7 @@ export function toFactionDTO(row: FactionRow): Faction {
     worldId: row.worldId,
     hiddenFromParty: row.hiddenFromParty,
     reputation: row.reputation,
-    tags: JSON.parse(row.tags),
+    tags: parseColumn(row.tags, []),
     notes: row.notes ?? undefined,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -203,10 +238,10 @@ export function toEncounterTableDTO(row: EncounterTableRow): EncounterTable {
     userId: row.userId,
     name: row.name,
     terrain: row.terrain,
-    entries: JSON.parse(row.entries),
+    entries: parseColumn(row.entries, []),
     worldId: row.worldId,
     hiddenFromParty: row.hiddenFromParty,
-    tags: JSON.parse(row.tags),
+    tags: parseColumn(row.tags, []),
     notes: row.notes ?? undefined,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -219,7 +254,7 @@ export function toEncounterTableDTO(row: EncounterTableRow): EncounterTable {
 // get loaded from instead of the live combat state itself.
 export function toZoneMapTemplateDTO(row: ZoneMapTemplateRow, viewerId?: string): ZoneMapTemplate {
   const isOwner = viewerId === row.userId;
-  const allZones: EncounterZone[] = JSON.parse(row.zones);
+  const allZones: EncounterZone[] = parseColumn(row.zones, []);
   const visibleZones = isOwner ? allZones : allZones.filter((z) => z.revealed);
   const visibleZoneIds = new Set(visibleZones.map((z) => z.id));
   const zones: EncounterZone[] = visibleZones.map((z) => ({
@@ -233,7 +268,7 @@ export function toZoneMapTemplateDTO(row: ZoneMapTemplateRow, viewerId?: string)
     zones,
     worldId: row.worldId,
     hiddenFromParty: row.hiddenFromParty,
-    tags: JSON.parse(row.tags),
+    tags: parseColumn(row.tags, []),
     notes: row.notes ?? undefined,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -247,7 +282,7 @@ export function toZoneMapTemplateDTO(row: ZoneMapTemplateRow, viewerId?: string)
 // DTO in this file. Omit viewerId for a context that's always the owner
 // (a POST/PATCH response returned straight to the actor who just wrote it).
 export function toBattleMapDTO(row: BattleMapRow, viewerId?: string): BattleMap {
-  const tiles: PlacedTile[] = JSON.parse(row.tiles);
+  const tiles: PlacedTile[] = parseColumn(row.tiles, []);
   const visibleTiles = viewerId && viewerId !== row.userId ? tiles.filter((t) => t.layer !== "gmOnly") : tiles;
   return {
     id: row.id,
@@ -258,7 +293,7 @@ export function toBattleMapDTO(row: BattleMapRow, viewerId?: string): BattleMap 
     tiles: visibleTiles,
     worldId: row.worldId,
     hiddenFromParty: row.hiddenFromParty,
-    tags: JSON.parse(row.tags),
+    tags: parseColumn(row.tags, []),
     notes: row.notes ?? undefined,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -270,10 +305,10 @@ export function toDungeonDTO(row: DungeonRow): Dungeon {
     id: row.id,
     userId: row.userId,
     name: row.name,
-    rooms: JSON.parse(row.rooms),
+    rooms: parseColumn(row.rooms, []),
     worldId: row.worldId,
     hiddenFromParty: row.hiddenFromParty,
-    tags: JSON.parse(row.tags),
+    tags: parseColumn(row.tags, []),
     notes: row.notes ?? undefined,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -286,10 +321,10 @@ export function toShopDTO(row: ShopRow): Shop {
     userId: row.userId,
     name: row.name,
     description: row.description ?? undefined,
-    stock: JSON.parse(row.stock) as ShopStockEntry[],
+    stock: parseColumn(row.stock, []) as ShopStockEntry[],
     worldId: row.worldId,
     hiddenFromParty: row.hiddenFromParty,
-    tags: JSON.parse(row.tags),
+    tags: parseColumn(row.tags, []),
     notes: row.notes ?? undefined,
     settlementId: row.settlementId,
     createdAt: row.createdAt.toISOString(),
@@ -326,7 +361,7 @@ export function toSessionNoteDTO(row: SessionNoteRow, viewerId: string): Session
     nextSteps: isOwner ? row.nextSteps ?? undefined : undefined,
     worldId: row.worldId,
     hiddenFromParty: row.hiddenFromParty,
-    tags: JSON.parse(row.tags),
+    tags: parseColumn(row.tags, []),
     notes: row.notes ?? undefined,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -352,7 +387,7 @@ export function toCampaignEventLogEntryDTO(row: CampaignEventLogRow): CampaignEv
     entityType: row.entityType as CampaignEventLogEntry["entityType"],
     entityId: row.entityId,
     eventType: row.eventType,
-    payload: JSON.parse(row.payload),
+    payload: parseColumn(row.payload, {}),
     authorName: row.authorName,
     userId: row.userId,
     createdAt: row.createdAt.toISOString(),
@@ -391,7 +426,7 @@ export function toTriggerRuleDTO(row: TriggerRuleRow): TriggerRule {
     worldId: row.worldId,
     userId: row.userId,
     name: row.name,
-    condition: JSON.parse(row.condition) as TriggerCondition,
+    condition: parseColumn(row.condition, {}) as TriggerCondition,
     message: row.message,
     announceInChat: row.announceInChat,
     enabled: row.enabled,
@@ -414,7 +449,7 @@ export function toQuestHookDTO(row: QuestHookRow): QuestHook {
     status: row.status as QuestHook["status"],
     worldId: row.worldId,
     hiddenFromParty: row.hiddenFromParty,
-    tags: JSON.parse(row.tags),
+    tags: parseColumn(row.tags, []),
     notes: row.notes ?? undefined,
     prerequisiteQuestId: row.prerequisiteQuestId,
     createdAt: row.createdAt.toISOString(),
@@ -435,7 +470,7 @@ export function toAdventureDTO(row: AdventureRow): Adventure {
     reward: row.reward,
     worldId: row.worldId,
     hiddenFromParty: row.hiddenFromParty,
-    tags: JSON.parse(row.tags),
+    tags: parseColumn(row.tags, []),
     notes: row.notes ?? undefined,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -449,7 +484,7 @@ export function toRollLogEntryDTO(row: RollLogEntryRow): RollLogEntry {
     userId: row.userId,
     rollerName: row.rollerName,
     notation: row.notation,
-    results: JSON.parse(row.results),
+    results: parseColumn(row.results, []),
     modifier: row.modifier,
     total: row.total,
     mode: row.mode === "adv" || row.mode === "dis" ? row.mode : undefined,
@@ -460,14 +495,14 @@ export function toRollLogEntryDTO(row: RollLogEntryRow): RollLogEntry {
 }
 
 export function toChatMessageDTO(row: ChatMessageRow): ChatMessage {
-  const reactions = JSON.parse(row.reactions ?? "{}") as Record<string, string[]>;
+  const reactions = parseColumn(row.reactions, {}) as Record<string, string[]>;
   return {
     id: row.id,
     worldId: row.worldId,
     userId: row.userId,
     senderName: row.senderName,
     text: row.text,
-    roll: row.rollData ? JSON.parse(row.rollData) : undefined,
+    roll: parseColumn(row.rollData, undefined),
     reactions: Object.keys(reactions).length > 0 ? reactions : undefined,
     createdAt: row.createdAt.toISOString(),
   };
@@ -529,7 +564,7 @@ export function computeHpStatus(current?: number, max?: number): HpStatus {
 export function toEncounterDTO(row: EncounterRow, viewerId: string, worldOwnerId: string, visibleCells?: Set<string>): Encounter {
   const isOwner = viewerId === worldOwnerId;
 
-  const allZones: EncounterZone[] = JSON.parse(row.zones);
+  const allZones: EncounterZone[] = parseColumn(row.zones, []);
   const visibleZones = isOwner ? allZones : allZones.filter((z) => z.revealed);
   const visibleZoneIds = new Set(visibleZones.map((z) => z.id));
   const zones: EncounterZone[] = visibleZones.map((z) => ({
@@ -537,12 +572,12 @@ export function toEncounterDTO(row: EncounterRow, viewerId: string, worldOwnerId
     connections: isOwner ? z.connections : z.connections.filter((id) => visibleZoneIds.has(id)),
   }));
 
-  const allZoneEffects: EncounterZoneEffect[] = JSON.parse(row.zoneEffects);
+  const allZoneEffects: EncounterZoneEffect[] = parseColumn(row.zoneEffects, []);
   const zoneEffects = allZoneEffects.filter(
     (e) => e.expiresAtRound >= row.round && (isOwner || visibleZoneIds.has(e.zoneId)),
   );
 
-  const combatants: LiveCombatant[] = JSON.parse(row.combatants)
+  const combatants: LiveCombatant[] = parseColumn(row.combatants, [])
     .map((c: LiveCombatant) => {
       const hpStatus = computeHpStatus(c.currentHp, c.maxHp);
       const showHp = isOwner || c.hpVisible;
@@ -590,10 +625,10 @@ export function toEncounterDTO(row: EncounterRow, viewerId: string, worldOwnerId
     activeDungeonId: row.activeDungeonId ?? undefined,
     activeDungeonRoomId: row.activeDungeonRoomId ?? undefined,
     activeBattleMapId: row.activeBattleMapId ?? undefined,
-    exploredCells: JSON.parse(row.exploredCells ?? "[]"),
+    exploredCells: parseColumn(row.exploredCells, []),
     // Not secret — same as exploredCells, every viewer sees which doors
     // are currently open.
-    openDoorCells: JSON.parse(row.openDoorCells ?? "[]"),
+    openDoorCells: parseColumn(row.openDoorCells, []),
     visibleCells: isOwner ? undefined : (visibleCells ? [...visibleCells] : undefined),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -609,21 +644,21 @@ export function toPlayerCharacterDTO(row: PlayerCharacterRow): PlayerCharacter {
     race: row.race,
     armorClass: row.armorClass,
     maxHp: row.maxHp,
-    abilityScores: JSON.parse(row.abilityScores),
+    abilityScores: parseColumn(row.abilityScores, EMPTY_ABILITY_SCORES),
     playerName: row.playerName ?? undefined,
     worldId: row.worldId,
     hiddenFromParty: row.hiddenFromParty,
-    tags: JSON.parse(row.tags),
+    tags: parseColumn(row.tags, []),
     notes: row.notes ?? undefined,
-    equippedItems: JSON.parse(row.equippedItems),
-    attunedItems: JSON.parse(row.attunedItems),
+    equippedItems: parseColumn(row.equippedItems, []),
+    attunedItems: parseColumn(row.attunedItems, []),
     currentHp: row.currentHp,
-    deathSaves: JSON.parse(row.deathSaves),
-    spellSlots: JSON.parse(row.spellSlots),
-    preparedSpells: JSON.parse(row.preparedSpells),
-    skillProficiencies: JSON.parse(row.skillProficiencies),
-    classResources: JSON.parse(row.classResources),
-    conditions: JSON.parse(row.conditions),
+    deathSaves: parseColumn(row.deathSaves, { successes: 0, failures: 0 }),
+    spellSlots: parseColumn(row.spellSlots, []),
+    preparedSpells: parseColumn(row.preparedSpells, []),
+    skillProficiencies: parseColumn(row.skillProficiencies, []),
+    classResources: parseColumn(row.classResources, []),
+    conditions: parseColumn(row.conditions, []),
     xp: row.xp,
     proficiencyBonus: row.proficiencyBonus,
     createdAt: row.createdAt.toISOString(),

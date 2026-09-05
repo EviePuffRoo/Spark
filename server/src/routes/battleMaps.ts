@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
 import { toBattleMapDTO } from "../serialize.js";
-import { findAccessibleWorld, getMemberWorldIds, authorizeEntityWrite } from "../worldAccess.js";
+import { findAccessibleWorld, getMemberWorldIds, authorizeEntityWrite, listVisibleWhere, visibleEntityWhere } from "../worldAccess.js";
 import { BATTLE_MAP_MAX_WIDTH, BATTLE_MAP_MAX_HEIGHT, BATTLE_TILE_BY_ID, FREE_TIER_BATTLEMAP_LIMIT } from "@spark/shared";
 import type { PlacedTile } from "@spark/shared";
 
@@ -27,17 +27,14 @@ function coerceDimension(value: unknown, max: number): number | null {
 battleMapsRouter.get("/", async (req, res) => {
   const { worldId } = req.query;
   const memberWorldIds = await getMemberWorldIds(req.userId!);
-  const where = {
-    OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }],
-    ...(worldId === "unassigned" ? { worldId: null } : typeof worldId === "string" ? { worldId } : {}),
-  };
+  const where = listVisibleWhere(req.userId!, memberWorldIds, worldId);
   const rows = await prisma.battleMap.findMany({ where, orderBy: { createdAt: "desc" } });
   res.json(rows.map((row) => toBattleMapDTO(row, req.userId!)));
 });
 
 battleMapsRouter.get("/:id", async (req, res) => {
   const memberWorldIds = await getMemberWorldIds(req.userId!);
-  const row = await prisma.battleMap.findFirst({ where: { id: req.params.id, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }] } });
+  const row = await prisma.battleMap.findFirst({ where: { id: req.params.id, ...visibleEntityWhere(req.userId!, memberWorldIds) } });
   if (!row) return res.status(404).json({ error: "Battle map not found" });
   res.json(toBattleMapDTO(row, req.userId!));
 });

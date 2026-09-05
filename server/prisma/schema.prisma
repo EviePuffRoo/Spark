@@ -61,6 +61,14 @@ model World {
   name        String
   description String?
   joinCodeHash String?
+  // Deterministic keyed digest of the same join code joinCodeHash covers.
+  // bcrypt is salted, so a submitted code can only be checked against a
+  // hash one row at a time — resolving a code meant comparing it against
+  // every world that had one. This is the lookup index that makes it a
+  // single query; joinCodeHash still does the actual verification.
+  // Nullable because codes issued before this column existed can't be
+  // backfilled (the plaintext is gone) — see routes/worlds.ts.
+  joinCodeLookup String?  @unique
   joinCodeRole String      @default("player")
   nextSessionAt DateTime?
   currentDay  Int         @default(1)

@@ -73,6 +73,19 @@ const PACK_LABELS: Record<TilePack, string> = {
 };
 const PACKS = Object.keys(PACK_LABELS) as TilePack[];
 
+// The tileset never changes at runtime, so group it by pack and category
+// once at module load rather than re-filtering the whole list per category
+// on every render — the palette is otherwise rebuilt on each pointermove
+// of a paint stroke, which is when this page re-renders most.
+const TILES_BY_PACK_AND_CATEGORY: Record<TilePack, Record<TileCategory, typeof BATTLE_TILES>> =
+  Object.fromEntries(PACKS.map((pack) => [
+    pack,
+    Object.fromEntries(CATEGORIES.map((category) => [
+      category,
+      BATTLE_TILES.filter((t) => t.pack === pack && t.category === category),
+    ])) as Record<TileCategory, typeof BATTLE_TILES>,
+  ])) as Record<TilePack, Record<TileCategory, typeof BATTLE_TILES>>;
+
 function tileKey(x: number, y: number) {
   return `${x},${y}`;
 }
@@ -392,6 +405,46 @@ export function MapBuilderPage() {
       return { key, x, y, tileId };
     });
   }
+  // Pure geometry, fixed for a given map size — rebuilt once per map rather
+  // than on every frame of a paint stroke.
+  const gridLines = useMemo(() => {
+    if (!activeMap) return null;
+    const w = activeMap.width * CELL;
+    const h = activeMap.height * CELL;
+    return (
+      <>
+        {Array.from({ length: activeMap.width + 1 }, (_, i) => (
+          <line key={`v${i}`} x1={i * CELL} y1={0} x2={i * CELL} y2={h} className="map-builder-grid-line" />
+        ))}
+        {Array.from({ length: activeMap.height + 1 }, (_, i) => (
+          <line key={`h${i}`} x1={0} y1={i * CELL} x2={w} y2={i * CELL} className="map-builder-grid-line" />
+        ))}
+      </>
+    );
+  }, [activeMap]);
+
+  // Depends only on which pack is open and which swatch is selected — none
+  // of which change mid-stroke — so the 58 swatch buttons and their inline
+  // SVGs survive a paint drag untouched instead of being rebuilt per frame.
+  const paletteCategories = useMemo(() => CATEGORIES.map((category) => (
+    <div key={category} className="tile-category">
+      <h4 className="tile-category-heading">{CATEGORY_LABELS[category]}</h4>
+      <div className="tile-swatch-grid">
+        {TILES_BY_PACK_AND_CATEGORY[activePack][category].map((tile) => (
+          <button
+            key={tile.id}
+            className={`tile-swatch-button ${!eraser && selectedTileId === tile.id ? "active" : ""}`}
+            onClick={() => { setSelectedTileId(tile.id); setEraser(false); }}
+            title={tile.name}
+          >
+            <TileSwatch tileId={tile.id} />
+            {tile.name}
+          </button>
+        ))}
+      </div>
+    </div>
+  )), [activePack, selectedTileId, eraser]);
+
   const placedFloorTiles = useMemo(() => toPlacedList(floorTiles), [floorTiles]);
   const placedDecorTiles = useMemo(() => toPlacedList(decorTiles), [decorTiles]);
   const placedGmOnlyTiles = useMemo(() => toPlacedList(gmOnlyTiles), [gmOnlyTiles]);
@@ -462,24 +515,7 @@ export function MapBuilderPage() {
                 </button>
               ))}
             </div>
-            {CATEGORIES.map((category) => (
-              <div key={category} className="tile-category">
-                <h4 className="tile-category-heading">{CATEGORY_LABELS[category]}</h4>
-                <div className="tile-swatch-grid">
-                  {BATTLE_TILES.filter((t) => t.category === category && t.pack === activePack).map((tile) => (
-                    <button
-                      key={tile.id}
-                      className={`tile-swatch-button ${!eraser && selectedTileId === tile.id ? "active" : ""}`}
-                      onClick={() => { setSelectedTileId(tile.id); setEraser(false); }}
-                      title={tile.name}
-                    >
-                      <TileSwatch tileId={tile.id} />
-                      {tile.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
+            {paletteCategories}
           </div>
 
           <div className="panel map-builder-canvas-panel">
@@ -497,12 +533,7 @@ export function MapBuilderPage() {
               >
                 <BattleTileDefs />
                 <rect width={gridWidth} height={gridHeight} className="map-builder-bg" />
-                {Array.from({ length: activeMap.width + 1 }, (_, i) => (
-                  <line key={`v${i}`} x1={i * CELL} y1={0} x2={i * CELL} y2={gridHeight} className="map-builder-grid-line" />
-                ))}
-                {Array.from({ length: activeMap.height + 1 }, (_, i) => (
-                  <line key={`h${i}`} x1={0} y1={i * CELL} x2={gridWidth} y2={i * CELL} className="map-builder-grid-line" />
-                ))}
+                {gridLines}
                 {placedFloorTiles.map((t) => (
                   <use key={t.key} href={`#tile-${t.tileId}`} x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL} />
                 ))}

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
-import { getMemberWorldIds } from "../worldAccess.js";
+import { getMemberWorldIds, visibleEntityWhere } from "../worldAccess.js";
 import type { AbilityScores } from "@spark/shared";
 
 export const vttExportRouter = Router();
@@ -50,7 +50,7 @@ function buildFoundryActor(name: string, type: "npc" | "character", ac: number, 
 
 vttExportRouter.get("/characters/:id/export/foundry", async (req, res) => {
   const memberWorldIds = await getMemberWorldIds(req.userId!);
-  const row = await prisma.character.findFirst({ where: { id: req.params.id, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }] } });
+  const row = await prisma.character.findFirst({ where: { id: req.params.id, ...visibleEntityWhere(req.userId!, memberWorldIds) } });
   if (!row) return res.status(404).json({ error: "Character not found" });
 
   const statBlock = JSON.parse(row.statBlock);
@@ -60,7 +60,7 @@ vttExportRouter.get("/characters/:id/export/foundry", async (req, res) => {
 
 vttExportRouter.get("/player-characters/:id/export/foundry", async (req, res) => {
   const memberWorldIds = await getMemberWorldIds(req.userId!);
-  const row = await prisma.playerCharacter.findFirst({ where: { id: req.params.id, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }] } });
+  const row = await prisma.playerCharacter.findFirst({ where: { id: req.params.id, ...visibleEntityWhere(req.userId!, memberWorldIds) } });
   if (!row) return res.status(404).json({ error: "Player character not found" });
 
   const abilityScores = JSON.parse(row.abilityScores);

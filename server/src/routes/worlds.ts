@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
-import { generateRecoveryCode, hashRecoveryCode, verifyRecoveryCode } from "../auth.js";
+import { generateRecoveryCode, hashRecoveryCode, verifyRecoveryCode, codeLookupDigest } from "../auth.js";
 import { getMemberWorldIds, canWriteWorld } from "../worldAccess.js";
 import { FREE_TIER_WORLD_LIMIT, type WorldMemberRole, type HouseRules } from "@spark/shared";
 import { seedStarterWorld } from "../seedStarterWorld.js";
@@ -193,7 +193,10 @@ worldsRouter.post("/:id/join-code", async (req, res) => {
   if (role !== undefined && !isWorldMemberRole(role)) return res.status(400).json({ error: "Invalid role" });
   const code = generateRecoveryCode();
   const joinCodeHash = await hashRecoveryCode(code);
-  await prisma.world.update({ where: { id: world.id }, data: { joinCodeHash, joinCodeRole: role ?? "player" } });
+  await prisma.world.update({
+    where: { id: world.id },
+    data: { joinCodeHash, joinCodeLookup: codeLookupDigest(code), joinCodeRole: role ?? "player" },
+  });
   res.json({ code });
 });
 
@@ -201,12 +204,26 @@ worldsRouter.post("/join", async (req, res) => {
   const { code } = req.body ?? {};
   if (!code || typeof code !== "string") return res.status(400).json({ error: "Join code is required" });
 
-  const candidates = await prisma.world.findMany({ where: { joinCodeHash: { not: null } } });
-  let matched: (typeof candidates)[number] | null = null;
-  for (const candidate of candidates) {
-    if (candidate.joinCodeHash && (await verifyRecoveryCode(code, candidate.joinCodeHash))) {
-      matched = candidate;
-      break;
+  // Straight to the one world whose code this is. The bcrypt hash still
+  // does the verifying — the digest only says which row to check, so a
+  // digest collision or a stale lookup value can't admit a wrong code.
+  let matched = await prisma.world.findUnique({ where: { joinCodeLookup: codeLookupDigest(code) } });
+  if (matched && !(matched.joinCodeHash && await verifyRecoveryCode(code, matched.joinCodeHash))) {
+    matched = null;
+  }
+
+  // Codes issued before joinCodeLookup existed have no digest to find them
+  // by, and can't be given one — the plaintext was never stored. Those rows
+  // still need their codes to work, so they fall back to comparing against
+  // each of them in turn. This set only shrinks: every reissued code gets a
+  // lookup value, and nothing new ever lands here.
+  if (!matched) {
+    const legacy = await prisma.world.findMany({ where: { joinCodeHash: { not: null }, joinCodeLookup: null } });
+    for (const candidate of legacy) {
+      if (candidate.joinCodeHash && (await verifyRecoveryCode(code, candidate.joinCodeHash))) {
+        matched = candidate;
+        break;
+      }
     }
   }
   if (!matched) return res.status(404).json({ error: "Invalid join code" });

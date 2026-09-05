@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { BattleMap, LiveCombatant, SizeCategory, AoeShapeKind } from "@spark/shared";
+import type { BattleMap, LiveCombatant, SizeCategory, AoeShapeKind, PlacedTile } from "@spark/shared";
 import { SIZE_FOOTPRINT, computeReachableCells, chebyshevDistanceFeet, AOE_SHAPE_KINDS, computeAoeCells, footprintIntersectsTemplate, BATTLE_TILE_BY_ID } from "@spark/shared";
 import { api } from "../api";
 import { BattleTileDefs } from "./TileIcon";
@@ -236,6 +236,87 @@ export function GridMap({
     return computeAoeCells(battleMap, { kind: templateKind, originX: origin.x, originY: origin.y, targetX: target.x, targetY: target.y });
   }, [battleMap, templateKind, templatePoints]);
 
+  // Split the tile list by layer once per map rather than walking all of it
+  // three times per render. A full-size map is 40x30, and every pointermove
+  // of a token drag re-renders this component — so the difference here is
+  // per-frame work during a drag, not one-time setup cost.
+  const tileLayers = useMemo(() => {
+    const floor: PlacedTile[] = [];
+    const decor: PlacedTile[] = [];
+    const gmOnly: PlacedTile[] = [];
+    for (const t of battleMap?.tiles ?? []) {
+      if (t.layer === "decor") decor.push(t);
+      else if (t.layer === "gmOnly") gmOnly.push(t);
+      else floor.push(t);
+    }
+    return { floor, decor, gmOnly };
+  }, [battleMap]);
+
+  // The three tile layers as finished elements. None of their inputs change
+  // while a token is being dragged, so React reuses these whole subtrees and
+  // reconciles only the token that actually moved — instead of rebuilding
+  // every tile in the map on each pointermove.
+  const floorTileElements = useMemo(() => tileLayers.floor.map((t) => {
+    const isDoor = !!BATTLE_TILE_BY_ID[t.tileId]?.isDoor;
+    const doorKey = `${t.x},${t.y}`;
+    const isOpen = isDoor && openDoorSet.has(doorKey);
+    const href = isOpen ? `#tile-${t.tileId}-open` : `#tile-${t.tileId}`;
+    // A door beyond current fog isn't clickable for a non-owner — you have
+    // to have at least seen it to act on it, same as everything else
+    // fog-gates in this component.
+    const canToggle = isDoor && !!onToggleDoor && !measuring && !placingTemplate && (canEdit || exploredSet.has(doorKey));
+    return (
+      <g key={doorKey}>
+        <use href={href} x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL} pointerEvents="none" />
+        {t.elevation !== undefined && (
+          <text x={t.x * CELL + CELL - 2} y={t.y * CELL + 9} className="grid-map-elevation-label" textAnchor="end" pointerEvents="none">
+            {t.elevation > 0 ? `+${t.elevation}` : t.elevation}
+          </text>
+        )}
+        {canToggle && (
+          <rect
+            x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL}
+            className="grid-map-door-toggle"
+            onClick={(e) => { e.stopPropagation(); onToggleDoor!(t.x, t.y); }}
+          >
+            <title>{isOpen ? "Close door" : "Open door"}</title>
+          </rect>
+        )}
+      </g>
+    );
+  }), [tileLayers, openDoorSet, exploredSet, measuring, placingTemplate, canEdit, onToggleDoor]);
+
+  const decorTileElements = useMemo(() => tileLayers.decor.map((t) => (
+    <use key={`decor-${t.x},${t.y}`} href={`#tile-${t.tileId}`} x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL} pointerEvents="none" />
+  )), [tileLayers]);
+
+  // The server already strips gmOnly tiles before they ever reach a
+  // non-owner viewer (see toBattleMapDTO) — canEdit here is
+  // belt-and-suspenders, same pattern as fogActive above.
+  const gmOnlyTileElements = useMemo(() => (
+    canEdit ? tileLayers.gmOnly.map((t) => (
+      <use key={`gm-${t.x},${t.y}`} href={`#tile-${t.tileId}`} x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL} pointerEvents="none" />
+    )) : null
+  ), [tileLayers, canEdit]);
+
+  // Pure geometry — nothing about the grid lines changes while a token
+  // moves, so they're built once per map size instead of every frame.
+  const gridLines = useMemo(() => {
+    if (!battleMap) return null;
+    const w = battleMap.width * CELL;
+    const h = battleMap.height * CELL;
+    return (
+      <>
+        {Array.from({ length: battleMap.width + 1 }, (_, i) => (
+          <line key={`v${i}`} x1={i * CELL} y1={0} x2={i * CELL} y2={h} className="grid-map-line" pointerEvents="none" />
+        ))}
+        {Array.from({ length: battleMap.height + 1 }, (_, i) => (
+          <line key={`h${i}`} x1={0} y1={i * CELL} x2={w} y2={i * CELL} className="grid-map-line" pointerEvents="none" />
+        ))}
+      </>
+    );
+  }, [battleMap]);
+
   const placed = combatants.filter((c) => c.gridX !== undefined && c.gridY !== undefined);
   const unplaced = combatants.filter((c) => c.gridX === undefined || c.gridY === undefined);
 
@@ -345,50 +426,10 @@ export function GridMap({
           />
           <g transform={`translate(${transform.x} ${transform.y}) scale(${transform.k})`}>
             <rect width={gridWidth} height={gridHeight} className="grid-map-bg" pointerEvents="none" />
-            {battleMap.tiles.filter((t) => (t.layer ?? "floor") === "floor").map((t) => {
-              const isDoor = !!BATTLE_TILE_BY_ID[t.tileId]?.isDoor;
-              const doorKey = `${t.x},${t.y}`;
-              const isOpen = isDoor && openDoorSet.has(doorKey);
-              const href = isOpen ? `#tile-${t.tileId}-open` : `#tile-${t.tileId}`;
-              // A door beyond current fog isn't clickable for a non-owner —
-              // you have to have at least seen it to act on it, same as
-              // everything else fog-gates in this component.
-              const canToggle = isDoor && !!onToggleDoor && !measuring && !placingTemplate && (canEdit || exploredSet.has(doorKey));
-              return (
-                <g key={doorKey}>
-                  <use href={href} x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL} pointerEvents="none" />
-                  {t.elevation !== undefined && (
-                    <text x={t.x * CELL + CELL - 2} y={t.y * CELL + 9} className="grid-map-elevation-label" textAnchor="end" pointerEvents="none">
-                      {t.elevation > 0 ? `+${t.elevation}` : t.elevation}
-                    </text>
-                  )}
-                  {canToggle && (
-                    <rect
-                      x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL}
-                      className="grid-map-door-toggle"
-                      onClick={(e) => { e.stopPropagation(); onToggleDoor!(t.x, t.y); }}
-                    >
-                      <title>{isOpen ? "Close door" : "Open door"}</title>
-                    </rect>
-                  )}
-                </g>
-              );
-            })}
-            {battleMap.tiles.filter((t) => t.layer === "decor").map((t) => (
-              <use key={`decor-${t.x},${t.y}`} href={`#tile-${t.tileId}`} x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL} pointerEvents="none" />
-            ))}
-            {/* The server already strips gmOnly tiles before they ever reach a
-                non-owner viewer (see toBattleMapDTO) — canEdit here is
-                belt-and-suspenders, same pattern as fogActive above. */}
-            {canEdit && battleMap.tiles.filter((t) => t.layer === "gmOnly").map((t) => (
-              <use key={`gm-${t.x},${t.y}`} href={`#tile-${t.tileId}`} x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL} pointerEvents="none" />
-            ))}
-            {Array.from({ length: battleMap.width + 1 }, (_, i) => (
-              <line key={`v${i}`} x1={i * CELL} y1={0} x2={i * CELL} y2={gridHeight} className="grid-map-line" pointerEvents="none" />
-            ))}
-            {Array.from({ length: battleMap.height + 1 }, (_, i) => (
-              <line key={`h${i}`} x1={0} y1={i * CELL} x2={gridWidth} y2={i * CELL} className="grid-map-line" pointerEvents="none" />
-            ))}
+            {floorTileElements}
+            {decorTileElements}
+            {gmOnlyTileElements}
+            {gridLines}
 
             {reachable && [...reachable].map((key) => {
               const [x, y] = key.split(",").map(Number);

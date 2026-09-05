@@ -96,3 +96,51 @@ describe("dungeon room memory (state field)", () => {
     expect(res.status).toBe(404);
   });
 });
+
+// An exit can name which edge of its room's battle map it sits on, so the
+// grid can offer the trip without going back to the zone view. The exit
+// schema strips unknown keys, so a field that isn't declared there is
+// silently dropped on save — which would look like the DM's choice simply
+// not sticking, with nothing in the response to say why.
+describe("dungeon exits carrying a battle-map edge", () => {
+  it("round-trips mapEdge through create and update", async () => {
+    const { agent } = await signupAgent("edgedm");
+    const templateId = await makeTemplate(agent, "Edge Template");
+
+    const created = await agent.post("/api/dungeons").send({
+      name: "Edged Dungeon",
+      rooms: [
+        { id: "r1", name: "Hall", templateId, exits: [{ zoneId: "z1", toRoomId: "r2", label: "Through to", mapEdge: "north" }] },
+        { id: "r2", name: "Vault", templateId, exits: [{ zoneId: "z1", toRoomId: "r1", mapEdge: "south" }] },
+      ],
+    });
+    expect(created.status).toBe(201);
+    expect(created.body.rooms[0].exits[0].mapEdge).toBe("north");
+    expect(created.body.rooms[0].exits[0].label).toBe("Through to");
+    expect(created.body.rooms[1].exits[0].mapEdge).toBe("south");
+
+    const patched = await agent.patch(`/api/dungeons/${created.body.id}`).send({
+      rooms: [
+        { id: "r1", name: "Hall", templateId, exits: [{ zoneId: "z1", toRoomId: "r2", mapEdge: "east" }] },
+        { id: "r2", name: "Vault", templateId, exits: [{ zoneId: "z1", toRoomId: "r1" }] },
+      ],
+    });
+    expect(patched.status).toBe(200);
+    expect(patched.body.rooms[0].exits[0].mapEdge).toBe("east");
+    // An exit with no edge stays valid — it just isn't offered on the grid.
+    expect(patched.body.rooms[1].exits[0].mapEdge).toBeUndefined();
+  });
+
+  it("drops a bogus edge rather than rejecting the whole dungeon", async () => {
+    const { agent } = await signupAgent("edgedm2");
+    const templateId = await makeTemplate(agent, "Edge Template 2");
+
+    const created = await agent.post("/api/dungeons").send({
+      name: "Bad Edge",
+      rooms: [{ id: "r1", name: "Hall", templateId, exits: [{ zoneId: "z1", toRoomId: "r2", mapEdge: "sideways" }] }],
+    });
+    expect(created.status).toBe(201);
+    expect(created.body.rooms[0].exits[0].toRoomId).toBe("r2");
+    expect(created.body.rooms[0].exits[0].mapEdge).toBeUndefined();
+  });
+});

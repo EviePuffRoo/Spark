@@ -954,11 +954,25 @@ export interface EncounterZoneEffect {
   expiresAtRound: number;
 }
 
+// Which side of a room's battle map an exit sits on. Travelling between
+// rooms has always been possible from the zone view (select the zone, press
+// Move Party), but the battle grid had no affordance at all — so a table
+// running the fight on the grid had to leave it to move next door. Naming an
+// edge lets the grid offer the trip where the party actually is, and an edge
+// is a four-way choice the DM can just pick, rather than grid coordinates
+// they'd have to look up.
+export type MapEdge = "north" | "south" | "east" | "west";
+
 export interface DungeonExit {
   zoneId: string;
   toRoomId: string;
   label?: string;
+  // Optional: an exit with no edge still works from the zone view exactly as
+  // before, it just doesn't appear on the grid.
+  mapEdge?: MapEdge;
 }
+
+export const MAP_EDGES: MapEdge[] = ["north", "south", "east", "west"];
 
 export interface DungeonRoomRect {
   x: number;

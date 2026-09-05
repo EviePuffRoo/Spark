@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import type { DungeonInput, DungeonRoom, SearchResult, EncounterZone } from "@spark/shared";
+import type { DungeonInput, DungeonRoom, SearchResult, EncounterZone, MapEdge } from "@spark/shared";
+import { MAP_EDGES } from "@spark/shared";
 import { api } from "../api";
 import { EntitySearchPicker } from "./EntitySearchPicker";
 
@@ -81,9 +82,26 @@ export function DungeonEditor({
     setRooms((r) =>
       r.map((room) => {
         if (room.id !== roomId) return room;
+        const existing = room.exits.find((e) => e.zoneId === zoneId);
         const exits = room.exits.filter((e) => e.zoneId !== zoneId);
-        if (toRoomId) exits.push({ zoneId, toRoomId });
+        // Keep the edge if the exit is only being retargeted, so changing
+        // where a door leads doesn't silently drop where it is on the map.
+        if (toRoomId) exits.push({ zoneId, toRoomId, ...(existing?.mapEdge ? { mapEdge: existing.mapEdge } : {}) });
         return { ...room, exits };
+      }),
+    );
+  }
+
+  function setExitEdge(roomId: string, zoneId: string, mapEdge: MapEdge | "") {
+    setRooms((r) =>
+      r.map((room) => {
+        if (room.id !== roomId) return room;
+        return {
+          ...room,
+          exits: room.exits.map((e) =>
+            e.zoneId === zoneId ? { ...e, mapEdge: mapEdge || undefined } : e,
+          ),
+        };
       }),
     );
   }
@@ -164,6 +182,20 @@ export function DungeonEditor({
                     <option key={r.id} value={r.id}>{r.name}</option>
                   ))}
                 </select>
+                {exit && (
+                  <>
+                    <span>on the battle map's</span>
+                    <select
+                      value={exit.mapEdge ?? ""}
+                      onChange={(e) => setExitEdge(selectedRoom.id, zone.id, e.target.value as MapEdge | "")}
+                    >
+                      <option value="">— not on the grid —</option>
+                      {MAP_EDGES.map((edge) => (
+                        <option key={edge} value={edge}>{edge} edge</option>
+                      ))}
+                    </select>
+                  </>
+                )}
               </label>
             );
           })}

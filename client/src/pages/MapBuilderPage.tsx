@@ -5,6 +5,7 @@ import { api } from "../api";
 import { useActiveWorld } from "../ActiveWorldContext";
 import { MapBuilderIcon } from "../components/icons";
 import { BattleTileDefs, TileSwatch } from "../components/TileIcon";
+import { TileShading, TileShadingDefs, buildTileShading } from "../components/TileShading";
 import { EmptyState } from "../components/EmptyState";
 import { SaveEntityFields } from "../components/SaveEntityFields";
 
@@ -448,6 +449,15 @@ export function MapBuilderPage() {
   const placedFloorTiles = useMemo(() => toPlacedList(floorTiles), [floorTiles]);
   const placedDecorTiles = useMemo(() => toPlacedList(decorTiles), [decorTiles]);
   const placedGmOnlyTiles = useMemo(() => toPlacedList(gmOnlyTiles), [gmOnlyTiles]);
+  const shading = useMemo(
+    () => (activeMap ? buildTileShading(
+      placedFloorTiles.map((t) => ({ x: t.x, y: t.y, tileId: t.tileId })),
+      activeMap.width, activeMap.height, CELL,
+    ) : null),
+    [placedFloorTiles, activeMap],
+  );
+
+
   const placedElevationLabels = useMemo(
     () => [...floorElevation.entries()].map(([key, elevation]) => {
       const [x, y] = key.split(",").map(Number);
@@ -532,11 +542,13 @@ export function MapBuilderPage() {
                 onPointerLeave={handlePointerUp}
               >
                 <BattleTileDefs />
+                <defs><TileShadingDefs /></defs>
                 <rect width={gridWidth} height={gridHeight} className="map-builder-bg" />
                 {gridLines}
                 {placedFloorTiles.map((t) => (
                   <use key={t.key} href={`#tile-${t.tileId}`} x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL} />
                 ))}
+                {shading && <TileShading shading={shading} />}
                 {placedDecorTiles.map((t) => (
                   <use key={`decor-${t.key}`} href={`#tile-${t.tileId}`} x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL} pointerEvents="none" />
                 ))}

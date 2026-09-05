@@ -1,10 +1,20 @@
 # Spark
 
-A prep-and-run companion for tabletop RPGs (starting with D&D 5e) — from a first spark of an
-idea to a fully-run live session. Generate NPCs, items, locations, quests, factions, dungeons,
-settlements, and more; build out a campaign world around them; then run it at the table with a
-real-time shared Combat/Battle Grid, dice, chat, and a companion view your players can follow
-from their own phones.
+**A campaign engine for tabletop RPGs — generate the content, build the maps, and run the
+session live, in one place.** Starting with D&D 5e.
+
+**[Try it at sparkdm.quest](https://sparkdm.quest)** — free for up to 3 worlds, no card required.
+
+Spark covers the whole arc of a campaign rather than one slice of it:
+
+- **Prep** — generate NPCs, monsters, items, locations, quests, factions, dungeons, regions,
+  settlements, shops, and multi-part adventures, all consistent with the world you've built.
+- **Build** — a tile-by-tile battle map builder, wired for movement, sight, elevation, and
+  hazards the moment you finish painting it. Nothing to import or align.
+- **Run** — a real-time shared Battle Grid with fog of war, initiative, HP and conditions,
+  dice and chat, synced to every player, plus a companion view they can follow from their phones.
+- **Between sessions** — Doom Clocks, faction relationships that shift on their own, World Tick,
+  and downtime resolution, so the world keeps moving on the weeks you don't have time to prep.
 
 ## What it does
 

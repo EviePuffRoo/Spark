@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { BATTLE_TILES } from "@spark/shared";
+import { BATTLE_TILES, BATTLE_TILE_BY_ID } from "@spark/shared";
 
 // Every tile's visual is a flat background plus one or two accent shapes,
 // all within a 0-10 unit square — cheap enough to repeat across a battle
@@ -207,11 +207,15 @@ const TILE_SHAPES: Record<string, ReactNode> = {
       <rect x="1" y="7" width="8" height="1.5" fill="#8c8c87" />
     </>
   ),
+  // A span's art is a deck across the middle of the cell with both sides
+  // left open — no full-cell background — so the chasm it crosses still
+  // shows either side of it. See spanDeckAngles for how the deck learns
+  // which way to run.
   bridge: (
     <>
-      <rect width="10" height="10" fill="#8a6a40" />
-      <path d="M0 4.5h10M0 6h10" stroke="#6b4f2c" strokeWidth="0.6" />
-      <path d="M1 2v2.5M3.5 1.7v2.8M6.5 1.7v2.8M9 2v2.5" stroke="#5c4023" strokeWidth="0.5" />
+      <rect y="1.6" width="10" height="6.8" fill="#8a6a40" />
+      <path d="M0 3.3h10M0 5h10M0 6.7h10" stroke="#6b4f2c" strokeWidth="0.3" />
+      <path d="M0 1.6h10M0 8.4h10" stroke="#5c4023" strokeWidth="0.8" />
     </>
   ),
   table: (
@@ -385,11 +389,13 @@ const TILE_SHAPES: Record<string, ReactNode> = {
       <path d="M0 6.5q2.5 1.2 3.5 0t3 0.3 3.5-.3" stroke="#151009" strokeWidth="1.1" fill="none" />
     </>
   ),
+  // Same open-sided deck as bridge above, and gapped between the slats too
+  // — a rope bridge you can see the ravine through is the whole reason the
+  // span layer exists.
   "rope-bridge": (
     <>
-      <rect width="10" height="10" fill="#6b8a4a" />
-      <path d="M0 4h10M0 6h10" stroke="#7a5a30" strokeWidth="0.6" />
-      <path d="M0.5 2.5q1 1 0 2M2.5 2.3q1 1 0 2M4.5 2.3q1 1 0 2M6.5 2.3q1 1 0 2M8.5 2.5q1 1 0 2" stroke="#c9a860" strokeWidth="0.4" fill="none" />
+      <path d="M0.8 2.5v5M2.6 2.5v5M4.4 2.5v5M6.2 2.5v5M8 2.5v5M9.6 2.5v5" stroke="#8a6a40" strokeWidth="1" />
+      <path d="M0 2.4h10M0 7.6h10" stroke="#c9a860" strokeWidth="0.55" />
     </>
   ),
   "cave-mouth": (
@@ -459,7 +465,50 @@ export function BattleTileDefs() {
 export function TileSwatch({ tileId, size = 28 }: { tileId: string; size?: number }) {
   return (
     <svg viewBox="0 0 10 10" width={size} height={size} className="tile-swatch">
+      {/* A span is drawn open-sided so the map shows through it. In the
+          palette there is nothing underneath, so give it a neutral ground
+          to read against rather than the panel behind the swatch grid. */}
+      {BATTLE_TILE_BY_ID[tileId]?.span && <rect width="10" height="10" fill="#2f2d2a" />}
       {TILE_SHAPES[tileId]}
     </svg>
+  );
+}
+
+// Which way a span's deck runs, as rotations of the one symbol above.
+//
+// A bridge has to point somewhere, and the only thing that knows which way
+// it runs is its own neighbours: a cell with a span east or west lays its
+// deck horizontally, one with a span north or south lays it vertically,
+// and a cell with both draws the crossing as two decks. A lone span falls
+// back to horizontal.
+//
+// This is auto-tiling in the one narrow place the tileset can afford it —
+// two tiles needing one symbol and a rotation, rather than variant art
+// authored per neighbour bitmask across all 58.
+export function spanDeckAngles(spanCells: Set<string>, x: number, y: number): number[] {
+  const horizontal = spanCells.has(`${x - 1},${y}`) || spanCells.has(`${x + 1},${y}`);
+  const vertical = spanCells.has(`${x},${y - 1}`) || spanCells.has(`${x},${y + 1}`);
+  if (horizontal && vertical) return [0, 90];
+  if (vertical) return [90];
+  return [0];
+}
+
+// One span placement, drawn as one <use> per deck angle. Shared by the
+// builder's canvas and the live grid so both agree on how a bridge sits.
+export function SpanTile({ tileId, x, y, cell, angles }: { tileId: string; x: number; y: number; cell: number; angles: number[] }) {
+  const cx = x * cell + cell / 2;
+  const cy = y * cell + cell / 2;
+  return (
+    <>
+      {angles.map((angle) => (
+        <use
+          key={angle}
+          href={`#tile-${tileId}`}
+          x={x * cell} y={y * cell} width={cell} height={cell}
+          transform={angle ? `rotate(${angle} ${cx} ${cy})` : undefined}
+          pointerEvents="none"
+        />
+      ))}
+    </>
   );
 }

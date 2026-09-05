@@ -1,5 +1,5 @@
-import type { BattleMap, TileDef } from "./types.js";
-import { BATTLE_TILE_BY_ID } from "./data/battleTiles.js";
+import type { BattleMap } from "./types.js";
+import { buildStandingIndex, cellKey, standingDefIn } from "./mapCells.js";
 
 export const FEET_PER_TILE = 5;
 
@@ -10,26 +10,6 @@ export const FEET_PER_TILE = 5;
 // assumed to be a direct, unobstructed line.
 export function chebyshevDistanceFeet(ax: number, ay: number, bx: number, by: number): number {
   return Math.max(Math.abs(ax - bx), Math.abs(ay - by)) * FEET_PER_TILE;
-}
-
-// An open door (its "x,y" key present in openDoors) reads as fully passable
-// regardless of its base (closed) def — see TileDef.isDoor.
-function tileAt(map: Pick<BattleMap, "tiles">, x: number, y: number, openDoors?: Set<string>): TileDef | undefined {
-  const placed = map.tiles.find((t) => t.x === x && t.y === y && (t.layer ?? "floor") === "floor");
-  if (!placed) return undefined;
-  const def = BATTLE_TILE_BY_ID[placed.tileId];
-  if (def?.isDoor && openDoors?.has(`${x},${y}`)) {
-    return { ...def, blocksMovement: false, blocksVision: false };
-  }
-  return def;
-}
-
-// A cell's authored height in feet, or undefined if the DM never stamped
-// one (see PlacedTile.elevation). Only the floor layer carries mechanical
-// weight, same rule as tileAt above.
-export function elevationAt(map: Pick<BattleMap, "tiles">, x: number, y: number): number | undefined {
-  const placed = map.tiles.find((t) => t.x === x && t.y === y && (t.layer ?? "floor") === "floor");
-  return placed?.elevation;
 }
 
 // Dijkstra flood-fill over the map's grid (8-directional, same flat 5ft-
@@ -47,24 +27,27 @@ export function computeReachableCells(
   openDoors?: Set<string>,
   flying?: boolean,
 ): Set<string> {
-  const key = (x: number, y: number) => `${x},${y}`;
+  // One pass over the tile list up front, then every cell this fill touches
+  // is an O(1) lookup — see buildStandingIndex.
+  const index = buildStandingIndex(map.tiles);
+  const heightAt = (x: number, y: number) => index.get(cellKey(x, y))?.elevation ?? 0;
   const dist = new Map<string, number>();
-  dist.set(key(originX, originY), 0);
+  dist.set(cellKey(originX, originY), 0);
   const frontier: { x: number; y: number; cost: number }[] = [{ x: originX, y: originY, cost: 0 }];
   const dirs = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];
 
   while (frontier.length > 0) {
     frontier.sort((a, b) => a.cost - b.cost);
     const cur = frontier.shift()!;
-    if ((dist.get(key(cur.x, cur.y)) ?? Infinity) < cur.cost) continue;
-    const curElevation = elevationAt(map, cur.x, cur.y) ?? 0;
+    if ((dist.get(cellKey(cur.x, cur.y)) ?? Infinity) < cur.cost) continue;
+    const curElevation = heightAt(cur.x, cur.y);
 
     for (const [dx, dy] of dirs) {
       const nx = cur.x + dx;
       const ny = cur.y + dy;
       if (nx < 0 || ny < 0 || nx >= map.width || ny >= map.height) continue;
-      const tile = tileAt(map, nx, ny, openDoors);
-      const nextElevation = elevationAt(map, nx, ny) ?? 0;
+      const tile = standingDefIn(index, nx, ny, openDoors);
+      const nextElevation = heightAt(nx, ny);
       // A flying combatant crosses an authored gap (negative elevation —
       // a chasm floor, a pit) freely; it still can't fly through a solid
       // obstacle (a wall, a pillar), which blocksMovement independent of
@@ -80,7 +63,7 @@ export function computeReachableCells(
       const nextCost = cur.cost + stepCost;
       if (nextCost > speedFeet) continue;
 
-      const nk = key(nx, ny);
+      const nk = cellKey(nx, ny);
       if (nextCost < (dist.get(nk) ?? Infinity)) {
         dist.set(nk, nextCost);
         frontier.push({ x: nx, y: ny, cost: nextCost });

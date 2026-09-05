@@ -153,6 +153,41 @@ tuned, not arbitrary. Three things it does and the reasoning that isn't obvious:
 strength where it was visible at all, it read as blotchy rather than textured. Don't
 retry it without a different approach entirely.
 
+## Tiles that cross other tiles: the span layer
+
+A cell holds one tile per layer — `floor`, `span`, `decor`, `gmOnly` — and a *span* is a
+bridge or rope bridge laid across the ground rather than instead of it. Before it existed
+a bridge painted over a chasm overwrote it, so the chasm stopped existing: it didn't draw
+either side of the deck, and erasing the bridge left a hole rather than the terrain.
+
+Two things make this work, and both matter:
+
+- **`standingTileAt` in `shared/src/mapCells.ts` is the only definition of which placement
+  a cell's rules come from** (the span if there is one, else the floor). `gridMovement.ts`
+  and `vision.ts` each used to carry their own copy of that lookup; a bridge the movement
+  engine lets you cross but the vision engine still reads as an open chasm is exactly the
+  drift that convention exists to prevent. Anything that asks "what is at this cell"
+  should call into that module, never re-derive it.
+- **The art has to be open-sided**, or none of it is visible. A bridge whose symbol starts
+  with a full-cell `<rect>` covers the chasm just as completely as overwriting it did. The
+  deck is a band across the middle with the two sides left clear, and `spanDeckAngles`
+  rotates it to whichever axis the neighbouring spans run along. That's auto-tiling in the
+  one place the tileset can afford it — two tiles, one symbol and a rotation, against
+  variant art per neighbour bitmask across all 58.
+
+**Considered and rejected: a numeric elevation stack** — the floor layer holding N tiles
+per cell sorted by `PlacedTile.elevation`, top of stack wins. It's the more general model
+and it's what an earlier note in this file proposed, but it buys nothing the span layer
+doesn't: it needs tie-break rules for two tiles at the same height, it makes "paint a
+chasm at -20 *first* or the bridge replaces it" a trap the DM has to know about, and it
+puts numeric ordering between a DM and the one thing they actually wanted, which was to
+draw a bridge over a hole. A span is always above its floor by definition, so there is
+nothing to order and nothing to explain.
+
+The layer generalises: a new tile that should cross terrain rather than replace it only
+needs `span: true` in `battleTiles.ts` — the builder routes it, the renderer stacks it,
+and the rules engine reads it, with no other change.
+
 **The ceiling here is real.** True auto-tiling — variant art selected per neighbour
 bitmask — needs variants authored for all 58 tiles. The neighbour-derived rims and seams
 reach a similar goal from the other direction, but they're refinements. A further
@@ -218,10 +253,6 @@ into the bug. That's the intended standard, not over-commenting.
 
 ## Known-unsolved
 
-- **Per-layer elevation.** A bridge drawn over a chasm *replaces* the chasm on the floor
-  layer, so the chasm stops existing rather than passing under the bridge. Proper support
-  means the floor layer holding more than one tile per cell with an elevation ordering.
-  Not started.
 - **`InitiativeTracker.tsx`** is still the largest component after three extractions.
 - **Distribution, not code, is the bottleneck.** Launch posts to several subreddits were
   duds. Worth weighing before picking up more feature work.

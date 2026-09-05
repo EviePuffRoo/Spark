@@ -1519,23 +1519,44 @@ export interface TileDef {
   // see EncounterStateInput.openDoorCells and vision.ts/gridMovement.ts's
   // openDoors parameter.
   isDoor?: boolean;
+  // A raised structure that crosses ground rather than replacing it — a
+  // bridge, a rope bridge. Painting one lands it on the "span" layer above
+  // whatever floor tile the cell already holds (see PlacedTile.layer), and
+  // its art is drawn as a deck with open sides so the terrain it crosses
+  // still reads underneath it.
+  span?: boolean;
 }
 
 export interface PlacedTile {
   x: number;
   y: number;
   tileId: string;
-  // A cosmetic tile drawn on top of this cell's floor tile — a rug on
-  // stone, moss over grass. Omitted (or "floor") means this placement IS
-  // the cell's floor. Never consulted by vision.ts/gridMovement.ts, which
-  // only ever read the floor-layer placement for a cell, so a decor tile
-  // can never accidentally change a cell's movement or sight rules.
+  // Which of a cell's four stacked slots this placement fills. A cell holds
+  // at most one tile per layer, and they draw bottom-to-top in this order:
   //
-  // "gmOnly" is a DM-only marker (a secret door, a trap warning) — the
-  // server strips every gmOnly placement from a BattleMap before it's
-  // ever sent to a viewer who isn't the map's owner (see toBattleMapDTO),
-  // so this layer never reaches a player's browser at all.
-  layer?: "floor" | "decor" | "gmOnly";
+  // "floor"  (or omitted) — the ground itself: chasm, water, stone, grass.
+  // "span"   — a raised structure crossing that ground without erasing it:
+  //            a bridge over a chasm, a rope bridge over a ravine. This is
+  //            the entire reason the layer exists. When everything shared
+  //            one floor slot, painting a bridge overwrote the chasm, so
+  //            the chasm stopped existing rather than passing underneath.
+  //            A span replaces nothing: the chasm still draws either side
+  //            of the deck, still governs a cell the deck doesn't cover,
+  //            and comes back intact when the bridge is erased.
+  // "decor"  — purely cosmetic: a rug on stone, moss over grass. Never
+  //            consulted by vision.ts/gridMovement.ts at all, so a decor
+  //            tile can never change a cell's movement or sight rules.
+  // "gmOnly" — a DM-only marker (a secret door, a trap warning). The
+  //            server strips every gmOnly placement from a BattleMap
+  //            before it's ever sent to a viewer who isn't the map's
+  //            owner (see toBattleMapDTO), so this layer never reaches a
+  //            player's browser at all.
+  //
+  // Movement and sight read a cell's topmost *mechanical* placement — the
+  // span if there is one, otherwise the floor: you walk on the bridge, not
+  // in the chasm it crosses. standingTileAt in mapCells.ts is the single
+  // definition of that rule; nothing else should re-derive it.
+  layer?: "floor" | "span" | "decor" | "gmOnly";
   // Free-text reminder for a gmOnly marker (why this door is secret, what
   // the trap does). Meaningless on any other layer.
   note?: string;
@@ -1544,9 +1565,10 @@ export interface PlacedTile {
   // authored" and is NOT the same as an explicit 0: an unauthored
   // blocksVision tile always blocks sight regardless of an observer's
   // height (vision.ts's blocksSightAt), so ordinary walls and every map
-  // predating this feature are unaffected. Only the floor-layer placement
-  // for a cell carries mechanical weight, same rule as blocksMovement/
-  // difficultTerrain/isDoor above — see gridMovement.ts's elevationAt.
+  // predating this feature are unaffected. Only a cell's standing
+  // placement carries mechanical weight (the span if there is one, else
+  // the floor), same rule as blocksMovement/difficultTerrain/isDoor above
+  // — see gridMovement.ts's elevationAt.
   elevation?: number;
 }
 

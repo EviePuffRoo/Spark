@@ -53,7 +53,10 @@ export const BATTLE_TILES: TileDef[] = [
   // More structure
   { id: "stairs-up", name: "Stairs Up", category: "structure", blocksMovement: false, blocksVision: false, difficultTerrain: false, pack: "dungeon" },
   { id: "stairs-down", name: "Stairs Down", category: "structure", blocksMovement: false, blocksVision: false, difficultTerrain: false, pack: "dungeon" },
-  { id: "bridge", name: "Bridge", category: "structure", blocksMovement: false, blocksVision: false, difficultTerrain: false, pack: "dungeon" },
+  // span: a bridge crosses the ground rather than replacing it, so it
+  // paints onto its own layer over whatever is already in the cell — the
+  // chasm below keeps existing (see PlacedTile.layer).
+  { id: "bridge", name: "Bridge", category: "structure", blocksMovement: false, blocksVision: false, difficultTerrain: false, span: true, pack: "dungeon" },
   { id: "table", name: "Table", category: "structure", blocksMovement: true, blocksVision: false, difficultTerrain: false, pack: "dungeon" },
   { id: "chest", name: "Chest", category: "structure", blocksMovement: true, blocksVision: false, difficultTerrain: false, pack: "dungeon" },
   { id: "bookshelf", name: "Bookshelf", category: "structure", blocksMovement: true, blocksVision: true, difficultTerrain: false, pack: "dungeon" },
@@ -91,7 +94,8 @@ export const BATTLE_TILES: TileDef[] = [
   // Same negative-elevation convention as chasm above (see gridMovement.ts's
   // computeReachableCells and LiveCombatant.flying).
   { id: "ravine", name: "Ravine", category: "terrain", blocksMovement: true, blocksVision: false, difficultTerrain: false, pack: "wilderness" },
-  { id: "rope-bridge", name: "Rope Bridge", category: "structure", blocksMovement: false, blocksVision: false, difficultTerrain: true, pack: "wilderness" },
+  // Same span rule as bridge above — laid over a ravine, not instead of it.
+  { id: "rope-bridge", name: "Rope Bridge", category: "structure", blocksMovement: false, blocksVision: false, difficultTerrain: true, span: true, pack: "wilderness" },
   { id: "cave-mouth", name: "Cave Mouth", category: "structure", blocksMovement: false, blocksVision: true, difficultTerrain: false, pack: "wilderness" },
   { id: "campfire", name: "Campfire", category: "hazard", blocksMovement: true, blocksVision: false, difficultTerrain: false, hazard: { label: "Campfire", damage: 3 }, lightRadius: 4, pack: "wilderness" },
   { id: "hunting-trap", name: "Hunting Trap", category: "hazard", blocksMovement: false, blocksVision: false, difficultTerrain: false, hazard: { label: "Hunting Trap", damage: 5 }, pack: "wilderness" },

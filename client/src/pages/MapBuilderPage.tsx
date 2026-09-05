@@ -4,7 +4,7 @@ import { BATTLE_TILES, BATTLE_TILE_BY_ID, BATTLE_MAP_MAX_WIDTH, BATTLE_MAP_MAX_H
 import { api } from "../api";
 import { useActiveWorld } from "../ActiveWorldContext";
 import { MapBuilderIcon } from "../components/icons";
-import { BattleTileDefs, TileSwatch } from "../components/TileIcon";
+import { BattleTileDefs, SpanTile, TileSwatch, spanDeckAngles } from "../components/TileIcon";
 import { TileShading, TileShadingDefs, buildTileShading } from "../components/TileShading";
 import { EmptyState } from "../components/EmptyState";
 import { SaveEntityFields } from "../components/SaveEntityFields";
@@ -13,9 +13,11 @@ import { SaveEntityFields } from "../components/SaveEntityFields";
 // pixel-perfect render of Spark's tile icons (those are SVGs designed for
 // crisp display at small sizes, not for baking into a raster background),
 // just enough for a DM to see room shapes and terrain at a glance once
-// the file is open in their own VTT. Only the floor layer is drawn: decor
-// sits cosmetically on top of a floor tile and gmOnly markers are the DM's
-// own secret annotations, neither of which define what a cell "is".
+// the file is open in their own VTT. Only the mechanical layers are drawn,
+// floor then span: decor sits cosmetically on top of a floor tile and
+// gmOnly markers are the DM's own secret annotations, neither of which
+// defines what a cell "is". A bridge does, so it paints over its chasm
+// here the same way it does on the grid.
 const CATEGORY_EXPORT_COLOR: Record<TileCategory, string> = {
   terrain: "#5f8a4a",
   structure: "#6b6b66",
@@ -26,18 +28,20 @@ const CATEGORY_EXPORT_COLOR: Record<TileCategory, string> = {
 };
 const EXPORT_PIXELS_PER_CELL = 70;
 
-function renderBattleMapBackgroundImage(width: number, height: number, floorTiles: Map<string, string>): string {
+function renderBattleMapBackgroundImage(width: number, height: number, floorTiles: Map<string, string>, spanTiles: Map<string, string>): string {
   const canvas = document.createElement("canvas");
   canvas.width = width * EXPORT_PIXELS_PER_CELL;
   canvas.height = height * EXPORT_PIXELS_PER_CELL;
   const ctx = canvas.getContext("2d")!;
   ctx.fillStyle = CATEGORY_EXPORT_COLOR.terrain;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  for (const [key, tileId] of floorTiles) {
-    const [x, y] = key.split(",").map(Number);
-    const category = BATTLE_TILE_BY_ID[tileId]?.category ?? "terrain";
-    ctx.fillStyle = CATEGORY_EXPORT_COLOR[category];
-    ctx.fillRect(x * EXPORT_PIXELS_PER_CELL, y * EXPORT_PIXELS_PER_CELL, EXPORT_PIXELS_PER_CELL, EXPORT_PIXELS_PER_CELL);
+  for (const layer of [floorTiles, spanTiles]) {
+    for (const [key, tileId] of layer) {
+      const [x, y] = key.split(",").map(Number);
+      const category = BATTLE_TILE_BY_ID[tileId]?.category ?? "terrain";
+      ctx.fillStyle = CATEGORY_EXPORT_COLOR[category];
+      ctx.fillRect(x * EXPORT_PIXELS_PER_CELL, y * EXPORT_PIXELS_PER_CELL, EXPORT_PIXELS_PER_CELL, EXPORT_PIXELS_PER_CELL);
+    }
   }
   // Strip the "data:image/png;base64," prefix — UVTT's image field wants
   // bare base64.
@@ -91,64 +95,83 @@ function tileKey(x: number, y: number) {
   return `${x},${y}`;
 }
 
-function layerForTile(tileId: string): "floor" | "decor" | "gmOnly" {
-  const category = BATTLE_TILE_BY_ID[tileId]?.category;
-  if (category === "decor") return "decor";
-  if (category === "gmOnly") return "gmOnly";
+function layerForTile(tileId: string): "floor" | "span" | "decor" | "gmOnly" {
+  const def = BATTLE_TILE_BY_ID[tileId];
+  if (def?.category === "decor") return "decor";
+  if (def?.category === "gmOnly") return "gmOnly";
+  // A bridge lays over the ground rather than instead of it — the tile
+  // itself declares that (see TileDef.span), so the palette needs no
+  // separate layer control for it to land in the right place.
+  if (def?.span) return "span";
   return "floor";
 }
 
-// A cell can hold at most one tile per layer — split into three maps so the
-// decor overlay (rugs, moss, bloodstains) and the DM-only marker layer
-// (secret doors, trap notes) never collide with or overwrite the
-// mechanically-authoritative floor tile beneath them. gmOnlyNotes is keyed
-// the same way, holding just the cells that have a note attached.
-function tilesToLayerMaps(tiles: PlacedTile[]): {
+// A cell can hold at most one tile per layer — split into four maps so a
+// span (a bridge over a chasm), the decor overlay (rugs, moss,
+// bloodstains) and the DM-only marker layer (secret doors, trap notes)
+// never collide with or overwrite the floor tile beneath them.
+// gmOnlyNotes is keyed the same way, holding just the cells that have a
+// note attached. Elevation is stamped onto the cell's *standing* tile —
+// the span where there is one, the floor otherwise — which is the same
+// placement the rules engine reads (see mapCells.ts).
+interface LayerMaps {
   floor: Map<string, string>;
+  span: Map<string, string>;
   decor: Map<string, string>;
   gmOnly: Map<string, string>;
   gmOnlyNotes: Map<string, string>;
-  floorElevation: Map<string, number>;
-} {
+  elevation: Map<string, number>;
+}
+
+function tilesToLayerMaps(tiles: PlacedTile[]): LayerMaps {
   const floor = new Map<string, string>();
+  const span = new Map<string, string>();
   const decor = new Map<string, string>();
   const gmOnly = new Map<string, string>();
   const gmOnlyNotes = new Map<string, string>();
-  const floorElevation = new Map<string, number>();
+  const elevation = new Map<string, number>();
   for (const t of tiles) {
     const key = tileKey(t.x, t.y);
     if (t.layer === "decor") decor.set(key, t.tileId);
     else if (t.layer === "gmOnly") {
       gmOnly.set(key, t.tileId);
       if (t.note) gmOnlyNotes.set(key, t.note);
+    } else if (t.layer === "span" || BATTLE_TILE_BY_ID[t.tileId]?.span) {
+      // Lifting a bridge saved on the floor layer (every map built before
+      // the span layer existed) onto the span layer here is what lets the
+      // DM now paint the chasm back underneath it. Re-saving persists it.
+      span.set(key, t.tileId);
+      if (t.elevation !== undefined) elevation.set(key, t.elevation);
     } else {
       floor.set(key, t.tileId);
-      if (t.elevation !== undefined) floorElevation.set(key, t.elevation);
+      if (t.elevation !== undefined) elevation.set(key, t.elevation);
     }
   }
-  return { floor, decor, gmOnly, gmOnlyNotes, floorElevation };
+  return { floor, span, decor, gmOnly, gmOnlyNotes, elevation };
 }
 
-function layerMapsToTiles(
-  floor: Map<string, string>,
-  decor: Map<string, string>,
-  gmOnly: Map<string, string>,
-  gmOnlyNotes: Map<string, string>,
-  floorElevation: Map<string, number>,
-): PlacedTile[] {
+function layerMapsToTiles(maps: LayerMaps): PlacedTile[] {
   const out: PlacedTile[] = [];
-  for (const [key, tileId] of floor) {
-    const [x, y] = key.split(",").map(Number);
-    const elevation = floorElevation.get(key);
+  const at = (key: string) => key.split(",").map(Number) as [number, number];
+  for (const [key, tileId] of maps.floor) {
+    const [x, y] = at(key);
+    // A cell's height belongs to whatever is standing there, so a spanned
+    // cell's stamp rides on the span and the floor below stays unauthored.
+    const elevation = maps.span.has(key) ? undefined : maps.elevation.get(key);
     out.push({ x, y, tileId, ...(elevation !== undefined ? { elevation } : {}) });
   }
-  for (const [key, tileId] of decor) {
-    const [x, y] = key.split(",").map(Number);
+  for (const [key, tileId] of maps.span) {
+    const [x, y] = at(key);
+    const elevation = maps.elevation.get(key);
+    out.push({ x, y, tileId, layer: "span", ...(elevation !== undefined ? { elevation } : {}) });
+  }
+  for (const [key, tileId] of maps.decor) {
+    const [x, y] = at(key);
     out.push({ x, y, tileId, layer: "decor" });
   }
-  for (const [key, tileId] of gmOnly) {
-    const [x, y] = key.split(",").map(Number);
-    const note = gmOnlyNotes.get(key);
+  for (const [key, tileId] of maps.gmOnly) {
+    const [x, y] = at(key);
+    const note = maps.gmOnlyNotes.get(key);
     out.push({ x, y, tileId, layer: "gmOnly", ...(note ? { note } : {}) });
   }
   return out;
@@ -167,10 +190,11 @@ export function MapBuilderPage() {
 
   const [activeMap, setActiveMap] = useState<BattleMap | null>(null);
   const [floorTiles, setFloorTiles] = useState<Map<string, string>>(new Map());
+  const [spanTiles, setSpanTiles] = useState<Map<string, string>>(new Map());
   const [decorTiles, setDecorTiles] = useState<Map<string, string>>(new Map());
   const [gmOnlyTiles, setGmOnlyTiles] = useState<Map<string, string>>(new Map());
   const [gmOnlyNotes, setGmOnlyNotes] = useState<Map<string, string>>(new Map());
-  const [floorElevation, setFloorElevation] = useState<Map<string, number>>(new Map());
+  const [cellElevation, setCellElevation] = useState<Map<string, number>>(new Map());
   const [brushElevation, setBrushElevation] = useState(0);
   const [dirty, setDirty] = useState(false);
   const [selectedTileId, setSelectedTileId] = useState(BATTLE_TILES[0].id);
@@ -236,12 +260,13 @@ export function MapBuilderPage() {
 
   function openMap(map: BattleMap) {
     setActiveMap(map);
-    const { floor, decor, gmOnly, gmOnlyNotes: notes, floorElevation: elevation } = tilesToLayerMaps(map.tiles);
+    const { floor, span, decor, gmOnly, gmOnlyNotes: notes, elevation } = tilesToLayerMaps(map.tiles);
     setFloorTiles(floor);
+    setSpanTiles(span);
     setDecorTiles(decor);
     setGmOnlyTiles(gmOnly);
     setGmOnlyNotes(notes);
-    setFloorElevation(elevation);
+    setCellElevation(elevation);
     setBrushElevation(0);
     setDirty(false);
     setName(map.name);
@@ -309,31 +334,45 @@ export function MapBuilderPage() {
     const cellY = Math.floor(y / CELL);
     if (cellX < 0 || cellY < 0 || cellX >= activeMap.width || cellY >= activeMap.height) return;
     const key = tileKey(cellX, cellY);
+    const without = (prev: Map<string, string>) => { const next = new Map(prev); next.delete(key); return next; };
+    const stampElevation = () => setCellElevation((prev) => {
+      const next = new Map(prev);
+      if (brushElevation !== 0) next.set(key, brushElevation);
+      else next.delete(key);
+      return next;
+    });
+
     if (eraser) {
-      // Erase the top layer first (GM markers, then decor, then floor) —
-      // same as most map tools, a repeated click on a bare floor tile
-      // eventually clears it.
+      // Peel the top layer first (GM markers, then decor, then a span, then
+      // the floor) — same as most map tools, a repeated click on a bare
+      // floor tile eventually clears it. Taking a bridge off this way is
+      // what puts the chasm underneath back on show, rather than leaving a
+      // hole where the terrain used to be.
       if (gmOnlyTiles.has(key)) {
-        setGmOnlyTiles((prev) => { const next = new Map(prev); next.delete(key); return next; });
-        setGmOnlyNotes((prev) => { const next = new Map(prev); next.delete(key); return next; });
+        setGmOnlyTiles(without);
+        setGmOnlyNotes(without);
       } else if (decorTiles.has(key)) {
-        setDecorTiles((prev) => { const next = new Map(prev); next.delete(key); return next; });
+        setDecorTiles(without);
+      } else if (spanTiles.has(key)) {
+        setSpanTiles(without);
+        if (!floorTiles.has(key)) setCellElevation((prev) => { const next = new Map(prev); next.delete(key); return next; });
       } else {
-        setFloorTiles((prev) => { const next = new Map(prev); next.delete(key); return next; });
-        setFloorElevation((prev) => { const next = new Map(prev); next.delete(key); return next; });
+        setFloorTiles(without);
+        setCellElevation((prev) => { const next = new Map(prev); next.delete(key); return next; });
       }
     } else if (selectedLayer === "gmOnly") {
       setGmOnlyTiles((prev) => new Map(prev).set(key, selectedTileId));
     } else if (selectedLayer === "decor") {
       setDecorTiles((prev) => new Map(prev).set(key, selectedTileId));
+    } else if (selectedLayer === "span") {
+      setSpanTiles((prev) => new Map(prev).set(key, selectedTileId));
+      stampElevation();
     } else {
       setFloorTiles((prev) => new Map(prev).set(key, selectedTileId));
-      setFloorElevation((prev) => {
-        const next = new Map(prev);
-        if (brushElevation !== 0) next.set(key, brushElevation);
-        else next.delete(key);
-        return next;
-      });
+      // Painting ground under an existing bridge changes what the bridge
+      // crosses, not what anyone standing on it is standing on — so leave
+      // the span's own height alone.
+      if (!spanTiles.has(key)) stampElevation();
     }
     setDirty(true);
   }
@@ -367,10 +406,15 @@ export function MapBuilderPage() {
     paintingRef.current = false;
   }
 
+  const layerMaps = (): LayerMaps => ({
+    floor: floorTiles, span: spanTiles, decor: decorTiles,
+    gmOnly: gmOnlyTiles, gmOnlyNotes, elevation: cellElevation,
+  });
+
   function exportToVtt() {
     if (!activeMap) return;
-    const tiles = layerMapsToTiles(floorTiles, decorTiles, gmOnlyTiles, gmOnlyNotes, floorElevation);
-    const image = renderBattleMapBackgroundImage(activeMap.width, activeMap.height, floorTiles);
+    const tiles = layerMapsToTiles(layerMaps());
+    const image = renderBattleMapBackgroundImage(activeMap.width, activeMap.height, floorTiles, spanTiles);
     const doc = battleMapToUvtt({ width: activeMap.width, height: activeMap.height, tiles }, image);
     downloadVttFile(`${activeMap.name.trim() || "battle-map"}.dd2vtt`, doc);
   }
@@ -382,7 +426,7 @@ export function MapBuilderPage() {
     try {
       const updated = await api.updateBattleMap(activeMap.id, {
         name,
-        tiles: layerMapsToTiles(floorTiles, decorTiles, gmOnlyTiles, gmOnlyNotes, floorElevation),
+        tiles: layerMapsToTiles(layerMaps()),
         worldId: saveWorldId || null,
         tags: saveTags.split(",").map((t) => t.trim()).filter(Boolean),
         notes: saveNotes || undefined,
@@ -447,23 +491,28 @@ export function MapBuilderPage() {
   )), [activePack, selectedTileId, eraser]);
 
   const placedFloorTiles = useMemo(() => toPlacedList(floorTiles), [floorTiles]);
+  const placedSpanTiles = useMemo(() => toPlacedList(spanTiles), [spanTiles]);
+  const spanCells = useMemo(() => new Set(spanTiles.keys()), [spanTiles]);
   const placedDecorTiles = useMemo(() => toPlacedList(decorTiles), [decorTiles]);
   const placedGmOnlyTiles = useMemo(() => toPlacedList(gmOnlyTiles), [gmOnlyTiles]);
   const shading = useMemo(
     () => (activeMap ? buildTileShading(
-      placedFloorTiles.map((t) => ({ x: t.x, y: t.y, tileId: t.tileId })),
+      [
+        ...placedFloorTiles.map((t) => ({ x: t.x, y: t.y, tileId: t.tileId })),
+        ...placedSpanTiles.map((t) => ({ x: t.x, y: t.y, tileId: t.tileId, layer: "span" as const })),
+      ],
       activeMap.width, activeMap.height, CELL,
     ) : null),
-    [placedFloorTiles, activeMap],
+    [placedFloorTiles, placedSpanTiles, activeMap],
   );
 
 
   const placedElevationLabels = useMemo(
-    () => [...floorElevation.entries()].map(([key, elevation]) => {
+    () => [...cellElevation.entries()].map(([key, elevation]) => {
       const [x, y] = key.split(",").map(Number);
       return { key, x, y, elevation };
     }),
-    [floorElevation],
+    [cellElevation],
   );
 
   if (activeMap) {
@@ -477,6 +526,7 @@ export function MapBuilderPage() {
           <p className="hint">
             {activeMap.width}×{activeMap.height} tiles. Click, or click-and-drag, to paint. No uploaded images. Every map here is hand-built from the tileset below.
             {" "}Decor tiles paint over a floor tile without replacing it, and never block movement or sight, good for rugs, moss, bloodstains.
+            {" "}Bridges lay across the ground the same way: paint a Chasm, then a Bridge over it, and the chasm still runs underneath and comes back if you erase the deck.
             {" "}GM Only markers (secret doors, traps) are for your eyes alone. Players never see them, in the builder or at the table.
           </p>
           {error && <p className="error">{error}</p>}
@@ -511,8 +561,10 @@ export function MapBuilderPage() {
               />
             </label>
             <p className="hint">
-              Stamped onto floor tiles as you paint. Leave at 0 for ground level. A negative elevation on an
-              otherwise-solid tile (like Chasm) also lets a flying combatant cross it during combat.
+              Stamped onto tiles as you paint. Leave at 0 for ground level. A negative elevation on an
+              otherwise-solid tile (like Chasm) also lets a flying combatant cross it during combat. On a
+              cell with a bridge over it, the height belongs to the bridge — that's what anyone crossing
+              is standing on.
             </p>
             <div className="tile-pack-selector">
               {PACKS.map((pack) => (
@@ -547,6 +599,9 @@ export function MapBuilderPage() {
                 {gridLines}
                 {placedFloorTiles.map((t) => (
                   <use key={t.key} href={`#tile-${t.tileId}`} x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL} />
+                ))}
+                {placedSpanTiles.map((t) => (
+                  <SpanTile key={`span-${t.key}`} tileId={t.tileId} x={t.x} y={t.y} cell={CELL} angles={spanDeckAngles(spanCells, t.x, t.y)} />
                 ))}
                 {shading && <TileShading shading={shading} />}
                 {placedDecorTiles.map((t) => (

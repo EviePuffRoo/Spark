@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { chebyshevDistanceFeet, computeReachableCells, elevationAt, FEET_PER_TILE } from "./gridMovement.js";
+import { chebyshevDistanceFeet, computeReachableCells, FEET_PER_TILE } from "./gridMovement.js";
+import { elevationAt, groundTileAt, standingTileAt } from "./mapCells.js";
 import type { BattleMap } from "./types.js";
 
 function emptyMap(width: number, height: number, tiles: BattleMap["tiles"] = []): Pick<BattleMap, "width" | "height" | "tiles"> {
@@ -163,5 +164,57 @@ describe("elevation", () => {
     const map = emptyMap(10, 10, [{ x: 6, y: 5, tileId: "stone-wall" }]);
     const reachable = computeReachableCells(map, 5, 5, 30, undefined, true);
     expect(reachable.has("6,5")).toBe(false);
+  });
+});
+
+describe("span layer", () => {
+  // The bug this layer exists to fix: a bridge used to overwrite the chasm
+  // it crossed, so the chasm stopped existing. Now both placements live in
+  // the cell and the bridge is what you walk on.
+  const chasmAndBridge = () => emptyMap(10, 10, [
+    { x: 6, y: 5, tileId: "chasm", elevation: -20 },
+    { x: 6, y: 5, tileId: "bridge", layer: "span" as const },
+  ]);
+
+  it("lets a grounded combatant cross a bridge laid over a chasm", () => {
+    const reachable = computeReachableCells(chasmAndBridge(), 5, 5, 30);
+    expect(reachable.has("6,5")).toBe(true);
+    expect(reachable.has("7,5")).toBe(true);
+  });
+
+  it("still blocks that same chasm cell once the bridge is taken away", () => {
+    const map = emptyMap(10, 10, [{ x: 6, y: 5, tileId: "chasm", elevation: -20 }]);
+    const reachable = computeReachableCells(map, 5, 5, 30);
+    expect(reachable.has("6,5")).toBe(false);
+  });
+
+  it("reads the span's height, not the ground's, for a creature crossing it", () => {
+    // Standing on the deck is standing at deck height — the -20 stamped on
+    // the chasm below describes the drop, not where the token is.
+    expect(elevationAt(chasmAndBridge(), 6, 5)).toBeUndefined();
+    expect(elevationAt(emptyMap(10, 10, [
+      { x: 6, y: 5, tileId: "chasm", elevation: -20 },
+      { x: 6, y: 5, tileId: "bridge", layer: "span", elevation: 15 },
+    ]), 6, 5)).toBe(15);
+  });
+
+  it("keeps the ground underneath reachable through groundTileAt", () => {
+    expect(groundTileAt(chasmAndBridge(), 6, 5)?.tileId).toBe("chasm");
+    expect(standingTileAt(chasmAndBridge(), 6, 5)?.tileId).toBe("bridge");
+  });
+
+  it("charges the span's difficult terrain, not the ground's, to step onto it", () => {
+    // A rope bridge is difficult terrain and so costs a 5ft budget's whole
+    // allowance plus some — reachable at 10ft, not at 5 — while the plain
+    // grass it crosses would have been a single ordinary step.
+    const spanned = emptyMap(10, 10, [
+      { x: 6, y: 5, tileId: "grass" },
+      { x: 6, y: 5, tileId: "rope-bridge", layer: "span" },
+    ]);
+    expect(computeReachableCells(spanned, 5, 5, 5).has("6,5")).toBe(false);
+    expect(computeReachableCells(spanned, 5, 5, 10).has("6,5")).toBe(true);
+
+    const bare = emptyMap(10, 10, [{ x: 6, y: 5, tileId: "grass" }]);
+    expect(computeReachableCells(bare, 5, 5, 5).has("6,5")).toBe(true);
   });
 });

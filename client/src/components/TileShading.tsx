@@ -1,4 +1,4 @@
-import { BATTLE_TILE_BY_ID, type PlacedTile } from "@spark/shared";
+import { BATTLE_TILE_BY_ID, buildStandingIndex, type PlacedTile } from "@spark/shared";
 
 // Every tile in the set is a flat 10x10 square, so a painted map renders as
 // a grid of evenly-lit stamps with nothing to say where the walls stop and
@@ -80,10 +80,13 @@ export function buildTileShading(
   height: number,
   cell: number,
 ) {
+  // What casts a shadow is decided by the cell's standing tile — the span
+  // if one is there, else the floor — the same tile the movement and sight
+  // engines read (see mapCells.ts). A bridge over a chasm shades as a
+  // bridge, not as the chasm underneath it.
   const solid = new Set<string>();
-  for (const t of tiles) {
-    if ((t.layer ?? "floor") !== "floor") continue;
-    if (castsShadow(t.tileId)) solid.add(`${t.x},${t.y}`);
+  for (const [key, t] of buildStandingIndex(tiles)) {
+    if (castsShadow(t.tileId)) solid.add(key);
   }
   const isSolid = (x: number, y: number) => solid.has(`${x},${y}`);
 
@@ -100,6 +103,11 @@ export function buildTileShading(
   // around one draws a box that makes it look pasted on rather than placed.
   // Where ground meets something solid there's already a rim and a shadow,
   // and a seam on top would double that line.
+  //
+  // Unlike the shadows above this deliberately reads the floor layer, not
+  // the standing tile: a chasm crossed by a bridge is still one continuous
+  // chasm, and its seam against the stone beside it belongs at the stone,
+  // not broken wherever the deck happens to pass over.
   const groundAt = new Map<string, string>();
   for (const t of tiles) {
     if ((t.layer ?? "floor") !== "floor") continue;

@@ -54,6 +54,58 @@ describe("battle maps", () => {
     expect(res.body.tiles).toEqual([{ x: 0, y: 0, tileId: "stone-floor" }]);
   });
 
+  it("keeps a bridge and the chasm it spans as two placements in one cell", async () => {
+    const { agent } = await signupAgent("mapspan1");
+    const res = await agent.post("/api/battle-maps").send({
+      name: "Chasm Crossing",
+      width: 5,
+      height: 5,
+      tiles: [
+        { x: 2, y: 2, tileId: "chasm", elevation: -20 },
+        { x: 2, y: 2, tileId: "bridge", layer: "span" },
+      ],
+    });
+    expect(res.status).toBe(201);
+    expect(res.body.tiles).toEqual([
+      { x: 2, y: 2, tileId: "chasm", elevation: -20 },
+      { x: 2, y: 2, tileId: "bridge", layer: "span" },
+    ]);
+  });
+
+  it("collapses duplicate placements in one cell and layer, keeping the last", async () => {
+    // The builder never produces these, but a hand-edited backup or a
+    // direct API call can — and two floor tiles in one cell would leave
+    // the rules engine choosing between them.
+    const { agent } = await signupAgent("mapspan2");
+    const res = await agent.post("/api/battle-maps").send({
+      name: "Overpainted",
+      width: 5,
+      height: 5,
+      tiles: [
+        { x: 1, y: 1, tileId: "grass" },
+        { x: 1, y: 1, tileId: "water" },
+        { x: 1, y: 1, tileId: "moss", layer: "decor" },
+      ],
+    });
+    expect(res.status).toBe(201);
+    expect(res.body.tiles).toEqual([
+      { x: 1, y: 1, tileId: "water" },
+      { x: 1, y: 1, tileId: "moss", layer: "decor" },
+    ]);
+  });
+
+  it("drops an unrecognised layer name rather than storing it", async () => {
+    const { agent } = await signupAgent("mapspan3");
+    const res = await agent.post("/api/battle-maps").send({
+      name: "Bad Layer",
+      width: 5,
+      height: 5,
+      tiles: [{ x: 0, y: 0, tileId: "stone-floor", layer: "ceiling" }],
+    });
+    expect(res.status).toBe(201);
+    expect(res.body.tiles).toEqual([{ x: 0, y: 0, tileId: "stone-floor" }]);
+  });
+
   it("403s creating a map attached to a world you don't have access to", async () => {
     const { agent: owner } = await signupAgent("mapowner1");
     const world = await owner.post("/api/worlds").send({ name: "Private World" });

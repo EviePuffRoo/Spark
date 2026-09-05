@@ -7,7 +7,7 @@ import { publishWorldChange, publishTokenMoved } from "../worldEvents.js";
 import { computeCurrentVisibility } from "../gridVisibility.js";
 import { parseArray, parseOptional } from "../validation.js";
 import type { LiveCombatant, EncounterZone, EncounterZoneEffect, ZoneHazard, ParsedAttack, PlacedTile, LegendaryAction, StatBlockAction, SpellSlotLevel } from "@spark/shared";
-import { SIZE_FOOTPRINT, computeReachableCells, computeVisionForTokens, extendWithLightSources, isDoorTileAt } from "@spark/shared";
+import { SIZE_FOOTPRINT, areZonesAdjacent, computeReachableCells, computeVisionForTokens, extendWithLightSources, isDoorTileAt } from "@spark/shared";
 
 export const encountersRouter = Router();
 
@@ -334,10 +334,11 @@ encountersRouter.post("/:worldId/move-zone", async (req, res) => {
     // reposition a monster they can't perceive.
     if (!target || (!isOwner && target.hidden)) return { error: 404 as const, message: "Combatant not found" };
 
-    if (target.zoneId) {
-      const currentZone = zones.find((z) => z.id === target.zoneId);
-      const adjacent = (currentZone?.connections.includes(zoneId) ?? false) || targetZone.connections.includes(target.zoneId);
-      if (!adjacent) return { error: 400 as const, message: "That zone isn't adjacent" };
+    // Same adjacency rule the client's zone map draws and measures with —
+    // shared so a move the DM's screen shows as legal can't be one this
+    // route rejects (see zoneGraph.ts).
+    if (target.zoneId && !areZonesAdjacent(zones, target.zoneId, zoneId)) {
+      return { error: 400 as const, message: "That zone isn't adjacent" };
     }
 
     target.zoneId = zoneId;

@@ -3,6 +3,8 @@ export * from "./billingLimits.js";
 export * from "./statBlockAttacks.js";
 export * from "./creatureStats.js";
 export * from "./mapCells.js";
+export * from "./zoneGraph.js";
+export * from "./encounterZones.js";
 export * from "./gridMovement.js";
 export * from "./vision.js";
 export * from "./aoeTemplates.js";

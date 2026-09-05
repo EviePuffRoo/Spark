@@ -19,12 +19,19 @@ client/   React + Vite. Imports shared. Talks to server over HTTP + SSE.
 ```
 
 `shared/` is the load-bearing one. Anything that is a *rule* rather than a *screen* or
-an *endpoint* belongs there: initiative, movement and vision on the grid, encounter
-balance, concentration, opportunity attacks, crafting, weather, the world tick. It has
-no side effects, so it's cheap to test exhaustively and both other workspaces can trust
-it. Resist the pull to put rules logic in a route handler or a component — when the same
-rule ends up implemented twice, the two copies drift and the bug shows up as "the server
-and the client disagree about what just happened at the table."
+an *endpoint* belongs there: initiative, movement and vision on the grid, the zone graph
+and the zone-map edits that maintain it, encounter balance, concentration, opportunity
+attacks, crafting, weather, the world tick. It has no side effects, so it's cheap to test
+exhaustively and both other workspaces can trust it. Resist the pull to put rules logic in
+a route handler or a component — when the same rule ends up implemented twice, the two
+copies drift and the bug shows up as "the server and the client disagree about what just
+happened at the table."
+
+That is not hypothetical: zone adjacency was written inline in the move-zone route and
+rebuilt, differently, in a client-only `zoneGraph.ts`. Both were *right*, and the real
+casualty was a third copy — the zone map's edit path wrote only one end of a link while
+every reader treated links as symmetric, so a link stored on the wrong end drew no line
+and could not be clicked away. A rule with one home doesn't develop a third copy.
 
 ## Commands
 
@@ -278,10 +285,11 @@ into the bug. That's the intended standard, not over-commenting.
 
 ## Known-unsolved
 
-- **`InitiativeTracker.tsx`** is down to 955 lines from 1671. What's left is one
-  component doing four jobs: encounter-level actions (turn order, rest, clear, lair),
-  zone-map CRUD, dungeon-room load/leave/persist, and battle-map load/leave/move. The
-  zone cluster is the next clean seam — eight functions that only touch `zones` and
-  `zoneEffects`.
+- **`InitiativeTracker.tsx`** is down to 899 lines from 1671. What's left is one
+  component doing three jobs: encounter-level actions (turn order, rest, clear, lair),
+  dungeon-room load/leave/persist, and battle-map load/leave/move. The dungeon-room
+  cluster is the next seam, but it's a harder one than the zone cluster was: those
+  functions are async, they read `activeDungeon` and `selectedWorld`, and
+  `persistActiveRoomLeaveState` diffs live zones against a fetched template.
 - **Distribution, not code, is the bottleneck.** Launch posts to several subreddits were
   duds. Worth weighing before picking up more feature work.

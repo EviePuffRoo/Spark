@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { LiveCombatant, LiveCombatantCondition, EncounterZone, Dungeon, DungeonRoomState, DifficultyRating, SpellDef, TriggerRule, TriggerMatch } from "@spark/shared";
+import type { LiveCombatant, LiveCombatantCondition, Dungeon, DungeonRoomState, DifficultyRating, SpellDef, TriggerRule, TriggerMatch } from "@spark/shared";
 import { computeConcentrationDc, isHostilePair, leftReach, CONDITIONS_COMPENDIUM, getRuleset, applyHouseRules, evaluateTriggers, analyzeEncounterBalance } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { useAuth } from "../AuthContext";
 import { ZoneMap } from "./ZoneMap";
 import { GridMap } from "./GridMap";
 import { useEncounterState, BLANK_ENCOUNTER } from "../useEncounterState";
+import { useZoneActions } from "../useZoneActions";
 import { CombatIcon } from "./icons";
 import { EmptyState } from "./EmptyState";
 import { PresentationView } from "../pages/PresentationView";
@@ -74,6 +75,10 @@ export function InitiativeTracker({
   // mode. See useEncounterState; nothing below needs to know which.
   const { activeEncounter, applyEncounterUpdate, applyServerEncounter, liveError } =
     useEncounterState({ partyMode, partyWorldId, isOwner });
+
+  // Editing the zone map. The rules themselves are pure and live in
+  // shared/src/encounterZones.ts; this binds them to the write path above.
+  const zoneActions = useZoneActions({ applyEncounterUpdate, applyServerEncounter, canEdit, partyMode, partyWorldId });
 
   // Exits off the room the party is standing in that the DM has put on an
   // edge of its battle map. Empty outside a dungeon, or before any exit has
@@ -377,64 +382,12 @@ export function InitiativeTracker({
     }));
   }
 
-  function addZone() {
-    applyEncounterUpdate((e) => {
-      const zones = e.zones ?? [];
-      const newZone: EncounterZone = {
-        id: crypto.randomUUID(),
-        name: `Zone ${zones.length + 1}`,
-        tags: [],
-        x: 100 + (zones.length % 4) * 140,
-        y: 100 + Math.floor(zones.length / 4) * 140,
-        connections: [],
-        revealed: true,
-      };
-      return { ...e, zones: [...zones, newZone] };
-    });
-  }
 
-  function updateZone(id: string, patch: Partial<EncounterZone>) {
-    applyEncounterUpdate((e) => ({ ...e, zones: (e.zones ?? []).map((z) => (z.id === id ? { ...z, ...patch } : z)) }));
-  }
 
-  function deleteZone(id: string) {
-    applyEncounterUpdate((e) => ({
-      ...e,
-      zones: (e.zones ?? []).filter((z) => z.id !== id).map((z) => ({ ...z, connections: z.connections.filter((c) => c !== id) })),
-      zoneEffects: (e.zoneEffects ?? []).filter((eff) => eff.zoneId !== id),
-      combatants: e.combatants.map((c) => (c.zoneId === id ? { ...c, zoneId: undefined } : c)),
-    }));
-  }
 
-  function toggleZoneConnection(aId: string, bId: string) {
-    applyEncounterUpdate((e) => ({
-      ...e,
-      zones: (e.zones ?? []).map((z) => {
-        if (z.id !== aId) return z;
-        const has = z.connections.includes(bId);
-        return { ...z, connections: has ? z.connections.filter((c) => c !== bId) : [...z.connections, bId] };
-      }),
-    }));
-  }
 
-  function addZoneEffect(zoneId: string, label: string, durationRounds: number) {
-    applyEncounterUpdate((e) => ({
-      ...e,
-      zoneEffects: [...(e.zoneEffects ?? []), { id: crypto.randomUUID(), zoneId, label, expiresAtRound: e.round + durationRounds }],
-    }));
-  }
 
-  function removeZoneEffect(id: string) {
-    applyEncounterUpdate((e) => ({ ...e, zoneEffects: (e.zoneEffects ?? []).filter((eff) => eff.id !== id) }));
-  }
 
-  function moveCombatantToZone(combatantId: string, zoneId: string) {
-    if (canEdit) {
-      applyEncounterUpdate((e) => ({ ...e, combatants: e.combatants.map((c) => (c.id === combatantId ? { ...c, zoneId } : c)) }));
-    } else if (partyMode && partyWorldId) {
-      applyServerEncounter(partyWorldId, api.moveCombatantZone(partyWorldId, combatantId, zoneId));
-    }
-  }
 
 
 
@@ -516,15 +469,6 @@ export function InitiativeTracker({
 
 
 
-  function loadZoneMapTemplate(templateZones: EncounterZone[]) {
-    const idMap = new Map<string, string>(templateZones.map((z) => [z.id, crypto.randomUUID()]));
-    const remapped: EncounterZone[] = templateZones.map((z) => ({
-      ...z,
-      id: idMap.get(z.id)!,
-      connections: z.connections.map((c) => idMap.get(c)).filter((c): c is string => !!c),
-    }));
-    applyEncounterUpdate((e) => ({ ...e, zones: [...(e.zones ?? []), ...remapped] }));
-  }
 
   const DEFAULT_ROOM_STATE: DungeonRoomState = { cleared: false, alerted: false, disarmedHazardZoneIds: [] };
 
@@ -850,14 +794,14 @@ export function InitiativeTracker({
               worldId={partyMode ? partyWorldId : undefined}
               activeDungeon={activeDungeon}
               activeDungeonRoomId={activeEncounter.activeDungeonRoomId}
-              onAddZone={addZone}
-              onUpdateZone={updateZone}
-              onDeleteZone={deleteZone}
-              onToggleConnection={toggleZoneConnection}
-              onAddEffect={addZoneEffect}
-              onRemoveEffect={removeZoneEffect}
-              onMoveCombatant={moveCombatantToZone}
-              onLoadTemplate={loadZoneMapTemplate}
+              onAddZone={zoneActions.addZone}
+              onUpdateZone={zoneActions.updateZone}
+              onDeleteZone={zoneActions.deleteZone}
+              onToggleConnection={zoneActions.toggleConnection}
+              onAddEffect={zoneActions.addEffect}
+              onRemoveEffect={zoneActions.removeEffect}
+              onMoveCombatant={zoneActions.moveCombatant}
+              onLoadTemplate={zoneActions.loadTemplate}
               onLoadDungeonRoom={loadDungeonRoom}
             />
           )}

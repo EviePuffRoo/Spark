@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { SearchResult, LiveCombatant, LiveCombatantCondition, EncounterStateInput, EncounterZone, Dungeon, DungeonRoomState, DifficultyRating, SpellDef, TriggerRule, TriggerMatch } from "@spark/shared";
+import type { LiveCombatant, LiveCombatantCondition, EncounterStateInput, EncounterZone, Dungeon, DungeonRoomState, DifficultyRating, SpellDef, TriggerRule, TriggerMatch } from "@spark/shared";
 import { computeConcentrationDc, isHostilePair, leftReach, CONDITIONS_COMPENDIUM, getRuleset, applyHouseRules, SPELL_EFFECTS, evaluateTriggers, analyzeEncounterBalance } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { useAuth } from "../AuthContext";
-import { EntitySearchPicker } from "./EntitySearchPicker";
 import { ZoneMap } from "./ZoneMap";
 import { GridMap } from "./GridMap";
 import { useLocalStorage } from "../useLocalStorage";
@@ -15,6 +14,7 @@ import { HpBar } from "./HpBar";
 import { AddCombatantPanel } from "./AddCombatantPanel";
 import { AttackPanel } from "./AttackPanel";
 import { CastPanel } from "./CastPanel";
+import { LootPanel } from "./LootPanel";
 import { CombatantRowReadOnly } from "./CombatantRowReadOnly";
 import { RulesLinkedText } from "./RulesLinkedText";
 import { ResizeDivider, useResizableColumn } from "./ResizeDivider";
@@ -76,14 +76,6 @@ export function InitiativeTracker({
   const [showTableView, setShowTableView] = useState(false);
   const [activeDungeon, setActiveDungeon] = useState<Dungeon | null>(null);
   const [lootOpenFor, setLootOpenFor] = useState<string | null>(null);
-  const [lootKind, setLootKind] = useState<"gold" | "item">("gold");
-  const [lootLabel, setLootLabel] = useState("");
-  const [lootItemId, setLootItemId] = useState<string | null>(null);
-  const [lootPickingItem, setLootPickingItem] = useState(false);
-  const [lootAmount, setLootAmount] = useState("");
-  const [lootAuthorName, setLootAuthorName] = useState(user?.displayName || user?.username || "");
-  const [lootStatus, setLootStatus] = useState<"idle" | "saving">("idle");
-  const [lootError, setLootError] = useState<string | null>(null);
   const [concentrationOpenFor, setConcentrationOpenFor] = useState<string | null>(null);
   const [concentrationInput, setConcentrationInput] = useState("");
   const [lightOpenFor, setLightOpenFor] = useState<string | null>(null);
@@ -573,43 +565,8 @@ export function InitiativeTracker({
   // path for whoever the grid says is standing in the placed template.
 
 
-  function openLootFor(c: LiveCombatant) {
-    setLootOpenFor(c.id);
-    setLootKind("gold");
-    setLootLabel(`Loot from ${c.name}`);
-    setLootItemId(null);
-    setLootAmount("");
-    setLootError(null);
-  }
 
-  function pickLootItem(result: SearchResult) {
-    setLootLabel(result.name);
-    setLootItemId(result.id);
-    setLootPickingItem(false);
-  }
 
-  async function submitLoot(c: LiveCombatant) {
-    const amount = Math.trunc(Number(lootAmount));
-    if (!partyWorldId || !amount || amount <= 0) return;
-    setLootStatus("saving");
-    setLootError(null);
-    try {
-      await api.postLedgerEntry({
-        worldId: partyWorldId,
-        kind: lootKind,
-        amount,
-        label: lootLabel.trim() || (lootKind === "gold" ? `Loot from ${c.name}` : c.name),
-        authorName: lootAuthorName.trim() || user!.displayName || user!.username,
-        itemId: lootKind === "item" ? (lootItemId ?? undefined) : undefined,
-      });
-      setLootOpenFor(null);
-      setLootAmount("");
-    } catch (e) {
-      setLootError((e as Error).message);
-    } finally {
-      setLootStatus("idle");
-    }
-  }
 
   function loadZoneMapTemplate(templateZones: EncounterZone[]) {
     const idMap = new Map<string, string>(templateZones.map((z) => [z.id, crypto.randomUUID()]));
@@ -1285,7 +1242,7 @@ export function InitiativeTracker({
                 <button
                   className="btn-secondary"
                   aria-expanded={lootOpenFor === c.id}
-                  onClick={() => (lootOpenFor === c.id ? setLootOpenFor(null) : openLootFor(c))}
+                  onClick={() => setLootOpenFor(lootOpenFor === c.id ? null : c.id)}
                 >
                   💰 Add Loot
                 </button>
@@ -1293,38 +1250,12 @@ export function InitiativeTracker({
             </div>
 
             {lootOpenFor === c.id && (
-              <div className="save-panel">
-                <div className="tabs" role="tablist">
-                  <button role="tab" className={lootKind === "gold" ? "active" : ""} aria-selected={lootKind === "gold"} onClick={() => { setLootKind("gold"); setLootLabel(`Loot from ${c.name}`); setLootItemId(null); }}>Gold</button>
-                  <button role="tab" className={lootKind === "item" ? "active" : ""} aria-selected={lootKind === "item"} onClick={() => { setLootKind("item"); setLootLabel(""); setLootItemId(null); }}>Item</button>
-                </div>
-                <label className="field">
-                  <span>{lootKind === "gold" ? "Reason" : "Item name"}</span>
-                  <input type="text" value={lootLabel} onChange={(e) => { setLootLabel(e.target.value); setLootItemId(null); }} />
-                </label>
-                {lootKind === "item" && (
-                  lootPickingItem ? (
-                    <div className="save-panel">
-                      <EntitySearchPicker type="item" onSelect={pickLootItem} placeholder="Search items…" />
-                      <button className="btn-secondary" onClick={() => setLootPickingItem(false)}>Cancel</button>
-                    </div>
-                  ) : (
-                    <button className="btn-secondary" onClick={() => setLootPickingItem(true)}>Pick from Compendium…</button>
-                  )
-                )}
-                <label className="field">
-                  <span>{lootKind === "gold" ? "Gold amount" : "Quantity"}</span>
-                  <input type="number" min={1} value={lootAmount} onChange={(e) => setLootAmount(e.target.value)} />
-                </label>
-                <label className="field">
-                  <span>Your name</span>
-                  <input type="text" value={lootAuthorName} onChange={(e) => setLootAuthorName(e.target.value)} placeholder={user?.displayName || user?.username} />
-                </label>
-                {lootError && <p className="error">{lootError}</p>}
-                <button className="btn-primary" onClick={() => submitLoot(c)} disabled={lootStatus === "saving"}>
-                  {lootStatus === "saving" ? "Adding…" : "Add to Ledger"}
-                </button>
-              </div>
+              <LootPanel
+                from={c}
+                worldId={partyWorldId}
+                defaultAuthorName={user?.displayName || user?.username || ""}
+                onRecorded={() => setLootOpenFor(null)}
+              />
             )}
           </li>
         ) : (

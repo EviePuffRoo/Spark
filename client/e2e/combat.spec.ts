@@ -268,3 +268,47 @@ test("applies a condition when a spell's saving throw fails", async ({ page }) =
 
   await expect(rowFor(page, "Hapless Cultist").locator(".condition-chip", { hasText: "Paralyzed" })).toBeVisible();
 });
+
+test("records loot from a downed enemy into the party ledger", async ({ page }) => {
+  const username = `loot${Date.now()}`;
+  await signupAndOpenCombat(page, username);
+
+  // Loot is a party-mode feature — it writes to the shared ledger, so it
+  // needs a world. Created over the API, then the page is reloaded so the
+  // tracker actually sees it in its worlds list.
+  const world = await (await page.request.post("/api/worlds", { data: { name: "Loot Test World" } })).json();
+  await page.reload();
+  await page.locator('nav.nav-rail button:has-text("Play")').click();
+  await page.locator('nav.area-sidebar button:has-text("Combat")').click();
+  await expect(page.locator(".initiative-tracker")).toBeVisible();
+
+  // Scoped to the tracker — the dice roller has its own Personal/Party tabs.
+  const tracker = page.locator(".initiative-tracker");
+  await tracker.getByRole("tab", { name: "Party" }).click();
+  await tracker.getByLabel("World").selectOption(world.id);
+
+  await addCombatant(page, "Bandit Captain", 10, 30, 15);
+
+  // The loot button only appears once the enemy is down.
+  const bandit = rowFor(page, "Bandit Captain");
+  await expect(bandit.getByRole("button", { name: "💰 Add Loot" })).toHaveCount(0);
+
+  await bandit.locator(".combatant-hp-input").fill("30");
+  await bandit.getByRole("button", { name: "Damage" }).click();
+  await expect(bandit.locator(".combatant-hp-value")).toHaveText("0 / 30 HP");
+
+  await bandit.getByRole("button", { name: "💰 Add Loot" }).click();
+  const panel = bandit.locator(".save-panel").last();
+  await panel.getByRole("tab", { name: "Gold" }).click();
+  await panel.getByLabel("Reason").fill("Captain's purse");
+  await panel.getByLabel("Gold amount").fill("250");
+  await panel.getByRole("button", { name: "Add to Ledger" }).click();
+
+  // It lands in the world's shared ledger.
+  await expect.poll(async () => {
+    const res = await page.request.get(`/api/ledger?worldId=${world.id}`);
+    const body = await res.json();
+    const entries = Array.isArray(body) ? body : body.entries ?? [];
+    return entries.map((e: { label: string }) => e.label);
+  }).toContain("Captain's purse");
+});

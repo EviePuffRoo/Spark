@@ -14,6 +14,7 @@ import { PresentationView } from "../pages/PresentationView";
 import { parseNotation, rollDice } from "./DiceRoller";
 import { HpBar } from "./HpBar";
 import { AddCombatantPanel, rollD20 } from "./AddCombatantPanel";
+import { AttackPanel } from "./AttackPanel";
 import { CombatantRowReadOnly } from "./CombatantRowReadOnly";
 import { RulesLinkedText } from "./RulesLinkedText";
 import { ResizeDivider, useResizableColumn } from "./ResizeDivider";
@@ -68,14 +69,6 @@ export function InitiativeTracker({
   const [conditionDuration, setConditionDuration] = useState<Record<string, string>>({});
   const [showConditionRules, setShowConditionRules] = useState(false);
   const [attackOpenFor, setAttackOpenFor] = useState<string | null>(null);
-  const [attackTargetId, setAttackTargetId] = useState("");
-  const [attackChoice, setAttackChoice] = useState("");
-  const [attackToHitBonus, setAttackToHitBonus] = useState("0");
-  const [attackDamageDice, setAttackDamageDice] = useState("1d6");
-  const [attackAdvMode, setAttackAdvMode] = useState<"normal" | "adv" | "dis">("normal");
-  const [attackRollResult, setAttackRollResult] = useState<{ rolls: number[]; total: number; hit: boolean | null } | null>(null);
-  const [attackDamageResult, setAttackDamageResult] = useState<{ total: number } | null>(null);
-  const [attackError, setAttackError] = useState<string | null>(null);
   const [spells, setSpells] = useState<SpellDef[]>([]);
   const [castOpenFor, setCastOpenFor] = useState<string | null>(null);
   const [castSpellId, setCastSpellId] = useState("");
@@ -512,25 +505,15 @@ export function InitiativeTracker({
     }
   }
 
-  function openAttackFor(c: LiveCombatant) {
-    setAttackOpenFor(c.id);
-    const firstTarget = sorted.find((t) => t.id !== c.id);
-    setAttackTargetId(firstTarget?.id ?? "");
-    selectAttack(c, c.attacks?.[0]?.name ?? "");
-    setAttackAdvMode("normal");
-    setAttackError(null);
-  }
 
-  function selectAttack(c: LiveCombatant, name: string) {
-    setAttackChoice(name);
-    const found = c.attacks?.find((a) => a.name === name);
-    setAttackToHitBonus(String(found?.toHitBonus ?? 0));
-    setAttackDamageDice(found?.damageDice ?? "1d6");
-    setAttackRollResult(null);
-    setAttackDamageResult(null);
-    setAttackError(null);
-  }
 
+
+
+
+  // Announces a roll into the party's shared roll log. Named for the attack
+  // flow it started in, but the spellcasting handlers below use it too —
+  // which is why it stayed here when the attack panel moved into its own
+  // component (AttackPanel keeps its own copy for its own rolls).
   async function announceAttackRoll(attacker: LiveCombatant, payload: {
     notation: string; results: number[]; modifier: number; total: number; mode?: "adv" | "dis";
   }, label: string) {
@@ -538,44 +521,8 @@ export function InitiativeTracker({
     try {
       await api.postRollLogEntry({ worldId: partyWorldId, rollerName: attacker.name, hiddenFromParty: false, label, ...payload });
     } catch {
-      // Best-effort party announcement — the attack itself already resolved locally either way.
+      // Best-effort party announcement — the roll itself already resolved locally either way.
     }
-  }
-
-  function rollToHit(attacker: LiveCombatant) {
-    const target = sorted.find((t) => t.id === attackTargetId);
-    const bonus = Number(attackToHitBonus) || 0;
-    const rolls = attackAdvMode === "normal" ? [rollD20()] : [rollD20(), rollD20()];
-    const kept = attackAdvMode === "dis" ? Math.min(...rolls) : Math.max(...rolls);
-    const total = kept + bonus;
-    const hit = target?.armorClass !== undefined ? total >= target.armorClass : null;
-    setAttackRollResult({ rolls, total, hit });
-    setAttackDamageResult(null);
-    if (target) {
-      const acNote = target.armorClass !== undefined ? ` (AC ${target.armorClass})` : "";
-      const outcome = hit === null ? "" : hit ? ": HIT" : ": MISS";
-      announceAttackRoll(attacker, {
-        notation: "1d20", results: rolls, modifier: bonus, total, mode: attackAdvMode === "normal" ? undefined : attackAdvMode,
-      }, `${attackChoice || "Attack"}: ${attacker.name} vs ${target.name}${acNote}${outcome}`);
-    }
-  }
-
-  function rollDamage(attacker: LiveCombatant) {
-    const target = sorted.find((t) => t.id === attackTargetId);
-    if (!target) return;
-    const parsed = parseNotation(attackDamageDice);
-    if (!parsed) {
-      setAttackError(`Can't parse "${attackDamageDice}". Try something like 1d8+3.`);
-      return;
-    }
-    setAttackError(null);
-    const results = rollDice(parsed.count, parsed.sides);
-    const total = Math.max(0, results.reduce((sum, r) => sum + r, 0) + parsed.modifier);
-    setAttackDamageResult({ total });
-    adjustHp(target.id, -total);
-    announceAttackRoll(attacker, {
-      notation: attackDamageDice, results, modifier: parsed.modifier, total,
-    }, `${attackChoice || "Attack"} damage: ${attacker.name} vs ${target.name}`);
   }
 
   function openCastFor(c: LiveCombatant) {
@@ -1214,7 +1161,7 @@ export function InitiativeTracker({
                 <button
                   className="btn-secondary"
                   aria-expanded={attackOpenFor === c.id}
-                  onClick={() => (attackOpenFor === c.id ? setAttackOpenFor(null) : openAttackFor(c))}
+                  onClick={() => setAttackOpenFor(attackOpenFor === c.id ? null : c.id)}
                 >
                   ⚔ Attack
                 </button>
@@ -1235,63 +1182,12 @@ export function InitiativeTracker({
             </div>
 
             {attackOpenFor === c.id && (
-              <div className="save-panel attack-panel">
-                <label className="field">
-                  <span>Target</span>
-                  <select value={attackTargetId} onChange={(e) => setAttackTargetId(e.target.value)}>
-                    {sorted.filter((t) => t.id !== c.id).map((t) => (
-                      <option key={t.id} value={t.id}>{t.name}{t.armorClass !== undefined ? ` (AC ${t.armorClass})` : ""}</option>
-                    ))}
-                  </select>
-                </label>
-                {!!c.attacks?.length && (
-                  <label className="field">
-                    <span>Attack</span>
-                    <select value={attackChoice} onChange={(e) => selectAttack(c, e.target.value)}>
-                      {c.attacks.map((a) => <option key={a.name} value={a.name}>{a.name}</option>)}
-                      <option value="">Manual attack</option>
-                    </select>
-                  </label>
-                )}
-                {(() => {
-                  const selected = c.attacks?.find((a) => a.name === attackChoice);
-                  return selected?.savingThrow ? (
-                    <p className="hint">
-                      Also calls for a DC {selected.savingThrow.dc} {selected.savingThrow.ability.toUpperCase()} saving throw. Resolve that separately.
-                    </p>
-                  ) : null;
-                })()}
-                <label className="field">
-                  <span>To-hit bonus</span>
-                  <input type="number" value={attackToHitBonus} onChange={(e) => setAttackToHitBonus(e.target.value)} />
-                </label>
-                <div className="tabs apply-mode-toggle" role="tablist">
-                  <button role="tab" className={attackAdvMode === "normal" ? "active" : ""} aria-selected={attackAdvMode === "normal"} onClick={() => setAttackAdvMode("normal")}>Normal</button>
-                  <button role="tab" className={attackAdvMode === "adv" ? "active" : ""} aria-selected={attackAdvMode === "adv"} onClick={() => setAttackAdvMode("adv")}>Advantage</button>
-                  <button role="tab" className={attackAdvMode === "dis" ? "active" : ""} aria-selected={attackAdvMode === "dis"} onClick={() => setAttackAdvMode("dis")}>Disadvantage</button>
-                </div>
-                <button className="btn-primary" onClick={() => rollToHit(c)}>Roll to Hit</button>
-                {attackRollResult && (
-                  <p className="encounter-roll-result" role="status">
-                    Rolled [{attackRollResult.rolls.join(", ")}]{attackToHitBonus !== "0" ? ` + ${attackToHitBonus}` : ""} = <strong className="mono">{attackRollResult.total}</strong>
-                    {": "}
-                    {attackRollResult.hit === null ? "target has no AC set" : attackRollResult.hit ? <strong>HIT</strong> : <strong>MISS</strong>}
-                  </p>
-                )}
-                {attackRollResult?.hit !== false && (
-                  <>
-                    <label className="field">
-                      <span>Damage dice</span>
-                      <input type="text" value={attackDamageDice} onChange={(e) => setAttackDamageDice(e.target.value)} placeholder="e.g. 1d8+3" />
-                    </label>
-                    {attackError && <p className="error">{attackError}</p>}
-                    <button className="btn-primary" onClick={() => rollDamage(c)}>Roll Damage &amp; Apply</button>
-                    {attackDamageResult && (
-                      <p className="encounter-roll-result" role="status">Applied {attackDamageResult.total} damage.</p>
-                    )}
-                  </>
-                )}
-              </div>
+              <AttackPanel
+                attacker={c}
+                combatants={sorted}
+                onApplyDamage={(targetId, amount) => adjustHp(targetId, -amount)}
+                partyWorldId={partyMode ? partyWorldId : null}
+              />
             )}
 
             {castOpenFor === c.id && (

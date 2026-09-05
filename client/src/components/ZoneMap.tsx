@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import type { EncounterZone, EncounterZoneEffect, LiveCombatant, Location, SearchResult, Dungeon } from "@spark/shared";
-import { zoneDistances } from "../zoneGraph";
+import { zoneDistances } from "@spark/shared";
 import { api } from "../api";
 import { EntitySearchPicker } from "./EntitySearchPicker";
 import { LocationCardView } from "./LocationCardView";

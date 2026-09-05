@@ -1,37 +1,26 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { LiveCombatant, LiveCombatantCondition, EncounterStateInput, EncounterZone, Dungeon, DungeonRoomState, DifficultyRating, SpellDef, TriggerRule, TriggerMatch } from "@spark/shared";
-import { computeConcentrationDc, isHostilePair, leftReach, CONDITIONS_COMPENDIUM, getRuleset, applyHouseRules, SPELL_EFFECTS, evaluateTriggers, analyzeEncounterBalance } from "@spark/shared";
+import type { LiveCombatant, LiveCombatantCondition, Dungeon, DungeonRoomState, DifficultyRating, SpellDef, TriggerRule, TriggerMatch } from "@spark/shared";
+import { computeConcentrationDc, isHostilePair, leftReach, CONDITIONS_COMPENDIUM, getRuleset, applyHouseRules, evaluateTriggers, analyzeEncounterBalance } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { useAuth } from "../AuthContext";
 import { ZoneMap } from "./ZoneMap";
 import { GridMap } from "./GridMap";
-import { useLocalStorage } from "../useLocalStorage";
-import { useWorldLiveChannel } from "../useWorldLiveChannel";
+import { useEncounterState, BLANK_ENCOUNTER } from "../useEncounterState";
+import { useZoneActions } from "../useZoneActions";
 import { CombatIcon } from "./icons";
 import { EmptyState } from "./EmptyState";
 import { PresentationView } from "../pages/PresentationView";
-import { HpBar } from "./HpBar";
 import { AddCombatantPanel } from "./AddCombatantPanel";
-import { AttackPanel } from "./AttackPanel";
-import { CastPanel } from "./CastPanel";
-import { LootPanel } from "./LootPanel";
 import { CombatantRowReadOnly } from "./CombatantRowReadOnly";
+import { CombatantRow, type CombatantActions, type CombatantPanel } from "./CombatantRow";
 import { RulesLinkedText } from "./RulesLinkedText";
 import { ResizeDivider, useResizableColumn } from "./ResizeDivider";
 import type { CSSProperties } from "react";
-
-const LIGHT_PRESETS: { label: string; feet: number }[] = [
-  { label: "Candle", feet: 5 },
-  { label: "Torch", feet: 20 },
-  { label: "Lantern", feet: 30 },
-];
 
 const CONDITIONS = CONDITIONS_COMPENDIUM.map((c) => c.name);
 const CONDITION_RULES: Record<string, string> = Object.fromEntries(
   CONDITIONS_COMPENDIUM.map((c) => [c.name, c.description]),
 );
-
-const BLANK_ENCOUNTER: EncounterStateInput = { combatants: [], round: 1, turnIndex: 0, zones: [], zoneEffects: [] };
 
 const DIFFICULTY_LABELS: Record<DifficultyRating, string> = {
   trivial: "Trivial", easy: "Easy", medium: "Medium", hard: "Hard", deadly: "Deadly",
@@ -50,36 +39,21 @@ export function InitiativeTracker({
   onMapActiveChange?: (active: boolean) => void;
 }) {
   const { user } = useAuth();
-  const [encounter, setEncounter] = useLocalStorage<EncounterStateInput>("spark-combat-encounter", BLANK_ENCOUNTER);
   const [mode, setMode] = useState<"personal" | "party">("personal");
-  const [liveEncounter, setLiveEncounter] = useState<EncounterStateInput | null>(null);
-  // Full-encounter saves are fire-and-forget PUTs with no server-side
-  // ordering guarantee; two saves issued close together (e.g. a quick
-  // "Next Turn" followed by an HP change) could otherwise arrive out of
-  // order and let the older one silently overwrite the newer one. Chaining
-  // them through this ref forces each save to wait for the previous one to
-  // settle before going out, so they always land at the server in the same
-  // order they were issued.
-  const saveQueueRef = useRef<Promise<unknown>>(Promise.resolve());
-  const [liveError, setLiveError] = useState<string | null>(null);
   const { width: railWidth, dividerProps: railDividerProps } = useResizableColumn("spark-tracker-map-width", 320, 280, 480, -1);
 
-  const [hpDelta, setHpDelta] = useState<Record<string, string>>({});
-  const [openConditionsFor, setOpenConditionsFor] = useState<string | null>(null);
-  const [conditionDuration, setConditionDuration] = useState<Record<string, string>>({});
   const [showConditionRules, setShowConditionRules] = useState(false);
-  const [attackOpenFor, setAttackOpenFor] = useState<string | null>(null);
   const [spells, setSpells] = useState<SpellDef[]>([]);
-  const [castOpenFor, setCastOpenFor] = useState<string | null>(null);
   const [showZoneMap, setShowZoneMap] = useState(false);
   const [showGridMap, setShowGridMap] = useState(false);
   const [showTableView, setShowTableView] = useState(false);
   const [activeDungeon, setActiveDungeon] = useState<Dungeon | null>(null);
-  const [lootOpenFor, setLootOpenFor] = useState<string | null>(null);
-  const [concentrationOpenFor, setConcentrationOpenFor] = useState<string | null>(null);
-  const [concentrationInput, setConcentrationInput] = useState("");
-  const [lightOpenFor, setLightOpenFor] = useState<string | null>(null);
-  const [lightInput, setLightInput] = useState("");
+  // Which combatant has which panel expanded — one piece of state for the
+  // whole list, replacing six parallel `xOpenFor` ids. Adding a seventh
+  // panel is now a name in CombatantPanel rather than another useState,
+  // and only one panel is open at a time, which is what the narrow rail
+  // beside an open battle map has room for anyway.
+  const [openPanel, setOpenPanel] = useState<{ combatantId: string; panel: CombatantPanel } | null>(null);
   const [concentrationPrompt, setConcentrationPrompt] = useState<{ id: string; name: string; spell: string; dc: number } | null>(null);
   const [templateTargetIds, setTemplateTargetIds] = useState<string[]>([]);
   const [templateDamage, setTemplateDamage] = useState("");
@@ -96,37 +70,15 @@ export function InitiativeTracker({
   const isOwner = partyMode && !!selectedWorld?.isOwner;
   const canEdit = !partyMode || isOwner;
 
-  // moveCombatantToZone/moveCombatantOnGrid below fire an async request and
-  // apply whatever comes back with setLiveEncounter — but if the viewer
-  // switches worlds (or flips back to Personal mode) before that response
-  // lands, applying it unconditionally would stomp the newly-selected
-  // world's live state with the old world's data. Read fresh on every
-  // render (not just in an effect) so the .then() callback always sees
-  // the current values, not the ones closed over when the request fired.
-  const liveContextRef = useRef({ partyWorldId, partyMode });
-  liveContextRef.current = { partyWorldId, partyMode };
+  // Where the encounter lives, and how a write to it reaches the table —
+  // localStorage in personal mode, the world's shared live state in party
+  // mode. See useEncounterState; nothing below needs to know which.
+  const { activeEncounter, applyEncounterUpdate, applyServerEncounter, liveError } =
+    useEncounterState({ partyMode, partyWorldId, isOwner });
 
-  useEffect(() => {
-    if (!partyMode || !partyWorldId) setLiveEncounter(null);
-  }, [partyMode, partyWorldId]);
-
-  const { error: liveConnError } = useWorldLiveChannel(partyMode ? partyWorldId : null, {
-    onEncounter: setLiveEncounter,
-    onTokenMoved: (payload) => {
-      setLiveEncounter((e) => e && ({
-        ...e,
-        combatants: e.combatants.map((c) => (c.id === payload.combatantId ? { ...c, gridX: payload.gridX, gridY: payload.gridY } : c)),
-      }));
-    },
-  });
-  useEffect(() => { setLiveError(liveConnError ?? null); }, [liveConnError]);
-
-  // Widened only to surface visibleCells (server-computed, response-only —
-  // see Encounter in shared/src/types.ts) for the fog-of-war rendering
-  // GridMap does below; every other field here still comes straight from
-  // EncounterStateInput, which liveEncounter's actual runtime value (an
-  // Encounter, structurally a superset) always satisfies.
-  const activeEncounter: EncounterStateInput & { visibleCells?: string[] } = partyMode ? (liveEncounter ?? BLANK_ENCOUNTER) : encounter;
+  // Editing the zone map. The rules themselves are pure and live in
+  // shared/src/encounterZones.ts; this binds them to the write path above.
+  const zoneActions = useZoneActions({ applyEncounterUpdate, applyServerEncounter, canEdit, partyMode, partyWorldId });
 
   // Exits off the room the party is standing in that the DM has put on an
   // edge of its battle map. Empty outside a dungeon, or before any exit has
@@ -153,7 +105,13 @@ export function InitiativeTracker({
   // particular has to default here (not just at the type level): the combatant-notes <input>
   // below binds it directly, and an undefined value would make that a briefly-uncontrolled
   // input for any combatant carried over from before this field existed.
-  const sorted = [...activeEncounter.combatants]
+  //
+  // Memoized because it is the input to nearly everything downstream — the
+  // encounter difficulty readout, the balance analysis, the trigger
+  // evaluation, and the grid's own reachability fill. Rebuilding it per
+  // render made all of those run again on every keystroke in an HP box and
+  // on every 80ms token-drag tick arriving over the live channel.
+  const sorted = useMemo(() => [...activeEncounter.combatants]
     .map((c) => ({
       ...c,
       conditions: (c.conditions ?? []).map((cond): LiveCombatantCondition =>
@@ -163,10 +121,14 @@ export function InitiativeTracker({
       hpVisible: c.hpVisible ?? false,
       notes: c.notes ?? "",
     }))
-    .sort((a, b) => b.initiative - a.initiative);
+    .sort((a, b) => b.initiative - a.initiative), [activeEncounter.combatants]);
   const activeId = sorted.length > 0 ? sorted[activeEncounter.turnIndex % sorted.length]?.id : null;
-  const difficulty = applyHouseRules(getRuleset(), selectedWorld?.houseRules ?? {}).computeEncounterDifficulty(sorted);
-  const balance = analyzeEncounterBalance(sorted);
+  const houseRules = selectedWorld?.houseRules;
+  const difficulty = useMemo(
+    () => applyHouseRules(getRuleset(), houseRules ?? {}).computeEncounterDifficulty(sorted),
+    [sorted, houseRules],
+  );
+  const balance = useMemo(() => analyzeEncounterBalance(sorted), [sorted]);
   const mapActive = showZoneMap || showGridMap;
 
   // Refetched whenever the selected world changes — trigger rules are
@@ -292,21 +254,6 @@ export function InitiativeTracker({
     return () => { cancelled = true; };
   }, [canEdit, activeEncounter.activeDungeonId]);
 
-  function applyEncounterUpdate(updater: (e: EncounterStateInput) => EncounterStateInput) {
-    if (partyMode && isOwner && partyWorldId) {
-      setLiveEncounter((e) => {
-        const next = updater(e ?? BLANK_ENCOUNTER);
-        saveQueueRef.current = saveQueueRef.current.then(
-          () => api.saveEncounter(partyWorldId, next),
-          () => api.saveEncounter(partyWorldId, next),
-        ).catch((err) => setLiveError((err as Error).message));
-        return next;
-      });
-    } else {
-      setEncounter(updater);
-    }
-  }
-
   function addCombatant(c: LiveCombatant) {
     applyEncounterUpdate((e) => ({ ...e, combatants: [...e.combatants, c] }));
   }
@@ -315,7 +262,7 @@ export function InitiativeTracker({
     applyEncounterUpdate((e) => ({ ...e, combatants: e.combatants.map((c) => (c.id === id ? { ...c, ...patch } : c)) }));
   }
 
-  function toggleCondition(id: string, name: string) {
+  function toggleCondition(id: string, name: string, durationRounds: number | null) {
     applyEncounterUpdate((e) => ({
       ...e,
       combatants: e.combatants.map((c) => {
@@ -324,9 +271,7 @@ export function InitiativeTracker({
         if (conditions.some((cond) => cond.name === name)) {
           return { ...c, conditions: conditions.filter((cond) => cond.name !== name) };
         }
-        const rounds = Number(conditionDuration[id]);
-        const expiresAtRound = Number.isFinite(rounds) && rounds > 0 ? e.round + rounds : null;
-        return { ...c, conditions: [...conditions, { name, expiresAtRound }] };
+        return { ...c, conditions: [...conditions, { name, expiresAtRound: durationRounds === null ? null : e.round + durationRounds }] };
       }),
     }));
   }
@@ -340,12 +285,6 @@ export function InitiativeTracker({
     }));
   }
 
-  function applyDelta(id: string, sign: 1 | -1) {
-    const amount = Number(hpDelta[id]);
-    if (!hpDelta[id] || Number.isNaN(amount) || amount <= 0) return;
-    adjustHp(id, sign * amount);
-    setHpDelta((d) => ({ ...d, [id]: "" }));
-  }
 
   function applyDamageToTemplateTargets() {
     const amount = Number(templateDamage);
@@ -443,69 +382,12 @@ export function InitiativeTracker({
     }));
   }
 
-  function addZone() {
-    applyEncounterUpdate((e) => {
-      const zones = e.zones ?? [];
-      const newZone: EncounterZone = {
-        id: crypto.randomUUID(),
-        name: `Zone ${zones.length + 1}`,
-        tags: [],
-        x: 100 + (zones.length % 4) * 140,
-        y: 100 + Math.floor(zones.length / 4) * 140,
-        connections: [],
-        revealed: true,
-      };
-      return { ...e, zones: [...zones, newZone] };
-    });
-  }
 
-  function updateZone(id: string, patch: Partial<EncounterZone>) {
-    applyEncounterUpdate((e) => ({ ...e, zones: (e.zones ?? []).map((z) => (z.id === id ? { ...z, ...patch } : z)) }));
-  }
 
-  function deleteZone(id: string) {
-    applyEncounterUpdate((e) => ({
-      ...e,
-      zones: (e.zones ?? []).filter((z) => z.id !== id).map((z) => ({ ...z, connections: z.connections.filter((c) => c !== id) })),
-      zoneEffects: (e.zoneEffects ?? []).filter((eff) => eff.zoneId !== id),
-      combatants: e.combatants.map((c) => (c.zoneId === id ? { ...c, zoneId: undefined } : c)),
-    }));
-  }
 
-  function toggleZoneConnection(aId: string, bId: string) {
-    applyEncounterUpdate((e) => ({
-      ...e,
-      zones: (e.zones ?? []).map((z) => {
-        if (z.id !== aId) return z;
-        const has = z.connections.includes(bId);
-        return { ...z, connections: has ? z.connections.filter((c) => c !== bId) : [...z.connections, bId] };
-      }),
-    }));
-  }
 
-  function addZoneEffect(zoneId: string, label: string, durationRounds: number) {
-    applyEncounterUpdate((e) => ({
-      ...e,
-      zoneEffects: [...(e.zoneEffects ?? []), { id: crypto.randomUUID(), zoneId, label, expiresAtRound: e.round + durationRounds }],
-    }));
-  }
 
-  function removeZoneEffect(id: string) {
-    applyEncounterUpdate((e) => ({ ...e, zoneEffects: (e.zoneEffects ?? []).filter((eff) => eff.id !== id) }));
-  }
 
-  function moveCombatantToZone(combatantId: string, zoneId: string) {
-    if (canEdit) {
-      applyEncounterUpdate((e) => ({ ...e, combatants: e.combatants.map((c) => (c.id === combatantId ? { ...c, zoneId } : c)) }));
-    } else if (partyMode && partyWorldId) {
-      const requestWorldId = partyWorldId;
-      api.moveCombatantZone(partyWorldId, combatantId, zoneId)
-        .then((result) => {
-          if (liveContextRef.current.partyWorldId === requestWorldId && liveContextRef.current.partyMode) setLiveEncounter(result);
-        })
-        .catch((err) => setLiveError((err as Error).message));
-    }
-  }
 
 
 
@@ -587,15 +469,6 @@ export function InitiativeTracker({
 
 
 
-  function loadZoneMapTemplate(templateZones: EncounterZone[]) {
-    const idMap = new Map<string, string>(templateZones.map((z) => [z.id, crypto.randomUUID()]));
-    const remapped: EncounterZone[] = templateZones.map((z) => ({
-      ...z,
-      id: idMap.get(z.id)!,
-      connections: z.connections.map((c) => idMap.get(c)).filter((c): c is string => !!c),
-    }));
-    applyEncounterUpdate((e) => ({ ...e, zones: [...(e.zones ?? []), ...remapped] }));
-  }
 
   const DEFAULT_ROOM_STATE: DungeonRoomState = { cleared: false, alerted: false, disarmedHazardZoneIds: [] };
 
@@ -698,12 +571,7 @@ export function InitiativeTracker({
     if (canEdit) {
       applyEncounterUpdate((e) => ({ ...e, combatants: e.combatants.map((c) => (c.id === combatantId ? { ...c, gridX, gridY } : c)) }));
     } else if (partyMode && partyWorldId) {
-      const requestWorldId = partyWorldId;
-      api.moveCombatantGrid(partyWorldId, combatantId, gridX, gridY)
-        .then((result) => {
-          if (liveContextRef.current.partyWorldId === requestWorldId && liveContextRef.current.partyMode) setLiveEncounter(result);
-        })
-        .catch((err) => setLiveError((err as Error).message));
+      applyServerEncounter(partyWorldId, api.moveCombatantGrid(partyWorldId, combatantId, gridX, gridY));
     }
   }
 
@@ -730,14 +598,29 @@ export function InitiativeTracker({
           : [...(e.openDoorCells ?? []), key],
       }));
     } else if (partyMode && partyWorldId) {
-      const requestWorldId = partyWorldId;
-      api.toggleDoor(partyWorldId, x, y)
-        .then((result) => {
-          if (liveContextRef.current.partyWorldId === requestWorldId && liveContextRef.current.partyMode) setLiveEncounter(result);
-        })
-        .catch((err) => setLiveError((err as Error).message));
+      applyServerEncounter(partyWorldId, api.toggleDoor(partyWorldId, x, y));
     }
   }
+
+  // The encounter is the tracker's to own and sync to the party, so a row
+  // never writes it — every mutation a row can make arrives as one of
+  // these. Bundled rather than passed as a dozen sibling props: the next
+  // per-combatant action should be a line in CombatantActions and a line
+  // here, not another prop threaded through the list below.
+  const combatantActions: CombatantActions = {
+    update: updateCombatant,
+    remove: removeCombatant,
+    toggleCondition,
+    adjustHp,
+    rest: restCombatant,
+    flee: fleeCombatant,
+    spendLegendaryAction,
+    commitCast,
+    applyCastCondition,
+    announceRoll: announceAttackRoll,
+    areaDamageRolled: (total) => setTemplateDamage(String(total)),
+    dismissConcentrationPrompt: () => setConcentrationPrompt(null),
+  };
 
   return (
     <div className="panel result-panel initiative-tracker">
@@ -911,14 +794,14 @@ export function InitiativeTracker({
               worldId={partyMode ? partyWorldId : undefined}
               activeDungeon={activeDungeon}
               activeDungeonRoomId={activeEncounter.activeDungeonRoomId}
-              onAddZone={addZone}
-              onUpdateZone={updateZone}
-              onDeleteZone={deleteZone}
-              onToggleConnection={toggleZoneConnection}
-              onAddEffect={addZoneEffect}
-              onRemoveEffect={removeZoneEffect}
-              onMoveCombatant={moveCombatantToZone}
-              onLoadTemplate={loadZoneMapTemplate}
+              onAddZone={zoneActions.addZone}
+              onUpdateZone={zoneActions.updateZone}
+              onDeleteZone={zoneActions.deleteZone}
+              onToggleConnection={zoneActions.toggleConnection}
+              onAddEffect={zoneActions.addEffect}
+              onRemoveEffect={zoneActions.removeEffect}
+              onMoveCombatant={zoneActions.moveCombatant}
+              onLoadTemplate={zoneActions.loadTemplate}
               onLoadDungeonRoom={loadDungeonRoom}
             />
           )}
@@ -987,301 +870,27 @@ export function InitiativeTracker({
 
           <ul className="combatant-list">
             {sorted.map((c) => canEdit ? (
-          <li key={c.id} className={`combatant-row${c.id === activeId ? " active-turn" : ""}${(c.currentHp ?? 0) <= 0 ? " down" : ""}`}>
-            <div className="combatant-main">
-              <input
-                type="number"
-                className="combatant-initiative mono"
-                value={c.initiative}
-                onChange={(e) => updateCombatant(c.id, { initiative: Number(e.target.value) })}
-                aria-label={`${c.name} initiative`}
-              />
-              <span className="combatant-name">{c.name}</span>
-              {c.armorClass !== undefined && (
-                <span className="entity-meta">
-                  AC {c.armorClass}
-                  {!!c.equipmentAcBonus && <span className="item-stat-badge" title={`Includes +${c.equipmentAcBonus} from equipped items`}>+{c.equipmentAcBonus} equipped</span>}
-                </span>
-              )}
-              {c.speedFeet !== undefined && <span className="entity-meta">Speed {c.speedFeet} ft</span>}
-              {sorted.length > 1 && (
-                <button
-                  className="btn-secondary"
-                  aria-expanded={attackOpenFor === c.id}
-                  onClick={() => setAttackOpenFor(attackOpenFor === c.id ? null : c.id)}
-                >
-                  ⚔ Attack
-                </button>
-              )}
-              {c.preparedSpells?.some((id) => SPELL_EFFECTS[id]) && (
-                <button
-                  className="btn-secondary"
-                  aria-expanded={castOpenFor === c.id}
-                  onClick={() => setCastOpenFor(castOpenFor === c.id ? null : c.id)}
-                >
-                  ✨ Cast
-                </button>
-              )}
-              {c.kind === "monster" && activeEncounter.activeDungeonId && activeEncounter.activeDungeonRoomId && (
-                <button className="btn-secondary" onClick={() => fleeCombatant(c.id)} aria-label={`${c.name} flees`}>Flee</button>
-              )}
-              <button className="btn-danger" onClick={() => removeCombatant(c.id)} aria-label={`Remove ${c.name}`}>Remove</button>
-            </div>
-
-            {attackOpenFor === c.id && (
-              <AttackPanel
-                attacker={c}
-                combatants={sorted}
-                onApplyDamage={(targetId, amount) => adjustHp(targetId, -amount)}
-                partyWorldId={partyMode ? partyWorldId : null}
-              />
-            )}
-
-            {castOpenFor === c.id && (
-              <CastPanel
-                caster={c}
+              <CombatantRow
+                key={c.id}
+                c={c}
+                isActive={c.id === activeId}
+                round={activeEncounter.round}
                 combatants={sorted}
                 spellsById={spellsById}
-                onApplyHp={adjustHp}
-                onCommitCast={commitCast}
-                onApplyCondition={applyCastCondition}
-                onAreaDamageRolled={(total) => setTemplateDamage(String(total))}
-                onAnnounceRoll={announceAttackRoll}
+                partyMode={partyMode}
+                partyWorldId={partyWorldId}
+                canFlee={!!activeEncounter.activeDungeonId && !!activeEncounter.activeDungeonRoomId}
+                onBattleMap={!!activeEncounter.activeBattleMapId}
+                hazard={zones.find((z) => z.id === c.zoneId)?.hazard ?? null}
+                concentrationPrompt={concentrationPrompt?.id === c.id ? concentrationPrompt : null}
+                lootAuthorName={user?.displayName || user?.username || ""}
+                openPanel={openPanel?.combatantId === c.id ? openPanel.panel : null}
+                onOpenPanel={(panel) => setOpenPanel(panel ? { combatantId: c.id, panel } : null)}
+                actions={combatantActions}
               />
-            )}
-
-            <div className="combatant-conditions">
-              {c.conditions.map((cond) => {
-                const expired = cond.expiresAtRound !== null && cond.expiresAtRound < activeEncounter.round;
-                return (
-                  <span key={cond.name} className={`condition-chip${expired ? " condition-chip-expired" : ""}`}>
-                    {cond.name}
-                    {cond.expiresAtRound !== null && ` (until round ${cond.expiresAtRound})`}
-                    <button onClick={() => toggleCondition(c.id, cond.name)} aria-label={`Remove ${cond.name} from ${c.name}`}>×</button>
-                  </span>
-                );
-              })}
-              <button className="btn-secondary condition-toggle" aria-expanded={openConditionsFor === c.id} onClick={() => setOpenConditionsFor(openConditionsFor === c.id ? null : c.id)}>
-                + Condition
-              </button>
-              {openConditionsFor === c.id && (
-                <div className="condition-picker">
-                  <label className="field condition-duration-field">
-                    <span>Duration in rounds (optional)</span>
-                    <input
-                      type="number"
-                      min={1}
-                      value={conditionDuration[c.id] ?? ""}
-                      onChange={(e) => setConditionDuration((d) => ({ ...d, [c.id]: e.target.value }))}
-                      placeholder="indefinite"
-                    />
-                  </label>
-                  {CONDITIONS.map((cond) => (
-                    <button
-                      key={cond}
-                      className={c.conditions.some((x) => x.name === cond) ? "active" : ""}
-                      onClick={() => toggleCondition(c.id, cond)}
-                    >
-                      {cond}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {concentrationPrompt?.id === c.id && (
-              <div className="button-row concentration-prompt">
-                <span>
-                  🎯 {concentrationPrompt.name} takes damage while concentrating on {concentrationPrompt.spell}. CON save DC {concentrationPrompt.dc} to maintain it.
-                </span>
-                <button
-                  className="btn-danger"
-                  onClick={() => { updateCombatant(c.id, { concentratingOn: undefined }); setConcentrationPrompt(null); }}
-                >
-                  Broke Concentration
-                </button>
-                <button className="btn-secondary" onClick={() => setConcentrationPrompt(null)}>Kept It</button>
-              </div>
-            )}
-
-            <div className="combatant-concentration">
-              {c.concentratingOn ? (
-                <span className="condition-chip concentration-chip">
-                  🎯 Concentrating: {c.concentratingOn}
-                  <button onClick={() => updateCombatant(c.id, { concentratingOn: undefined })} aria-label={`Clear ${c.name}'s concentration`}>×</button>
-                </span>
-              ) : concentrationOpenFor === c.id ? (
-                <div className="condition-picker">
-                  <input
-                    type="text"
-                    value={concentrationInput}
-                    onChange={(e) => setConcentrationInput(e.target.value)}
-                    placeholder="Spell name…"
-                  />
-                  <button
-                    className="btn-primary"
-                    onClick={() => {
-                      if (!concentrationInput.trim()) return;
-                      updateCombatant(c.id, { concentratingOn: concentrationInput.trim() });
-                      setConcentrationInput("");
-                      setConcentrationOpenFor(null);
-                    }}
-                  >
-                    Set
-                  </button>
-                  <button className="btn-secondary" onClick={() => { setConcentrationOpenFor(null); setConcentrationInput(""); }}>Cancel</button>
-                </div>
-              ) : (
-                <button className="btn-secondary condition-toggle" onClick={() => { setConcentrationOpenFor(c.id); setConcentrationInput(""); }}>
-                  + Concentration
-                </button>
-              )}
-            </div>
-
-            {activeEncounter.activeBattleMapId && (
-              <div className="combatant-light">
-                {c.lightRadiusFeet ? (
-                  <span className="condition-chip light-chip">
-                    🔥 Light {c.lightRadiusFeet} ft
-                    <button onClick={() => updateCombatant(c.id, { lightRadiusFeet: undefined })} aria-label={`Clear ${c.name}'s carried light`}>×</button>
-                  </span>
-                ) : lightOpenFor === c.id ? (
-                  <div className="condition-picker">
-                    {LIGHT_PRESETS.map((p) => (
-                      <button key={p.label} className="btn-secondary" onClick={() => { updateCombatant(c.id, { lightRadiusFeet: p.feet }); setLightOpenFor(null); }}>
-                        {p.label} ({p.feet} ft)
-                      </button>
-                    ))}
-                    <input
-                      type="number"
-                      min={5}
-                      value={lightInput}
-                      onChange={(e) => setLightInput(e.target.value)}
-                      placeholder="Custom ft"
-                    />
-                    <button
-                      className="btn-primary"
-                      onClick={() => {
-                        const feet = Number(lightInput);
-                        if (!feet || feet <= 0) return;
-                        updateCombatant(c.id, { lightRadiusFeet: feet });
-                        setLightInput("");
-                        setLightOpenFor(null);
-                      }}
-                    >
-                      Set
-                    </button>
-                    <button className="btn-secondary" onClick={() => { setLightOpenFor(null); setLightInput(""); }}>Cancel</button>
-                  </div>
-                ) : (
-                  <button className="btn-secondary condition-toggle" onClick={() => { setLightOpenFor(c.id); setLightInput(""); }}>
-                    + Carried Light
-                  </button>
-                )}
-              </div>
-            )}
-
-            {activeEncounter.activeBattleMapId && (
-              <label className="condition-toggle">
-                <input
-                  type="checkbox"
-                  checked={!!c.flying}
-                  onChange={(e) => updateCombatant(c.id, { flying: e.target.checked })}
-                />
-                Flying
-              </label>
-            )}
-
-            {c.legendaryActionsMax !== undefined && (
-              <div className="combatant-legendary">
-                <span className="legendary-pips" title={`${c.legendaryActionsRemaining ?? 0} of ${c.legendaryActionsMax} legendary actions remaining`}>
-                  Legendary: {"⚡".repeat(Math.max(0, c.legendaryActionsRemaining ?? 0))}{"·".repeat(Math.max(0, c.legendaryActionsMax - (c.legendaryActionsRemaining ?? 0)))}
-                </span>
-                {c.legendaryActionsList?.map((a) => (
-                  <button
-                    key={a.name}
-                    className="btn-secondary"
-                    disabled={(c.legendaryActionsRemaining ?? 0) < a.cost}
-                    title={a.description}
-                    onClick={() => spendLegendaryAction(c.id, a.cost)}
-                  >
-                    {a.name} ({a.cost})
-                  </button>
-                ))}
-              </div>
-            )}
-
-            <div className="combatant-notes-row">
-              <input
-                type="text"
-                className="combatant-notes"
-                value={c.notes}
-                onChange={(e) => updateCombatant(c.id, { notes: e.target.value })}
-                placeholder="other notes…"
-              />
-            </div>
-
-            {(() => {
-              const zone = zones.find((z) => z.id === c.zoneId);
-              if (!zone?.hazard) return null;
-              const hazard = zone.hazard;
-              return (
-                <div className="button-row">
-                  <span>⚠ In hazard zone: {hazard.label}</span>
-                  <button className="btn-danger" onClick={() => adjustHp(c.id, -hazard.damage)}>
-                    Apply Hazard (-{hazard.damage} hp)
-                  </button>
-                </div>
-              );
-            })()}
-
-            <div className="combatant-hp">
-              <span className="combatant-hp-value mono">{c.currentHp ?? 0} / {c.maxHp ?? 0} HP</span>
-              <HpBar current={c.currentHp ?? 0} max={c.maxHp ?? 0} />
-              <input
-                type="number"
-                className="combatant-hp-input"
-                value={hpDelta[c.id] ?? ""}
-                onChange={(e) => setHpDelta((d) => ({ ...d, [c.id]: e.target.value }))}
-                placeholder="amount"
-                aria-label={`HP change amount for ${c.name}`}
-              />
-              <button className="btn-danger" onClick={() => applyDelta(c.id, -1)}>Damage</button>
-              <button className="btn-secondary" onClick={() => applyDelta(c.id, 1)}>Heal</button>
-              <button className="btn-secondary" onClick={() => restCombatant(c.id)} aria-label={`Rest ${c.name}`}>Rest</button>
-              {partyMode && (
-                <button className="btn-secondary" onClick={() => updateCombatant(c.id, { hpVisible: !c.hpVisible })} aria-pressed={c.hpVisible}>
-                  {c.hpVisible ? "Hide HP" : "Show HP"}
-                </button>
-              )}
-              {partyMode && (
-                <button className="btn-secondary" onClick={() => updateCombatant(c.id, { hidden: !c.hidden })} aria-pressed={!!c.hidden}>
-                  {c.hidden ? "Reveal on Map" : "Hide from Map"}
-                </button>
-              )}
-              {partyMode && c.kind !== "playerCharacter" && (c.currentHp ?? 0) <= 0 && (
-                <button
-                  className="btn-secondary"
-                  aria-expanded={lootOpenFor === c.id}
-                  onClick={() => setLootOpenFor(lootOpenFor === c.id ? null : c.id)}
-                >
-                  💰 Add Loot
-                </button>
-              )}
-            </div>
-
-            {lootOpenFor === c.id && (
-              <LootPanel
-                from={c}
-                worldId={partyWorldId}
-                defaultAuthorName={user?.displayName || user?.username || ""}
-                onRecorded={() => setLootOpenFor(null)}
-              />
-            )}
-          </li>
-        ) : (
-          <CombatantRowReadOnly key={c.id} c={c} isActive={c.id === activeId} />
-        ))}
+            ) : (
+              <CombatantRowReadOnly key={c.id} c={c} isActive={c.id === activeId} />
+            ))}
           </ul>
         </div>
       </div>

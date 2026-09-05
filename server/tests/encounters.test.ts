@@ -702,3 +702,56 @@ describe("grid combat: elevation", () => {
     expect(fetched.body.tiles[0].elevation).toBe(15);
   });
 });
+
+describe("move-zone adjacency", () => {
+  // A zone link is stored on one zone but means the same thing from either
+  // end, so this route and the client's zone map have to agree on what
+  // counts as adjacent — they share areZonesAdjacent for exactly that
+  // reason. Untested at the route level until now.
+  async function seedZonedEncounter(username: string, zones: unknown[]) {
+    const { agent } = await signupAgent(username);
+    const world = await agent.post("/api/worlds").send({ name: `${username} World` });
+    const worldId = world.body.id as string;
+    const combatants = [
+      { id: "pc-1", name: "Wren", kind: "playerCharacter", initiative: 15, maxHp: 20, currentHp: 20, conditions: [], notes: "", hpVisible: true, zoneId: "a" },
+    ];
+    await agent.put(`/api/encounters/${worldId}`).send({ combatants, round: 1, turnIndex: 0, zones, zoneEffects: [] });
+    return { agent, worldId };
+  }
+
+  const zone = (id: string, connections: string[] = []) =>
+    ({ id, name: id, tags: [], x: 0, y: 0, connections, revealed: true });
+
+  it("allows a move across a link listed by the origin zone", async () => {
+    const { agent, worldId } = await seedZonedEncounter("zonemove1", [zone("a", ["b"]), zone("b")]);
+    const res = await agent.post(`/api/encounters/${worldId}/move-zone`).send({ combatantId: "pc-1", zoneId: "b" });
+    expect(res.status).toBe(200);
+    expect(res.body.combatants[0].zoneId).toBe("b");
+  });
+
+  it("allows a move across a link listed only by the destination zone", async () => {
+    const { agent, worldId } = await seedZonedEncounter("zonemove2", [zone("a"), zone("b", ["a"])]);
+    const res = await agent.post(`/api/encounters/${worldId}/move-zone`).send({ combatantId: "pc-1", zoneId: "b" });
+    expect(res.status).toBe(200);
+    expect(res.body.combatants[0].zoneId).toBe("b");
+  });
+
+  it("rejects a move to an unlinked zone", async () => {
+    const { agent, worldId } = await seedZonedEncounter("zonemove3", [zone("a"), zone("b")]);
+    const res = await agent.post(`/api/encounters/${worldId}/move-zone`).send({ combatantId: "pc-1", zoneId: "b" });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/adjacent/i);
+  });
+
+  it("rejects a two-hop move even though a path exists", async () => {
+    const { agent, worldId } = await seedZonedEncounter("zonemove4", [zone("a", ["b"]), zone("b", ["c"]), zone("c")]);
+    const res = await agent.post(`/api/encounters/${worldId}/move-zone`).send({ combatantId: "pc-1", zoneId: "c" });
+    expect(res.status).toBe(400);
+  });
+
+  it("404s a move to a zone that isn't on the map", async () => {
+    const { agent, worldId } = await seedZonedEncounter("zonemove5", [zone("a", ["b"]), zone("b")]);
+    const res = await agent.post(`/api/encounters/${worldId}/move-zone`).send({ combatantId: "pc-1", zoneId: "nowhere" });
+    expect(res.status).toBe(404);
+  });
+});

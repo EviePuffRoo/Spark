@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { BattleMap, LiveCombatant, SizeCategory, AoeShapeKind, PlacedTile } from "@spark/shared";
 import { SIZE_FOOTPRINT, computeReachableCells, chebyshevDistanceFeet, AOE_SHAPE_KINDS, computeAoeCells, footprintIntersectsTemplate, BATTLE_TILE_BY_ID } from "@spark/shared";
 import { api } from "../api";
-import { BattleTileDefs } from "./TileIcon";
+import { BattleTileDefs, SpanTile, spanDeckAngles } from "./TileIcon";
 import { TileShading, TileShadingDefs, buildTileShading } from "./TileShading";
 import { GridMapExits, type GridExit } from "./GridMapExits";
 
@@ -223,16 +223,32 @@ export function GridMap({
   }
 
   const activeCombatant = combatants.find((c) => c.id === activeId) ?? null;
+  // Keyed on the four values the fill actually reads, not on the combatant
+  // object: the tracker rebuilds its combatant list on every one of its own
+  // renders, so depending on identity re-ran a Dijkstra flood fill over the
+  // whole grid for every keystroke in an HP box and every 80ms tick of
+  // somebody else's token drag arriving over the live channel.
   const reachable = useMemo(() => {
     if (!battleMap || !activeCombatant || activeCombatant.gridX === undefined || activeCombatant.gridY === undefined) return null;
     return computeReachableCells(battleMap, activeCombatant.gridX, activeCombatant.gridY, activeCombatant.speedFeet ?? 30, undefined, activeCombatant.flying);
-  }, [battleMap, activeCombatant]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [battleMap, activeCombatant?.gridX, activeCombatant?.gridY, activeCombatant?.speedFeet, activeCombatant?.flying]);
 
   // Fog of war only ever applies to a non-owner's own view — the DM's
   // canvas always renders fully lit, since they're the one drawing the
   // map. `visibleCells` is only ever populated (by the server) for a
   // non-owner viewer in the first place, so the `!canEdit` check here is
   // belt-and-suspenders against a stale/owner-viewed prop.
+  // Same problem as reachable above, one layer down: onToggleDoor is a
+  // fresh function on every parent render, and it feeds the memo that
+  // builds every floor tile in the map. Reading it through a ref keeps the
+  // callback current without making the tile layer depend on its identity
+  // — whether doors are clickable at all is the only part that changes
+  // what gets rendered.
+  const toggleDoorRef = useRef(onToggleDoor);
+  toggleDoorRef.current = onToggleDoor;
+  const doorsToggleable = !!onToggleDoor;
+
   const fogActive = !canEdit && visibleCells !== undefined;
   const exploredSet = useMemo(() => new Set(exploredCells ?? []), [exploredCells]);
   const visibleSet = useMemo(() => new Set(visibleCells ?? []), [visibleCells]);
@@ -245,19 +261,27 @@ export function GridMap({
   }, [battleMap, templateKind, templatePoints]);
 
   // Split the tile list by layer once per map rather than walking all of it
-  // three times per render. A full-size map is 40x30, and every pointermove
+  // four times per render. A full-size map is 40x30, and every pointermove
   // of a token drag re-renders this component — so the difference here is
   // per-frame work during a drag, not one-time setup cost.
+  //
+  // A span tile stored on the floor layer is routed to the span layer here
+  // too: maps built before the span layer existed put their bridges on the
+  // floor, and they should draw as decks rather than as opaque squares.
+  // Nothing needs migrating — the rules engine reads either placement the
+  // same way (see mapCells.ts), and the next save writes the right layer.
   const tileLayers = useMemo(() => {
     const floor: PlacedTile[] = [];
+    const span: PlacedTile[] = [];
     const decor: PlacedTile[] = [];
     const gmOnly: PlacedTile[] = [];
     for (const t of battleMap?.tiles ?? []) {
       if (t.layer === "decor") decor.push(t);
       else if (t.layer === "gmOnly") gmOnly.push(t);
+      else if (t.layer === "span" || BATTLE_TILE_BY_ID[t.tileId]?.span) span.push(t);
       else floor.push(t);
     }
-    return { floor, decor, gmOnly };
+    return { floor, span, decor, gmOnly, spanCells: new Set(span.map((t) => `${t.x},${t.y}`)) };
   }, [battleMap]);
 
   const shading = useMemo(
@@ -270,6 +294,7 @@ export function GridMap({
   // reconciles only the token that actually moved — instead of rebuilding
   // every tile in the map on each pointermove.
   const floorTileElements = useMemo(() => tileLayers.floor.map((t) => {
+    const spannedOver = tileLayers.spanCells.has(`${t.x},${t.y}`);
     const isDoor = !!BATTLE_TILE_BY_ID[t.tileId]?.isDoor;
     const doorKey = `${t.x},${t.y}`;
     const isOpen = isDoor && openDoorSet.has(doorKey);
@@ -277,11 +302,14 @@ export function GridMap({
     // A door beyond current fog isn't clickable for a non-owner — you have
     // to have at least seen it to act on it, same as everything else
     // fog-gates in this component.
-    const canToggle = isDoor && !!onToggleDoor && !measuring && !placingTemplate && (canEdit || exploredSet.has(doorKey));
+    const canToggle = isDoor && doorsToggleable && !measuring && !placingTemplate && (canEdit || exploredSet.has(doorKey));
     return (
       <g key={doorKey}>
         <use href={href} x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL} pointerEvents="none" />
-        {t.elevation !== undefined && (
+        {/* The height a token here is at, which is the span's if one covers
+            this cell — the -20 on a chasm describes the drop below the
+            bridge, not where anyone crossing it is standing. */}
+        {t.elevation !== undefined && !spannedOver && (
           <text x={t.x * CELL + CELL - 2} y={t.y * CELL + 9} className="grid-map-elevation-label" textAnchor="end" pointerEvents="none">
             {t.elevation > 0 ? `+${t.elevation}` : t.elevation}
           </text>
@@ -290,14 +318,27 @@ export function GridMap({
           <rect
             x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL}
             className="grid-map-door-toggle"
-            onClick={(e) => { e.stopPropagation(); onToggleDoor!(t.x, t.y); }}
+            onClick={(e) => { e.stopPropagation(); toggleDoorRef.current?.(t.x, t.y); }}
           >
             <title>{isOpen ? "Close door" : "Open door"}</title>
           </rect>
         )}
       </g>
     );
-  }), [tileLayers, openDoorSet, exploredSet, measuring, placingTemplate, canEdit, onToggleDoor]);
+  }), [tileLayers, openDoorSet, exploredSet, measuring, placingTemplate, canEdit, doorsToggleable]);
+
+  // Drawn above the floor and below the shading, so a bridge sits on the
+  // chasm it crosses and still picks up the shadow of the wall beside it.
+  const spanTileElements = useMemo(() => tileLayers.span.map((t) => (
+    <g key={`span-${t.x},${t.y}`}>
+      <SpanTile tileId={t.tileId} x={t.x} y={t.y} cell={CELL} angles={spanDeckAngles(tileLayers.spanCells, t.x, t.y)} />
+      {t.elevation !== undefined && (
+        <text x={t.x * CELL + CELL - 2} y={t.y * CELL + 9} className="grid-map-elevation-label" textAnchor="end" pointerEvents="none">
+          {t.elevation > 0 ? `+${t.elevation}` : t.elevation}
+        </text>
+      )}
+    </g>
+  )), [tileLayers]);
 
   const decorTileElements = useMemo(() => tileLayers.decor.map((t) => (
     <use key={`decor-${t.x},${t.y}`} href={`#tile-${t.tileId}`} x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL} pointerEvents="none" />
@@ -441,6 +482,7 @@ export function GridMap({
           <g transform={`translate(${transform.x} ${transform.y}) scale(${transform.k})`}>
             <rect width={gridWidth} height={gridHeight} className="grid-map-bg" pointerEvents="none" />
             {floorTileElements}
+            {spanTileElements}
             {shading && <TileShading shading={shading} />}
             {decorTileElements}
             {gmOnlyTileElements}

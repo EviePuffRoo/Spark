@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
 import type { DowntimeActivity, DowntimeActivityType, DowntimeOutcomeActivityType, DowntimeOutcomeDef, EncounterTable, LiveCombatant, EncounterStateInput, SearchResult, Region, PlayerCharacter, Item } from "@spark/shared";
-import { DOWNTIME_ACTIVITY_TYPES, DOWNTIME_ACTIVITY_TYPE_LABELS, DOWNTIME_OUTCOME_ACTIVITY_TYPES, computeCraftingCost } from "@spark/shared";
+import { DOWNTIME_ACTIVITY_TYPES, DOWNTIME_ACTIVITY_TYPE_LABELS, DOWNTIME_OUTCOME_ACTIVITY_TYPES, computeCraftingCost, zoneDistances } from "@spark/shared";
 import { api } from "../api";
 import { useAuth } from "../AuthContext";
 import { useActiveWorld } from "../ActiveWorldContext";
 import { EntitySearchPicker } from "../components/EntitySearchPicker";
 import { rollTableIndex } from "../rollTable";
-import { zoneDistances } from "../zoneGraph";
 import { DowntimeIcon } from "../components/icons";
 import { EmptyState } from "../components/EmptyState";
 

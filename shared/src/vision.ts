@@ -1,6 +1,7 @@
-import type { BattleMap, LiveCombatant, TileDef } from "./types.js";
+import type { BattleMap, LiveCombatant, PlacedTile } from "./types.js";
 import { BATTLE_TILE_BY_ID } from "./data/battleTiles.js";
-import { FEET_PER_TILE, elevationAt } from "./gridMovement.js";
+import { FEET_PER_TILE } from "./gridMovement.js";
+import { buildStandingIndex, cellKey as key, standingDefIn, standingTileAt } from "./mapCells.js";
 
 // Baseline sight radius for a token with no explicit override — a
 // generously-lit scene, the common case. DMs can shrink this per-combatant
@@ -9,26 +10,15 @@ import { FEET_PER_TILE, elevationAt } from "./gridMovement.js";
 // override knob.
 export const DEFAULT_VISION_RADIUS_FEET = 60;
 
-function key(x: number, y: number): string {
-  return `${x},${y}`;
-}
-
-// An open door (its "x,y" key present in openDoors) reads as fully passable
-// regardless of its base (closed) def — see TileDef.isDoor.
-function tileAt(map: Pick<BattleMap, "tiles">, x: number, y: number, openDoors?: Set<string>): TileDef | undefined {
-  const placed = map.tiles.find((t) => t.x === x && t.y === y && (t.layer ?? "floor") === "floor");
-  if (!placed) return undefined;
-  const def = BATTLE_TILE_BY_ID[placed.tileId];
-  if (def?.isDoor && openDoors?.has(key(x, y))) {
-    return { ...def, blocksMovement: false, blocksVision: false };
-  }
-  return def;
-}
+// A prebuilt "x,y" -> standing placement view of a map, so a whole vision
+// pass scans the tile list once instead of once per cell it samples.
+type StandingIndex = Map<string, PlacedTile>;
 
 // Is there a door tile at this cell at all (open or closed)? Used by the
 // server to validate a toggle-door request targets a real door.
 export function isDoorTileAt(map: Pick<BattleMap, "tiles">, x: number, y: number): boolean {
-  return !!tileAt(map, x, y)?.isDoor;
+  const placed = standingTileAt(map, x, y);
+  return !!(placed && BATTLE_TILE_BY_ID[placed.tileId]?.isDoor);
 }
 
 // How far above a blocking tile's own authored height an observer must
@@ -42,10 +32,10 @@ export function isDoorTileAt(map: Pick<BattleMap, "tiles">, x: number, y: number
 // feature until a DM deliberately stamps a height onto a blocker.
 const ELEVATION_SIGHT_OVERRIDE_FEET = 10;
 
-function blocksSightAt(map: Pick<BattleMap, "tiles">, x: number, y: number, openDoors: Set<string> | undefined, observerElevationFeet: number): boolean {
-  const def = tileAt(map, x, y, openDoors);
+function blocksSightAt(index: StandingIndex, x: number, y: number, openDoors: Set<string> | undefined, observerElevationFeet: number): boolean {
+  const def = standingDefIn(index, x, y, openDoors);
   if (!def?.blocksVision) return false;
-  const tileElevation = elevationAt(map, x, y);
+  const tileElevation = index.get(key(x, y))?.elevation;
   if (tileElevation === undefined) return true;
   return observerElevationFeet < tileElevation + ELEVATION_SIGHT_OVERRIDE_FEET;
 }
@@ -57,12 +47,12 @@ function blocksSightAt(map: Pick<BattleMap, "tiles">, x: number, y: number, open
 // checked here — you can always see a wall's near face, you just can't
 // see past it — so a raycast against a wall tile correctly reports "the
 // wall is visible" rather than "nothing beyond it is."
-function hasLineOfSight(map: Pick<BattleMap, "tiles">, x0: number, y0: number, x1: number, y1: number, openDoors?: Set<string>, observerElevationFeet?: number): boolean {
+function hasLineOfSight(index: StandingIndex, x0: number, y0: number, x1: number, y1: number, openDoors?: Set<string>, observerElevationFeet?: number): boolean {
   const dx = x1 - x0;
   const dy = y1 - y0;
   const dist = Math.max(Math.abs(dx), Math.abs(dy));
   if (dist === 0) return true;
-  const resolvedElevation = observerElevationFeet ?? elevationAt(map, x0, y0) ?? 0;
+  const resolvedElevation = observerElevationFeet ?? index.get(key(x0, y0))?.elevation ?? 0;
   const steps = dist * 4;
   let prevCx = x0;
   let prevCy = y0;
@@ -78,13 +68,13 @@ function hasLineOfSight(map: Pick<BattleMap, "tiles">, x0: number, y0: number, x
     // otherwise leak sight straight through the gap between them. Block
     // the ray there too when both flanking cells are walls, same as a
     // squeezing-through-a-pinch-point rule.
-    if (cx !== prevCx && cy !== prevCy && blocksSightAt(map, cx, prevCy, openDoors, resolvedElevation) && blocksSightAt(map, prevCx, cy, openDoors, resolvedElevation)) {
+    if (cx !== prevCx && cy !== prevCy && blocksSightAt(index, cx, prevCy, openDoors, resolvedElevation) && blocksSightAt(index, prevCx, cy, openDoors, resolvedElevation)) {
       return false;
     }
     prevCx = cx;
     prevCy = cy;
     if (cx === x1 && cy === y1) continue;
-    if (blocksSightAt(map, cx, cy, openDoors, resolvedElevation)) return false;
+    if (blocksSightAt(index, cx, cy, openDoors, resolvedElevation)) return false;
   }
   return true;
 }
@@ -95,18 +85,26 @@ function hasLineOfSight(map: Pick<BattleMap, "tiles">, x0: number, y0: number, x
 // layer. This is the whole point of the tileset system from Phase A: a
 // DM builds the room, and line-of-sight just works.
 export function computeVisibleCells(map: Pick<BattleMap, "width" | "height" | "tiles">, originX: number, originY: number, radiusTiles: number, openDoors?: Set<string>, observerElevationFeet?: number): Set<string> {
+  return visibleCellsFrom(buildStandingIndex(map.tiles), map.width, map.height, originX, originY, radiusTiles, openDoors, observerElevationFeet);
+}
+
+// The same raycast against an index the caller already built. Every entry
+// point that fires more than one cast (a party's shared vision, a map's
+// light sources) goes through this so the index is built once per pass
+// rather than once per token or torch.
+function visibleCellsFrom(index: StandingIndex, width: number, height: number, originX: number, originY: number, radiusTiles: number, openDoors?: Set<string>, observerElevationFeet?: number): Set<string> {
   const visible = new Set<string>();
   visible.add(key(originX, originY));
   const r = Math.ceil(radiusTiles);
   const rSquared = radiusTiles * radiusTiles;
   for (let dy = -r; dy <= r; dy++) {
     const y = originY + dy;
-    if (y < 0 || y >= map.height) continue;
+    if (y < 0 || y >= height) continue;
     for (let dx = -r; dx <= r; dx++) {
       if (dx * dx + dy * dy > rSquared) continue;
       const x = originX + dx;
-      if (x < 0 || x >= map.width) continue;
-      if (hasLineOfSight(map, originX, originY, x, y, openDoors, observerElevationFeet)) visible.add(key(x, y));
+      if (x < 0 || x >= width) continue;
+      if (hasLineOfSight(index, originX, originY, x, y, openDoors, observerElevationFeet)) visible.add(key(x, y));
     }
   }
   return visible;
@@ -121,12 +119,13 @@ function feetToTiles(feet: number): number {
 // contribute: fog-of-war is a player-facing memory of what the PARTY has
 // seen, not a simulation of every creature's eyesight.
 export function computeVisionForTokens(map: Pick<BattleMap, "width" | "height" | "tiles">, tokens: Pick<LiveCombatant, "kind" | "gridX" | "gridY" | "visionRadiusFeet" | "flying">[], openDoors?: Set<string>): Set<string> {
+  const index = buildStandingIndex(map.tiles);
   const visible = new Set<string>();
   for (const t of tokens) {
     if (t.kind !== "playerCharacter" || t.gridX === undefined || t.gridY === undefined) continue;
     const radiusTiles = feetToTiles(t.visionRadiusFeet ?? DEFAULT_VISION_RADIUS_FEET);
     const observerElevationFeet = t.flying ? Number.POSITIVE_INFINITY : undefined;
-    for (const k of computeVisibleCells(map, t.gridX, t.gridY, radiusTiles, openDoors, observerElevationFeet)) visible.add(k);
+    for (const k of visibleCellsFrom(index, map.width, map.height, t.gridX, t.gridY, radiusTiles, openDoors, observerElevationFeet)) visible.add(k);
   }
   return visible;
 }
@@ -149,18 +148,23 @@ export function extendWithLightSources(
   carriers?: Pick<LiveCombatant, "gridX" | "gridY" | "lightRadiusFeet" | "flying">[],
   openDoors?: Set<string>,
 ): Set<string> {
+  const index = buildStandingIndex(map.tiles);
   const extended = new Set(baseVisible);
+  // Decor and gmOnly are excluded — a cosmetic tile must never light a
+  // room, and a DM marker must never reveal one. A span (a lit bridge)
+  // counts, same as it counts for movement and sight.
   for (const tile of map.tiles) {
-    if ((tile.layer ?? "floor") !== "floor") continue;
+    const layer = tile.layer ?? "floor";
+    if (layer === "decor" || layer === "gmOnly") continue;
     const def = BATTLE_TILE_BY_ID[tile.tileId];
     if (!def?.lightRadius || !baseVisible.has(key(tile.x, tile.y))) continue;
-    for (const k of computeVisibleCells(map, tile.x, tile.y, def.lightRadius, openDoors)) extended.add(k);
+    for (const k of visibleCellsFrom(index, map.width, map.height, tile.x, tile.y, def.lightRadius, openDoors)) extended.add(k);
   }
   for (const c of carriers ?? []) {
     if (!c.lightRadiusFeet || c.gridX === undefined || c.gridY === undefined) continue;
     if (!baseVisible.has(key(c.gridX, c.gridY))) continue;
     const observerElevationFeet = c.flying ? Number.POSITIVE_INFINITY : undefined;
-    for (const k of computeVisibleCells(map, c.gridX, c.gridY, feetToTiles(c.lightRadiusFeet), openDoors, observerElevationFeet)) extended.add(k);
+    for (const k of visibleCellsFrom(index, map.width, map.height, c.gridX, c.gridY, feetToTiles(c.lightRadiusFeet), openDoors, observerElevationFeet)) extended.add(k);
   }
   return extended;
 }

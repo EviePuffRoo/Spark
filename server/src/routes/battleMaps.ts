@@ -7,16 +7,36 @@ import type { PlacedTile } from "@spark/shared";
 
 export const battleMapsRouter = Router();
 
+const PLACEABLE_LAYERS = new Set(["span", "decor", "gmOnly"]);
+
 function coerceTile(raw: unknown, width: number, height: number): PlacedTile | null {
   if (!raw || typeof raw !== "object") return null;
   const t = raw as Record<string, unknown>;
   if (typeof t.x !== "number" || typeof t.y !== "number" || typeof t.tileId !== "string") return null;
   if (!Number.isInteger(t.x) || !Number.isInteger(t.y) || t.x < 0 || t.y < 0 || t.x >= width || t.y >= height) return null;
   if (!BATTLE_TILE_BY_ID[t.tileId]) return null;
-  const layer = t.layer === "decor" || t.layer === "gmOnly" ? t.layer : undefined;
+  const layer = typeof t.layer === "string" && PLACEABLE_LAYERS.has(t.layer) ? (t.layer as PlacedTile["layer"]) : undefined;
   const note = layer === "gmOnly" && typeof t.note === "string" ? t.note.slice(0, 500) : undefined;
   const elevation = typeof t.elevation === "number" && Number.isFinite(t.elevation) ? t.elevation : undefined;
   return { x: t.x, y: t.y, tileId: t.tileId, ...(layer ? { layer } : {}), ...(note ? { note } : {}), ...(elevation !== undefined ? { elevation } : {}) };
+}
+
+// One placement per cell per layer, last write winning — the invariant the
+// whole tile model rests on (see PlacedTile.layer). The builder has always
+// produced tiles that way, but nothing enforced it on the way in, so a
+// hand-edited backup or a direct API call could store two floor tiles for
+// one cell and leave the rules engine picking between them. Collapsing
+// here means a stored map is always well-formed, and it also bounds the
+// array: at most width x height x 4 entries, however many were posted.
+function normalizeTiles(raw: unknown, width: number, height: number): PlacedTile[] {
+  if (!Array.isArray(raw)) return [];
+  const byCellLayer = new Map<string, PlacedTile>();
+  for (const entry of raw) {
+    const tile = coerceTile(entry, width, height);
+    if (!tile) continue;
+    byCellLayer.set(`${tile.x},${tile.y},${tile.layer ?? "floor"}`, tile);
+  }
+  return [...byCellLayer.values()];
 }
 
 function coerceDimension(value: unknown, max: number): number | null {
@@ -61,7 +81,7 @@ battleMapsRouter.post("/", async (req, res) => {
     }
   }
 
-  const tiles = Array.isArray(body.tiles) ? body.tiles.map((t: unknown) => coerceTile(t, width, height)).filter((t: PlacedTile | null): t is PlacedTile => t !== null) : [];
+  const tiles = normalizeTiles(body.tiles, width, height);
 
   const row = await prisma.battleMap.create({
     data: {
@@ -103,8 +123,7 @@ battleMapsRouter.patch("/:id", async (req, res) => {
   if ("tiles" in body) {
     const width = (data.width as number | undefined) ?? existing.width;
     const height = (data.height as number | undefined) ?? existing.height;
-    const tiles = Array.isArray(body.tiles) ? body.tiles.map((t: unknown) => coerceTile(t, width, height)).filter((t: PlacedTile | null): t is PlacedTile => t !== null) : [];
-    data.tiles = JSON.stringify(tiles);
+    data.tiles = JSON.stringify(normalizeTiles(body.tiles, width, height));
   }
   if ("worldId" in body) {
     if (typeof body.worldId === "string") {

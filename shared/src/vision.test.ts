@@ -214,3 +214,37 @@ describe("elevation", () => {
     expect(grounded.has("10,6")).toBe(false);
   });
 });
+
+describe("span layer", () => {
+  it("reads a span's sight rules, not the ground's, for the cell it covers", () => {
+    // Hanging vines block sight; a bridge over them does not. What a
+    // creature can see past is decided by what's on top, same rule the
+    // movement engine uses — the two must not disagree.
+    const vinesOnly = emptyMap(10, 10, [{ x: 5, y: 3, tileId: "vines" }]);
+    expect(computeVisibleCells(vinesOnly, 5, 5, 5).has("5,1")).toBe(false);
+
+    const bridgedOver = emptyMap(10, 10, [
+      { x: 5, y: 3, tileId: "vines" },
+      { x: 5, y: 3, tileId: "bridge", layer: "span" },
+    ]);
+    expect(computeVisibleCells(bridgedOver, 5, 5, 5).has("5,1")).toBe(true);
+  });
+
+  it("counts a light source on the span layer, unlike one on decor", () => {
+    // Only decor and gmOnly are inert. A span is mechanical, so a lit tile
+    // there lights the room the same way a floor-layer torch does.
+    const map = emptyMap(20, 20, [{ x: 5, y: 5, tileId: "torch-sconce", layer: "span" }]);
+    const extended = extendWithLightSources(map, new Set(["5,5"]));
+    expect(extended.has("5,8")).toBe(true);
+  });
+
+  it("finds a door placed under nothing, and ignores one buried under a span", () => {
+    const plain = emptyMap(10, 10, [{ x: 4, y: 4, tileId: "wooden-door" }]);
+    expect(isDoorTileAt(plain, 4, 4)).toBe(true);
+    const covered = emptyMap(10, 10, [
+      { x: 4, y: 4, tileId: "wooden-door" },
+      { x: 4, y: 4, tileId: "bridge", layer: "span" },
+    ]);
+    expect(isDoorTileAt(covered, 4, 4)).toBe(false);
+  });
+});

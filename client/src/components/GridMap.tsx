@@ -223,16 +223,32 @@ export function GridMap({
   }
 
   const activeCombatant = combatants.find((c) => c.id === activeId) ?? null;
+  // Keyed on the four values the fill actually reads, not on the combatant
+  // object: the tracker rebuilds its combatant list on every one of its own
+  // renders, so depending on identity re-ran a Dijkstra flood fill over the
+  // whole grid for every keystroke in an HP box and every 80ms tick of
+  // somebody else's token drag arriving over the live channel.
   const reachable = useMemo(() => {
     if (!battleMap || !activeCombatant || activeCombatant.gridX === undefined || activeCombatant.gridY === undefined) return null;
     return computeReachableCells(battleMap, activeCombatant.gridX, activeCombatant.gridY, activeCombatant.speedFeet ?? 30, undefined, activeCombatant.flying);
-  }, [battleMap, activeCombatant]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [battleMap, activeCombatant?.gridX, activeCombatant?.gridY, activeCombatant?.speedFeet, activeCombatant?.flying]);
 
   // Fog of war only ever applies to a non-owner's own view — the DM's
   // canvas always renders fully lit, since they're the one drawing the
   // map. `visibleCells` is only ever populated (by the server) for a
   // non-owner viewer in the first place, so the `!canEdit` check here is
   // belt-and-suspenders against a stale/owner-viewed prop.
+  // Same problem as reachable above, one layer down: onToggleDoor is a
+  // fresh function on every parent render, and it feeds the memo that
+  // builds every floor tile in the map. Reading it through a ref keeps the
+  // callback current without making the tile layer depend on its identity
+  // — whether doors are clickable at all is the only part that changes
+  // what gets rendered.
+  const toggleDoorRef = useRef(onToggleDoor);
+  toggleDoorRef.current = onToggleDoor;
+  const doorsToggleable = !!onToggleDoor;
+
   const fogActive = !canEdit && visibleCells !== undefined;
   const exploredSet = useMemo(() => new Set(exploredCells ?? []), [exploredCells]);
   const visibleSet = useMemo(() => new Set(visibleCells ?? []), [visibleCells]);
@@ -286,7 +302,7 @@ export function GridMap({
     // A door beyond current fog isn't clickable for a non-owner — you have
     // to have at least seen it to act on it, same as everything else
     // fog-gates in this component.
-    const canToggle = isDoor && !!onToggleDoor && !measuring && !placingTemplate && (canEdit || exploredSet.has(doorKey));
+    const canToggle = isDoor && doorsToggleable && !measuring && !placingTemplate && (canEdit || exploredSet.has(doorKey));
     return (
       <g key={doorKey}>
         <use href={href} x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL} pointerEvents="none" />
@@ -302,14 +318,14 @@ export function GridMap({
           <rect
             x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL}
             className="grid-map-door-toggle"
-            onClick={(e) => { e.stopPropagation(); onToggleDoor!(t.x, t.y); }}
+            onClick={(e) => { e.stopPropagation(); toggleDoorRef.current?.(t.x, t.y); }}
           >
             <title>{isOpen ? "Close door" : "Open door"}</title>
           </rect>
         )}
       </g>
     );
-  }), [tileLayers, openDoorSet, exploredSet, measuring, placingTemplate, canEdit, onToggleDoor]);
+  }), [tileLayers, openDoorSet, exploredSet, measuring, placingTemplate, canEdit, doorsToggleable]);
 
   // Drawn above the floor and below the shading, so a bridge sits on the
   // chasm it crosses and still picks up the shadow of the wall beside it.

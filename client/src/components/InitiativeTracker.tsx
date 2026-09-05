@@ -153,7 +153,13 @@ export function InitiativeTracker({
   // particular has to default here (not just at the type level): the combatant-notes <input>
   // below binds it directly, and an undefined value would make that a briefly-uncontrolled
   // input for any combatant carried over from before this field existed.
-  const sorted = [...activeEncounter.combatants]
+  //
+  // Memoized because it is the input to nearly everything downstream — the
+  // encounter difficulty readout, the balance analysis, the trigger
+  // evaluation, and the grid's own reachability fill. Rebuilding it per
+  // render made all of those run again on every keystroke in an HP box and
+  // on every 80ms token-drag tick arriving over the live channel.
+  const sorted = useMemo(() => [...activeEncounter.combatants]
     .map((c) => ({
       ...c,
       conditions: (c.conditions ?? []).map((cond): LiveCombatantCondition =>
@@ -163,10 +169,14 @@ export function InitiativeTracker({
       hpVisible: c.hpVisible ?? false,
       notes: c.notes ?? "",
     }))
-    .sort((a, b) => b.initiative - a.initiative);
+    .sort((a, b) => b.initiative - a.initiative), [activeEncounter.combatants]);
   const activeId = sorted.length > 0 ? sorted[activeEncounter.turnIndex % sorted.length]?.id : null;
-  const difficulty = applyHouseRules(getRuleset(), selectedWorld?.houseRules ?? {}).computeEncounterDifficulty(sorted);
-  const balance = analyzeEncounterBalance(sorted);
+  const houseRules = selectedWorld?.houseRules;
+  const difficulty = useMemo(
+    () => applyHouseRules(getRuleset(), houseRules ?? {}).computeEncounterDifficulty(sorted),
+    [sorted, houseRules],
+  );
+  const balance = useMemo(() => analyzeEncounterBalance(sorted), [sorted]);
   const mapActive = showZoneMap || showGridMap;
 
   // Refetched whenever the selected world changes — trigger rules are

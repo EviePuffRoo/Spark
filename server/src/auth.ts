@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { randomInt } from "node:crypto";
+import { randomInt, createHmac } from "node:crypto";
 import type { Request, Response, NextFunction } from "express";
 
 // render.yaml generates a real JWT_SECRET for the deployed service (Render
@@ -49,6 +49,26 @@ export function hashRecoveryCode(code: string): Promise<string> {
 
 export function verifyRecoveryCode(code: string, hash: string): Promise<boolean> {
   return bcrypt.compare(normalizeRecoveryCode(code), hash);
+}
+
+// A deterministic digest of a code, for the one case that needs to *find* a
+// row by its code rather than verify a code against a known row (world join
+// codes). bcrypt can't do that — it salts per hash, so the only way to
+// resolve a submitted code against salted hashes is to try them one at a
+// time, which costs a bcrypt comparison per candidate row.
+//
+// Keyed with the server's own secret so the stored digest is useless to
+// anyone who only has the database: without the key there's nothing to
+// precompute against. Unlike bcrypt this is deliberately fast — it's an
+// index, not a password check, and the code it digests is 16 characters
+// from a 31-character alphabet (~4e23 combinations), far past brute force.
+// The bcrypt hash still performs the actual verification afterwards.
+//
+// Rotating JWT_SECRET invalidates existing lookup values; that degrades to
+// the same scan this replaced (see routes/worlds.ts) rather than breaking
+// anything, and repairs itself as codes are reissued.
+export function codeLookupDigest(code: string): string {
+  return createHmac("sha256", JWT_SECRET).update(normalizeRecoveryCode(code)).digest("hex");
 }
 
 // A precomputed bcrypt hash of a value nobody will ever type. Login and

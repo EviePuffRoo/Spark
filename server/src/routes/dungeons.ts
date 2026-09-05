@@ -13,6 +13,10 @@ const dungeonExitSchema = z.object({
   zoneId: z.string(),
   toRoomId: z.string(),
   label: z.string().optional().catch(undefined),
+  // Which edge of the room's battle map this exit sits on, so the grid can
+  // offer the trip. zod strips unknown keys, so this has to be declared here
+  // or an authored edge would be silently dropped on save.
+  mapEdge: z.enum(["north", "south", "east", "west"]).optional().catch(undefined),
 });
 
 const dungeonRoomRectSchema = z.object({

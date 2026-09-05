@@ -128,6 +128,25 @@ export function InitiativeTracker({
   // Encounter, structurally a superset) always satisfies.
   const activeEncounter: EncounterStateInput & { visibleCells?: string[] } = partyMode ? (liveEncounter ?? BLANK_ENCOUNTER) : encounter;
 
+  // Exits off the room the party is standing in that the DM has put on an
+  // edge of its battle map. Empty outside a dungeon, or before any exit has
+  // been given an edge — the zone view's Move Party button is unaffected
+  // either way.
+  const gridExits = useMemo(() => {
+    if (!activeDungeon || !activeEncounter.activeDungeonRoomId) return [];
+    const room = activeDungeon.rooms.find((r) => r.id === activeEncounter.activeDungeonRoomId);
+    if (!room) return [];
+    return room.exits
+      .filter((e) => !!e.mapEdge)
+      .map((e) => ({
+        toRoomId: e.toRoomId,
+        toRoomName: activeDungeon.rooms.find((r) => r.id === e.toRoomId)?.name ?? "another room",
+        label: e.label,
+        mapEdge: e.mapEdge!,
+      }));
+  }, [activeDungeon, activeEncounter.activeDungeonRoomId]);
+
+
   // Older saved encounters (before conditions/kind/hpVisible/notes/zones existed) won't have
   // these fields, and encounters saved before duration tracking existed have plain strings in
   // conditions rather than { name, expiresAtRound } — normalize both on the way in. Notes in
@@ -921,6 +940,8 @@ export function InitiativeTracker({
               onDragBroadcast={broadcastTokenDrag}
               onTemplateTargetsChange={setTemplateTargetIds}
               onToggleDoor={toggleDoor}
+              exits={gridExits}
+              onTravel={canEdit && activeDungeon ? (toRoomId) => loadDungeonRoom(activeDungeon.id, toRoomId) : undefined}
             />
           )}
 

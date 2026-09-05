@@ -4,6 +4,7 @@ import { SIZE_FOOTPRINT, computeReachableCells, chebyshevDistanceFeet, AOE_SHAPE
 import { api } from "../api";
 import { BattleTileDefs } from "./TileIcon";
 import { TileShading, TileShadingDefs, buildTileShading } from "./TileShading";
+import { GridMapExits, type GridExit } from "./GridMapExits";
 
 const CELL = 32;
 const VIEWPORT_WIDTH = 800;
@@ -27,6 +28,7 @@ export function GridMap({
   worldId, battleMapId, combatants, activeId, canEdit,
   exploredCells, visibleCells, openDoorCells,
   onLoadBattleMap, onLeaveBattleMap, onMoveCombatant, onPlaceCombatant, onDragBroadcast, onTemplateTargetsChange, onToggleDoor,
+  exits, onTravel,
 }: {
   worldId?: string;
   battleMapId?: string;
@@ -64,6 +66,11 @@ export function GridMap({
   // a read-only mirror (PresentationView), same as onMoveCombatant={noop}
   // there — the map still renders correct open/closed art either way.
   onToggleDoor?: (x: number, y: number) => void;
+  // Exits off this map, when the party is standing in a dungeon room that
+  // has any with an edge assigned. Empty (or onTravel omitted) elsewhere,
+  // which is every non-dungeon encounter.
+  exits?: GridExit[];
+  onTravel?: (toRoomId: string) => void;
 }) {
   const [battleMap, setBattleMap] = useState<BattleMap | null>(null);
   const [loading, setLoading] = useState(false);
@@ -468,6 +475,10 @@ export function GridMap({
               const [x, y] = key.split(",").map(Number);
               return <rect key={`tmpl-${key}`} x={x * CELL} y={y * CELL} width={CELL} height={CELL} className="grid-map-template" pointerEvents="none" />;
             })}
+
+            {onTravel && exits?.length ? (
+              <GridMapExits exits={exits} width={battleMap.width} height={battleMap.height} cell={CELL} onTravel={onTravel} />
+            ) : null}
 
             {placed.map((c) => {
               const size = footprintFor(c);

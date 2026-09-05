@@ -4104,3 +4104,40 @@ textarea {
   word-break: break-word;
   margin-top: 8px;
 }
+
+/* Exit bands along the border of a dungeon room's battle map — click one to
+   move the party to the room it leads to. Deliberately understated until
+   hovered: they sit over the map's own art, so at rest they should read as a
+   marked threshold rather than a UI panel covering the tiles. */
+.grid-map-exit {
+  cursor: pointer;
+}
+
+.grid-map-exit rect {
+  fill: rgba(124, 58, 237, 0.16);
+  stroke: rgba(124, 58, 237, 0.55);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+  vector-effect: non-scaling-stroke;
+  transition: fill 120ms ease;
+}
+
+.grid-map-exit:hover rect,
+.grid-map-exit:focus-visible rect {
+  fill: rgba(124, 58, 237, 0.34);
+}
+
+.grid-map-exit text {
+  fill: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.75);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.grid-map-exit:focus-visible {
+  outline: none;
+}

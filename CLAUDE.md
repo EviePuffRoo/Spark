@@ -120,9 +120,34 @@ pattern. Pure builders (like `buildTileShading`) are pure specifically so caller
 memoize them on the tile list.
 
 **Extract panels out of large components rather than growing them.** `InitiativeTracker`
-went from 1671 lines and 47 state variables to 1269 and 28 by moving attack, cast and
-loot into their own components. It is still the biggest component in the app and the
-next natural extraction is worth doing when you're next in there.
+went from 1671 lines and 47 state variables to 955 and 16, in four passes: attack, cast
+and loot became their own components, then the combatant row itself (`CombatantRow.tsx`),
+then the encounter's own state machine (`useEncounterState.ts`). Each pass was cheap
+because the one before it had already drawn the seam.
+
+Three things learned there, worth applying to the next big component:
+
+- **A panel's state belongs to the panel.** Every input the tracker held keyed by
+  combatant id (`hpDelta`, `conditionDuration`, and the concentration and light inputs)
+  meant a keystroke re-rendered the tracker and, under it, the battle grid. Local state
+  in the row re-renders the row. That is the whole reason those extractions were worth
+  doing, not the line count.
+- **Parallel `xOpenFor` states are a smell.** Six of them tracked which panel was open on
+  which combatant. One `{combatantId, panel}` replaced all six, and adding a seventh panel
+  is now a name in a union rather than another `useState` plus the places you have to
+  remember to close it.
+- **Group a component's callbacks into one named interface** (`CombatantActions`) rather
+  than a dozen sibling props. It documents the whole surface a child can act through in
+  one place, and adding an action is a line there and a line at the call site.
+
+**A parent's callback identity is a child's per-frame cost.** `GridMap` memoizes its tile
+layers, but one of them depended on the `onToggleDoor` prop, which the tracker rebuilt on
+every render — so all ~1200 floor tiles reconciled on every keystroke and on every 80ms
+tick of somebody else's token drag arriving over the live channel. The same render churn
+re-ran a Dijkstra flood fill for the reachability overlay. Both are fixed *inside*
+`GridMap`, by reading the callback through a ref and keying the fill on the four values it
+actually reads, rather than by asking the parent to `useCallback` everything: a child that
+can't be made slow by its parent stays fast when someone edits the parent.
 
 **Never style map content with UI tokens.** The grid lines used `var(--border)` — a
 near-white lavender meant for panel edges — drawn over dark dungeon art, where it read
@@ -253,6 +278,10 @@ into the bug. That's the intended standard, not over-commenting.
 
 ## Known-unsolved
 
-- **`InitiativeTracker.tsx`** is still the largest component after three extractions.
+- **`InitiativeTracker.tsx`** is down to 955 lines from 1671. What's left is one
+  component doing four jobs: encounter-level actions (turn order, rest, clear, lair),
+  zone-map CRUD, dungeon-room load/leave/persist, and battle-map load/leave/move. The
+  zone cluster is the next clean seam — eight functions that only touch `zones` and
+  `zoneEffects`.
 - **Distribution, not code, is the bottleneck.** Launch posts to several subreddits were
   duds. Worth weighing before picking up more feature work.

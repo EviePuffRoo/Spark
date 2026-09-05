@@ -3,7 +3,7 @@ import { z } from "zod";
 import { prisma } from "../db.js";
 import { toPlayerCharacterDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
-import { findAccessibleWorld, getMemberWorldIds, authorizeEntityWrite } from "../worldAccess.js";
+import { findAccessibleWorld, getMemberWorldIds, authorizeEntityWrite, listVisibleWhere, visibleEntityWhere } from "../worldAccess.js";
 import { parseArray } from "../validation.js";
 import { BASE_UPGRADES, PC_CLASSES, levelForXp, computeLevelUpChanges, getRuleset } from "@spark/shared";
 import type { DeathSaves, SpellSlotLevel, ClassResource } from "@spark/shared";
@@ -60,17 +60,14 @@ playerCharactersRouter.get("/", async (req, res) => {
   }
 
   const memberWorldIds = await getMemberWorldIds(req.userId!);
-  const where = {
-    OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }],
-    ...(worldId === "unassigned" ? { worldId: null } : typeof worldId === "string" ? { worldId } : {}),
-  };
+  const where = listVisibleWhere(req.userId!, memberWorldIds, worldId);
   const rows = await prisma.playerCharacter.findMany({ where, orderBy: { createdAt: "desc" } });
   res.json(rows.map(toPlayerCharacterDTO));
 });
 
 playerCharactersRouter.get("/:id", async (req, res) => {
   const memberWorldIds = await getMemberWorldIds(req.userId!);
-  const row = await prisma.playerCharacter.findFirst({ where: { id: req.params.id, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }] } });
+  const row = await prisma.playerCharacter.findFirst({ where: { id: req.params.id, ...visibleEntityWhere(req.userId!, memberWorldIds) } });
   if (!row) return res.status(404).json({ error: "Player character not found" });
   res.json(toPlayerCharacterDTO(row));
 });

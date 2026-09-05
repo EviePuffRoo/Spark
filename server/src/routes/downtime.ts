@@ -2,7 +2,7 @@ import { Router } from "express";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../db.js";
 import { toDowntimeActivityDTO } from "../serialize.js";
-import { getMemberWorldIds, authorizeEntityWrite } from "../worldAccess.js";
+import { getMemberWorldIds, authorizeEntityWrite, visibleEntityWhere } from "../worldAccess.js";
 import { publishWorldChange } from "../worldEvents.js";
 import {
   DOWNTIME_ACTIVITY_TYPES, DOWNTIME_ACTIVITY_TYPE_LABELS, DOWNTIME_OUTCOME_ACTIVITY_TYPES,
@@ -55,7 +55,7 @@ downtimeRouter.post("/", async (req, res) => {
   if (typeof craftedItemId === "string") {
     const memberWorldIds = await getMemberWorldIds(req.userId!);
     craftedItem = await prisma.item.findFirst({
-      where: { id: craftedItemId, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }] },
+      where: { id: craftedItemId, ...visibleEntityWhere(req.userId!, memberWorldIds) },
       select: { id: true, name: true, value: true },
     });
     if (!craftedItem) return res.status(403).json({ error: "You don't have access to this item" });

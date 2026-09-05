@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { toShopDTO, toLedgerEntryDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
-import { findAccessibleWorld, getMemberWorldIds, authorizeEntityWrite } from "../worldAccess.js";
+import { findAccessibleWorld, getMemberWorldIds, authorizeEntityWrite, listVisibleWhere, visibleEntityWhere } from "../worldAccess.js";
 import { publishWorldChange } from "../worldEvents.js";
 import type { ShopStockEntry } from "@spark/shared";
 
@@ -28,17 +28,14 @@ function coerceStockEntry(raw: unknown): ShopStockEntry | null {
 shopsRouter.get("/", async (req, res) => {
   const { worldId } = req.query;
   const memberWorldIds = await getMemberWorldIds(req.userId!);
-  const where = {
-    OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }],
-    ...(worldId === "unassigned" ? { worldId: null } : typeof worldId === "string" ? { worldId } : {}),
-  };
+  const where = listVisibleWhere(req.userId!, memberWorldIds, worldId);
   const rows = await prisma.shop.findMany({ where, orderBy: { createdAt: "desc" } });
   res.json(rows.map(toShopDTO));
 });
 
 shopsRouter.get("/:id", async (req, res) => {
   const memberWorldIds = await getMemberWorldIds(req.userId!);
-  const row = await prisma.shop.findFirst({ where: { id: req.params.id, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }] } });
+  const row = await prisma.shop.findFirst({ where: { id: req.params.id, ...visibleEntityWhere(req.userId!, memberWorldIds) } });
   if (!row) return res.status(404).json({ error: "Shop not found" });
   res.json(toShopDTO(row));
 });
@@ -56,7 +53,7 @@ shopsRouter.post("/", async (req, res) => {
   }
   if (typeof settlementId === "string") {
     const memberWorldIds = await getMemberWorldIds(req.userId!);
-    const settlement = await prisma.settlement.findFirst({ where: { id: settlementId, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }] } });
+    const settlement = await prisma.settlement.findFirst({ where: { id: settlementId, ...visibleEntityWhere(req.userId!, memberWorldIds) } });
     if (!settlement) return res.status(403).json({ error: "You don't have access to this settlement" });
   }
   const coercedStock = stock.map(coerceStockEntry).filter((s: ShopStockEntry | null): s is ShopStockEntry => s !== null);
@@ -167,7 +164,7 @@ shopsRouter.patch("/:id", async (req, res) => {
   if ("settlementId" in body) {
     if (typeof body.settlementId === "string") {
       const memberWorldIds = await getMemberWorldIds(req.userId!);
-      const settlement = await prisma.settlement.findFirst({ where: { id: body.settlementId, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }] } });
+      const settlement = await prisma.settlement.findFirst({ where: { id: body.settlementId, ...visibleEntityWhere(req.userId!, memberWorldIds) } });
       if (!settlement) return res.status(403).json({ error: "You don't have access to this settlement" });
     }
     data.settlementId = body.settlementId ?? null;

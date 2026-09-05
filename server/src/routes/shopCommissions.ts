@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
 import { toShopCommissionDTO } from "../serialize.js";
-import { findAccessibleWorld, getMemberWorldIds } from "../worldAccess.js";
+import { findAccessibleWorld, getMemberWorldIds, visibleEntityWhere } from "../worldAccess.js";
 import { publishWorldChange } from "../worldEvents.js";
 import { computeCraftingCost } from "@spark/shared";
 
@@ -37,11 +37,11 @@ shopCommissionsRouter.post("/", async (req, res) => {
   if (!world) return res.status(403).json({ error: "You don't have access to this world" });
 
   const memberWorldIds = await getMemberWorldIds(req.userId!);
-  const shop = await prisma.shop.findFirst({ where: { id: shopId, worldId, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }] } });
+  const shop = await prisma.shop.findFirst({ where: { id: shopId, worldId, ...visibleEntityWhere(req.userId!, memberWorldIds) } });
   if (!shop) return res.status(404).json({ error: "Shop not found" });
 
   const item = await prisma.item.findFirst({
-    where: { id: itemId, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }] },
+    where: { id: itemId, ...visibleEntityWhere(req.userId!, memberWorldIds) },
     select: { id: true, name: true, value: true },
   });
   if (!item) return res.status(403).json({ error: "You don't have access to this item" });

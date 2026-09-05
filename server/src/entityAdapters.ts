@@ -1,4 +1,5 @@
 import { prisma } from "./db.js";
+import { visibleEntityWhere } from "./worldAccess.js";
 import type { EntityType } from "@spark/shared";
 
 interface EntityAdapter {
@@ -22,8 +23,11 @@ function buildSearchWhere(fields: string[], q: string) {
   return { OR: fields.map((field) => ({ [field]: { contains: q } })) };
 }
 
+// Same visibility rule the entity routes apply, narrowed to one row — kept
+// as a thin wrapper over the shared helper so the rule itself has exactly
+// one definition (worldAccess.ts) rather than a copy per consumer.
 function accessWhere(id: string, userId: string, memberWorldIds: string[]) {
-  return { id, OR: [{ userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }] };
+  return { id, ...visibleEntityWhere(userId, memberWorldIds) };
 }
 
 // Every entity's DB row carries the same identity/ownership/timestamp

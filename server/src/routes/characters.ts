@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { toCharacterDTO, toDispositionLogEntryDTO } from "../serialize.js";
 import { deleteLinksForEntity } from "../entityAdapters.js";
-import { findAccessibleWorld, getMemberWorldIds, authorizeEntityWrite } from "../worldAccess.js";
+import { findAccessibleWorld, getMemberWorldIds, authorizeEntityWrite, listVisibleWhere, visibleEntityWhere } from "../worldAccess.js";
 import { logCampaignEventOp } from "../campaignEventLog.js";
 import { dispatchWebhookEvent } from "../webhookDispatch.js";
 
@@ -11,17 +11,14 @@ export const charactersRouter = Router();
 charactersRouter.get("/", async (req, res) => {
   const { worldId } = req.query;
   const memberWorldIds = await getMemberWorldIds(req.userId!);
-  const where = {
-    OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }],
-    ...(worldId === "unassigned" ? { worldId: null } : typeof worldId === "string" ? { worldId } : {}),
-  };
+  const where = listVisibleWhere(req.userId!, memberWorldIds, worldId);
   const rows = await prisma.character.findMany({ where, orderBy: { createdAt: "desc" } });
   res.json(rows.map(toCharacterDTO));
 });
 
 charactersRouter.get("/:id", async (req, res) => {
   const memberWorldIds = await getMemberWorldIds(req.userId!);
-  const row = await prisma.character.findFirst({ where: { id: req.params.id, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }] } });
+  const row = await prisma.character.findFirst({ where: { id: req.params.id, ...visibleEntityWhere(req.userId!, memberWorldIds) } });
   if (!row) return res.status(404).json({ error: "Character not found" });
   res.json(toCharacterDTO(row));
 });
@@ -80,7 +77,7 @@ charactersRouter.patch("/:id", async (req, res) => {
   if ("factionId" in body) {
     if (typeof body.factionId === "string") {
       const memberWorldIds = await getMemberWorldIds(req.userId!);
-      const faction = await prisma.faction.findFirst({ where: { id: body.factionId, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }] } });
+      const faction = await prisma.faction.findFirst({ where: { id: body.factionId, ...visibleEntityWhere(req.userId!, memberWorldIds) } });
       if (!faction) return res.status(403).json({ error: "You don't have access to this faction" });
     }
     data.factionId = body.factionId ?? null;
@@ -88,7 +85,7 @@ charactersRouter.patch("/:id", async (req, res) => {
   if ("settlementId" in body) {
     if (typeof body.settlementId === "string") {
       const memberWorldIds = await getMemberWorldIds(req.userId!);
-      const settlement = await prisma.settlement.findFirst({ where: { id: body.settlementId, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }] } });
+      const settlement = await prisma.settlement.findFirst({ where: { id: body.settlementId, ...visibleEntityWhere(req.userId!, memberWorldIds) } });
       if (!settlement) return res.status(403).json({ error: "You don't have access to this settlement" });
     }
     data.settlementId = body.settlementId ?? null;
@@ -192,7 +189,7 @@ charactersRouter.post("/:id/adjust-disposition", async (req, res) => {
 
 charactersRouter.get("/:id/disposition-log", async (req, res) => {
   const memberWorldIds = await getMemberWorldIds(req.userId!);
-  const row = await prisma.character.findFirst({ where: { id: req.params.id, OR: [{ userId: req.userId }, { worldId: { in: memberWorldIds }, hiddenFromParty: false }] } });
+  const row = await prisma.character.findFirst({ where: { id: req.params.id, ...visibleEntityWhere(req.userId!, memberWorldIds) } });
   if (!row) return res.status(404).json({ error: "Character not found" });
 
   const rows = await prisma.dispositionLogEntry.findMany({ where: { characterId: row.id }, orderBy: { createdAt: "desc" }, take: 100 });

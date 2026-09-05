@@ -43,11 +43,16 @@ describe("joining a world by code, with many worlds on the instance", () => {
 
     expect(joined.status).toBe(201);
     expect(joined.body.worldName).toBe("World 29");
-    // A scan over 30 worlds costs ~2.7s here; a direct lookup is one
-    // comparison. The bound is loose enough not to be flaky on a slow
-    // machine while still failing the scan.
-    expect(elapsed).toBeLessThan(1500);
-  });
+    // What's being measured is the join alone, not the setup above it. A
+    // direct lookup is one indexed query plus one bcrypt comparison (~90ms
+    // on a dev machine, a few hundred on a slow CI runner); the scan this
+    // replaced is 30 comparisons, so ~2.7s locally and far worse there.
+    // 2s sits well clear of both.
+    expect(elapsed).toBeLessThan(2000);
+    // The setup — 30 worlds, each with a bcrypt-hashed join code, plus two
+    // signups — is deliberately expensive and blows vitest's default 5s
+    // per-test timeout on CI even though the assertion above is unaffected.
+  }, 60_000);
 
   it("still rejects a code that matches no world", async () => {
     const { agent: owner } = await signupAgent("scalingdm2");
@@ -57,7 +62,7 @@ describe("joining a world by code, with many worlds on the instance", () => {
     const { agent: joiner } = await signupAgent("scalingjoiner2");
     const res = await joiner.post("/api/worlds/join").send({ code: "ZZZZ-ZZZZ-ZZZZ-ZZZZ" });
     expect(res.status).toBe(404);
-  });
+  }, 30_000);
 
   it("accepts a code issued before the lookup column existed", async () => {
     // Worlds whose code was hashed by the previous implementation have no
@@ -86,5 +91,5 @@ describe("joining a world by code, with many worlds on the instance", () => {
     const membership = await prisma.worldMember.findFirst({ where: { worldId: world.body.id } });
     expect(membership!.role).toBe("player");
     expect(userId).toBeTruthy();
-  });
+  }, 30_000);
 });

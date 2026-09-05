@@ -176,3 +176,95 @@ test("clears the encounter", async ({ page }) => {
   await page.getByRole("button", { name: "Clear Encounter" }).click();
   await expect(page.locator(".combatant-row")).toHaveCount(0);
 });
+
+// The cast panel needs a combatant carrying preparedSpells, which only
+// comes from adding a spellcasting PC off the roster. Building that PC
+// through the creation wizard would be a lot of UI for setup that isn't
+// what's under test, so the PC is created over the API (sharing the
+// browser's session) and then added to the encounter through the real UI.
+async function createCasterPc(page: Page, name: string) {
+  const created = await page.request.post("/api/player-characters", {
+    data: {
+      name, className: "Wizard", level: 5, race: "Human", armorClass: 12, maxHp: 30,
+      abilityScores: { str: 8, dex: 14, con: 12, int: 18, wis: 10, cha: 10 },
+    },
+  });
+  expect(created.ok()).toBeTruthy();
+  const pc = await created.json();
+
+  const patched = await page.request.patch(`/api/player-characters/${pc.id}`, {
+    data: { preparedSpells: ["fire-bolt"] },
+  });
+  expect(patched.ok()).toBeTruthy();
+  return pc;
+}
+
+test("resolves a spell attack and applies its damage", async ({ page }) => {
+  await signupAndOpenCombat(page, `cast${Date.now()}`);
+  await createCasterPc(page, "Wynn Ashgrove");
+
+  // Add the caster off the roster so it carries preparedSpells.
+  await page.getByRole("button", { name: "+ Add PC from Roster" }).click();
+  await page.getByPlaceholder("Search player characters…").fill("Wynn");
+  await page.locator(".entity-item", { hasText: "Wynn Ashgrove" }).first().click();
+  await expect(page.locator(".combatant-name", { hasText: "Wynn Ashgrove" })).toBeVisible();
+
+  await addCombatant(page, "Practice Dummy", 1, 40, 1); // AC 1 so the spell attack always hits
+
+  const caster = rowFor(page, "Wynn Ashgrove");
+  await caster.getByRole("button", { name: "✨ Cast" }).click();
+
+  const panel = caster.locator(".cast-panel");
+  await expect(panel).toBeVisible();
+
+  // Fire Bolt is prepared, and it's an attack-roll cantrip.
+  await expect(panel.getByLabel("Spell")).toContainText("Fire Bolt");
+
+  await panel.getByRole("button", { name: "Roll to Hit" }).click();
+  const rollResult = panel.locator(".encounter-roll-result").first();
+  await expect(rollResult).toBeVisible();
+  await expect(rollResult).toContainText("HIT");
+
+  await panel.getByRole("button", { name: "Roll Damage & Apply" }).click();
+
+  // 1d10 fire damage lands on the dummy, not the caster.
+  await expect
+    .poll(async () => Number((await hpTextFor(page, "Practice Dummy")).split("/")[0].trim()))
+    .toBeLessThan(40);
+  expect(await hpTextFor(page, "Wynn Ashgrove")).toBe("30 / 30 HP");
+});
+
+test("applies a condition when a spell's saving throw fails", async ({ page }) => {
+  await signupAndOpenCombat(page, `castsave${Date.now()}`);
+
+  // Hold Person is a condition spell resolved by a saving throw against the
+  // caster's spell save DC — the branch that applies a condition to the
+  // target, rather than damage.
+  const created = await page.request.post("/api/player-characters", {
+    data: {
+      name: "Wynn Ashgrove", className: "Wizard", level: 5, race: "Human", armorClass: 12, maxHp: 30,
+      abilityScores: { str: 8, dex: 14, con: 12, int: 18, wis: 10, cha: 10 },
+    },
+  });
+  const pc = await created.json();
+  await page.request.patch(`/api/player-characters/${pc.id}`, { data: { preparedSpells: ["hold-person"] } });
+
+  await page.getByRole("button", { name: "+ Add PC from Roster" }).click();
+  await page.getByPlaceholder("Search player characters…").fill("Wynn");
+  await page.locator(".entity-item", { hasText: "Wynn Ashgrove" }).first().click();
+  await expect(page.locator(".combatant-name", { hasText: "Wynn Ashgrove" })).toBeVisible();
+
+  await addCombatant(page, "Hapless Cultist", 1, 20, 12);
+
+  const caster = rowFor(page, "Wynn Ashgrove");
+  await caster.getByRole("button", { name: "✨ Cast" }).click();
+  const panel = caster.locator(".cast-panel");
+  await expect(panel.getByLabel("Spell")).toContainText("Hold Person");
+
+  // A -20 save bonus guarantees the save fails, so the condition always lands.
+  await panel.getByLabel("Target's save bonus").fill("-20");
+  await panel.getByRole("button", { name: "Roll Save" }).click();
+  await expect(panel.locator(".encounter-roll-result").first()).toContainText("FAIL");
+
+  await expect(rowFor(page, "Hapless Cultist").locator(".condition-chip", { hasText: "Paralyzed" })).toBeVisible();
+});

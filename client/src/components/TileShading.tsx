@@ -20,6 +20,8 @@ import { BATTLE_TILE_BY_ID, type PlacedTile } from "@spark/shared";
 const DEPTH = 0.34;       // shadow reach into a cell, as a fraction of the cell
 const CONTACT = 0.16;     // reach of the fainter shade on the lit sides
 const CORNER = 0.3;
+const RIM = 0.17;         // lit edge on a solid tile's exposed north/west faces
+const SEAM = 0.055;       // width of the join between two different materials
 
 // "Tall" means it blocks line of sight: walls, pillars, bookshelves, closed
 // doors, boulders, trees. A table or a chest blocks movement but you can see
@@ -47,6 +49,18 @@ export function TileShadingDefs() {
       <linearGradient id="tile-shade-e" x1="1" y1="0" x2="0" y2="0">
         <stop offset="0" stopColor="#000" stopOpacity="0.15" />
         <stop offset="1" stopColor="#000" stopOpacity="0" />
+      </linearGradient>
+      {/* The counterpart to the shadow: with the light in the north-west, the
+          exposed north and west faces of a raised mass catch it. A rim there
+          plus a shadow falling south-east is what reads as an extruded block
+          rather than a flat square of brick. */}
+      <linearGradient id="tile-rim-n" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stopColor="#fff" stopOpacity="0.3" />
+        <stop offset="1" stopColor="#fff" stopOpacity="0" />
+      </linearGradient>
+      <linearGradient id="tile-rim-w" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stopColor="#fff" stopOpacity="0.24" />
+        <stop offset="1" stopColor="#fff" stopOpacity="0" />
       </linearGradient>
       {/* Fills the notch left at an outside corner, where the two straight
           edges meeting there each stop short of the diagonal. */}
@@ -77,13 +91,36 @@ export function buildTileShading(
   const q = cell * CONTACT;
   const c = cell * CORNER;
   const edges: { key: string; x: number; y: number; w: number; h: number; fill: string }[] = [];
+  const rims: { key: string; x: number; y: number; w: number; h: number; fill: string }[] = [];
+  const seams: { key: string; x: number; y: number; w: number; h: number }[] = [];
+
+  // What material each cell's ground is, so a boundary between two of them
+  // can be found. Restricted to the terrain category on purpose: an altar or
+  // a chest is an object standing on ground, not a material, and seaming
+  // around one draws a box that makes it look pasted on rather than placed.
+  // Where ground meets something solid there's already a rim and a shadow,
+  // and a seam on top would double that line.
+  const groundAt = new Map<string, string>();
+  for (const t of tiles) {
+    if ((t.layer ?? "floor") !== "floor") continue;
+    if (BATTLE_TILE_BY_ID[t.tileId]?.category !== "terrain") continue;
+    groundAt.set(`${t.x},${t.y}`, t.tileId);
+  }
   const corners: { key: string; cx: number; cy: number; r: number; rot: number }[] = [];
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      if (isSolid(x, y)) continue; // shadow falls on open ground, not on the wall
       const px = x * cell;
       const py = y * cell;
+
+      if (isSolid(x, y)) {
+        // A solid tile only shows an edge where the mass actually stops —
+        // inside a run of wall the surface is continuous and unlit.
+        const r = cell * RIM;
+        if (!isSolid(x, y - 1)) rims.push({ key: `rn${x},${y}`, x: px, y: py, w: cell, h: r, fill: "url(#tile-rim-n)" });
+        if (!isSolid(x - 1, y)) rims.push({ key: `rw${x},${y}`, x: px, y: py, w: r, h: cell, fill: "url(#tile-rim-w)" });
+        continue; // shadow falls on open ground, not on the wall
+      }
 
       const n = isSolid(x, y - 1);
       const s = isSolid(x, y + 1);
@@ -102,17 +139,40 @@ export function buildTileShading(
       if (!n && !w && isSolid(x - 1, y - 1)) corners.push({ key: `cnw${x},${y}`, cx: px, cy: py, r: c, rot: 0 });
     }
   }
-  return { edges, corners };
+  // Wood butting against stone, or stone against water, meets on a hard
+  // pixel edge — the tiles are drawn to fill their cell and know nothing
+  // about each other. A thin darker join reads as one material ending and
+  // the next beginning, the way a drawn map would ink that boundary.
+  const sw = Math.max(1, cell * SEAM);
+  for (const [key, tileId] of groundAt) {
+    const [x, y] = key.split(",").map(Number);
+    const east = groundAt.get(`${x + 1},${y}`);
+    const south = groundAt.get(`${x},${y + 1}`);
+    if (east && east !== tileId) {
+      seams.push({ key: `se${key}`, x: (x + 1) * cell - sw / 2, y: y * cell, w: sw, h: cell });
+    }
+    if (south && south !== tileId) {
+      seams.push({ key: `ss${key}`, x: x * cell, y: (y + 1) * cell - sw / 2, w: cell, h: sw });
+    }
+  }
+
+  return { edges, corners, rims, seams };
 }
 
 export function TileShading({ shading }: { shading: ReturnType<typeof buildTileShading> }) {
   return (
     <g className="tile-shading" pointerEvents="none">
+      {shading.rims.map((r) => (
+        <rect key={r.key} x={r.x} y={r.y} width={r.w} height={r.h} fill={r.fill} />
+      ))}
       {shading.edges.map((r) => (
         <rect key={r.key} x={r.x} y={r.y} width={r.w} height={r.h} fill={r.fill} />
       ))}
       {shading.corners.map((c) => (
         <circle key={c.key} cx={c.cx} cy={c.cy} r={c.r} fill="url(#tile-shade-corner)" />
+      ))}
+      {shading.seams.map((s) => (
+        <rect key={s.key} x={s.x} y={s.y} width={s.w} height={s.h} fill="#000" opacity={0.28} />
       ))}
     </g>
   );

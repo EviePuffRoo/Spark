@@ -1517,6 +1517,32 @@ textarea {
   color: var(--text);
 }
 
+/* Four quarter turns for the paint brush. Same shape as the pack selector
+   above, but square: the labels are arrows, so equal width and height keeps
+   them reading as a compass rather than a row of words. */
+.tile-rotation-selector {
+  display: flex;
+  gap: 6px;
+}
+
+.tile-rotation-button {
+  flex: 1;
+  aspect-ratio: 1;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.tile-rotation-button.active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg));
+  color: var(--text);
+}
+
 .tile-category {
   margin-top: 14px;
 }

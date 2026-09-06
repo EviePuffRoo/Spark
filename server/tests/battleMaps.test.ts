@@ -106,6 +106,53 @@ describe("battle maps", () => {
     expect(res.body.tiles).toEqual([{ x: 0, y: 0, tileId: "stone-floor" }]);
   });
 
+  it("stores a quarter turn on a placement and drops anything else", async () => {
+    const { agent } = await signupAgent("maprot1");
+    const res = await agent.post("/api/battle-maps").send({
+      name: "Turned",
+      width: 5,
+      height: 5,
+      tiles: [
+        { x: 0, y: 0, tileId: "wooden-fence", rotation: 90 },
+        { x: 1, y: 0, tileId: "wooden-fence", rotation: 270 },
+        // 0 is the default, so it is stored as absent rather than as a zero.
+        { x: 2, y: 0, tileId: "wooden-fence", rotation: 0 },
+        // Not a quarter turn, and not a number — cosmetic either way, so
+        // the placement survives without the rotation rather than 400ing.
+        { x: 3, y: 0, tileId: "wooden-fence", rotation: 45 },
+        { x: 4, y: 0, tileId: "wooden-fence", rotation: "sideways" },
+      ],
+    });
+    expect(res.status).toBe(201);
+    expect(res.body.tiles).toEqual([
+      { x: 0, y: 0, tileId: "wooden-fence", rotation: 90 },
+      { x: 1, y: 0, tileId: "wooden-fence", rotation: 270 },
+      { x: 2, y: 0, tileId: "wooden-fence" },
+      { x: 3, y: 0, tileId: "wooden-fence" },
+      { x: 4, y: 0, tileId: "wooden-fence" },
+    ]);
+  });
+
+  it("rotates one placement without touching the others in the same cell", async () => {
+    // Rotation belongs to a placement, not a cell: a rug can lie across the
+    // planks of the floor it sits on.
+    const { agent } = await signupAgent("maprot2");
+    const res = await agent.post("/api/battle-maps").send({
+      name: "Rug On Planks",
+      width: 5,
+      height: 5,
+      tiles: [
+        { x: 1, y: 1, tileId: "wooden-floor" },
+        { x: 1, y: 1, tileId: "rug", layer: "decor", rotation: 90 },
+      ],
+    });
+    expect(res.status).toBe(201);
+    expect(res.body.tiles).toEqual([
+      { x: 1, y: 1, tileId: "wooden-floor" },
+      { x: 1, y: 1, tileId: "rug", layer: "decor", rotation: 90 },
+    ]);
+  });
+
   it("403s creating a map attached to a world you don't have access to", async () => {
     const { agent: owner } = await signupAgent("mapowner1");
     const world = await owner.post("/api/worlds").send({ name: "Private World" });

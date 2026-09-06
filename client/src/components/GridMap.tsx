@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { BattleMap, LiveCombatant, SizeCategory, AoeShapeKind, PlacedTile } from "@spark/shared";
 import { SIZE_FOOTPRINT, computeReachableCells, chebyshevDistanceFeet, AOE_SHAPE_KINDS, computeAoeCells, footprintIntersectsTemplate, BATTLE_TILE_BY_ID } from "@spark/shared";
 import { api } from "../api";
-import { BattleTileDefs, SpanTile, spanDeckAngles } from "./TileIcon";
+import { BattleTileDefs, SpanTile, spanDeckAngles, tileRotation } from "./TileIcon";
 import { TileShading, TileShadingDefs, buildTileShading } from "./TileShading";
 import { GridMapExits, type GridExit } from "./GridMapExits";
 
@@ -305,7 +305,7 @@ export function GridMap({
     const canToggle = isDoor && doorsToggleable && !measuring && !placingTemplate && (canEdit || exploredSet.has(doorKey));
     return (
       <g key={doorKey}>
-        <use href={href} x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL} pointerEvents="none" />
+        <use href={href} x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL} transform={tileRotation(t.rotation, t.x, t.y, CELL)} pointerEvents="none" />
         {/* The height a token here is at, which is the span's if one covers
             this cell — the -20 on a chasm describes the drop below the
             bridge, not where anyone crossing it is standing. */}
@@ -331,7 +331,7 @@ export function GridMap({
   // chasm it crosses and still picks up the shadow of the wall beside it.
   const spanTileElements = useMemo(() => tileLayers.span.map((t) => (
     <g key={`span-${t.x},${t.y}`}>
-      <SpanTile tileId={t.tileId} x={t.x} y={t.y} cell={CELL} angles={spanDeckAngles(tileLayers.spanCells, t.x, t.y)} />
+      <SpanTile tileId={t.tileId} x={t.x} y={t.y} cell={CELL} angles={spanDeckAngles(tileLayers.spanCells, t.x, t.y)} rotation={t.rotation} />
       {t.elevation !== undefined && (
         <text x={t.x * CELL + CELL - 2} y={t.y * CELL + 9} className="grid-map-elevation-label" textAnchor="end" pointerEvents="none">
           {t.elevation > 0 ? `+${t.elevation}` : t.elevation}
@@ -341,7 +341,7 @@ export function GridMap({
   )), [tileLayers]);
 
   const decorTileElements = useMemo(() => tileLayers.decor.map((t) => (
-    <use key={`decor-${t.x},${t.y}`} href={`#tile-${t.tileId}`} x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL} pointerEvents="none" />
+    <use key={`decor-${t.x},${t.y}`} href={`#tile-${t.tileId}`} x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL} transform={tileRotation(t.rotation, t.x, t.y, CELL)} pointerEvents="none" />
   )), [tileLayers]);
 
   // The server already strips gmOnly tiles before they ever reach a
@@ -349,7 +349,7 @@ export function GridMap({
   // belt-and-suspenders, same pattern as fogActive above.
   const gmOnlyTileElements = useMemo(() => (
     canEdit ? tileLayers.gmOnly.map((t) => (
-      <use key={`gm-${t.x},${t.y}`} href={`#tile-${t.tileId}`} x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL} pointerEvents="none" />
+      <use key={`gm-${t.x},${t.y}`} href={`#tile-${t.tileId}`} x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL} transform={tileRotation(t.rotation, t.x, t.y, CELL)} pointerEvents="none" />
     )) : null
   ), [tileLayers, canEdit]);
 

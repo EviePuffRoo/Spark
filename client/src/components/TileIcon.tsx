@@ -493,19 +493,31 @@ export function spanDeckAngles(spanCells: Set<string>, x: number, y: number): nu
   return [0];
 }
 
+// The SVG transform that turns a placement's art by its quarter turns,
+// about the centre of its own cell. Undefined for an unrotated tile, so
+// the overwhelming majority of placements emit no transform attribute at
+// all — this runs across every tile on the map.
+export function tileRotation(rotation: number | undefined, x: number, y: number, cell: number): string | undefined {
+  if (!rotation) return undefined;
+  return `rotate(${rotation} ${x * cell + cell / 2} ${y * cell + cell / 2})`;
+}
+
 // One span placement, drawn as one <use> per deck angle. Shared by the
 // builder's canvas and the live grid so both agree on how a bridge sits.
-export function SpanTile({ tileId, x, y, cell, angles }: { tileId: string; x: number; y: number; cell: number; angles: number[] }) {
-  const cx = x * cell + cell / 2;
-  const cy = y * cell + cell / 2;
+//
+// An explicitly rotated span uses that rotation instead of the angles its
+// neighbours imply: the DM overruling the auto-tiling is the whole point of
+// having a rotation control, and a bridge is the one tile where both exist.
+export function SpanTile({ tileId, x, y, cell, angles, rotation }: { tileId: string; x: number; y: number; cell: number; angles: number[]; rotation?: number }) {
+  const drawn = rotation ? [rotation] : angles;
   return (
     <>
-      {angles.map((angle) => (
+      {drawn.map((angle) => (
         <use
           key={angle}
           href={`#tile-${tileId}`}
           x={x * cell} y={y * cell} width={cell} height={cell}
-          transform={angle ? `rotate(${angle} ${cx} ${cy})` : undefined}
+          transform={tileRotation(angle, x, y, cell)}
           pointerEvents="none"
         />
       ))}

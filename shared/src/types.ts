@@ -1541,6 +1541,13 @@ export interface TileDef {
   span?: boolean;
 }
 
+// Quarter turns clockwise. Most of the tileset is symmetric enough that
+// rotating changes nothing, but a handful are directional — a fence's rails
+// run east-west, a log lies along one axis, stairs climb one way, a cave
+// mouth faces somewhere — and painting those in a north-south run used to
+// leave them pointing the wrong way with no way to fix it.
+export type TileRotation = 0 | 90 | 180 | 270;
+
 export interface PlacedTile {
   x: number;
   y: number;
@@ -1584,6 +1591,16 @@ export interface PlacedTile {
   // the floor), same rule as blocksMovement/difficultTerrain/isDoor above
   // — see gridMovement.ts's elevationAt.
   elevation?: number;
+  // Quarter turns clockwise applied to this placement's art, and nothing
+  // else. Rotation is purely cosmetic: it never reaches blocksMovement,
+  // blocksVision, difficultTerrain or the hazard, so a rotated tile plays
+  // exactly like an unrotated one and the rules engine has no reason to
+  // read it. Omitted (or 0) means unrotated, so every map predating this
+  // is unaffected.
+  //
+  // Per placement rather than per cell, so a rug can lie across the planks
+  // of the floor it sits on.
+  rotation?: TileRotation;
 }
 
 export const BATTLE_MAP_MAX_WIDTH = 40;

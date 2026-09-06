@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { BattleMap, PlacedTile, TileCategory, TilePack } from "@spark/shared";
+import type { BattleMap, PlacedTile, TileCategory, TilePack, TileRotation } from "@spark/shared";
 import { BATTLE_TILES, BATTLE_TILE_BY_ID, BATTLE_MAP_MAX_WIDTH, BATTLE_MAP_MAX_HEIGHT, battleMapToUvtt, uvttToBattleMapInput } from "@spark/shared";
 import { api } from "../api";
 import { useActiveWorld } from "../ActiveWorldContext";
 import { MapBuilderIcon } from "../components/icons";
-import { BattleTileDefs, SpanTile, TileSwatch, spanDeckAngles } from "../components/TileIcon";
+import { BattleTileDefs, SpanTile, TileSwatch, spanDeckAngles, tileRotation } from "../components/TileIcon";
 import { TileShading, TileShadingDefs, buildTileShading } from "../components/TileShading";
 import { EmptyState } from "../components/EmptyState";
 import { SaveEntityFields } from "../components/SaveEntityFields";
@@ -121,6 +121,17 @@ interface LayerMaps {
   gmOnly: Map<string, string>;
   gmOnlyNotes: Map<string, string>;
   elevation: Map<string, number>;
+  // Keyed by layer AND cell, unlike elevation: a height describes the cell,
+  // but a rotation describes one placement, so a rug can lie across the
+  // planks of the floor under it.
+  rotation: Map<string, TileRotation>;
+}
+
+const ROTATIONS: TileRotation[] = [0, 90, 180, 270];
+const ROTATION_LABELS: Record<TileRotation, string> = { 0: "↑", 90: "→", 180: "↓", 270: "←" };
+
+function rotationKey(layer: string, x: number, y: number) {
+  return `${layer}:${x},${y}`;
 }
 
 function tilesToLayerMaps(tiles: PlacedTile[]): LayerMaps {
@@ -130,8 +141,13 @@ function tilesToLayerMaps(tiles: PlacedTile[]): LayerMaps {
   const gmOnly = new Map<string, string>();
   const gmOnlyNotes = new Map<string, string>();
   const elevation = new Map<string, number>();
+  const rotation = new Map<string, TileRotation>();
   for (const t of tiles) {
     const key = tileKey(t.x, t.y);
+    // A span saved on the floor layer is lifted below, so key its rotation
+    // by where it will end up rather than where it was stored.
+    const storedLayer = t.layer ?? (BATTLE_TILE_BY_ID[t.tileId]?.span ? "span" : "floor");
+    if (t.rotation) rotation.set(rotationKey(storedLayer, t.x, t.y), t.rotation);
     if (t.layer === "decor") decor.set(key, t.tileId);
     else if (t.layer === "gmOnly") {
       gmOnly.set(key, t.tileId);
@@ -147,32 +163,36 @@ function tilesToLayerMaps(tiles: PlacedTile[]): LayerMaps {
       if (t.elevation !== undefined) elevation.set(key, t.elevation);
     }
   }
-  return { floor, span, decor, gmOnly, gmOnlyNotes, elevation };
+  return { floor, span, decor, gmOnly, gmOnlyNotes, elevation, rotation };
 }
 
 function layerMapsToTiles(maps: LayerMaps): PlacedTile[] {
   const out: PlacedTile[] = [];
   const at = (key: string) => key.split(",").map(Number) as [number, number];
+  const spin = (layer: string, key: string) => {
+    const rotation = maps.rotation.get(`${layer}:${key}`);
+    return rotation ? { rotation } : {};
+  };
   for (const [key, tileId] of maps.floor) {
     const [x, y] = at(key);
     // A cell's height belongs to whatever is standing there, so a spanned
     // cell's stamp rides on the span and the floor below stays unauthored.
     const elevation = maps.span.has(key) ? undefined : maps.elevation.get(key);
-    out.push({ x, y, tileId, ...(elevation !== undefined ? { elevation } : {}) });
+    out.push({ x, y, tileId, ...(elevation !== undefined ? { elevation } : {}), ...spin("floor", key) });
   }
   for (const [key, tileId] of maps.span) {
     const [x, y] = at(key);
     const elevation = maps.elevation.get(key);
-    out.push({ x, y, tileId, layer: "span", ...(elevation !== undefined ? { elevation } : {}) });
+    out.push({ x, y, tileId, layer: "span", ...(elevation !== undefined ? { elevation } : {}), ...spin("span", key) });
   }
   for (const [key, tileId] of maps.decor) {
     const [x, y] = at(key);
-    out.push({ x, y, tileId, layer: "decor" });
+    out.push({ x, y, tileId, layer: "decor", ...spin("decor", key) });
   }
   for (const [key, tileId] of maps.gmOnly) {
     const [x, y] = at(key);
     const note = maps.gmOnlyNotes.get(key);
-    out.push({ x, y, tileId, layer: "gmOnly", ...(note ? { note } : {}) });
+    out.push({ x, y, tileId, layer: "gmOnly", ...(note ? { note } : {}), ...spin("gmOnly", key) });
   }
   return out;
 }
@@ -195,7 +215,9 @@ export function MapBuilderPage() {
   const [gmOnlyTiles, setGmOnlyTiles] = useState<Map<string, string>>(new Map());
   const [gmOnlyNotes, setGmOnlyNotes] = useState<Map<string, string>>(new Map());
   const [cellElevation, setCellElevation] = useState<Map<string, number>>(new Map());
+  const [cellRotation, setCellRotation] = useState<Map<string, TileRotation>>(new Map());
   const [brushElevation, setBrushElevation] = useState(0);
+  const [brushRotation, setBrushRotation] = useState<TileRotation>(0);
   const [dirty, setDirty] = useState(false);
   const [selectedTileId, setSelectedTileId] = useState(BATTLE_TILES[0].id);
   const [activePack, setActivePack] = useState<TilePack>("dungeon");
@@ -260,14 +282,16 @@ export function MapBuilderPage() {
 
   function openMap(map: BattleMap) {
     setActiveMap(map);
-    const { floor, span, decor, gmOnly, gmOnlyNotes: notes, elevation } = tilesToLayerMaps(map.tiles);
+    const { floor, span, decor, gmOnly, gmOnlyNotes: notes, elevation, rotation } = tilesToLayerMaps(map.tiles);
     setFloorTiles(floor);
     setSpanTiles(span);
     setDecorTiles(decor);
     setGmOnlyTiles(gmOnly);
     setGmOnlyNotes(notes);
     setCellElevation(elevation);
+    setCellRotation(rotation);
     setBrushElevation(0);
+    setBrushRotation(0);
     setDirty(false);
     setName(map.name);
     setSaveWorldId(map.worldId ?? "");
@@ -341,6 +365,19 @@ export function MapBuilderPage() {
       else next.delete(key);
       return next;
     });
+    // Painting a cell always restates that placement's rotation, so turning
+    // the brush back to 0 and repainting straightens a tile again.
+    const stampRotation = (layer: string) => setCellRotation((prev) => {
+      const next = new Map(prev);
+      if (brushRotation !== 0) next.set(rotationKey(layer, cellX, cellY), brushRotation);
+      else next.delete(rotationKey(layer, cellX, cellY));
+      return next;
+    });
+    const clearRotation = (layer: string) => setCellRotation((prev) => {
+      const next = new Map(prev);
+      next.delete(rotationKey(layer, cellX, cellY));
+      return next;
+    });
 
     if (eraser) {
       // Peel the top layer first (GM markers, then decor, then a span, then
@@ -351,24 +388,32 @@ export function MapBuilderPage() {
       if (gmOnlyTiles.has(key)) {
         setGmOnlyTiles(without);
         setGmOnlyNotes(without);
+        clearRotation("gmOnly");
       } else if (decorTiles.has(key)) {
         setDecorTiles(without);
+        clearRotation("decor");
       } else if (spanTiles.has(key)) {
         setSpanTiles(without);
+        clearRotation("span");
         if (!floorTiles.has(key)) setCellElevation((prev) => { const next = new Map(prev); next.delete(key); return next; });
       } else {
         setFloorTiles(without);
+        clearRotation("floor");
         setCellElevation((prev) => { const next = new Map(prev); next.delete(key); return next; });
       }
     } else if (selectedLayer === "gmOnly") {
       setGmOnlyTiles((prev) => new Map(prev).set(key, selectedTileId));
+      stampRotation("gmOnly");
     } else if (selectedLayer === "decor") {
       setDecorTiles((prev) => new Map(prev).set(key, selectedTileId));
+      stampRotation("decor");
     } else if (selectedLayer === "span") {
       setSpanTiles((prev) => new Map(prev).set(key, selectedTileId));
       stampElevation();
+      stampRotation("span");
     } else {
       setFloorTiles((prev) => new Map(prev).set(key, selectedTileId));
+      stampRotation("floor");
       // Painting ground under an existing bridge changes what the bridge
       // crosses, not what anyone standing on it is standing on — so leave
       // the span's own height alone.
@@ -408,7 +453,7 @@ export function MapBuilderPage() {
 
   const layerMaps = (): LayerMaps => ({
     floor: floorTiles, span: spanTiles, decor: decorTiles,
-    gmOnly: gmOnlyTiles, gmOnlyNotes, elevation: cellElevation,
+    gmOnly: gmOnlyTiles, gmOnlyNotes, elevation: cellElevation, rotation: cellRotation,
   });
 
   function exportToVtt() {
@@ -566,6 +611,28 @@ export function MapBuilderPage() {
               cell with a bridge over it, the height belongs to the bridge — that's what anyone crossing
               is standing on.
             </p>
+            <label className="field">
+              <span>Rotation</span>
+              <div className="tile-rotation-selector">
+                {ROTATIONS.map((deg) => (
+                  <button
+                    key={deg}
+                    type="button"
+                    className={`tile-rotation-button ${brushRotation === deg ? "active" : ""}`}
+                    aria-pressed={brushRotation === deg}
+                    title={`Paint rotated ${deg}°`}
+                    onClick={() => setBrushRotation(deg)}
+                  >
+                    {ROTATION_LABELS[deg]}
+                  </button>
+                ))}
+              </div>
+            </label>
+            <p className="hint">
+              Turns a tile as you paint it. Most of the set is symmetrical and won't look any different,
+              but the directional ones will — a fence, a fallen log, stairs, a cave mouth, a banner, a
+              table. To straighten a tile again, set this back to ↑ and paint over it.
+            </p>
             <div className="tile-pack-selector">
               {PACKS.map((pack) => (
                 <button
@@ -598,17 +665,17 @@ export function MapBuilderPage() {
                 <rect width={gridWidth} height={gridHeight} className="map-builder-bg" />
                 {gridLines}
                 {placedFloorTiles.map((t) => (
-                  <use key={t.key} href={`#tile-${t.tileId}`} x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL} />
+                  <use key={t.key} href={`#tile-${t.tileId}`} x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL} transform={tileRotation(cellRotation.get(rotationKey("floor", t.x, t.y)), t.x, t.y, CELL)} />
                 ))}
                 {placedSpanTiles.map((t) => (
-                  <SpanTile key={`span-${t.key}`} tileId={t.tileId} x={t.x} y={t.y} cell={CELL} angles={spanDeckAngles(spanCells, t.x, t.y)} />
+                  <SpanTile key={`span-${t.key}`} tileId={t.tileId} x={t.x} y={t.y} cell={CELL} angles={spanDeckAngles(spanCells, t.x, t.y)} rotation={cellRotation.get(rotationKey("span", t.x, t.y))} />
                 ))}
                 {shading && <TileShading shading={shading} />}
                 {placedDecorTiles.map((t) => (
-                  <use key={`decor-${t.key}`} href={`#tile-${t.tileId}`} x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL} pointerEvents="none" />
+                  <use key={`decor-${t.key}`} href={`#tile-${t.tileId}`} x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL} transform={tileRotation(cellRotation.get(rotationKey("decor", t.x, t.y)), t.x, t.y, CELL)} pointerEvents="none" />
                 ))}
                 {placedGmOnlyTiles.map((t) => (
-                  <use key={`gm-${t.key}`} href={`#tile-${t.tileId}`} x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL} pointerEvents="none" />
+                  <use key={`gm-${t.key}`} href={`#tile-${t.tileId}`} x={t.x * CELL} y={t.y * CELL} width={CELL} height={CELL} transform={tileRotation(cellRotation.get(rotationKey("gmOnly", t.x, t.y)), t.x, t.y, CELL)} pointerEvents="none" />
                 ))}
                 {placedElevationLabels.map((t) => (
                   <text key={`elev-${t.key}`} x={t.x * CELL + CELL - 2} y={t.y * CELL + 9} className="grid-map-elevation-label" textAnchor="end" pointerEvents="none">

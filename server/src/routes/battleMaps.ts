@@ -8,6 +8,7 @@ import type { PlacedTile } from "@spark/shared";
 export const battleMapsRouter = Router();
 
 const PLACEABLE_LAYERS = new Set(["span", "decor", "gmOnly"]);
+const ROTATIONS = new Set([0, 90, 180, 270]);
 
 function coerceTile(raw: unknown, width: number, height: number): PlacedTile | null {
   if (!raw || typeof raw !== "object") return null;
@@ -18,7 +19,17 @@ function coerceTile(raw: unknown, width: number, height: number): PlacedTile | n
   const layer = typeof t.layer === "string" && PLACEABLE_LAYERS.has(t.layer) ? (t.layer as PlacedTile["layer"]) : undefined;
   const note = layer === "gmOnly" && typeof t.note === "string" ? t.note.slice(0, 500) : undefined;
   const elevation = typeof t.elevation === "number" && Number.isFinite(t.elevation) ? t.elevation : undefined;
-  return { x: t.x, y: t.y, tileId: t.tileId, ...(layer ? { layer } : {}), ...(note ? { note } : {}), ...(elevation !== undefined ? { elevation } : {}) };
+  // Anything that isn't one of the four quarter turns is dropped rather
+  // than stored — rotation is cosmetic, so a bad value is worth ignoring
+  // rather than 400ing a whole map save over.
+  const rotation = ROTATIONS.has(t.rotation as number) && t.rotation !== 0 ? (t.rotation as PlacedTile["rotation"]) : undefined;
+  return {
+    x: t.x, y: t.y, tileId: t.tileId,
+    ...(layer ? { layer } : {}),
+    ...(note ? { note } : {}),
+    ...(elevation !== undefined ? { elevation } : {}),
+    ...(rotation !== undefined ? { rotation } : {}),
+  };
 }
 
 // One placement per cell per layer, last write winning — the invariant the

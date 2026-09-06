@@ -232,6 +232,31 @@ The layer generalises: a new tile that should cross terrain rather than replace 
 needs `span: true` in `battleTiles.ts` — the builder routes it, the renderer stacks it,
 and the rules engine reads it, with no other change.
 
+## Rotation is cosmetic, and that's what keeps it cheap
+
+`PlacedTile.rotation` is quarter turns clockwise on one placement's art, and it reaches
+nothing else — not `blocksMovement`, not `blocksVision`, not `difficultTerrain`, not the
+hazard. A rotated tile plays exactly like an unrotated one, so the rules engine never
+reads it, the VTT export ignores it, and `buildTileShading` is unaffected. That is the
+whole reason it costs a type field, a line of server coercion, and a transform rather
+than a pass over the engine. Keep it that way: the moment a rotation changes what a tile
+*does*, every one of those files has to care.
+
+Two details that aren't obvious:
+
+- **Rotation is per placement, elevation is per cell.** A height describes where a
+  creature is standing, so it belongs to whichever tile is on top; a rotation describes
+  one piece of art, so a rug can lie across the planks of the floor under it. The
+  builder keys them differently for that reason.
+- **An explicit rotation beats the auto-tiling.** A span already derives its deck angle
+  from its neighbours (`spanDeckAngles`), and a DM who rotates one is overruling that on
+  purpose. Anything that later derives an angle should compose the same way —
+  `rotation ?? auto ?? 0` — so "nothing stored" keeps meaning "decide for me".
+
+Most of the 58 tiles are symmetric enough that turning them changes nothing. The ones it
+matters for are `wooden-fence`, `fallen-log`, `stairs-up`/`stairs-down`, `cave-mouth`,
+`banner` and `table`, with `wooden-floor`, `game-trail` and `torch-sconce` behind them.
+
 **The ceiling here is real.** True auto-tiling — variant art selected per neighbour
 bitmask — needs variants authored for all 58 tiles. The neighbour-derived rims and seams
 reach a similar goal from the other direction, but they're refinements. A further

@@ -98,9 +98,21 @@ silently dropped on save with no error anywhere. This has bitten more than once;
 recently `mapEdge` on `dungeonExitSchema`.
 
 **Read-modify-write on SQLite needs a lock.** See `withEncounterLock` in
-`routes/encounters.ts` and `withBaseLock` in `routes/base.ts`. Two concurrent requests
-that each read gold, decide, then write will both spend it. If you add a route that
-reads state and then writes based on what it read, serialize it per world the same way.
+`routes/encounters.ts`, `withBaseLock` in `routes/base.ts`, and `withDungeonLock` in
+`routes/dungeons.ts`. Two concurrent requests that each read gold, decide, then write
+will both spend it. If you add a route that reads state and then writes based on what
+it read, serialize it per world the same way.
+
+**A client that reads in order to write has the same race, and no lock to reach for.**
+Dungeon room memory used to work that way: the tracker fetched the dungeon, merged one
+room's state, and PUT the whole rooms array back. A monster fleeing and the party
+leaving a moment later both did that, and the second one's fetch could land before the
+first one's write — losing the `alerted` flag that is documented as sticky. The fix
+wasn't to lock the client but to stop it merging at all: a visit now reports only what
+it *observed* (`observeRoomOnLeave`) and the server merges that onto stored state
+(`mergeRoomState`) under its lock. Prefer a narrow additive endpoint over a
+read-merge-write from the browser; the merge rule is a rule, so it belongs in `shared/`
+where both halves can be tested once.
 
 **Prisma relation filters beat multi-query checks.** `{ members: { some: { userId } } }`
 in one query, not "fetch the world, then fetch its membership row." Selecting a relation
@@ -285,11 +297,10 @@ into the bug. That's the intended standard, not over-commenting.
 
 ## Known-unsolved
 
-- **`InitiativeTracker.tsx`** is down to 899 lines from 1671. What's left is one
-  component doing three jobs: encounter-level actions (turn order, rest, clear, lair),
-  dungeon-room load/leave/persist, and battle-map load/leave/move. The dungeon-room
-  cluster is the next seam, but it's a harder one than the zone cluster was: those
-  functions are async, they read `activeDungeon` and `selectedWorld`, and
-  `persistActiveRoomLeaveState` diffs live zones against a fetched template.
+- **`InitiativeTracker.tsx`** is down to 802 lines from 1671. What's left is
+  encounter-level actions (turn order, rest, clear, lair), the trigger/concentration/
+  opportunity reminder banners, and battle-map load/leave/move. The battle-map cluster
+  is small and the reminders are three effects that diff against the previous render;
+  neither is an obvious next seam. This is close to done.
 - **Distribution, not code, is the bottleneck.** Launch posts to several subreddits were
   duds. Worth weighing before picking up more feature work.

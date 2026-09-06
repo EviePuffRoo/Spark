@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { LiveCombatant, LiveCombatantCondition, Dungeon, DungeonRoomState, DifficultyRating, SpellDef, TriggerRule, TriggerMatch } from "@spark/shared";
+import type { LiveCombatant, LiveCombatantCondition, DifficultyRating, SpellDef, TriggerRule, TriggerMatch } from "@spark/shared";
 import { computeConcentrationDc, isHostilePair, leftReach, CONDITIONS_COMPENDIUM, getRuleset, applyHouseRules, evaluateTriggers, analyzeEncounterBalance } from "@spark/shared";
 import { api, type WorldSummary } from "../api";
 import { useAuth } from "../AuthContext";
@@ -7,6 +7,7 @@ import { ZoneMap } from "./ZoneMap";
 import { GridMap } from "./GridMap";
 import { useEncounterState, BLANK_ENCOUNTER } from "../useEncounterState";
 import { useZoneActions } from "../useZoneActions";
+import { useDungeonRoom } from "../useDungeonRoom";
 import { CombatIcon } from "./icons";
 import { EmptyState } from "./EmptyState";
 import { PresentationView } from "../pages/PresentationView";
@@ -47,7 +48,6 @@ export function InitiativeTracker({
   const [showZoneMap, setShowZoneMap] = useState(false);
   const [showGridMap, setShowGridMap] = useState(false);
   const [showTableView, setShowTableView] = useState(false);
-  const [activeDungeon, setActiveDungeon] = useState<Dungeon | null>(null);
   // Which combatant has which panel expanded — one piece of state for the
   // whole list, replacing six parallel `xOpenFor` ids. Adding a seventh
   // panel is now a name in CombatantPanel rather than another useState,
@@ -80,23 +80,13 @@ export function InitiativeTracker({
   // shared/src/encounterZones.ts; this binds them to the write path above.
   const zoneActions = useZoneActions({ applyEncounterUpdate, applyServerEncounter, canEdit, partyMode, partyWorldId });
 
-  // Exits off the room the party is standing in that the DM has put on an
-  // edge of its battle map. Empty outside a dungeon, or before any exit has
-  // been given an edge — the zone view's Move Party button is unaffected
-  // either way.
-  const gridExits = useMemo(() => {
-    if (!activeDungeon || !activeEncounter.activeDungeonRoomId) return [];
-    const room = activeDungeon.rooms.find((r) => r.id === activeEncounter.activeDungeonRoomId);
-    if (!room) return [];
-    return room.exits
-      .filter((e) => !!e.mapEdge)
-      .map((e) => ({
-        toRoomId: e.toRoomId,
-        toRoomName: activeDungeon.rooms.find((r) => r.id === e.toRoomId)?.name ?? "another room",
-        label: e.label,
-        mapEdge: e.mapEdge!,
-      }));
-  }, [activeDungeon, activeEncounter.activeDungeonRoomId]);
+  // Running the party through a dungeon: which room they're in, what it
+  // remembers, and its exits. Same split as the zone map — the rules are
+  // pure in shared/src/dungeonRooms.ts, the I/O is in the hook.
+  const { activeDungeon, activeRoom, gridExits, loadRoom, leaveDungeon, markRoomAlerted } = useDungeonRoom({
+    activeEncounter, applyEncounterUpdate, canEdit, currentDay: selectedWorld?.currentDay,
+  });
+
 
 
   // Older saved encounters (before conditions/kind/hpVisible/notes/zones existed) won't have
@@ -240,19 +230,6 @@ export function InitiativeTracker({
     prevGridPosRef.current = nextPos;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sorted.map((c) => `${c.id}:${c.gridX ?? ""}:${c.gridY ?? ""}:${c.kind ?? ""}`).join("|"), canEdit]);
-
-  useEffect(() => {
-    const dungeonId = activeEncounter.activeDungeonId;
-    if (!canEdit || !dungeonId) {
-      setActiveDungeon(null);
-      return;
-    }
-    let cancelled = false;
-    api.getDungeon(dungeonId)
-      .then((d) => { if (!cancelled) setActiveDungeon(d); })
-      .catch(() => { if (!cancelled) setActiveDungeon(null); });
-    return () => { cancelled = true; };
-  }, [canEdit, activeEncounter.activeDungeonId]);
 
   function addCombatant(c: LiveCombatant) {
     applyEncounterUpdate((e) => ({ ...e, combatants: [...e.combatants, c] }));
@@ -470,89 +447,16 @@ export function InitiativeTracker({
 
 
 
-  const DEFAULT_ROOM_STATE: DungeonRoomState = { cleared: false, alerted: false, disarmedHazardZoneIds: [] };
 
-  async function updateRoomState(dungeonId: string, roomId: string, updater: (s: DungeonRoomState) => DungeonRoomState) {
-    const dungeon = await api.getDungeon(dungeonId);
-    const rooms = dungeon.rooms.map((r) => (r.id === roomId ? { ...r, state: updater(r.state ?? DEFAULT_ROOM_STATE) } : r));
-    const updated = await api.updateDungeon(dungeonId, { rooms });
-    setActiveDungeon(updated);
-    return updated;
-  }
 
-  // Room-level dungeon memory: called right before switching away from
-  // whatever room is currently active (either into a different room or
-  // out of the dungeon entirely) so its state survives the visit. Cleared
-  // is recomputed from the live encounter's remaining hostiles every time
-  // — a room can also un-clear if the DM adds fresh monsters and leaves
-  // before finishing them off. Disarmed hazards are found by diffing the
-  // live zones (which started as a copy of the room's template zones)
-  // against the template itself: a zone that had a hazard in the
-  // template but doesn't anymore in the live encounter was disarmed.
-  async function persistActiveRoomLeaveState() {
-    const dungeonId = activeEncounter.activeDungeonId;
-    const roomId = activeEncounter.activeDungeonRoomId;
-    if (!dungeonId || !roomId || !activeDungeon) return;
-    const room = activeDungeon.rooms.find((r) => r.id === roomId);
-    if (!room) return;
-    const template = await api.getZoneMapTemplate(room.templateId).catch(() => null);
-    const liveMonstersAlive = activeEncounter.combatants.some((c) => c.kind === "monster" && (c.currentHp ?? 0) > 0);
-    const newlyDisarmed = template
-      ? template.zones
-          .filter((tz) => tz.hazard)
-          .map((tz) => tz.id)
-          .filter((zoneId) => {
-            const liveZone = activeEncounter.zones.find((z) => z.id === zoneId);
-            return !!liveZone && !liveZone.hazard;
-          })
-      : [];
-    await updateRoomState(dungeonId, roomId, (s) => ({
-      cleared: !liveMonstersAlive,
-      alerted: s.alerted,
-      lastVisitedDay: selectedWorld?.currentDay ?? s.lastVisitedDay,
-      disarmedHazardZoneIds: Array.from(new Set([...s.disarmedHazardZoneIds, ...newlyDisarmed])),
-    }));
-  }
 
-  async function loadDungeonRoom(dungeonId: string, roomId: string) {
-    await persistActiveRoomLeaveState();
-    const dungeon = await api.getDungeon(dungeonId);
-    const room = dungeon.rooms.find((r) => r.id === roomId);
-    if (!room) return;
-    const template = await api.getZoneMapTemplate(room.templateId);
-    // A trap this room remembers being disarmed stays disarmed on reload.
-    const disarmed = new Set(room.state?.disarmedHazardZoneIds ?? []);
-    const zones = template.zones.map((z) => (disarmed.has(z.id) && z.hazard ? { ...z, hazard: undefined } : z));
-    applyEncounterUpdate((e) => ({
-      ...e,
-      zones,
-      zoneEffects: [],
-      activeDungeonId: dungeonId,
-      activeDungeonRoomId: roomId,
-      // Coexists with the zone load above rather than replacing it — a
-      // room's assigned battle map (set in DungeonEditor) auto-loads the
-      // same way its zone template does, the moment the party enters.
-      activeBattleMapId: room.battleMapId,
-    }));
-    setActiveDungeon(dungeon);
-  }
-
-  async function leaveDungeon() {
-    await persistActiveRoomLeaveState();
-    applyEncounterUpdate((e) => ({ ...e, activeDungeonId: undefined, activeDungeonRoomId: undefined }));
-    setActiveDungeon(null);
-  }
 
   // Distinct from Remove: a fled monster is still out there and may have
-  // warned the rest of the dungeon, so it marks the room alerted (sticky)
-  // rather than just disappearing from the encounter.
-  async function fleeCombatant(id: string) {
+  // warned the rest of the dungeon, so the room stays alerted rather than
+  // the monster just disappearing from the encounter.
+  function fleeCombatant(id: string) {
     removeCombatant(id);
-    const dungeonId = activeEncounter.activeDungeonId;
-    const roomId = activeEncounter.activeDungeonRoomId;
-    if (dungeonId && roomId) {
-      await updateRoomState(dungeonId, roomId, (s) => ({ ...s, alerted: true }));
-    }
+    void markRoomAlerted();
   }
 
   function loadBattleMap(mapId: string) {
@@ -725,19 +629,16 @@ export function InitiativeTracker({
         </p>
       )}
 
-      {canEdit && activeDungeon && (() => {
-        const activeRoom = activeDungeon.rooms.find((r) => r.id === activeEncounter.activeDungeonRoomId);
-        return (
-          <p className="hint">
-            Dungeon: {activeDungeon.name}
-            {activeRoom && ` · Room: ${activeRoom.name}`}
-            {activeRoom?.state?.cleared && <span className="room-status-badge cleared"> Cleared</span>}
-            {activeRoom?.state?.alerted && <span className="room-status-badge alerted"> Alerted</span>}
-            {" "}
-            <button className="btn-secondary" onClick={leaveDungeon}>Leave Dungeon</button>
-          </p>
-        );
-      })()}
+      {canEdit && activeDungeon && (
+        <p className="hint">
+          Dungeon: {activeDungeon.name}
+          {activeRoom && ` · Room: ${activeRoom.name}`}
+          {activeRoom?.state?.cleared && <span className="room-status-badge cleared"> Cleared</span>}
+          {activeRoom?.state?.alerted && <span className="room-status-badge alerted"> Alerted</span>}
+          {" "}
+          <button className="btn-secondary" onClick={leaveDungeon}>Leave Dungeon</button>
+        </p>
+      )}
 
       {canEdit && opportunityPrompt && (
         <div className="button-row opportunity-prompt">
@@ -802,7 +703,7 @@ export function InitiativeTracker({
               onRemoveEffect={zoneActions.removeEffect}
               onMoveCombatant={zoneActions.moveCombatant}
               onLoadTemplate={zoneActions.loadTemplate}
-              onLoadDungeonRoom={loadDungeonRoom}
+              onLoadDungeonRoom={loadRoom}
             />
           )}
 
@@ -824,7 +725,7 @@ export function InitiativeTracker({
               onTemplateTargetsChange={setTemplateTargetIds}
               onToggleDoor={toggleDoor}
               exits={gridExits}
-              onTravel={canEdit && activeDungeon ? (toRoomId) => loadDungeonRoom(activeDungeon.id, toRoomId) : undefined}
+              onTravel={canEdit && activeDungeon ? (toRoomId) => loadRoom(activeDungeon.id, toRoomId) : undefined}
             />
           )}
 

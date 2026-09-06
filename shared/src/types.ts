@@ -1000,6 +1000,20 @@ export interface DungeonRoomState {
   disarmedHazardZoneIds: string[];
 }
 
+// What a visiting client reports about a room as it leaves — every field
+// optional, because a report only ever says what that visit observed. The
+// server merges it onto the stored state (see mergeRoomState in
+// dungeonRooms.ts), which is what keeps two visits in flight at once from
+// overwriting each other's findings.
+export interface DungeonRoomStatePatch {
+  cleared?: boolean;
+  // Only ever sent as true. The merge never clears it.
+  alerted?: boolean;
+  lastVisitedDay?: number;
+  // Added to whatever the room already remembered, never replacing it.
+  disarmedHazardZoneIds?: string[];
+}
+
 export interface DungeonRoom {
   id: string;
   name: string;

@@ -302,5 +302,3 @@ into the bug. That's the intended standard, not over-commenting.
   opportunity reminder banners, and battle-map load/leave/move. The battle-map cluster
   is small and the reminders are three effects that diff against the previous render;
   neither is an obvious next seam. This is close to done.
-- **Distribution, not code, is the bottleneck.** Launch posts to several subreddits were
-  duds. Worth weighing before picking up more feature work.

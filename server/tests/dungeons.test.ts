@@ -144,3 +144,84 @@ describe("dungeon exits carrying a battle-map edge", () => {
     expect(created.body.rooms[0].exits[0].mapEdge).toBeUndefined();
   });
 });
+
+describe("room state patch endpoint", () => {
+  async function makeDungeon(username: string) {
+    const { agent } = await signupAgent(username);
+    const templateId = await makeTemplate(agent, `${username} Layout`);
+    const created = await agent.post("/api/dungeons").send({
+      name: "Barrow",
+      rooms: [
+        { id: "r1", name: "Antechamber", templateId, exits: [] },
+        { id: "r2", name: "Vault", templateId, exits: [] },
+      ],
+    });
+    return { agent, dungeonId: created.body.id as string };
+  }
+
+  const stateOf = (body: { rooms: { id: string; state?: unknown }[] }, roomId: string) =>
+    body.rooms.find((r) => r.id === roomId)?.state;
+
+  it("merges a patch onto a room that had no state yet", async () => {
+    const { agent, dungeonId } = await makeDungeon("roomstate1");
+    const res = await agent.patch(`/api/dungeons/${dungeonId}/rooms/r1/state`)
+      .send({ cleared: true, lastVisitedDay: 4, disarmedHazardZoneIds: ["z2"] });
+    expect(res.status).toBe(200);
+    expect(stateOf(res.body, "r1")).toEqual({ cleared: true, alerted: false, lastVisitedDay: 4, disarmedHazardZoneIds: ["z2"] });
+    // Untouched rooms keep whatever they had.
+    expect(stateOf(res.body, "r2")).toBeUndefined();
+  });
+
+  it("never clears alerted through this route, whatever the patch says", async () => {
+    // The invariant the client-side read-modify-write used to lose: a leave
+    // report computed before a flee landed wrote alerted straight back to
+    // false. Only the editor's wholesale rooms PATCH can reset it now.
+    const { agent, dungeonId } = await makeDungeon("roomstate2");
+    await agent.patch(`/api/dungeons/${dungeonId}/rooms/r1/state`).send({ alerted: true });
+    const res = await agent.patch(`/api/dungeons/${dungeonId}/rooms/r1/state`).send({ cleared: true, alerted: false });
+    expect(res.status).toBe(200);
+    expect(stateOf(res.body, "r1")).toMatchObject({ cleared: true, alerted: true });
+  });
+
+  it("accumulates disarmed traps across visits", async () => {
+    const { agent, dungeonId } = await makeDungeon("roomstate3");
+    await agent.patch(`/api/dungeons/${dungeonId}/rooms/r1/state`).send({ disarmedHazardZoneIds: ["z2"] });
+    const res = await agent.patch(`/api/dungeons/${dungeonId}/rooms/r1/state`).send({ disarmedHazardZoneIds: ["z5"] });
+    expect((stateOf(res.body, "r1") as { disarmedHazardZoneIds: string[] }).disarmedHazardZoneIds.sort()).toEqual(["z2", "z5"]);
+  });
+
+  it("keeps both reports when two land at once", async () => {
+    // The whole reason for the lock: these two interleave in real play (a
+    // monster flees, the party leaves a moment later) and neither finding
+    // may be lost.
+    const { agent, dungeonId } = await makeDungeon("roomstate4");
+    const [flee, leave] = await Promise.all([
+      agent.patch(`/api/dungeons/${dungeonId}/rooms/r1/state`).send({ alerted: true }),
+      agent.patch(`/api/dungeons/${dungeonId}/rooms/r1/state`).send({ cleared: true, disarmedHazardZoneIds: ["z2"] }),
+    ]);
+    expect(flee.status).toBe(200);
+    expect(leave.status).toBe(200);
+
+    const fetched = await agent.get(`/api/dungeons/${dungeonId}`);
+    expect(stateOf(fetched.body, "r1")).toMatchObject({ cleared: true, alerted: true, disarmedHazardZoneIds: ["z2"] });
+  });
+
+  it("404s an unknown room, and an unknown dungeon", async () => {
+    const { agent, dungeonId } = await makeDungeon("roomstate5");
+    expect((await agent.patch(`/api/dungeons/${dungeonId}/rooms/nope/state`).send({ cleared: true })).status).toBe(404);
+    expect((await agent.patch(`/api/dungeons/does-not-exist/rooms/r1/state`).send({ cleared: true })).status).toBe(404);
+  });
+
+  it("404s someone else's dungeon rather than letting them mark it alerted", async () => {
+    const { dungeonId } = await makeDungeon("roomstate6");
+    const { agent: stranger } = await signupAgent("roomstate6-stranger");
+    const res = await stranger.patch(`/api/dungeons/${dungeonId}/rooms/r1/state`).send({ alerted: true });
+    expect(res.status).toBe(404);
+  });
+
+  it("400s a malformed patch instead of storing it", async () => {
+    const { agent, dungeonId } = await makeDungeon("roomstate7");
+    const res = await agent.patch(`/api/dungeons/${dungeonId}/rooms/r1/state`).send({ cleared: "yes" });
+    expect(res.status).toBe(400);
+  });
+});

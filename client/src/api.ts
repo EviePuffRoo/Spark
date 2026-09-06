@@ -19,7 +19,7 @@ import type {
   DowntimeActivity, DowntimeActivityInput, DowntimeOutcomeActivityType, DowntimeOutcomeDef,
   Encounter, EncounterStateInput,
   ZoneMapTemplate, ZoneMapTemplateInput,
-  Dungeon, DungeonInput, GenerateDungeonRequest, GeneratedDungeonOutline,
+  Dungeon, DungeonInput, DungeonRoomStatePatch, GenerateDungeonRequest, GeneratedDungeonOutline,
   BattleMap, BattleMapInput,
   Shop, ShopInput, GenerateShopRequest, GeneratedShop, ShopCommission, ShopCommissionInput,
   FactionLogEntry, FactionRelationship, FactionRelationshipInput, CampaignEvent, CampaignEventInput, CampaignEventLogEntry,
@@ -369,6 +369,11 @@ export const api = {
   getDungeon: (id: string) => request<Dungeon>(`/dungeons/${id}`),
   saveDungeon: (dungeon: DungeonInput & { worldId?: string | null; tags?: string[]; notes?: string; hiddenFromParty?: boolean }) =>
     request<Dungeon>("/dungeons", { method: "POST", body: JSON.stringify(dungeon) }),
+  // Narrow, additive room-state report — the server merges it under a lock
+  // (see mergeRoomState), so a caller never reads the dungeon first and two
+  // reports in flight can't overwrite each other.
+  patchDungeonRoomState: (dungeonId: string, roomId: string, patch: DungeonRoomStatePatch) =>
+    request<Dungeon>(`/dungeons/${dungeonId}/rooms/${roomId}/state`, { method: "PATCH", body: JSON.stringify(patch) }),
   updateDungeon: (id: string, patch: Partial<Dungeon>) =>
     request<Dungeon>(`/dungeons/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   deleteDungeon: (id: string) => request<void>(`/dungeons/${id}`, { method: "DELETE" }),

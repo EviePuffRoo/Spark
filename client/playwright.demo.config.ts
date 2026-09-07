@@ -53,6 +53,10 @@ export default defineConfig({
     { name: "generation", testMatch: "**/01-generation.demo.ts", dependencies: ["seed"] },
     { name: "map-builder", testMatch: "**/02-map-builder.demo.ts", dependencies: ["seed"] },
     { name: "live-combat", testMatch: "**/03-live-combat.demo.ts", dependencies: ["seed"] },
+    { name: "town", testMatch: "**/04-town.demo.ts", dependencies: ["seed"] },
+    { name: "downtime", testMatch: "**/05-downtime.demo.ts", dependencies: ["seed"] },
+    { name: "dungeon", testMatch: "**/06-dungeon.demo.ts", dependencies: ["seed"] },
+    { name: "world-tick", testMatch: "**/07-world-tick.demo.ts", dependencies: ["seed"] },
   ],
   webServer: [
     {

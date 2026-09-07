@@ -313,6 +313,9 @@ It has its own config (`playwright.demo.config.ts`), its own directory, and file
 `*.demo.ts` rather than `*.spec.ts`, so neither the CI e2e suite nor vitest can pick a
 segment up. A shot that waits out an animation must never be able to fail somebody's PR.
 
+Seven segments, one Playwright project each: generation, the map builder, live combat on
+two screens, the town, downtime and crafting, the dungeon crawl, the world tick.
+
 ```bash
 cd client
 npm run demo              # seed, then every segment
@@ -336,6 +339,16 @@ The two rules that keep it re-runnable, both of which cost a take to learn:
   is something the video *shows*, never something it depends on. The seed is idempotent
   for the same reason: re-recording one segment lands on exactly the world the others
   were shot against, which is what makes a segment worth re-shooting on its own.
+
+Two things the segments turned up that are about the app rather than the rig:
+
+- **`.app-content` caps the whole app at 1100px.** On a 1920 monitor that leaves a
+  quarter of the screen empty and draws the battle grid at 570x380 — measured live, and
+  identical at 1366. The grid is width-constrained while ~460px of its own 78vh height
+  sits unused, so a DM on a wide screen is getting about a third of the map they could
+  have. The rig zooms around it; the product doesn't.
+- **`locator.scrollIntoViewIfNeeded()` times out inside a CSS-zoomed subtree.** Worth
+  knowing before anyone reaches for zoom elsewhere.
 
 `demo:assemble` uses the ffmpeg Playwright bundles for its own video recording, so there
 is nothing to install — but that build is deliberately minimal (scale, pad, crop, trim,

@@ -48,6 +48,13 @@ export interface DemoWorld {
   playerCharacterIds: Record<string, string>;
   monsterIds: Record<string, string>;
   dungeonId?: string;
+  settlementId?: string;
+  shopId?: string;
+  factionId?: string;
+  regionIds?: string[];
+  itemIds?: Record<string, string>;
+  /** Room ids in the order a party would walk them, for the crawl segment. */
+  dungeonRoomIds?: string[];
 }
 
 const PASSWORD = "spark-demo-2026";
@@ -404,25 +411,47 @@ export async function seedDemoWorld(request: Req, playerRequest: Req): Promise<D
     reward: "The abbey's reliquary, and Thornhallow's gratitude — which is worth less than the reliquary.",
   }));
 
-  await optional("faction", () => post(request, "/factions", {
-    worldId, name: "The Vigil of the Ninth Toll", factionType: "Cult",
-    agenda: "Wake what the abbey drowned to keep asleep.",
-    methods: "Patience, drownings, and a great deal of rope.",
-    publicFace: "A charitable order that maintains the river crossings.",
-    hook: "They have been buying up every boat in Thornhallow for a year.",
-  }));
+  let factionId: string | undefined;
+  await optional("faction", async () => {
+    const created = await post<{ id: string }>(request, "/factions", {
+      worldId, name: "The Vigil of the Ninth Toll", factionType: "Cult",
+      agenda: "Wake what the abbey drowned to keep asleep.",
+      methods: "Patience, drownings, and a great deal of rope.",
+      publicFace: "A charitable order that maintains the river crossings.",
+      hook: "They have been buying up every boat in Thornhallow for a year.",
+    });
+    factionId = created.id;
+    // A standing the tavern's Faction Standings panel has something to say
+    // about — neutral reads as "this feature does nothing".
+    await patch(request, `/factions/${created.id}`, { reputation: -24 });
+  });
 
-  await optional("shop", () => post(request, "/shops", {
-    worldId, name: "Vosk & Daughter, Chandlers",
-    description: "Rope, lamp oil, tallow, and the only dry powder within thirty miles.",
-    stock: [
-      { id: "s1", itemId: "rope-hempen", itemName: "Hempen Rope (50 ft.)", price: 1, quantity: 8 },
-      { id: "s2", itemId: "oil-flask", itemName: "Lamp Oil (flask)", price: 1, quantity: 24 },
-      { id: "s3", itemId: "lantern-hooded", itemName: "Lantern, Hooded", price: 5, quantity: 3 },
-      { id: "s4", itemId: "holy-water", itemName: "Holy Water (flask)", price: 25, quantity: 1 },
-      { id: "s5", itemId: "crowbar", itemName: "Crowbar", price: 2, quantity: 4 },
-    ],
-  }));
+  await optional("second faction", async () => {
+    const created = await post<{ id: string }>(request, "/factions", {
+      worldId, name: "The Ferrymen's Compact", factionType: "Guild",
+      agenda: "Keep the crossings open and the tolls theirs.",
+      methods: "Rates, favours, and knowing who went upriver and when.",
+      publicFace: "Twelve families who have run the Thorn since anyone was counting.",
+      hook: "They will ferry anyone anywhere, once, for the right question answered.",
+    });
+    await patch(request, `/factions/${created.id}`, { reputation: 31 });
+  });
+
+  let shopId: string | undefined;
+  await optional("shop", async () => {
+    const created = await post<{ id: string }>(request, "/shops", {
+      worldId, name: "Vosk & Daughter, Chandlers",
+      description: "Rope, lamp oil, tallow, and the only dry powder within thirty miles.",
+      stock: [
+        { id: "s1", itemId: "rope-hempen", itemName: "Hempen Rope (50 ft.)", price: 1, quantity: 8 },
+        { id: "s2", itemId: "oil-flask", itemName: "Lamp Oil (flask)", price: 1, quantity: 24 },
+        { id: "s3", itemId: "lantern-hooded", itemName: "Lantern, Hooded", price: 5, quantity: 3 },
+        { id: "s4", itemId: "holy-water", itemName: "Holy Water (flask)", price: 25, quantity: 1 },
+        { id: "s5", itemId: "crowbar", itemName: "Crowbar", price: 2, quantity: 4 },
+      ],
+    });
+    shopId = created.id;
+  });
 
   await optional("ledger", async () => {
     for (const entry of [
@@ -442,6 +471,142 @@ export async function seedDemoWorld(request: Req, playerRequest: Req): Promise<D
     nextSteps: "Up the bell stair. Ilesha wants the abbey consecrated before anyone touches the bell.",
   }));
 
+
+  // --- The town the party comes back to, and the country around it ---
+  let settlementId: string | undefined;
+  await optional("settlement", async () => {
+    const created = await post<{ id: string }>(request, "/settlements", {
+      worldId, name: "Wickmoor", settlementType: "Town",
+      population: "About 900, fewer every spring",
+      government: "A council of the twelve ferry families",
+      prosperity: "Getting by", dangerLevel: "Uneasy",
+      description: "Built on stilts where the Thorn slows and spreads. Half of it is boardwalk and the other half is boat, and the whole of it is one bad flood from being neither.",
+    });
+    settlementId = created.id;
+  });
+
+  const regionIds: string[] = [];
+  await optional("regions", async () => {
+    for (const region of [
+      { name: "The Thorn Fen", terrainCategory: "Swamp", dangerLevel: "Dangerous", x: 220, y: 200,
+        description: "Standing water for nine miles in every direction, and the causeway is the only thing anyone trusts." },
+      { name: "Bellwether Downs", terrainCategory: "Hills", dangerLevel: "Safe", x: 460, y: 140,
+        description: "Sheep country above the floodline. The only road out that stays a road in winter." },
+    ]) {
+      const created = await post<{ id: string }>(request, "/regions", { worldId, ...region });
+      regionIds.push(created.id);
+    }
+  });
+
+  // --- Things to craft, commission and carry ---
+  const itemIds: Record<string, string> = {};
+  await optional("items", async () => {
+    for (const item of [
+      {
+        name: "Ferryman's Lantern", itemType: "Wondrous Item", category: "wondrous", rarity: "Uncommon", rarityTier: 2,
+        description: "A hooded lantern of black iron and green glass, cold to the touch even lit.",
+        property: "Sheds light 30 ft. Its light is not dimmed by fog, rain, or spray, and it cannot be blown out.",
+        history: "Hung on the last boat of every Vigil crossing. Nine of them were made; four are accounted for.",
+        bonusType: "none", bonusValue: 0, requiresAttunement: false, charges: null, rechargeRule: null, value: 250,
+      },
+      {
+        name: "Bell-Iron Dagger", itemType: "Weapon", category: "weapon", rarity: "Rare", rarityTier: 3,
+        description: "Forged from a fragment of the abbey bell. It hums when it is drawn and will not stop.",
+        property: "+1 to attack and damage. On a hit against an undead creature, it rings — the creature has disadvantage on its next saving throw.",
+        history: "The bell lost a hand's width of its lip when it fell. This is most of it.",
+        bonusType: "attack", bonusValue: 1, requiresAttunement: true, charges: null, rechargeRule: null, value: 1200,
+      },
+    ]) {
+      const created = await post<{ id: string; name: string }>(request, "/items", { worldId, ...item });
+      itemIds[item.name] = created.id;
+    }
+  });
+
+  // No doom clock: they are gated behind a paid tier, and the demo accounts
+  // are ordinary free ones on purpose — a tour shot from a privileged account
+  // shows a product nobody signing up will get.
+
+  // --- The dungeon the crawl segment runs ---
+  //
+  // Room ids are the template's own, kept intact on purpose: the room-memory
+  // diff in shared/src/dungeonRooms.ts matches disarmed traps by zone id, and
+  // it only works because the dungeon loader copies a template's zones with
+  // their ids — unlike graftZoneTemplate, which deliberately remaps them.
+  let dungeonId: string | undefined;
+  const dungeonRoomIds: string[] = [];
+  await optional("dungeon", async () => {
+    // Three zones a room, connected, rather than one zone standing in for
+    // the whole room. A generated dungeon does the latter and it is fine to
+    // play, but on screen a single circle in an empty canvas says nothing
+    // about what the zone map is for.
+    const rooms = [
+      {
+        id: "room-narthex", name: "The Flooded Narthex",
+        zones: [
+          { id: "z-nar-steps", name: "Flooded Steps", x: 200, y: 240, connections: ["z-nar-font"] },
+          { id: "z-nar-font", name: "The Font", x: 400, y: 180, connections: ["z-nar-steps", "z-nar-doors"] },
+          { id: "z-nar-doors", name: "Broken Doors", x: 590, y: 250, connections: ["z-nar-font"] },
+        ],
+        exits: [{ zoneId: "z-nar-doors", toRoomId: "room-nave", label: "Through the broken doors", mapEdge: "east" }],
+        rect: { x: 40, y: 150, width: 150, height: 100 },
+      },
+      {
+        id: "room-nave", name: "The Nave",
+        zones: [
+          { id: "z-nave-aisle", name: "The Aisle", x: 200, y: 220, connections: ["z-nave-crossing"] },
+          { id: "z-nave-crossing", name: "The Crossing", x: 400, y: 300, connections: ["z-nave-aisle", "z-nave-choir"] },
+          { id: "z-nave-choir", name: "Choir Stalls", x: 600, y: 200, connections: ["z-nave-crossing"] },
+        ],
+        exits: [
+          { zoneId: "z-nave-aisle", toRoomId: "room-narthex", label: "Back to the water", mapEdge: "west" },
+          { zoneId: "z-nave-crossing", toRoomId: "room-crypt", label: "Down the crypt stair", mapEdge: "south" },
+          { zoneId: "z-nave-choir", toRoomId: "room-bell", label: "Up the bell stair", mapEdge: "east" },
+        ],
+        rect: { x: 240, y: 150, width: 160, height: 110 },
+      },
+      {
+        id: "room-crypt", name: "The Crypt",
+        zones: [
+          { id: "z-crypt-stair", name: "Crypt Stair", x: 200, y: 200, connections: ["z-crypt-ossuary"] },
+          // The trap the room-memory beat turns on.
+          { id: "z-crypt-ossuary", name: "The Ossuary", x: 410, y: 280, connections: ["z-crypt-stair", "z-crypt-tomb"],
+            hazard: { label: "Dart Trap", damage: 5 } },
+          { id: "z-crypt-tomb", name: "Sealed Sarcophagus", x: 620, y: 200, connections: ["z-crypt-ossuary"] },
+        ],
+        exits: [{ zoneId: "z-crypt-stair", toRoomId: "room-nave", label: "Up again", mapEdge: "north" }],
+        rect: { x: 250, y: 310, width: 140, height: 100 },
+      },
+      {
+        id: "room-bell", name: "The Bell Chamber",
+        zones: [
+          { id: "z-bell-stair", name: "Bell Stair", x: 200, y: 260, connections: ["z-bell-under"] },
+          { id: "z-bell-under", name: "Under the Bell", x: 410, y: 190, connections: ["z-bell-stair", "z-bell-gallery"] },
+          { id: "z-bell-gallery", name: "The Gallery", x: 610, y: 270, connections: ["z-bell-under"] },
+        ],
+        exits: [{ zoneId: "z-bell-stair", toRoomId: "room-nave", label: "Down the stair", mapEdge: "west" }],
+        rect: { x: 450, y: 140, width: 160, height: 120 },
+      },
+    ];
+
+    const built = [];
+    for (const room of rooms) {
+      const template = await post<{ id: string }>(request, "/zone-map-templates", {
+        worldId, name: room.name,
+        zones: room.zones.map((z) => ({ tags: [], revealed: true, ...z })),
+      });
+      built.push({
+        id: room.id, name: room.name, templateId: template.id, exits: room.exits, rect: room.rect,
+        // The bell chamber is where the fight happens, so it opens onto the
+        // map the combat segment is shot on.
+        ...(room.id === "room-bell" ? { battleMapId: battleMap.id } : {}),
+      });
+      dungeonRoomIds.push(room.id);
+    }
+
+    const created = await post<{ id: string }>(request, "/dungeons", { worldId, name: "The Sunken Abbey", rooms: built });
+    dungeonId = created.id;
+  });
+
   const state: DemoWorld = {
     seededAt: new Date().toISOString(),
     password: PASSWORD,
@@ -449,6 +614,8 @@ export async function seedDemoWorld(request: Req, playerRequest: Req): Promise<D
     battleMapId: battleMap.id,
     draftBattleMapId: draftMap.id,
     playerCharacterIds, monsterIds,
+    dungeonId, settlementId, shopId, factionId,
+    regionIds, itemIds, dungeonRoomIds,
   };
   saveDemoWorld(state);
 
@@ -544,4 +711,23 @@ export async function armEncounter(request: Req, demo: DemoWorld) {
   const res = await request.put(`/api/encounters/${demo.worldId}`, { data: encounter });
   if (!res.ok()) throw new Error(`arming the encounter failed: ${res.status()} ${await res.text()}`);
   return res.json();
+}
+
+// Puts the seeded dungeon back to pristine: every room forgets that it was
+// cleared, alerted, or had its traps dealt with.
+//
+// Needed because the room memory is durable and works. Segment 6 disarms a
+// trap to show that it stays disarmed, so the second time that segment runs
+// there is no trap left to disarm and the shot has nothing to say. Resetting
+// goes through the ordinary dungeon edit route on purpose — the merge rule
+// in shared/src/dungeonRooms.ts deliberately never clears `alerted` and only
+// accumulates disarmed traps, so a state patch cannot undo any of it. That
+// asymmetry is the feature, not an oversight: forgetting is authoring.
+export async function resetDungeonRooms(request: Req, demo: DemoWorld) {
+  if (!demo.dungeonId) return;
+  const res = await request.get(`/api/dungeons/${demo.dungeonId}`);
+  if (!res.ok()) throw new Error(`reading the dungeon failed: ${res.status()}`);
+  const dungeon = await res.json() as { rooms: Record<string, unknown>[] };
+  const rooms = dungeon.rooms.map(({ state, ...room }) => { void state; return room; });
+  await patch(request, `/dungeons/${demo.dungeonId}`, { rooms });
 }

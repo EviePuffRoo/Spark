@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { loadDemoWorld, demoStorage } from "./demoWorld";
-import { Segment, openView, badge, beatSay, say, click, hold, glide } from "./demoKit";
+import { Segment, openView, badge, beatSay, say, click, hold, glide, SHOOT } from "./demoKit";
 
 // Segment 1 — where a campaign comes from.
 //
@@ -23,6 +23,7 @@ test("segment 1 — generating a world and its cast", async ({ browser }) => {
     segment,
     signIn: { username: demo.dm.username, password: demo.password },
     storage: demoStorage(demo, { "spark-create-type": "npc" }),
+    ...SHOOT,
   });
   const { page } = view;
 

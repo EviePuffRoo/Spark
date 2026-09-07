@@ -97,6 +97,38 @@ The real edit wants the beat sheets rather than this script's output. Both views
 two-camera segment carry their own start offset, so aligning them is arithmetic:
 `videoTime = beat.t - videos[view].offsetMs`.
 
+## The segments
+
+| project | what it has to prove |
+| --- | --- |
+| `generation` | A world already full of people and places, and a generator that fills a stat block in one click. |
+| `map-builder` | Maps are hand-built from a fixed tileset: a chasm with a real height, a bridge that spans rather than replaces it, a tile that turns. |
+| `live-combat` | Two synchronised screens — the DM's numbers and hidden markers against the table's status badges and fog. The only segment that cannot be shot from one browser. |
+| `town` | The half of a campaign that isn't a fight: records, a shop that spends one shared purse, the tavern hub. |
+| `downtime` | Weeks between sessions, and crafting priced by the item's own rarity rather than by argument. |
+| `dungeon` | A room that remembers — disarm a trap, walk away, come back, and it is still disarmed. **Incomplete**: see below. |
+| `world-tick` | Time passing, as a proposal the DM approves item by item rather than a fait accompli. |
+
+### The dungeon segment's unfinished beat
+
+`06-dungeon` reliably gets as far as loading the abbey and walking the party
+Narthex → Nave → Crypt, and then fails: clicking a zone node in the Crypt does
+not open its detail panel, so the trap never gets disarmed and the
+room-memory payoff — the whole point of the segment — is never shot.
+
+What is known:
+
+- Selecting a zone works in the Narthex and the Nave and not in the Crypt, on
+  every run, so it is not a timing flake.
+- It worked before the seeded rooms went from one zone each to three, so the
+  regression is in that change rather than in the app.
+- It is not the wheel-zoom interference (`noScroll` is already applied), not
+  the group-vs-circle click target (both fail the same way), and not the
+  signal being waited on (`Location` heading and `Close` button both fail).
+
+Next thing to try is dumping the zone map's DOM at that moment — whether the
+Crypt's nodes are the ones being clicked, and whether the panel opens at all.
+
 ## Adding a segment
 
 1. Write `demo/NN-name.demo.ts` — `loadDemoWorld()`, `openView()`, drive it.
@@ -107,10 +139,22 @@ two-camera segment carry their own start offset, so aligning them is arithmetic:
 
 ## Things learned the hard way
 
-- **Zoom the app, not the page.** Both maps are drawn at a fixed 32px per
-  cell, so on a 1920 frame a 20x14 map is a third of the picture. `openView`'s
-  `zoom` applies CSS zoom to `#root` — not to `body`, or the recorded cursor
-  and captions would scale with it.
+- **The app caps its own content at 1100px** (`.app-content`, App.css), so on
+  a 1920 frame roughly a quarter is empty gutter and the battle grid draws at
+  570x380 — a tenth of the picture — whether the viewport is 1366 or 1920.
+  `SHOOT` zooms `#root` to 1.33 so the app lays out near the frame edge. That
+  is a shooting workaround; on a wide monitor a real DM sees the same small
+  map.
+- **Zoom the app root, not the viewport.** Playwright does not scale the
+  viewport up to a larger `recordVideo.size` — it composites it at natural
+  size into the corner, so a 1440x810 viewport recorded into 1920x1080 came
+  out with a black band down two sides. Zoom `#root` (never `body`, or the
+  recorded cursor and captions scale with it) and record at the viewport size.
+- **`locator.scrollIntoViewIfNeeded()` times out inside a CSS-zoomed
+  subtree**, and it fails as a 20-second hang naming the right element, which
+  reads like a wrong selector and is not one. `glide()` wheel-scrolls instead.
+  The same is true of anything that waits on actionability — the kit clicks
+  with raw `page.mouse` events for this reason.
 - **Scroll once, deliberately.** The map builder's palette has its own
   `overflow-y` (`max-height: 75vh`), so picking a tile scrolls the palette and
   leaves the canvas alone. Scroll the page once to frame the canvas and it
@@ -123,3 +167,14 @@ two-camera segment carry their own start offset, so aligning them is arithmetic:
   particular forge uses ("Draft Quest Hook", "Sketch Location").
 - A world's name is an `<option>` in the header picker as well as a heading,
   and the hidden option matches first. Assert on the heading.
+- **The area sidebar is itself a `.grouped-tabs`**, and it comes first in the
+  DOM — so `.grouped-tabs` alone gets you the sidebar's Campaign/Records/
+  Downtime, not the page's own tabs. Scope to `.roster-mode-tabs` /
+  `.create-type-tabs`.
+- **A dungeon exit belongs to one zone**, and the zone panel lists only the
+  selected zone's exits. Walking a party means selecting the zone that owns
+  the door, not any zone in the room.
+- An input with a `datalist` has the ARIA role `combobox`, not `textbox`.
+- Doom clocks are gated behind a paid tier, and the demo accounts are
+  ordinary free ones on purpose — a tour shot from a privileged account shows
+  a product nobody signing up will get.

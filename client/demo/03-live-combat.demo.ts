@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { loadDemoWorld, demoStorage, armEncounter, demoCombatantId } from "./demoWorld";
-import { Segment, openView, badge, say, click, hold, drag, cellPoint, frame } from "./demoKit";
+import { Segment, openView, badge, say, click, clickUntil, hold, drag, cellPoint, frame, SHOOT } from "./demoKit";
 
 // Segment 3 — the same fight, on two screens at once.
 //
@@ -43,6 +43,7 @@ test("segment 3 — live combat on two screens", async ({ browser }) => {
     segment,
     signIn: { username: demo.dm.username, password: demo.password },
     storage: demoStorage(demo),
+    ...SHOOT,
   });
 
   // The cast screen carries the DM's own session — that is exactly how the
@@ -52,7 +53,7 @@ test("segment 3 — live combat on two screens", async ({ browser }) => {
     segment,
     signIn: { username: demo.dm.username, password: demo.password },
     url: `/?present=${demo.worldId}`,
-    zoom: 1.15,
+    ...SHOOT,
   });
 
   const dm = dmView.page;
@@ -78,8 +79,32 @@ test("segment 3 — live combat on two screens", async ({ browser }) => {
     await click(dm, dm.getByRole("button", { name: "Show Battle Grid" }));
     const dmGrid = dm.locator(".grid-map-svg > g[transform]").first();
     await expect(dm.locator(".grid-map-svg")).toBeVisible();
-    await frame(dm, dm.locator(".grid-map-svg"), { at: 0.5 });
+    // Framed on the panned group, not on the <svg>: the element is 78vh
+     // tall while the map inside it is letterboxed to the element's width,
+     // so centring the box leaves the map sitting high with dead space under
+     // it.
+    await frame(dm, dmGrid, { at: 0.5 });
     await hold(900);
+
+    // Opening a map auto-collapses the dice/chat column (CombatPage's
+    // handleMapActiveChange), and the divider between the map and the
+    // combatant list is the DM's own control over the rest. Dragging it
+    // right shrinks the rail — useResizableColumn's sign: -1 — and hands
+    // the difference to the map.
+    const divider = dm.getByRole("separator", { name: "Resize combatant list" });
+    const dividerBox = await divider.boundingBox();
+    if (dividerBox) {
+      await say(dm, "The map and the combatant list share the width — drag the divider.");
+      segment.beat("DRAG: the divider, giving the map the room", "dm");
+      await drag(
+        dm,
+        { x: dividerBox.x + dividerBox.width / 2, y: dividerBox.y + 120 },
+        { x: dividerBox.x + dividerBox.width / 2 + 90, y: dividerBox.y + 120 },
+        26,
+      );
+      await hold(1400);
+      await say(dm, null);
+    }
 
     await expect(table.getByRole("button", { name: "Battle Grid" })).toBeVisible({ timeout: 20_000 });
     await click(table, table.getByRole("button", { name: "Battle Grid" }));
@@ -87,7 +112,7 @@ test("segment 3 — live combat on two screens", async ({ browser }) => {
     // Framed once. Nothing else is ever clicked on this screen, so the map
     // stays put for the whole segment — which is what makes it usable as the
     // constant half of a split screen.
-    await frame(table, table.locator(".grid-map-svg"), { at: 0.52 });
+    await frame(table, table.locator(".grid-map-svg > g[transform]").first(), { at: 0.52 });
     segment.beat("cast screen showing the same map", "table");
     await hold(1200);
 
@@ -135,13 +160,12 @@ test("segment 3 — live combat on two screens", async ({ browser }) => {
     await hold(700);
 
     segment.beat("ROLL: to hit", "dm");
-    await click(dm, attack.getByRole("button", { name: "Roll to Hit" }));
-    await expect(attack.locator(".encounter-roll-result").first()).toBeVisible();
+    await clickUntil(dm, attack.getByRole("button", { name: "Roll to Hit" }), attack.locator(".encounter-roll-result"));
     await hold(1800);
 
     await attack.getByLabel("Damage dice").fill("2d6+4");
     segment.beat("ROLL: damage, applied to the target", "dm");
-    await click(dm, attack.getByRole("button", { name: "Roll Damage & Apply" }));
+    await clickUntil(dm, attack.getByRole("button", { name: "Roll Damage & Apply" }), attack.getByText(/Applied \d+ damage/));
     await hold(1600);
     await say(dm, "The DM sees the hit points.");
     await say(table, "The table sees only that something hurt.");

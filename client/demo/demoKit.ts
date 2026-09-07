@@ -217,21 +217,109 @@ async function centreOf(target: Locator) {
   return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
 }
 
-/** Slides the pointer to an element without clicking it. */
-export async function glide(page: Page, target: Locator, steps = 22) {
-  await target.scrollIntoViewIfNeeded();
+/**
+ * Brings an element into the viewport by scrolling the page, if it isn't
+ * already comfortably in it.
+ *
+ * Deliberately not locator.scrollIntoViewIfNeeded(): that goes through
+ * CDP's DOM.scrollIntoViewIfNeeded, which times out on elements inside a
+ * CSS-zoomed subtree — and the whole app is zoomed while shooting (see
+ * SHOOT). It fails as a 20-second hang naming the right element, which
+ * reads like a missing selector and is not one.
+ */
+async function ensureInView(page: Page, target: Locator) {
+  const vp = page.viewportSize();
+  if (!vp) return;
+  const top = vp.height * 0.1;
+  const bottom = vp.height * 0.85;
+  for (let i = 0; i < 16; i++) {
+    const box = await target.boundingBox();
+    if (!box) return;
+    const centre = box.y + box.height / 2;
+    if (centre >= top && centre <= bottom) return;
+    const delta = centre < top ? centre - vp.height * 0.4 : centre - vp.height * 0.6;
+    // Wheel over the target's own column, not over a fixed gutter: a wheel
+    // event scrolls whatever is under the cursor, and the tracker's
+    // combatant rail is its own scroll container. Parked anywhere else, this
+    // scrolled the page while the rail stayed put, the target never came
+    // into view, and the click landed on whatever was actually there — which
+    // for the attack panel meant hitting the row's Attack toggle and closing
+    // the panel the next step was about to use.
+    const x = Math.max(8, Math.min(vp.width - 8, box.x + box.width / 2));
+    await page.mouse.move(x, Math.round(vp.height * 0.5), { steps: 4 });
+    await page.mouse.wheel(0, Math.round(Math.max(-600, Math.min(600, delta))));
+    await hold(70);
+  }
+}
+
+/**
+ * Slides the pointer to an element without clicking it.
+ *
+ * `noScroll` for anything inside a map canvas: both ZoneMap and GridMap
+ * handle the wheel themselves to zoom, so scrolling toward a token or a zone
+ * node moves it out from under the cursor instead of bringing it into view,
+ * and every retry zooms further out. Frame the canvas first with frame(),
+ * then click into it without scrolling.
+ */
+export async function glide(page: Page, target: Locator, steps = 22, noScroll = false) {
+  if (!noScroll) await ensureInView(page, target);
   const { x, y } = await centreOf(target);
   await page.mouse.move(x, y, { steps });
   await hold(160);
 }
 
-/** Slides the pointer onto an element and clicks it, at a pace the eye can follow. */
-export async function click(page: Page, target: Locator, opts: { steps?: number; settle?: number } = {}) {
-  await glide(page, target, opts.steps ?? 22);
+/**
+ * Slides the pointer onto an element and clicks it, at a pace the eye can
+ * follow.
+ *
+ * The re-check before pressing is not paranoia: the tracker's combatant rail
+ * is its own scroll container, so bringing something in view there can still
+ * be settling when the press lands, and the click goes to whatever moved
+ * under the cursor instead. On camera that looks like the app ignoring a
+ * button.
+ */
+export async function click(page: Page, target: Locator, opts: { steps?: number; settle?: number; noScroll?: boolean } = {}) {
+  await glide(page, target, opts.steps ?? 22, opts.noScroll);
+  const before = await centre(target);
+  const now = await centre(target);
+  if (Math.abs(now.x - before.x) > 3 || Math.abs(now.y - before.y) > 3) {
+    await page.mouse.move(now.x, now.y, { steps: 6 });
+    await hold(180);
+  }
   await page.mouse.down();
   await hold(70);
   await page.mouse.up();
   await hold(opts.settle ?? 340);
+}
+
+/**
+ * Clicks something, and clicks it again if the thing it was supposed to
+ * produce doesn't turn up.
+ *
+ * For controls inside the tracker's combatant rail, which is its own scroll
+ * container: bringing a button into view there can still be settling when
+ * the press lands, and the click goes to whatever moved under the cursor.
+ * Retrying is right for a rig even though it would be wrong for a test —
+ * the shot is of a person clicking a button until it works, which is also
+ * what a person does.
+ */
+export async function clickUntil(page: Page, target: Locator, appears: Locator, tries = 4, opts: { noScroll?: boolean } = {}) {
+  for (let i = 0; i < tries; i++) {
+    await click(page, target, { settle: 320, noScroll: opts.noScroll });
+    try {
+      await appears.first().waitFor({ state: "visible", timeout: 4000 });
+      return;
+    } catch {
+      if (i === tries - 1) {
+        // Say what was actually on screen. A bare "nothing appeared" sends
+        // you looking for a wrong selector when the cause is usually a click
+        // that landed somewhere else.
+        const seen = await target.textContent().catch(() => "<gone>");
+        throw new Error(`clickUntil: nothing appeared after ${tries} attempts (target read "${seen?.trim()}")`);
+      }
+      await hold(420);
+    }
+  }
 }
 
 /** Clicks a bare viewport coordinate — grid cells, canvas painting. */
@@ -243,9 +331,16 @@ export async function clickAt(page: Page, x: number, y: number, opts: { steps?: 
   await hold(opts.settle ?? 130);
 }
 
-/** Types into a field one key at a time, the way a person would. */
+/**
+ * Types into a field one key at a time, the way a person would.
+ *
+ * Clears first: a segment that fills the same field twice (a second
+ * character's downtime, a different search) would otherwise append to
+ * whatever the last beat left there.
+ */
 export async function type(page: Page, target: Locator, text: string, delay = 42) {
   await click(page, target, { settle: 120 });
+  await target.fill("");
   await target.pressSequentially(text, { delay });
   await hold(260);
 }
@@ -312,6 +407,26 @@ export interface OpenViewOptions {
 export const VIEW_WIDTH = 1920;
 export const VIEW_HEIGHT = 1080;
 
+/**
+ * The house shooting format.
+ *
+ * The app caps its own content at 1100px (`.app-content`, App.css), so a
+ * 1920-wide frame is about a quarter empty gutter and everything in it is
+ * correspondingly small — measured on the live app, the battle grid draws at
+ * 570x380 whether the viewport is 1366 or 1920, which is a tenth of a 1080p
+ * frame.
+ *
+ * Zooming the app root rather than shrinking the viewport is what fixes it:
+ * the page lays out at 1920/1.33 ≈ 1444 CSS px, so the content cap lands
+ * near the frame edge, while the frame itself stays natively 1920x1080.
+ *
+ * Tried and rejected: a 1440x810 viewport recorded into a 1920x1080 file.
+ * Playwright does not scale the viewport up to the recording size — it
+ * composites it at natural size into the corner, so every frame came out
+ * with a black band down two sides.
+ */
+export const SHOOT = { zoom: 1.33 } as const;
+
 export async function openView(
   browser: { newContext: (o: Record<string, unknown>) => Promise<BrowserContext> },
   opts: OpenViewOptions,
@@ -327,6 +442,8 @@ export async function openView(
     baseURL: "http://localhost:5200",
     viewport: { width, height },
     deviceScaleFactor: 1,
+    // Always the viewport size — Playwright composites the viewport into a
+    // larger recording rather than scaling it up. See SHOOT.
     recordVideo: { dir, size: { width, height } },
     // Deterministic across machines, so two takes of the same segment cut
     // together and dates on screen don't jump.
@@ -439,15 +556,17 @@ export async function paintRun(page: Page, svg: Locator, cells: [number, number]
  * deliberate, and self-correcting rather than a guessed pixel delta — the
  * same page is a different height at a different zoom.
  *
- * The cursor is parked in the left gutter first, because a wheel event over
- * the battle grid zooms the map (GridMap's own onWheel) instead of scrolling
- * the page, and over the map builder's palette it scrolls the palette.
+ * The cursor is parked in the header strip at the top first, which belongs
+ * to no scroll container: a wheel event over the battle grid zooms the map
+ * (GridMap's own onWheel) instead of scrolling the page, over the map
+ * builder's palette it scrolls the palette, and over the tracker's combatant
+ * rail it scrolls the rail.
  */
 export async function frame(page: Page, target: Locator, opts: { at?: number; gutterX?: number } = {}) {
   const want = opts.at ?? 0.46;
   const vp = page.viewportSize();
   if (!vp) return;
-  await page.mouse.move(opts.gutterX ?? Math.round(vp.width * 0.15), Math.round(vp.height * 0.5), { steps: 10 });
+  await page.mouse.move(opts.gutterX ?? Math.round(vp.width * 0.5), 34, { steps: 10 });
   for (let i = 0; i < 16; i++) {
     const box = await target.boundingBox();
     if (!box) return;
@@ -456,4 +575,6 @@ export async function frame(page: Page, target: Locator, opts: { at?: number; gu
     await page.mouse.wheel(0, Math.round(Math.max(-500, Math.min(500, delta))));
     await hold(80);
   }
+  // Ran out of attempts: the target is in a container that will not scroll
+  // any further. Better to shoot it where it is than to fail the segment.
 }

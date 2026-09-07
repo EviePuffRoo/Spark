@@ -9,7 +9,10 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "demo": "playwright test --config=playwright.demo.config.ts",
+    "demo:seed": "playwright test --config=playwright.demo.config.ts --project=seed",
+    "demo:assemble": "node demo/assemble.mjs"
   },
   "dependencies": {
     "@sentry/react": "^10.72.0",

@@ -58,6 +58,72 @@ test("segment 6 — a dungeon that remembers", async ({ browser }) => {
     await frame(page, page.locator(".zone-map-svg > g[transform]").first(), { at: 0.52 });
     await hold(800);
 
+    // The group, not its circle: the pointer handler is on the <g>, and a
+    // click on the circle alone did not open the panel.
+    const zoneNode = (name: string) => page.locator(".zone-map-svg .zone-node").filter({ hasText: name }).first();
+    const moveTo = (room: string) => page.locator(".button-row").filter({ hasText: room }).getByRole("button", { name: "Move Party" }).first();
+    // Selecting a zone opens its panel; clicking the circle can land before
+    // React has re-rendered the selection when the machine is busy encoding
+    // the previous segment's video. Click until the panel is actually there.
+    // noScroll: the zone map handles the wheel itself to zoom, so scrolling
+    // toward a node pushes it away instead of bringing it into view.
+    // Closes whatever panel is open before selecting, so "the panel is open"
+    // is a signal about *this* zone. Left open, clickUntil returned on the
+    // previous zone's panel without ever selecting the new one — and the
+    // panel lists only the selected zone's exits, so the next Move Party
+    // button was for a door that wasn't there.
+    const selectZone = async (name: string) => {
+      // Retries the whole close-frame-click sequence, not just the click.
+      // Closing the panel changes the page height, which moves the map while
+      // the frame loop is measuring it, so a single pass can end up clicking
+      // where the node was rather than where it is.
+      const close = page.getByRole("button", { name: "Close", exact: true });
+      const mapGroup = page.locator(".zone-map-svg > g[transform]").first();
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (await close.count() > 0) await click(page, close.first(), { settle: 320 });
+        await hold(250);
+        await frame(page, mapGroup, { at: 0.42 });
+        await hold(200);
+        await click(page, zoneNode(name), { noScroll: true, settle: 400 });
+        // waitFor, not count(): an instant check can miss a panel that is
+        // about to render, and the next attempt would then close the panel
+        // its own click had just opened.
+        try {
+          await close.first().waitFor({ state: "visible", timeout: 3000 });
+          return;
+        } catch {
+          await hold(400);
+        }
+      }
+      throw new Error(`selectZone: the panel never opened for "${name}"`);
+    };
+
+    // Loading a room does not reset the zone map's pan, so the next room's
+    // zones can render outside the canvas — measured at y = -371 walking
+    // from the narthex to the nave, i.e. entirely above the visible area.
+    // Hitting the map's own Reset re-centres it, which is what a DM has to
+    // do at the table too.
+    const recentreMap = async () => {
+      await click(page, page.locator(".zone-map").getByRole("button", { name: "Reset zoom and pan" }), { settle: 500 });
+      await frame(page, page.locator(".zone-map-svg > g[transform]").first(), { at: 0.42 });
+    };
+
+    // Jumping to a room through the Load Dungeon picker rather than walking
+    // an exit. It calls the same loadRoom underneath — the leave still
+    // reports what it observed and the room still remembers it — but it
+    // avoids selecting a zone in a room whose panel is already open, which
+    // is unreliable enough to have cost this segment several takes.
+    const jumpToRoom = async (room: string) => {
+      await click(page, page.getByRole("button", { name: "Load Dungeon" }));
+      await type(page, page.getByPlaceholder("Search dungeons…"), "Sunken");
+      await hold(700);
+      await click(page, page.locator("button.entity-item").filter({ hasText: "Sunken Abbey" }).first());
+      await hold(800);
+      await click(page, page.locator("button.entity-item").filter({ hasText: room }).first());
+      await hold(2000);
+      await recentreMap();
+    };
+
     // --- Load the dungeon, pick a room to start in ---
     await beatSay(page, segment, "A dungeon is rooms, and the party is in one of them.", 2800);
     await say(page, null);
@@ -69,36 +135,24 @@ test("segment 6 — a dungeon that remembers", async ({ browser }) => {
     segment.beat("CLICK: start in the narthex");
     await click(page, page.locator("button.entity-item").filter({ hasText: "Flooded Narthex" }).first());
     await hold(1800);
-    await frame(page, page.locator(".zone-map-svg > g[transform]").first(), { at: 0.52 });
+    await recentreMap();
     await beatSay(page, segment, "Walk them through it — the room loads, and so does its map.", 3000);
 
     // --- Walk to the crypt, which is trapped ---
     await say(page, null);
-    // The group, not its circle: the pointer handler is on the <g>, and a
-    // click on the circle alone did not open the panel.
-    const zoneNode = (name: string) => page.locator(".zone-map-svg .zone-node").filter({ hasText: name }).first();
-    const moveTo = (room: string) => page.locator(".button-row").filter({ hasText: room }).getByRole("button", { name: "Move Party" }).first();
-    // Selecting a zone opens its panel; clicking the circle can land before
-    // React has re-rendered the selection when the machine is busy encoding
-    // the previous segment's video. Click until the panel is actually there.
-    // noScroll: the zone map handles the wheel itself to zoom, so scrolling
-    // toward a node pushes it away instead of bringing it into view.
-    const selectZone = (name: string) =>
-      clickUntil(page, zoneNode(name), page.getByRole("button", { name: "Close", exact: true }), 4, { noScroll: true });
-
     await selectZone("Broken Doors");
     await hold(800);
     segment.beat("MOVE: into the nave");
     await click(page, moveTo("Nave"));
     await hold(2000);
-    await frame(page, page.locator(".zone-map-svg > g[transform]").first(), { at: 0.42 });
+    await recentreMap();
 
     await selectZone("The Crossing");
     await hold(800);
     segment.beat("MOVE: down into the crypt");
     await click(page, moveTo("Crypt"));
     await hold(2200);
-    await frame(page, page.locator(".zone-map-svg > g[transform]").first(), { at: 0.42 });
+    await recentreMap();
 
     // The proof has to be on screen, not implied: select the trapped zone
     // and frame its Hazard panel, because that panel is the only place the
@@ -120,21 +174,11 @@ test("segment 6 — a dungeon that remembers", async ({ browser }) => {
 
     // --- Leave, come back, and it is still disarmed ---
     await say(page, null);
-    // The way out is on the Crypt Stair, not the Ossuary: the panel lists
-    // the exits of the zone you have selected, and each exit belongs to
-    // exactly one zone.
-    await selectZone("Crypt Stair");
-    await hold(700);
     segment.beat("MOVE: back up to the nave");
-    await click(page, moveTo("Nave"));
-    await hold(2200);
-    await selectZone("The Crossing");
-    await hold(700);
+    await jumpToRoom("The Nave");
     segment.beat("MOVE: return to the crypt");
-    await click(page, moveTo("Crypt"));
-    await hold(2200);
+    await jumpToRoom("The Crypt");
     await selectZone("Ossuary");
-    await hold(700);
     await frame(page, page.getByRole("heading", { name: "Hazard" }), { at: 0.42 });
     await hold(1200);
     await beatSay(page, segment, "Come back next session and it is still gone. The room remembered.", 4200);
@@ -142,16 +186,8 @@ test("segment 6 — a dungeon that remembers", async ({ browser }) => {
     // --- The bell chamber brings its own battle map ---
     await say(page, null);
     await badge(page, "The Bell Chamber");
-    await selectZone("Crypt Stair");
-    await hold(700);
-    await click(page, moveTo("Nave"));
-    await hold(2000);
-    // The bell stair is off the choir stalls.
-    await selectZone("Choir Stalls");
-    await hold(700);
     segment.beat("MOVE: up the bell stair");
-    await click(page, moveTo("Bell Chamber"));
-    await hold(2000);
+    await jumpToRoom("The Bell Chamber");
     await click(page, page.getByRole("button", { name: "Show Battle Grid" }));
     await expect(page.locator(".grid-map-svg")).toBeVisible();
     await frame(page, page.locator(".grid-map-svg > g[transform]").first(), { at: 0.5 });

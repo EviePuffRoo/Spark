@@ -106,28 +106,8 @@ two-camera segment carry their own start offset, so aligning them is arithmetic:
 | `live-combat` | Two synchronised screens — the DM's numbers and hidden markers against the table's status badges and fog. The only segment that cannot be shot from one browser. |
 | `town` | The half of a campaign that isn't a fight: records, a shop that spends one shared purse, the tavern hub. |
 | `downtime` | Weeks between sessions, and crafting priced by the item's own rarity rather than by argument. |
-| `dungeon` | A room that remembers — disarm a trap, walk away, come back, and it is still disarmed. **Incomplete**: see below. |
+| `dungeon` | A room that remembers — disarm a trap, walk away, come back, and it is still disarmed. |
 | `world-tick` | Time passing, as a proposal the DM approves item by item rather than a fait accompli. |
-
-### The dungeon segment's unfinished beat
-
-`06-dungeon` reliably gets as far as loading the abbey and walking the party
-Narthex → Nave → Crypt, and then fails: clicking a zone node in the Crypt does
-not open its detail panel, so the trap never gets disarmed and the
-room-memory payoff — the whole point of the segment — is never shot.
-
-What is known:
-
-- Selecting a zone works in the Narthex and the Nave and not in the Crypt, on
-  every run, so it is not a timing flake.
-- It worked before the seeded rooms went from one zone each to three, so the
-  regression is in that change rather than in the app.
-- It is not the wheel-zoom interference (`noScroll` is already applied), not
-  the group-vs-circle click target (both fail the same way), and not the
-  signal being waited on (`Location` heading and `Close` button both fail).
-
-Next thing to try is dumping the zone map's DOM at that moment — whether the
-Crypt's nodes are the ones being clicked, and whether the panel opens at all.
 
 ## Adding a segment
 
@@ -175,6 +155,16 @@ Crypt's nodes are the ones being clicked, and whether the panel opens at all.
   selected zone's exits. Walking a party means selecting the zone that owns
   the door, not any zone in the room.
 - An input with a `datalist` has the ARIA role `combobox`, not `textbox`.
+- **Loading a dungeon room does not reset the zone map's pan.** Measured
+  walking narthex → nave: the new room's zones render at y = -371, entirely
+  above the canvas. The segment hits the map's own Reset after every room
+  load; a DM has to do the same at the table.
+- **Selecting a zone while another zone's panel is open is unreliable**, and
+  it cost this segment eight takes to pin down. The segment now jumps between
+  rooms through the Load Dungeon picker instead of walking exits — same
+  `loadRoom` underneath, so the leave-report and the room memory are
+  identical, but it never has to select a zone in a room whose panel is
+  already open.
 - Doom clocks are gated behind a paid tier, and the demo accounts are
   ordinary free ones on purpose — a tour shot from a privileged account shows
   a product nobody signing up will get.

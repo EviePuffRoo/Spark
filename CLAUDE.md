@@ -349,6 +349,10 @@ Two things the segments turned up that are about the app rather than the rig:
   have. The rig zooms around it; the product doesn't.
 - **`locator.scrollIntoViewIfNeeded()` times out inside a CSS-zoomed subtree.** Worth
   knowing before anyone reaches for zoom elsewhere.
+- **Loading a dungeon room doesn't reset the zone map's pan.** Walking narthex → nave
+  puts the new room's zones at y = -371 — entirely above the canvas, so the DM sees an
+  empty map until they hit Reset. Fitting the view to the new room's zones on load would
+  be the fix.
 
 `demo:assemble` uses the ffmpeg Playwright bundles for its own video recording, so there
 is nothing to install — but that build is deliberately minimal (scale, pad, crop, trim,

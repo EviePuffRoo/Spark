@@ -119,12 +119,10 @@ two-camera segment carry their own start offset, so aligning them is arithmetic:
 
 ## Things learned the hard way
 
-- **The app caps its own content at 1100px** (`.app-content`, App.css), so on
-  a 1920 frame roughly a quarter is empty gutter and the battle grid draws at
-  570x380 — a tenth of the picture — whether the viewport is 1366 or 1920.
-  `SHOOT` zooms `#root` to 1.33 so the app lays out near the frame edge. That
-  is a shooting workaround; on a wide monitor a real DM sees the same small
-  map.
+- **`.app-content` caps content at 1100px**, and the map screens now opt out
+  of it (`.app-content-wide`). `SHOOT` still zooms `#root` to 1.33, which is
+  a framing choice rather than a workaround now — it makes text and controls
+  legible at 1080p rather than rescuing the map's size.
 - **Zoom the app root, not the viewport.** Playwright does not scale the
   viewport up to a larger `recordVideo.size` — it composites it at natural
   size into the corner, so a 1440x810 viewport recorded into 1920x1080 came
@@ -155,16 +153,19 @@ two-camera segment carry their own start offset, so aligning them is arithmetic:
   selected zone's exits. Walking a party means selecting the zone that owns
   the door, not any zone in the room.
 - An input with a `datalist` has the ARIA role `combobox`, not `textbox`.
-- **Loading a dungeon room does not reset the zone map's pan.** Measured
-  walking narthex → nave: the new room's zones render at y = -371, entirely
-  above the canvas. The segment hits the map's own Reset after every room
-  load; a DM has to do the same at the table.
-- **Selecting a zone while another zone's panel is open is unreliable**, and
-  it cost this segment eight takes to pin down. The segment now jumps between
-  rooms through the Load Dungeon picker instead of walking exits — same
-  `loadRoom` underneath, so the leave-report and the room memory are
-  identical, but it never has to select a zone in a room whose panel is
-  already open.
+- **The zone panel renders below the map, so reaching it scrolls the map off
+  the top.** This cost the dungeon segment eight takes and was misdiagnosed
+  twice as a map pan: a node at a negative viewport y looks identical whether
+  the page scrolled or the map panned. It was the page every time — the `<g>`
+  transform read `translate(0 0) scale(1)` in both rooms. Read the transform,
+  not the bounding box, before blaming the app.
+- Consequently a `noScroll` click must be preceded by a `frame()` of the
+  canvas, and the framing has to happen *after* anything that scrolls (like
+  closing the panel), or it just gets undone.
+- The dungeon segment jumps between rooms through the Load Dungeon picker
+  rather than walking exits. Same `loadRoom` underneath, so the leave-report
+  and the room memory are identical, but it avoids selecting a zone in a room
+  whose panel is already open, which is unreliable.
 - Doom clocks are gated behind a paid tier, and the demo accounts are
   ordinary free ones on purpose — a tour shot from a privileged account shows
   a product nobody signing up will get.

@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { loadDemoWorld, demoStorage, armEncounter, resetDungeonRooms } from "./demoWorld";
-import { Segment, openView, badge, beatSay, say, click, clickUntil, hold, type, frame, SHOOT } from "./demoKit";
+import { Segment, openView, badge, beatSay, say, click, hold, type, frame } from "./demoKit";
 
 // Segment 6 — running a dungeon room by room, and what a room remembers.
 //
@@ -37,7 +37,9 @@ test("segment 6 — a dungeon that remembers", async ({ browser }) => {
     segment,
     signIn: { username: demo.dm.username, password: demo.password },
     storage: demoStorage(demo),
-    ...SHOOT,
+    // Unzoomed, same as the combat segment: this is a map screen, and the
+    // map screens now get the wide content measure. Zooming would shrink the
+    // effective viewport back below the width the zone map can use.
   });
   const { page } = view;
 
@@ -61,7 +63,6 @@ test("segment 6 — a dungeon that remembers", async ({ browser }) => {
     // The group, not its circle: the pointer handler is on the <g>, and a
     // click on the circle alone did not open the panel.
     const zoneNode = (name: string) => page.locator(".zone-map-svg .zone-node").filter({ hasText: name }).first();
-    const moveTo = (room: string) => page.locator(".button-row").filter({ hasText: room }).getByRole("button", { name: "Move Party" }).first();
     // Selecting a zone opens its panel; clicking the circle can land before
     // React has re-rendered the selection when the machine is busy encoding
     // the previous segment's video. Click until the panel is actually there.
@@ -73,21 +74,21 @@ test("segment 6 — a dungeon that remembers", async ({ browser }) => {
     // panel lists only the selected zone's exits, so the next Move Party
     // button was for a door that wasn't there.
     const selectZone = async (name: string) => {
-      // Retries the whole close-frame-click sequence, not just the click.
+      // Retries the whole close-scroll-click sequence, not just the click.
       // Closing the panel changes the page height, which moves the map while
-      // the frame loop is measuring it, so a single pass can end up clicking
-      // where the node was rather than where it is.
+      // the frame loop is measuring it.
+      //
+      // The scroll here is a plain DOM scrollIntoView rather than the kit's
+      // wheel-based frame(): the wheel loop is nicer on camera but converges
+      // by measurement, and this runs right after a layout change. One
+      // deterministic call beats a loop that can be chasing a moving target.
       const close = page.getByRole("button", { name: "Close", exact: true });
-      const mapGroup = page.locator(".zone-map-svg > g[transform]").first();
       for (let attempt = 0; attempt < 3; attempt++) {
         if (await close.count() > 0) await click(page, close.first(), { settle: 320 });
         await hold(250);
-        await frame(page, mapGroup, { at: 0.42 });
-        await hold(200);
+        await page.evaluate(() => document.querySelector(".zone-map-svg")?.scrollIntoView({ block: "center" }));
+        await hold(350);
         await click(page, zoneNode(name), { noScroll: true, settle: 400 });
-        // waitFor, not count(): an instant check can miss a panel that is
-        // about to render, and the next attempt would then close the panel
-        // its own click had just opened.
         try {
           await close.first().waitFor({ state: "visible", timeout: 3000 });
           return;
@@ -98,15 +99,15 @@ test("segment 6 — a dungeon that remembers", async ({ browser }) => {
       throw new Error(`selectZone: the panel never opened for "${name}"`);
     };
 
-    // Loading a room does not reset the zone map's pan, so the next room's
-    // zones can render outside the canvas — measured at y = -371 walking
-    // from the narthex to the nave, i.e. entirely above the visible area.
-    // Hitting the map's own Reset re-centres it, which is what a DM has to
-    // do at the table too.
-    const recentreMap = async () => {
-      await click(page, page.locator(".zone-map").getByRole("button", { name: "Reset zoom and pan" }), { settle: 500 });
-      await frame(page, page.locator(".zone-map-svg > g[transform]").first(), { at: 0.42 });
-    };
+    // Scrolls the map back into frame. The zone panel renders below the
+    // canvas, so every beat that reads the panel — and every Move Party
+    // button, which lives in it — leaves the map above the viewport.
+    //
+    // This looked for a long time like the map losing its pan on room load.
+    // It is not: the <g> transform reads translate(0 0) scale(1) in every
+    // room. A node at a negative viewport y looks the same whether the page
+    // scrolled or the map panned, and it was the page every time.
+    const recentreMap = () => frame(page, page.locator(".zone-map-svg > g[transform]").first(), { at: 0.42 });
 
     // Jumping to a room through the Load Dungeon picker rather than walking
     // an exit. It calls the same loadRoom underneath — the leave still
@@ -138,27 +139,24 @@ test("segment 6 — a dungeon that remembers", async ({ browser }) => {
     await recentreMap();
     await beatSay(page, segment, "Walk them through it — the room loads, and so does its map.", 3000);
 
-    // --- Walk to the crypt, which is trapped ---
+    // --- Into the crypt, which is trapped ---
+    //
+    // Every transition goes through the Load Dungeon picker rather than a
+    // zone's Move Party button. Both call the same loadRoom underneath, so
+    // the leave still reports what it observed and the room still remembers
+    // it — but selecting a zone in a room arrived at via Move Party proved
+    // unreliable in a way selecting one after a picker load never is, and
+    // this segment's claim is the memory, not the doorway.
     await say(page, null);
-    await selectZone("Broken Doors");
-    await hold(800);
     segment.beat("MOVE: into the nave");
-    await click(page, moveTo("Nave"));
-    await hold(2000);
-    await recentreMap();
-
-    await selectZone("The Crossing");
-    await hold(800);
+    await jumpToRoom("The Nave");
     segment.beat("MOVE: down into the crypt");
-    await click(page, moveTo("Crypt"));
-    await hold(2200);
-    await recentreMap();
+    await jumpToRoom("The Crypt");
 
     // The proof has to be on screen, not implied: select the trapped zone
     // and frame its Hazard panel, because that panel is the only place the
     // room's memory is visible.
     await selectZone("Ossuary");
-    await hold(700);
     const hazardHeading = page.getByRole("heading", { name: "Hazard" });
     await expect(hazardHeading).toBeVisible();
     await frame(page, hazardHeading, { at: 0.42 });

@@ -342,17 +342,14 @@ The two rules that keep it re-runnable, both of which cost a take to learn:
 
 Two things the segments turned up that are about the app rather than the rig:
 
-- **`.app-content` caps the whole app at 1100px.** On a 1920 monitor that leaves a
-  quarter of the screen empty and draws the battle grid at 570x380 — measured live, and
-  identical at 1366. The grid is width-constrained while ~460px of its own 78vh height
-  sits unused, so a DM on a wide screen is getting about a third of the map they could
-  have. The rig zooms around it; the product doesn't.
+- **The map screens opt out of `.app-content`'s 1100px measure** (`.app-content-wide`,
+  applied to Combat and Map Builder). 1100px is right for prose and wrong for a battle
+  grid: the tracker's map column got 596px of it at every viewport from 1366 up, so the
+  grid drew at 570x380 — letterboxed by width while ~460px of its own 78vh height went
+  unused. The 1600px replacement is derived, not picked: it is the width at which the
+  grid stops being width-starved at 1080p. See the comment in App.css.
 - **`locator.scrollIntoViewIfNeeded()` times out inside a CSS-zoomed subtree.** Worth
   knowing before anyone reaches for zoom elsewhere.
-- **Loading a dungeon room doesn't reset the zone map's pan.** Walking narthex → nave
-  puts the new room's zones at y = -371 — entirely above the canvas, so the DM sees an
-  empty map until they hit Reset. Fitting the view to the new room's zones on load would
-  be the fix.
 
 `demo:assemble` uses the ffmpeg Playwright bundles for its own video recording, so there
 is nothing to install — but that build is deliberately minimal (scale, pad, crop, trim,

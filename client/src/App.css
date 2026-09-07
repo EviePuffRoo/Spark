@@ -251,6 +251,21 @@
   padding: 0 16px 48px;
 }
 
+/* The map screens opt out of the reading measure above.
+   1100px is right for prose and forms and wrong for a battle grid: the
+   tracker's map column got 596px of it at every viewport from 1366 up, so
+   the grid drew at 570x380 — letterboxed by width while ~460px of its own
+   78vh height went unused.
+   1600 is not a round number, it's the width at which that stops: the grid's
+   viewBox is 800x560, so at a 1080p height allowance (78vh = 842px) it wants
+   842 * 800/560 = 1204px of map column, plus the 320px combatant rail, the
+   divider, the gaps and this element's own padding. Below that the map is
+   width-starved; above it, height becomes the limit again and the extra
+   width is wasted. */
+.app-content-wide {
+  max-width: 1600px;
+}
+
 @media (max-width: 800px) {
   .app-shell {
     flex-direction: column;

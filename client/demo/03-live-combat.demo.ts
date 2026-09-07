@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { loadDemoWorld, demoStorage, armEncounter, demoCombatantId } from "./demoWorld";
-import { Segment, openView, badge, say, click, clickUntil, hold, drag, cellPoint, frame, SHOOT } from "./demoKit";
+import { Segment, openView, badge, say, click, clickUntil, hold, drag, cellPoint, frame } from "./demoKit";
 
 // Segment 3 — the same fight, on two screens at once.
 //
@@ -43,7 +43,11 @@ test("segment 3 — live combat on two screens", async ({ browser }) => {
     segment,
     signIn: { username: demo.dm.username, password: demo.password },
     storage: demoStorage(demo),
-    ...SHOOT,
+    // No SHOOT zoom here. Zoom was compensating for the 1100px content cap;
+    // now that the map screens opt out of it (.app-content-wide), zooming
+    // would shrink the effective viewport back below the width the grid can
+    // actually use — measured, the map draws at 1050x700 unzoomed against
+    // ~865 zoomed.
   });
 
   // The cast screen carries the DM's own session — that is exactly how the
@@ -53,7 +57,6 @@ test("segment 3 — live combat on two screens", async ({ browser }) => {
     segment,
     signIn: { username: demo.dm.username, password: demo.password },
     url: `/?present=${demo.worldId}`,
-    ...SHOOT,
   });
 
   const dm = dmView.page;

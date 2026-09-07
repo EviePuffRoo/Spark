@@ -306,6 +306,62 @@ writing directly to the DB bypasses the API's coercion, so you must supply field
 routes would have defaulted (a zone with no `tags: []` crashed the app and looked
 exactly like a product bug until it was bisected).
 
+## Recording the app
+
+`client/demo/` drives the real app to **record** it — product footage, not assertions.
+It has its own config (`playwright.demo.config.ts`), its own directory, and files named
+`*.demo.ts` rather than `*.spec.ts`, so neither the CI e2e suite nor vitest can pick a
+segment up. A shot that waits out an animation must never be able to fail somebody's PR.
+
+Seven segments, one Playwright project each: generation, the map builder, live combat on
+two screens, the town, downtime and crafting, the dungeon crawl, the world tick.
+
+```bash
+cd client
+npm run demo              # seed, then every segment
+npm run demo:assemble     # normalise the clips to one size, and print the cut list
+```
+
+Output lands in `client/showcase-out/` (gitignored): one `.webm` per camera, plus a
+**beat sheet** per segment — a labelled list of offsets into that recording. That is the
+point of the whole arrangement: assembling a cut becomes reading timestamps rather than
+scrubbing for the moment the spell landed. The two-camera segment records both views
+against one clock, so a split screen can put the same instant on both halves.
+
+The two rules that keep it re-runnable, both of which cost a take to learn:
+
+- **The seeded world is built through the HTTP API, never by writing to `e2e.db`.** Same
+  reason the `tmp-seed-*.mjs` caveat above exists — a direct write skips the routes'
+  coercion, and a screen that crashes on a field the API would have defaulted looks
+  exactly like a product bug on camera.
+- **Nothing in the seed calls a generator.** They use `Math.random`, so a re-shoot would
+  rename the party and break continuity with segments recorded a week earlier. Generation
+  is something the video *shows*, never something it depends on. The seed is idempotent
+  for the same reason: re-recording one segment lands on exactly the world the others
+  were shot against, which is what makes a segment worth re-shooting on its own.
+
+Two things the segments turned up that are about the app rather than the rig:
+
+- **The map screens opt out of `.app-content`'s 1100px measure** (`.app-content-wide`,
+  applied to Combat and Map Builder). 1100px is right for prose and wrong for a battle
+  grid: the tracker's map column got 596px of it at every viewport from 1366 up, so the
+  grid drew at 570x380 — letterboxed by width while ~460px of its own 78vh height went
+  unused. The 1600px replacement is derived, not picked: it is the width at which the
+  grid stops being width-starved at 1080p. See the comment in App.css.
+- **`locator.scrollIntoViewIfNeeded()` times out inside a CSS-zoomed subtree.** Worth
+  knowing before anyone reaches for zoom elsewhere.
+
+`demo:assemble` uses the ffmpeg Playwright bundles for its own video recording, so there
+is nothing to install — but that build is deliberately minimal (scale, pad, crop, trim,
+and the matroska/webm muxer, and no more). It normalises every clip to 1920x1080 at
+30fps, which is the part that matters for an edit, and *checks* for `overlay` and the
+concat demuxer rather than assuming them: given a full ffmpeg it composites the
+two-camera segment picture-in-picture and joins the tour into one file; given
+Playwright's it lays the two views out as consecutive clips and says why.
+
+`demo/README.md` has the rest, including why the app is zoomed rather than the page and
+which selectors bite.
+
 ## Conventions for changes
 
 Commit subjects are imperative and describe the *effect*, not the mechanism —

@@ -56,6 +56,12 @@ type SubTab = "create" | "compendium" | "overview" | "worlds" | "roster" | "code
 const AREA_LABELS: Record<Area, string> = { prep: "Prep", world: "World", play: "Play", account: "Account" };
 const AREA_ICONS: Record<Area, typeof PrepIcon> = { prep: PrepIcon, world: WorldIcon, play: PlayIcon, account: AccountIcon };
 const AREA_DEFAULT_SUBTAB: Record<Area, SubTab> = { prep: "create", world: "overview", play: "combat", account: "profile" };
+
+// Subtabs that get the wider content measure (see .app-content-wide). These
+// are the screens whose main content is a map drawn at a fixed scale rather
+// than text that reflows — everything else reads better at 1100px. Adding
+// one is a line here.
+const WIDE_SUBTABS = new Set<SubTab>(["combat", "mapBuilder"]);
 const SUBTAB_LABELS: Record<SubTab, string> = {
   create: "Create", compendium: "Compendium", overview: "Overview", worlds: "Worlds",
   roster: "Roster", codex: "Codex", notes: "Notes", downtime: "Downtime", tavern: "Tavern", combat: "Combat", mapBuilder: "Map Builder",
@@ -288,7 +294,7 @@ function AppShell({ initialLandOnOverview = false }: { initialLandOnOverview?: b
         )}
       </nav>
 
-      <div className="app-content">
+      <div className={`app-content${WIDE_SUBTABS.has(subTab) ? " app-content-wide" : ""}`}>
       <header className="app-header">
         <div className="app-header-actions">
           {worlds.length > 0 && (
